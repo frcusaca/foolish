@@ -3172,6 +3172,7 @@ impl ConcatenationFir {
             }
         }
     }
+
 }
 
 impl Fir for ConcatenationFir {
@@ -3179,7 +3180,7 @@ impl Fir for ConcatenationFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 // FOOP-55 §10: the zero-elements case is NOT special-cased
@@ -3196,45 +3197,11 @@ impl Fir for ConcatenationFir {
                 }
             }
             Nyes::Braning => {
-                // One pass over the elements, accumulating two verdicts:
-                //  - all_brane_like: every value is a brane (can be iterated
-                //    and copied — true for any NYES, incl. WOCONSTANIC/NK).
-                //  - type_errors: indices of permanent non-branes (constantew
-                //    but not brane-like) — genuine errors, all reported.
-                let mut all_brane_like = true;
-                let mut type_errors: Vec<usize> = Vec::new();
-                for (idx, elem) in self.core.foolish_children().iter().enumerate() {
-                    let brane_like = elem.value().borrow().is_constanic_branelike();
-                    all_brane_like &= brane_like;
-                    if !brane_like && elem.borrow().core().get_nyes().is_constantew() {
-                        type_errors.push(idx);
-                    }
-                }
-
-                // A type error wins over "not ready yet" (a real bad element
-                // is not masked by another still resolving).
-                if !type_errors.is_empty() {
-                    let self_weak = self.core.parent_weak();
-                    let list = type_errors
-                        .iter()
-                        .map(usize::to_string)
-                        .collect::<Vec<_>>()
-                        .join(",");
-                    let nk: FirRef = Rc::new(RefCell::new(NkFir {
-                        core: ProtoBrane::new(vec![], self_weak, Nyes::Nk),
-                        reason: format!(
-                            "concatenation constituent indexes where it's not a brane: {list}"
-                        ),
-                    }));
-                    self.core.push_ubc_child(nk);
-                    self.core.set_nyes(Nyes::Nk);
-                    return Ok(());
-                }
-                if !all_brane_like {
-                    // Not a greedy join: some element isn't joinable yet.
-                    // Settle WOCONSTANIC; the sequencer renders the raw
-                    // un-joined elements.
-                    self.core.set_nyes(Nyes::Woconstanic);
+                // FOOP-55 §11: on_foolish_op_ready is the foolish_children-
+                // phase gate; only once it defers (None) do we move on to
+                // populating/draining the ubc_children phase.
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
                     return Ok(());
                 }
 
@@ -3247,20 +3214,8 @@ impl Fir for ConcatenationFir {
                     for helper in self.core.ubc_children() {
                         self.core.push_task(helper);
                     }
-                } else {
-                    // Helpers drained. Settle from the JOINED lines (the
-                    // helpers), not the elements: the recoordinated joined
-                    // copies can be constant even when the original element
-                    // brane was WOCONSTANIC (e.g. `{c=a+b}` → joined `c=3`).
-                    // Empty (no lines joined) → Constant, per the empty-brane
-                    // convention.
-                    let helpers = self.core.ubc_children();
-                    let settled = if helpers.is_empty() {
-                        Nyes::Constant
-                    } else {
-                        _decide_nyes_due_to_children(&helpers).unwrap_or(Nyes::Constant)
-                    };
-                    self.core.set_nyes(settled);
+                } else if let Some(nyes) = self.on_ubc_op_ready(scope) {
+                    self.core.set_nyes(nyes);
                 }
             }
             _ => {}
@@ -3276,6 +3231,69 @@ impl Fir for ConcatenationFir {
 
     fn is_constanic_branelike(&self) -> bool {
         true
+    }
+
+    /// FOOP-55 §11 Step 4: moved verbatim from `_deprecating_op_step`'s
+    /// `Braning` arm (no logic change) — one pass over the elements,
+    /// accumulating two verdicts:
+    ///  - `all_brane_like`: every value is a brane (can be iterated and
+    ///    copied — true for any NYES, incl. WOCONSTANIC/NK).
+    ///  - `type_errors`: indices of permanent non-branes (constantew but
+    ///    not brane-like) — genuine errors, all reported.
+    /// Returns `Some(Nk)` on a type error (wins over "not ready yet" — a
+    /// real bad element is not masked by another still resolving),
+    /// `Some(Woconstanic)` if not all elements are brane-like yet (not a
+    /// greedy join — the sequencer renders the raw un-joined elements), or
+    /// `None` once every element is cleanly brane-like (defers to
+    /// `_deprecating_op_step`'s remaining ubc-phase logic, not yet moved).
+    fn on_foolish_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        let mut all_brane_like = true;
+        let mut type_errors: Vec<usize> = Vec::new();
+        for (idx, elem) in self.core.foolish_children().iter().enumerate() {
+            let brane_like = elem.value().borrow().is_constanic_branelike();
+            all_brane_like &= brane_like;
+            if !brane_like && elem.borrow().core().get_nyes().is_constantew() {
+                type_errors.push(idx);
+            }
+        }
+
+        if !type_errors.is_empty() {
+            let self_weak = self.core.parent_weak();
+            let list = type_errors
+                .iter()
+                .map(usize::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+            let nk: FirRef = Rc::new(RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], self_weak, Nyes::Nk),
+                reason: format!(
+                    "concatenation constituent indexes where it's not a brane: {list}"
+                ),
+            }));
+            self.core.push_ubc_child(nk);
+            return Some(Nyes::Nk);
+        }
+        if !all_brane_like {
+            return Some(Nyes::Woconstanic);
+        }
+        None
+    }
+
+    /// FOOP-55 §11 Step 4: moved verbatim from `_deprecating_op_step`'s
+    /// `Braning` arm (no logic change) — only called once the helpers are
+    /// populated AND drained (the `_helpers_populated.get()` + empty-queue
+    /// re-entry that used to gate the `else` branch). Settle from the
+    /// JOINED lines (the helpers), not the elements: the recoordinated
+    /// joined copies can be constant even when the original element brane
+    /// was WOCONSTANIC (e.g. `{c=a+b}` → joined `c=3`). Empty (no lines
+    /// joined) → Constant, per the empty-brane convention.
+    fn on_ubc_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        let helpers = self.core.ubc_children();
+        Some(if helpers.is_empty() {
+            Nyes::Constant
+        } else {
+            _decide_nyes_due_to_children(&helpers).unwrap_or(Nyes::Constant)
+        })
     }
 }
 
@@ -9975,5 +9993,95 @@ mod tests {
             "actual flattened order was {actual:?}; all six literals \
              (1..6) must be present exactly once"
         );
+    }
+
+    /// FOOP-55 §11 Step 1: the default `is_foolish_child_constanic_enough`/
+    /// `is_ubc_child_constanic_enough` must agree with plain `is_constanic()`
+    /// for both a pre-constanic and a settled child, on a kind that
+    /// overrides neither (an ordinary `Operator`) — pinning that the new
+    /// dequeue gate is observably identical to the old hardcoded check until
+    /// a kind opts in to an override.
+    #[test]
+    fn constanic_enough_default_matches_is_constanic() {
+        let a = make_constant_int(3);
+        let b = make_constant_int(5);
+        let op = make_operator("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+        let scope = Scope::empty();
+
+        // Fresh, pre-constanic operand `a`: default gate says "not enough",
+        // matching is_constanic() == false.
+        assert!(!a.borrow().core().get_nyes().is_constanic());
+        assert_eq!(
+            op.borrow().is_foolish_child_constanic_enough(&a),
+            a.borrow().core().get_nyes().is_constanic(),
+        );
+        assert!(!op.borrow().is_foolish_child_constanic_enough(&a));
+
+        // Step `a` to settled (a leaf constant settles in one step), then
+        // both sides must agree it is now "enough".
+        let _ = a.step(&scope).unwrap();
+        assert!(a.borrow().core().get_nyes().is_constanic());
+        assert_eq!(
+            op.borrow().is_foolish_child_constanic_enough(&a),
+            a.borrow().core().get_nyes().is_constanic(),
+        );
+        assert!(op.borrow().is_foolish_child_constanic_enough(&a));
+
+        // is_ubc_child_constanic_enough has the same default; same node,
+        // same answer.
+        assert_eq!(
+            op.borrow().is_ubc_child_constanic_enough(&a),
+            op.borrow().is_foolish_child_constanic_enough(&a),
+        );
+    }
+
+    /// FOOP-55 §11 Step 2: `are_foolish_children_ready_for_op`'s default
+    /// must be `false` while any `foolish_children` member is pre-constanic,
+    /// and `true` only once every member has settled — a genuine
+    /// whole-SET aggregation, not just a single-child check.
+    #[test]
+    fn are_foolish_children_ready_for_op_default_waits_for_all() {
+        let a = make_constant_int(1);
+        let b = make_constant_int(2);
+        let brane = make_brane(vec![Rc::clone(&a), Rc::clone(&b)]);
+        let scope = Scope::empty();
+
+        // Neither child has stepped yet: not ready.
+        assert!(!brane.borrow().are_foolish_children_ready_for_op());
+
+        // Settle only `a`: still not ready — `b` is still pre-constanic.
+        let _ = a.step(&scope).unwrap();
+        assert!(a.borrow().core().get_nyes().is_constanic());
+        assert!(!b.borrow().core().get_nyes().is_constanic());
+        assert!(!brane.borrow().are_foolish_children_ready_for_op());
+
+        // Settle `b` too: NOW the whole set is ready.
+        let _ = b.step(&scope).unwrap();
+        assert!(b.borrow().core().get_nyes().is_constanic());
+        assert!(brane.borrow().are_foolish_children_ready_for_op());
+    }
+
+    /// FOOP-55 §11 Step 2: `are_ubc_children_ready_for_op`'s default over an
+    /// EMPTY `ubc_children` store must be vacuously `true` (no children to
+    /// fail the predicate) — this is what lets a kind with nothing further
+    /// to compute (e.g. a simple operator) pass its ubc-phase gate
+    /// trivially once it has pushed its single computed result, or before
+    /// it has pushed anything at all.
+    #[test]
+    fn are_ubc_children_ready_for_op_vacuously_true_when_empty() {
+        let brane = make_brane(vec![]);
+        assert!(brane.borrow().core().ubc_children().is_empty());
+        assert!(brane.borrow().are_ubc_children_ready_for_op());
+    }
+
+    /// FOOP-55 §11 Step 3: the default `on_foolish_op_ready`/`on_ubc_op_ready`
+    /// return `None` (defer to the fallback) on a kind that overrides
+    /// neither.
+    #[test]
+    fn on_op_ready_handlers_default_to_none() {
+        let brane = make_brane(vec![]);
+        let scope = Scope::empty();
+        assert_eq!(brane.borrow().on_foolish_op_ready(&scope), None);
+        assert_eq!(brane.borrow().on_ubc_op_ready(&scope), None);
     }
 }

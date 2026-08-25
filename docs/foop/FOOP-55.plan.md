@@ -637,58 +637,117 @@ either.
       parallel session's concurrent commits — no file touched by this phase
       has any fmt drift.
 
-## Phase 3H — §11: Braning States (four event handlers) — **DEFERRED, not a Euler-1 sub-task**
+## Phase 3H — §11: two-phase child-readiness gates
 
-**Do not start implementation.** FOOP-55.md §11 is a proposal under active
-discussion, not yet a specification. **Confirmed by the human (2026-08-24):
-this is deferred follow-on work, sequenced to begin only after FOOP-55's
-main line of work (Euler 1, fibonacci) is otherwise complete or explicitly
-paused for it — it must not be worked inline with FOOP-55's active phases.**
-This phase is a placeholder recording where the work will slot in once §11's
-Open Questions are resolved and the human explicitly starts it.
+**No longer deferred (human direction, 2026-08-24). Read FOOP-55.md §11 in
+full — it was rewritten same day to add the two-phase (`foolish_children`
+then `ubc_children`) queue model and the `Option<Nyes>`-returning handler
+contract; two earlier drafts (four-handler/microstate, and a flat
+one-phase `constanic_enough`) are superseded and moved to Appendix
+B/B.2.** `Step 1` below is ALREADY LANDED and verified byte-identical; do
+not redo it.
 
-- [x] **DECIDE, with the human**: does making `exercises/fibonacci/1.foo`
-      and `exercises/project_euler/1.foo` settle require this refactor, or
-      only a narrower fix?
-      (2026-08-24) **Answered, and the premise was wrong.** D9's originally-
-      named fix location (`ProtoBrane::push_ubc_child`'s enqueue guard,
-      `proto_brane.rs:200-205`) is NOT the actual blocker — a live trace
-      (temporary test, now `fir_kinds.rs`'s
-      `d9_recoordinated_index_currently_stuck_woconstanic`) confirmed
-      patching that guard to always-enqueue has ZERO effect. The real cause
-      is a `has_ancestral_sfm` scope-propagation leak in `step_inner`
-      (`fir_trait.rs`): the flag, once set `true` on entering a
-      `StayFoolish` subtree, is never reset back to `false`, so it wrongly
-      marks later, unrelated clones as SFF-descendant-and-foolishly-ignorant
-      and preserves their stale `ECONSTANIC` NYES instead of resetting it.
-      See FOOP-55.md's D9 finding, "Correction (2026-08-24, live-traced)"
-      section, for the full mechanism and the expected result
-      (`c={1,2,1,2}`) once fixed.
-      **Sequencing, confirmed by the human**: the `has_ancestral_sfm` leak
-      fix is a prerequisite, independent of §11. The FURTHER fix — using
-      `terminates_econstanic()` and `ConcatenationFir`'s
-      `is_foolish_child_constanic_enough` override (both specified in §11)
-      to let concatenation correctly proceed past a resolved-but-still-
-      wrapped search element — is written AGAINST §11's Braning-state
-      machinery and must not be implemented before that machinery exists.
-      §11 itself remains this phase's placeholder; the `has_ancestral_sfm`
-      leak fix is tracked as new **Phase 3I** below, ahead of this phase.
-- [ ] (read FOOP-55.md §11 in full, including its Open Questions, before any
-      work here)
-- [ ] Write the ground-truth, per-kind statement of what each existing NYES
-      state currently does and what condition gates leaving it (§11's Open
-      Questions call this out as the concrete next step, ahead of finalizing
-      the 6-state "Braning States" shape) — no such document exists yet.
-- [ ] (this phase intentionally has no further implementation tasks until
-      §11's Open Questions are resolved and the human explicitly starts this
-      phase, per the deferred-scope note above)
+- [ ] Establish relevant tests for this phase — see
+      [these instructions](../../README.md#running-specific-tests). Run the
+      full SF/SFF corpus (§5) and the concatenation-ergonomics corpus (§9)
+      frequently while implementing this; both depend on the drain path
+      this section changes.
+- [x] **Step 1 — per-child predicates, standalone.** Added
+      `is_foolish_child_constanic_enough`/`is_ubc_child_constanic_enough` to
+      the `Fir` trait (`fir_trait.rs`), alongside `is_constanic_branelike`/
+      `is_search_kind` — same overridable-default pattern. Default body:
+      `child.is_constanic()`. Changed `step_inner`'s dequeue check to call
+      `this.is_foolish_child_constanic_enough(&front_rc)` instead of the
+      bare `front_rc.get_nyes().is_constanic()`. Verified: full suite
+      374 passed / 2 pre-existing failures (same 2 on clean HEAD via
+      `git stash`), byte-identical. New regression test:
+      `fir_kinds::tests::constanic_enough_default_matches_is_constanic`.
+      (2026-08-24)
+- [x] **Step 2 — whole-set readiness checks.** Added
+      `are_foolish_children_ready_for_op`/`are_ubc_children_ready_for_op` to
+      the `Fir` trait — default: `true` iff every member of the
+      corresponding store passes its per-child predicate. New, currently-
+      unused (no caller yet) trait methods. New tests:
+      `are_foolish_children_ready_for_op_default_waits_for_all`,
+      `are_ubc_children_ready_for_op_vacuously_true_when_empty`. Full suite:
+      377 passed / 2 pre-existing failures, unchanged (dead code so far).
+      (2026-08-24)
+- [x] **Step 3 — the two handlers, unused.** Added
+      `on_foolish_op_ready`/`on_ubc_op_ready` to the `Fir` trait, each
+      `fn(&self, scope: &Scope) -> Option<Nyes>`, default `None`. Still not
+      called from anywhere. New test: `on_op_ready_handlers_default_to_none`.
+      (2026-08-24) Note: skipped the plan's original "trivial override
+      returning Some(Nyes::Constant)" sub-case — the default-only test
+      (verifying None) covers this step's actual surface; a real
+      Some-returning override is exercised for real in Step 4.
+- [x] **Step 4 — migrate `ConcatenationFir` onto the new mechanism, via
+      `_deprecating_op_step`.** Followed FOOP-55.md §11's migration path;
+      all sub-tasks below complete, full suite unchanged throughout.
+      (2026-08-24)
+  - [x] Rename `ConcatenationFir::fir_op_step`'s current body to
+        `_deprecating_op_step`, called unconditionally from the real
+        `fir_op_step`. Byte-identical; pure rename. Full suite:
+        377 passed / 2 pre-existing failures, unchanged. (2026-08-24)
+  - [x] Move the `foolish_children`-phase logic (the `all_brane_like`/
+        `type_errors` scan) into `on_foolish_op_ready`, moved verbatim.
+        **Note, corrected from the plan's original wording**: NOT wired
+        through the generic `are_foolish_children_ready_for_op()`/per-child
+        predicate — `_deprecating_op_step`'s `Braning` arm calls
+        `on_foolish_op_ready` directly, unconditionally, exactly where the
+        scan used to run (the scan's own pass-fail IS the readiness
+        decision here; routing it through the separate generic gate first
+        would be a second, entangled behavior change, deferred to Step 6
+        where `ConcatenationFir` gets its real `is_foolish_child_constanic_enough`
+        override). `Some(Nk)`/`Some(Woconstanic)` on failure, `None` on a
+        clean pass (falls through to the still-unmoved ubc-phase logic).
+        Full suite: 377 passed / 2 pre-existing failures, unchanged.
+        (2026-08-24)
+  - [x] Move the `ubc_children`-phase logic (only the settle-from-drained-
+        helpers half — `populate_concat_helpers`/task-push stays, it is
+        ubc-phase task-POPULATION, analogous to the PREMBRIONIC/EMBRYONIC
+        arm, not an "on ready" decision) into `on_ubc_op_ready`. Full
+        suite: 377 passed / 2 pre-existing failures, unchanged. (2026-08-24)
+  - [x] `_deprecating_op_step` had nothing left but orchestration (the
+        PREMBRIONIC/EMBRYONIC arm and the two handler-call sites) — no
+        further business logic to move. Renamed back into `fir_op_step`
+        directly (the indirection served no further purpose); the
+        `_deprecating_op_step` inherent method is gone. Full suite:
+        377 passed / 2 pre-existing failures, unchanged. (2026-08-24)
+  - [x] Ran all tests after each sub-step above (this sub-step's own gate).
+        (2026-08-24)
+- [ ] **Step 5 — `OperatorFir`-style override**, same `_deprecating_op_step`
+      migration path, for `OperatorFir`, `ComparisonFir`, `ModuloFir`,
+      `OrFir`: override `is_foolish_child_constanic_enough` to the stricter
+      `constantew` gate, override `on_foolish_op_ready` to preserve the
+      existing any-`NK`-poison short-circuit (checked first, separately,
+      returning `Some(Nyes::Nk)` directly — do not rely on the
+      `_decide_nyes_due_to_children` fallback, which does not reproduce
+      this ordering). One kind at a time, full suite green after each.
+- [ ] **Step 6 — `terminates_econstanic()` and `ConcatenationFir`'s D9
+      override.** Add `terminates_econstanic()` to `SearchFir` per
+      FOOP-55.md §11's algorithm. Override `ConcatenationFir`'s
+      `is_foolish_child_constanic_enough` to
+      `child.is_constanic() && !(child is a Search && child.terminates_econstanic())`.
+      **Depends on Phase 3I (the `has_ancestral_sfm` leak fix) already
+      being landed** — without it, D9's own example
+      (`{a = {1,2}, b=<<#-2>>, c= a b}`) cannot reach the fixed result even
+      with this override in place, because the recoordinated clone never
+      gets the chance to run at all. Tests first:
+      `d9_recoordinated_index_...` (renamed once fixed, see Phase 3I) must
+      assert `c` settles CONSTANT to `{1,2,1,2}`.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Pay particular attention to the SFF strip-budget corpus (§5), D10/§5.5/
+      §5.6, and the concatenation-ergonomics corpus (§9) — this changes a
+      drain condition every Braning-capable kind's stepping depends on.
 
 ## Phase 3I — Fix the `has_ancestral_sfm` scope-propagation leak (D9's real cause)
 
-**Independent of Phase 3H/§11 — this can and should land first**, since it
-blocks `d9_recoordinated_index_currently_stuck_woconstanic` regardless of
-whether §11's Braning-state machinery ever ships. Read FOOP-55.md's D9
-finding ("Correction 2026-08-24, live-traced") in full before starting.
+**Independent of Phase 3H/§11's Steps 1-5 — land this before Phase 3H's Step
+6** (`terminates_econstanic()`/`ConcatenationFir`'s D9 override), since Step
+6 cannot produce D9's expected result without this fix in place first, per
+Phase 3H's Step 6 note. Steps 1-5 of Phase 3H do not depend on this and may
+be done in either order relative to it. Read FOOP-55.md's D9 finding
+("Correction 2026-08-24, live-traced") in full before starting.
 
 - [ ] Establish relevant tests for this phase. Use
       [these instructions](../../README.md#running-specific-tests) to run

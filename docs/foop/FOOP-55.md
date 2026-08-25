@@ -2582,6 +2582,477 @@ A crate-wide survey (conducted before this section was written) found:
    from the start, rather than inheriting the brane-like framing this section
    retires.
 
+### §11. Two-phase child-readiness gates — `foolish_children` then `ubc_children`
+
+**Status: Final, superseding the "overridable dequeue gate" draft (moved to
+Appendix B alongside the original four-handler/microstate draft, 2026-08-24,
+human direction).** That draft correctly introduced the per-child predicates
+but missed that `foolish_children` and `ubc_children` are two **phased**
+work queues, not one — `ubc_children` tasks do not begin draining until
+`foolish_children` are fully done, per the existing codebase's own
+phasing discipline (confirmed live: every kind that uses both, e.g.
+`ConcatenationFir`, pushes all `foolish_children` first, waits for
+`fir_op_step` to re-enter once that portion drains, and only then starts
+pushing `ubc_children` via `push_ubc_child`). This section states that
+phasing explicitly and gives each phase its own whole-set readiness check
+and handler, on top of the per-child predicates already built.
+
+#### Why two phases — what each one is FOR (human, 2026-08-24)
+
+`foolish_children` readies **input** by stepping each member to constanic —
+this phase's whole job is waiting for the syntactic operands/statements a
+kind was built from to become usable. `ubc_children` is the **work queue
+where the operator does its own additional work**, if the operator is
+complicated enough to need any: for a simple kind like `OperatorFir`'s `+`,
+once the inputs are ready there is nothing further to compute through the
+queue — the `ubc_children` phase just receives the already-computed constant
+result. But for a kind whose own operation is itself non-trivial —
+`ConcatenationFir`/`BraneConcatOp` is the concrete case this FOOP needed —
+real work has to happen IN the `ubc_children` phase itself (building and
+stepping `ConcatHelper`s to actually perform the join), not merely receive
+a value. This is why the two phases need independent readiness checks and
+handlers rather than one flat "are my children done" gate: "done providing
+input" and "done doing my own further work" are different questions, and a
+kind like `ConcatenationFir` genuinely has both, in sequence, while a kind
+like `OperatorFir` only substantively has the first.
+
+#### The existing mechanism (confirmed against code, not assumed)
+
+One task queue per `ProtoBrane` (`tasks: RefCell<VecDeque<FirRef>>`,
+`proto_brane.rs`), fed from two places:
+
+- `push_task` — used by each kind's `PREMBRIONIC`/`EMBRYONIC` arm to enqueue
+  its `foolish_children` as initial tasks.
+- `push_ubc_child` (`proto_brane.rs:200-205`) — pushes a compute-time child
+  into `ubc_children` AND, if not yet constanic, onto the SAME `tasks` queue.
+
+`step_inner` (`fir_trait.rs`) drains `tasks` one entry at a time across
+repeated top-level `.step()` calls, dequeuing an entry once it is "enough"
+(§11's per-child predicate, below), and only calls `fir_op_step` once the
+queue is empty. **Phasing is not structurally enforced by the queue itself
+today** — a kind could interleave pushes to both stores — but every existing
+kind's own `fir_op_step` logic enforces it by construction: it never calls
+`push_ubc_child` until its `foolish_children`-driven decision has already
+run and it has re-entered `BRANING` with something new to compute. This
+section formalizes that existing discipline with named checkpoints rather
+than changing the queue's mechanics.
+
+#### Per-child predicates (already implemented, `fir_trait.rs`)
+
+```rust
+fn is_foolish_child_constanic_enough(&self, child: &FirRef) -> bool {
+    child.borrow().core().get_nyes().is_constanic()   // default
+}
+fn is_ubc_child_constanic_enough(&self, child: &FirRef) -> bool {
+    child.borrow().core().get_nyes().is_constanic()   // default
+}
+```
+
+Dynamically dispatched (through the existing `dyn Fir` vtable — no
+`match self.kind()` anywhere). `step_inner`'s dequeue check already calls
+`this.is_foolish_child_constanic_enough(&front_rc)` in place of the old
+hardcoded `front_rc.is_constanic()` — this is the ALREADY-LANDED, verified
+byte-identical change (Phase 3H Step 1). A kind overrides one or both to
+express a looser or stricter per-child "done enough" policy (e.g.
+`ConcatenationFir` must keep waiting on a search chain that is merely
+`ECONSTANIC` — see D9 — tighter than the default; `OperatorFir`-style
+arithmetic needs the stricter `constantew` gate before an operand is usable).
+
+#### Whole-set readiness checks (new)
+
+```rust
+fn are_foolish_children_ready_for_op(&self) -> bool {
+    // default: every foolish_children() member passes the per-child predicate
+    self.core().foolish_children().iter()
+        .all(|c| self.is_foolish_child_constanic_enough(c))
+}
+fn are_ubc_children_ready_for_op(&self) -> bool {
+    // default: every ubc_children() member passes the per-child predicate
+    self.core().ubc_children().iter()
+        .all(|c| self.is_ubc_child_constanic_enough(c))
+}
+```
+
+These answer "has THIS PHASE's full set drained," not "is one child enough" —
+the aggregation of the per-child predicate over one store. Each is checked
+at its own phase's drain point: `are_foolish_children_ready_for_op` when the
+`foolish_children` portion of the queue has emptied; `are_ubc_children_ready_for_op`
+when the `ubc_children` portion has emptied. **Phasing rule**: a kind's
+`ubc_children` readiness is only meaningful, and should only be consulted,
+after its `foolish_children` phase has already completed — matching the
+existing codebase discipline described above.
+
+#### Handlers (new — report a NYES, don't set it themselves)
+
+```rust
+fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+    None   // default: defer to the fallback
+}
+fn on_ubc_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+    None   // default: defer to the fallback
+}
+```
+
+Called once the corresponding whole-set gate is true. Each returns
+`Some(nyes)` to commit that specific NYES, or `None` to defer to the shared
+fallback — the existing `_decide_nyes_due_to_children` helper
+(`fir_kinds.rs:13`, already used by `BraneFir`/`ConcatHelper`/`ConcatenationFir`
+today), applied to the phase's own children (`foolish_children()` for the
+foolish-phase call, `ubc_children()` for the ubc-phase call). **The caller
+(`fir_op_step`'s default body, below) is the ONE place that actually calls
+`self.core().set_nyes(...)`** — handlers report, they do not commit,
+matching the embedded requirement that NYES-setting stays centralized and
+mandatory rather than each handler remembering to do it (or forgetting to).
+
+`fir_op_step`'s default body becomes, conceptually:
+
+```rust
+fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+    // ... existing PREMBRIONIC/EMBRYONIC task-population arm, UNCHANGED ...
+    if self.are_foolish_children_ready_for_op() {
+        let nyes = self.on_foolish_op_ready(scope)
+            .unwrap_or_else(|| _decide_nyes_due_to_children(&self.core().foolish_children()));
+        self.core().set_nyes(nyes);
+    } else if self.are_ubc_children_ready_for_op() {
+        let nyes = self.on_ubc_op_ready(scope)
+            .unwrap_or_else(|| _decide_nyes_due_to_children(&self.core().ubc_children()));
+        self.core().set_nyes(nyes);
+    }
+    Ok(())
+}
+```
+
+This is a DEFAULT a kind inherits — any kind whose existing `BRANING` arm
+doesn't fit this shape (the three-shape/four-shape variety the ground-truth
+survey found: `OperatorFir`'s NK-poison-first ordering, `SearchFir`'s staged
+anchor pipeline, `StayFoolishFir`'s external-trigger wait) keeps overriding
+`fir_op_step` wholesale, exactly as today — this section does not force
+every kind into the default shape, only offers it where a kind's existing
+logic already matches it (starting with `ConcatenationFir`/`BraneFir`,
+whose current logic already IS `_decide_nyes_due_to_children` applied at
+the right phase).
+
+#### Per-kind overrides, worked out as we implement
+
+- **Default (unchanged for most kinds)**: inherits everything above as-is.
+- **`OperatorFir`-style (`OperatorFir`, `ComparisonFir`, `ModuloFir`,
+  `OrFir`)**: overrides `is_foolish_child_constanic_enough` to the stricter
+  `constantew` gate (`nyes_ext.rs::is_constantew`), and overrides
+  `on_foolish_op_ready` to preserve the existing any-`NK`-poison
+  short-circuit (checked first, separately, before the constanew-based
+  compute) — the fallback (`_decide_nyes_due_to_children`) does NOT
+  reproduce this ordering, so these kinds must return `Some(nyes)`
+  explicitly rather than deferring to it.
+- **`ConcatenationFir`/`BraneConcatOp`**: overrides
+  `is_foolish_child_constanic_enough` to
+  `child.is_constanic() && !(child is a Search && child.terminates_econstanic())`
+  — looser than the default in the sense that an `ECONSTANIC` search chain
+  is NOT treated as "enough," so the kind keeps waiting on it rather than
+  proceeding past it, which is the D9 fix's actual payload. Requires
+  `terminates_econstanic()` (new, `SearchFir`-only):
+  ```
+  fn terminates_econstanic(S) -> bool:
+      if S.nyes == ECONSTANIC:
+          return true                    // base case: found it
+      if S.ubc_children[0] does not exist:
+          return false                   // no result yet
+      if S.ubc_children[0] is not a SearchFir:
+          return false                   // chain ends in a real value
+      return S.ubc_children[0].terminates_econstanic()   // walk the chain
+  ```
+  Walks forward through the chain of search results (`ubc_children[0]`, the
+  found statement's constanic clone, per the FOOP-23 two-child invariant) as
+  long as each hop is itself a `SearchFir`, returning `true` the moment any
+  hop is `ECONSTANIC`, `false` if the chain bottoms out in a non-search
+  value or an as-yet-unpopulated result.
+- **Open, to be resolved during implementation**: whether the type-error
+  check currently inline in `ConcatenationFir`'s `BRANING` arm (constantew-
+  but-not-brane-like → NK) becomes part of `on_foolish_op_ready`'s
+  `Some(Nyes::Nk)` return, or stays a separate pre-check before the gate is
+  even consulted. Adjust as implementation reveals the right shape.
+
+#### Migration path — `_deprecating_op_step`, no behavior change until each piece moves
+
+Per-kind migration, one kind at a time, each independently verified:
+
+1. Rename the kind's current `fir_op_step` body to a private helper
+   `_deprecating_op_step` (or similarly named), called unconditionally from
+   the real `fir_op_step` — **byte-identical behavior**, this step is pure
+   renaming.
+2. Add the kind's `are_*_ready_for_op`/`on_*_op_ready` overrides as needed,
+   but do not yet call them from `fir_op_step` — they exist, and can be unit
+   tested in isolation, but `_deprecating_op_step` still does the real work.
+   Verify: full suite unchanged (the new methods are dead code so far).
+3. Move ONE piece of `_deprecating_op_step`'s logic at a time into the
+   appropriate handler/override, deleting it from `_deprecating_op_step` as
+   it moves. After EACH single piece moves, run the full suite — a
+   regression is attributable to exactly one moved piece, not a batch.
+4. Once `_deprecating_op_step` is empty, delete it and the fallback call;
+   `fir_op_step` is now the real, permanent implementation.
+
+This keeps both mechanisms live simultaneously during migration, so nothing
+can silently break from a trigger/timing mismatch mid-migration — the old
+code path keeps doing the real work until each specific piece is
+deliberately, verifiably moved out.
+
+#### Relationship to D9
+
+D9's real cause (see the D9 finding's "Correction 2026-08-24" section) is a
+`has_ancestral_sfm` scope-propagation leak, independent of this section and
+sequenced ahead of it (plan Phase 3I) — that leak must be fixed first,
+regardless of this section's state. Once fixed, `ConcatenationFir`'s
+`is_foolish_child_constanic_enough` override above is what lets a
+concatenation correctly proceed past a search element that resolves to a
+real value in its new context (not stuck `ECONSTANIC`), producing D9's
+expected result — `c={1,2,1,2}` for `{a = {1,2}, b=<<#-2>>, c= a b}`.
+
+
+
+## References
+
+- Prior FOOPs: FOOP-33 (creation, `system.foo`, comparisons — §5.0/§5.1 are
+  the mechanism this FOOP extends); FOOP-73 (boolean operators — this FOOP
+  realizes its preferred design for `'or` only); FOOP-23 (value search,
+  contexted search, settlement); FOOP-62 (two-store stepping); FOOP-83
+  (integer math — future home of infix concerns); FOOP-65 (tail
+  concatenator — prerequisite: the exercise rewrite E4 uses backtick
+  application).
+- Process: `foop.md`; `rust_instructions.md` §"Phase-by-phase testing
+  discipline"; AGENTS.md §"The einmo review workflow".
+- Code anchors: `foolish-ubca/src/system_foo.rs` (ComparisonFir 158-341,
+  `operand_is_unevaluated_here` 351-358, `comparison_body` 384-391,
+  `comparison_nyes_transitions` 627-669); `foolish-ubca/src/compiler.rs`
+  (`BodyOverride` 468-505); `foolish-ubca/src/fir_kinds.rs` (`OperatorFir`
+  combine 655-713 incl. the `"%"` arm, `SearchPredicate` 2059+);
+  `foolish-ubca/src/fir_trait.rs` (`MAX_DEPTH` 395, `step_inner` 453-486);
+  `foolish-ubca/src/evaluator.rs` (iteration alarm 168, `"$"` 351);
+  `foolish-parser/src/lexer.rs` (identifier gate 293, fallback 297-299,
+  `block_comment` 302-329, `is_id_sep` 80-86);
+  `foolish-parser/src/parser.rs` (`expect` 58-73, `skip_comments` 88-95,
+  assignment operators 315-358, `is_concatenation_continuation` 390-411,
+  SF/SFF arms 962-977, `parse_seek_index` 990-1000).
+- The exercise: `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish`
+  (commit `62706518`).
+
+---
+
+# Appendix A — the §5 design space
+
+Four approaches were considered for making the exercise terminate. They are
+recorded here in full because three of them remain live proposals for the
+platform, and because the reasoning that eliminated each is the reasoning that
+justifies the one chosen.
+
+## A. The upgraded SFF mark — **chosen**
+
+This is the design specified in §5, and it began as a question about macro-style
+definitions rather than about termination. A Foolish "macro" — `'ite`, `'cmod`,
+a truth table — is a brane written once and coordinated at many use sites. Its
+body must survive being carried to the use site *without resolving on the way*,
+because resolving early means resolving against the wrong neighbours.
+
+Today a constanic clone strips every mark it meets, in a single recursive pass,
+so a mark can protect a term across exactly one boundary and no more. That is
+enough for a one-level macro and insufficient for anything that builds a table
+and *then* selects from it — which is precisely what `'ite` does.
+
+Making the mark a **counter** — one layer discharged per coordination — gives
+the macro author explicit control over how many boundaries a term rides
+through. Deferral becomes a property of the term, written in the source, rather
+than a behavior the evaluator infers.
+
+Termination then falls out as a consequence rather than as a goal: the branch
+the value search does not select is never coordinated a second time, so its
+inner mark never comes off, so it never searches, so the recursion never fires.
+Nothing in the FVM learns to be lazy; the unselected branch simply is not yet a
+search.
+
+Its cost is honest and bounded: it changes the meaning of nested marks, which
+one existing test relies on, and it demands careful testing that single-mark
+programs are untouched.
+
+## B. `@` — retrieving the index from a search's context
+
+The second proposal added an operator, `@`, projecting a search result's
+**position** where a bare result yields its value: `c~cond='True@` gives the
+0-based index of the matching row in its home brane. Selection could then be
+written as arithmetic — `r#(c~cond='True@)` indexes a parallel table of
+branches, with `-1` naturally addressing the last row as a default case, since
+Foolish already counts negative indices from the end.
+
+The mechanism needed nothing new underneath: FOOP-23's two-child invariant means
+every search result already carries `[0]` its value and `[1]` a `FoolRefFir`
+holding the original statement with its position intact. `@` merely exposes what
+providing-context has been carrying all along. `@` was preferred over a trailing
+`#` because `#` is absorbed into `?`-patterns today (`src?b#` searches for the
+name `b#`), so overloading it would break the pattern language and require a
+delimiter rule; `@` has no such conflict and composes directly with arithmetic.
+
+Two findings stopped it. The first is practical: `#` accepts only a **literal**
+integer — `src#n` and `src#(0-1)` both fail to parse — so the design needed a
+second, larger change giving `#` a computed operand, which in turn gives the
+index search an evaluation phase it does not currently have.
+
+The second finding is the reason this appendix entry matters. Probing what `#`
+does on an anonymous brane showed that the short-circuit **already exists**:
+`pick = {ok=1, bad=?nonexistent}#0` settles `1` with the unselected member never
+stepped, and `{stop=7, go=<lp>}#0` terminates cleanly with the recursive branch
+untouched. Indexing an anonymous brane already avoids what it does not select.
+
+So access was never the problem. The problem was that the branches had already
+resolved — the SFF mark protecting them was stripped too early, at table-
+construction time. Investigating `@` is what located the actual defect, and once
+located, `@` was no longer needed to fix it. It remains a reasonable future
+addition on its own merits.
+
+## C. True breadth-first execution — **UBCc**
+
+The third proposal made `depth` a real parameter of stepping: `if depth == 0
+{ return }`, otherwise do this FIR's work and recurse with `depth - 1`, with the
+FVM holding the depth per invocation, starting small and growing when a sweep
+does not settle. Evaluation would sweep a bounded frontier across the whole tree
+instead of descending one spine, and the condition of an `'ite` would settle in
+an early sweep — long before the recursive branch could run away.
+
+This was initially proposed as a change of *strategy* that could not alter
+settled values. That was wrong, and the error is worth recording. The task queue
+is FIFO and a front task is popped only once constanic, so statements drain
+strictly in order: when `b` is stepped, `a` has already settled. FIRs are
+**entitled** to that. `ib_search_with_engine` scans the preceding range
+`[0, idx-1]` and takes the found statement's NYES *as truth* with no readiness
+check (`fir_kinds.rs:1430`); roughly 185 `get_nyes()` reads and 83 `.value()`
+calls across the crate rest on the same entitlement; and FOOP-23 *defines* the
+immediate brane as "context accumulated so far, lines before the current
+expression". Breadth-first stepping does not reorder the meaning of "so far" —
+it dissolves it.
+
+Sequential draining is therefore part of Foolish's evaluation **semantics**, not
+an implementation strategy. Adopting breadth-first execution means every FIR
+must newly cope with unsettled predecessors, and settled values may legitimately
+differ — which is exactly the condition under which the signed einmo baselines
+stop being a valid oracle, and therefore the condition under which a **separate
+implementation** is warranted rather than a mutation of the existing one.
+
+Breadth-first execution is a genuinely attractive design and is **not
+withdrawn** — it is renamed. It becomes **UBCc**, to be built beside UBCa rather
+than inside it, with its own baselines.
+
+## D. Massively distributed message passing — **UBCd**
+
+The most general proposal: each UBC is a small computer with its own state, and
+searches are dispatched as messages to parents, which reply when they can
+answer. Waiting stops being a drain loop and becomes a correspondence — a FIR
+that has its answer simply stops waiting, and nothing over-drains, because
+nothing was ever draining in the first place.
+
+This subsumes the exercise's problem completely and several others besides. It
+is also a rewrite of the evaluator's core: it changes what a "step" *is*, and
+therefore every `steps=` in every einmo baseline. It cannot be carried by a FOOP
+whose purpose is to run one exercise.
+
+It is recorded here as **UBCd**, a design worth its own Major.
+
+## The UBC lineage — authoritative code names
+
+**This section defines the UBC letter names, and these are the names to use in
+all ongoing discussion.** They have been used loosely before; from here they are
+fixed. A letter names an *implementation of the Foolish evaluator*, not a
+version of the language — all of them implement the same Foolish, and any two
+that disagree about what a program means have a bug in at least one of them.
+
+| Name | Design | Status |
+|------|--------|--------|
+| **UBCa** | The reference implementation. FIFO sequential draining, depth-first descent, greedy dependency resolution. | **In use.** §5 of this FOOP modifies it. |
+| **UBCb** | **Dependency tracking with priority stepping** — the evaluator records which FIRs are being waited on, and steps first those experiencing the most demand from dependents. | **Attempted for several months; not adopted.** Its dependency-tracking machinery is expected to be reusable. |
+| **UBCc** | **True breadth-first execution** (Appendix A.C) — `depth` as a real parameter of stepping, sweeping a bounded frontier that grows until the program settles. | Proposed. |
+| **UBCd** | **Massively distributed message passing** (Appendix A.D) — each UBC a small computer with its own state; searches dispatched as messages to parents, answered when answerable. | Proposed. |
+
+The relationships matter as much as the definitions:
+
+- **UBCb feeds UBCd.** Dependency tracking is not wasted work even though UBCb
+  was not adopted. Knowing *who is waiting on whom* is the same information a
+  message-passing evaluator needs in order to route a reply, so UBCb's machinery
+  is expected to be reusable in UBCd rather than discarded with it.
+- **UBCc stays close to UBCa.** Breadth-first execution is a change of traversal
+  within the same basic architecture — one machine, one tree, a task queue. It
+  is therefore the natural *next reference implementation*: near enough to UBCa
+  to be compared against it case by case, and far enough to answer the question
+  UBCa answers badly.
+- **UBCb and UBCc answer the same question from opposite ends** — *which
+  pending work should the machine do next?* UBCb measures demand; UBCc bounds
+  depth. Which is built next is deliberately left open here.
+
+None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
+
+## Last Updated
+
+**Date**: 2026-08-24
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: **Rewrote §11** (now "Braning States — four child-set event
+handlers for the kinds that wait", superseding its own first draft) after a
+ground-truth survey of every FIR kind's `fir_op_step` found the two-shape
+model the first draft was built on (`SearchFir` vs. `OperatorFir`) was
+incomplete: **at least four distinct `BRANING`-arm shapes exist** among the
+13 of 17 FIR kinds that enter `BRANING` at all — uniform-reduce-with-NK-
+poison (`OperatorFir`/`ComparisonFir`/`ModuloFir`/`OrFir`), uniform-reduce-
+no-poison (`BraneFir` — confirms the original `{a,b,c,d}` counter-example),
+single-anchor staged pipeline (`SearchFir`/`SearchPositionFir`/`IndexFir`),
+and external-trigger (the SF/SFF markers). The survey also found the
+`constanew` predicate the first draft coined **already exists in the code**,
+spelled `constantew`, defined exactly as guessed (`Constant|Independent|Nk`,
+doc-commented "constant everywhere"), with one production call site in
+`ConcatenationFir`'s type-error check — and found `OperatorFir`'s own gate
+is *not* simply "wait for constantew" (its any-NK poison runs first and
+separately). Added the **`is_foolish_child_constanic_enough`/
+`is_ubc_child_constanic_enough`** overridable predicate pair (default: plain
+`is_constanic()` for every kind that doesn't override), and
+**`terminates_econstanic()`**, a new `SearchFir`-only chain-walk method
+(returns true the moment a chain of search results bottoms out in
+`ECONSTANIC`) that `ConcatenationFir`'s override is built from. Renamed the
+concept **"Braning States"** and explicitly scoped it to only the
+Braning-capable kinds — not universal, correcting the first draft's implicit
+overreach. **Confirmed and corrected D9 by live trace**: a temporary test
+compiling D9's own example, `{a = {1,2}, b=<<#-2>>, c= a b}`, found
+patching the `push_ubc_child` guard D9 originally named to always-enqueue
+has **zero effect** — the actual cause is a `has_ancestral_sfm`
+scope-propagation leak in `step_inner` (`fir_trait.rs`): the flag is set
+`true` on entering a `StayFoolish` subtree but never reset back to `false`,
+so it wrongly marks unrelated later clones as SFF-descendant and preserves
+their stale `ECONSTANIC` NYES instead of resetting it via
+`transform_for_clone`'s general rule. D9's finding section now carries this
+correction, the `terminates_econstanic()`-based fix design, and the expected
+acceptance result (`c` settles CONSTANT to `{1,2,1,2}`) as an explicit
+target for the eventual einmo case. **Confirmed §8 (`@`) is implemented**
+(`SearchPositionFir::combine`, `fir_kinds.rs:751-794`), resolving the Phase
+3E DECIDE box: §7 (`ExtremumFir`) is superseded and removed (plan Phase
+3D2, code already landed); Phase 3D (`'ite`) is not superseded and proceeds
+unchanged. **Sequencing, confirmed by the human**: §11/Braning-States is
+deferred follow-on work, not a Euler-1 sub-task, and must not be worked
+inline with FOOP-55's active phases; the `has_ancestral_sfm` leak fix is
+independent of §11 and can land first (plan gained Phase 3I for it,
+ahead of Phase 3H). A temporary reproduction test, now
+`fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`, pins
+the current broken state pending that fix. Prior history of this section is
+in `git log`/`git blame` on this file, not accreted here.
+
+---
+
+# Appendix B — §11's superseded four-handler/microstate draft
+
+**Superseded 2026-08-24 (human direction): §11 is replaced by the simpler
+`is_foolish_child_constanic_enough`/`is_ubc_child_constanic_enough` +
+`on_foolish_children_constanic_enough`/`on_ubc_children_constanic_enough`
+design now in §11 proper.** This draft's two-tier (`constanic`/`constanew`)
+four-handler proposal, its "Braning States" microstate framing, and its
+ground-truth survey are preserved here for record — the survey's per-kind
+findings (13 Braning-capable kinds, 4 distinct `BRANING`-arm shapes,
+`constantew`'s existing codebase spelling, `OperatorFir`'s NK-poison
+ordering) remain factually accurate and are referenced by §11's
+implementation notes; only the *shape of the fix* (four handlers plus a
+formalized microstate machine) was dropped in favor of a minimal change to
+the existing task-queue drain loop's dequeue condition. Do not implement
+against this appendix; it is historical.
+
 ### §11. Braning States — four child-set event handlers for the kinds that wait
 
 **Status: under discussion (2026-08-24, revised same day after a ground-truth
@@ -2827,229 +3298,160 @@ clone reset (human, 2026-08-24) — flagged as follow-up, not specified here.
   machinery and must wait for it, per the human's explicit ordering
   (2026-08-24).
 
-## References
-
-- Prior FOOPs: FOOP-33 (creation, `system.foo`, comparisons — §5.0/§5.1 are
-  the mechanism this FOOP extends); FOOP-73 (boolean operators — this FOOP
-  realizes its preferred design for `'or` only); FOOP-23 (value search,
-  contexted search, settlement); FOOP-62 (two-store stepping); FOOP-83
-  (integer math — future home of infix concerns); FOOP-65 (tail
-  concatenator — prerequisite: the exercise rewrite E4 uses backtick
-  application).
-- Process: `foop.md`; `rust_instructions.md` §"Phase-by-phase testing
-  discipline"; AGENTS.md §"The einmo review workflow".
-- Code anchors: `foolish-ubca/src/system_foo.rs` (ComparisonFir 158-341,
-  `operand_is_unevaluated_here` 351-358, `comparison_body` 384-391,
-  `comparison_nyes_transitions` 627-669); `foolish-ubca/src/compiler.rs`
-  (`BodyOverride` 468-505); `foolish-ubca/src/fir_kinds.rs` (`OperatorFir`
-  combine 655-713 incl. the `"%"` arm, `SearchPredicate` 2059+);
-  `foolish-ubca/src/fir_trait.rs` (`MAX_DEPTH` 395, `step_inner` 453-486);
-  `foolish-ubca/src/evaluator.rs` (iteration alarm 168, `"$"` 351);
-  `foolish-parser/src/lexer.rs` (identifier gate 293, fallback 297-299,
-  `block_comment` 302-329, `is_id_sep` 80-86);
-  `foolish-parser/src/parser.rs` (`expect` 58-73, `skip_comments` 88-95,
-  assignment operators 315-358, `is_concatenation_continuation` 390-411,
-  SF/SFF arms 962-977, `parse_seek_index` 990-1000).
-- The exercise: `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish`
-  (commit `62706518`).
 
 ---
 
-# Appendix A — the §5 design space
+## Appendix B.2 — §11's superseded "overridable dequeue gate" draft (no phasing)
 
-Four approaches were considered for making the exercise terminate. They are
-recorded here in full because three of them remain live proposals for the
-platform, and because the reasoning that eliminated each is the reasoning that
-justifies the one chosen.
+**Superseded 2026-08-24 (human direction, same day): §11 gained the
+two-phase (`foolish_children` then `ubc_children`) queue model and the
+`Option<Nyes>`-returning handler shape now in §11 proper.** This draft
+correctly introduced `is_foolish_child_constanic_enough`/
+`is_ubc_child_constanic_enough` (Step 1 of that draft's plan, ALREADY
+LANDED and unaffected by this supersession — see `fir_trait.rs`) but missed
+that `foolish_children` and `ubc_children` are two phased work queues, not
+one flat dequeue gate; its "two event handlers, one per store" framing did
+not yet have the whole-set readiness checks or the `Option<Nyes>`
+report-don't-set handler contract. Preserved here for record; do not
+implement against it.
 
-## A. The upgraded SFF mark — **chosen**
+### §11. `constanic_enough` — an overridable dequeue gate, not a new state machine
 
-This is the design specified in §5, and it began as a question about macro-style
-definitions rather than about termination. A Foolish "macro" — `'ite`, `'cmod`,
-a truth table — is a brane written once and coordinated at many use sites. Its
-body must survive being carried to the use site *without resolving on the way*,
-because resolving early means resolving against the wrong neighbours.
+**Status: Final, superseding the prior four-handler/microstate draft (moved to
+Appendix B, 2026-08-24, human direction).** This is not new plumbing: it
+changes the *condition* the existing task-queue drain loop already uses to
+decide a queued child is done being waited on, from a single hardcoded
+`is_constanic()` check to a per-kind-overridable predicate. No new NYES
+states, no microstate machine, no four-handler split.
 
-Today a constanic clone strips every mark it meets, in a single recursive pass,
-so a mark can protect a term across exactly one boundary and no more. That is
-enough for a one-level macro and insufficient for anything that builds a table
-and *then* selects from it — which is precisely what `'ite` does.
+#### Motivation
 
-Making the mark a **counter** — one layer discharged per coordination — gives
-the macro author explicit control over how many boundaries a term rides
-through. Deferral becomes a property of the term, written in the source, rather
-than a behavior the evaluator infers.
+Debugging the fibonacci `'match` trace (D9) required reading each FIR kind's
+`fir_op_step` by hand to answer a question that recurred across kinds: *when,
+exactly, is a queued child "done enough" that its parent may stop waiting on
+it?* Today the answer is hardcoded identically everywhere — `step_inner`
+(`fir_trait.rs:514`) dequeues a task the instant `front_rc.get_nyes().is_constanic()`
+is true, with no per-kind say in the matter. That single hardcoded rule is
+too strict for `ConcatenationFir` (needs to keep waiting past a search that
+is merely `ECONSTANIC` because it may still resolve on recoordination — see
+D9) and, in the other direction, is exactly right for most kinds unchanged.
 
-Termination then falls out as a consequence rather than as a goal: the branch
-the value search does not select is never coordinated a second time, so its
-inner mark never comes off, so it never searches, so the recursion never fires.
-Nothing in the FVM learns to be lazy; the unselected branch simply is not yet a
-search.
+#### The two overridable predicates
 
-Its cost is honest and bounded: it changes the meaning of nested marks, which
-one existing test relies on, and it demands careful testing that single-mark
-programs are untouched.
+```
+is_foolish_child_constanic_enough(child: &FirRef) -> bool   // default: child.is_constanic()
+is_ubc_child_constanic_enough(child: &FirRef)      -> bool   // default: child.is_constanic()
+```
 
-## B. `@` — retrieving the index from a search's context
+Defined on the `Fir` trait (`fir_trait.rs`), alongside the existing
+`is_constanic_branelike()`/`is_search_kind()` overridable-predicate pattern —
+same shape, same place. **Every kind inherits the default
+(`child.is_constanic()`) unchanged unless it explicitly overrides one or
+both.** This is the entire mechanism: no kind's behavior changes just because
+this section landed, except the kinds that opt in with an override.
 
-The second proposal added an operator, `@`, projecting a search result's
-**position** where a bare result yields its value: `c~cond='True@` gives the
-0-based index of the matching row in its home brane. Selection could then be
-written as arithmetic — `r#(c~cond='True@)` indexes a parallel table of
-branches, with `-1` naturally addressing the last row as a default case, since
-Foolish already counts negative indices from the end.
+- `is_foolish_child_constanic_enough` gates `foolish_children` — the
+  syntactic/parse-time children pushed as the initial task queue.
+- `is_ubc_child_constanic_enough` gates `ubc_children` — the computed
+  children populated during stepping (search results, `ConcatHelper`s,
+  resolved SF/SFF values).
 
-The mechanism needed nothing new underneath: FOOP-23's two-child invariant means
-every search result already carries `[0]` its value and `[1]` a `FoolRefFir`
-holding the original statement with its position intact. `@` merely exposes what
-providing-context has been carrying all along. `@` was preferred over a trailing
-`#` because `#` is absorbed into `?`-patterns today (`src?b#` searches for the
-name `b#`), so overloading it would break the pattern language and require a
-delimiter rule; `@` has no such conflict and composes directly with arithmetic.
+`step_inner`'s dequeue check changes from the parent-agnostic
 
-Two findings stopped it. The first is practical: `#` accepts only a **literal**
-integer — `src#n` and `src#(0-1)` both fail to parse — so the design needed a
-second, larger change giving `#` a computed operand, which in turn gives the
-index search an evaluation phase it does not currently have.
+```rust
+if front_rc.borrow().core().get_nyes().is_constanic() {
+    this.borrow().core().pop_front_task();
+}
+```
 
-The second finding is the reason this appendix entry matters. Probing what `#`
-does on an anonymous brane showed that the short-circuit **already exists**:
-`pick = {ok=1, bad=?nonexistent}#0` settles `1` with the unselected member never
-stepped, and `{stop=7, go=<lp>}#0` terminates cleanly with the recursive branch
-untouched. Indexing an anonymous brane already avoids what it does not select.
+to asking `this` (the parent whose queue `front_rc` sits in) via the
+predicate:
 
-So access was never the problem. The problem was that the branches had already
-resolved — the SFF mark protecting them was stripped too early, at table-
-construction time. Investigating `@` is what located the actual defect, and once
-located, `@` was no longer needed to fix it. It remains a reasonable future
-addition on its own merits.
+```rust
+if this.borrow().is_foolish_child_constanic_enough(&front_rc) {
+    this.borrow().core().pop_front_task();
+}
+```
 
-## C. True breadth-first execution — **UBCc**
+(`ubc_children` are not currently drained through this same dequeue path —
+see Implementation Notes below for where `is_ubc_child_constanic_enough`
+actually plugs in.)
 
-The third proposal made `depth` a real parameter of stepping: `if depth == 0
-{ return }`, otherwise do this FIR's work and recurse with `depth - 1`, with the
-FVM holding the depth per invocation, starting small and growing when a sweep
-does not settle. Evaluation would sweep a bounded frontier across the whole tree
-instead of descending one spine, and the condition of an `'ite` would settle in
-an early sweep — long before the recursive branch could run away.
+#### The two event handlers
 
-This was initially proposed as a change of *strategy* that could not alter
-settled values. That was wrong, and the error is worth recording. The task queue
-is FIFO and a front task is popped only once constanic, so statements drain
-strictly in order: when `b` is stepped, `a` has already settled. FIRs are
-**entitled** to that. `ib_search_with_engine` scans the preceding range
-`[0, idx-1]` and takes the found statement's NYES *as truth* with no readiness
-check (`fir_kinds.rs:1430`); roughly 185 `get_nyes()` reads and 83 `.value()`
-calls across the crate rest on the same entitlement; and FOOP-23 *defines* the
-immediate brane as "context accumulated so far, lines before the current
-expression". Breadth-first stepping does not reorder the meaning of "so far" —
-it dissolves it.
+```
+on_foolish_children_constanic_enough(&self, scope: &Scope)
+on_ubc_children_constanic_enough(&self, scope: &Scope)
+```
 
-Sequential draining is therefore part of Foolish's evaluation **semantics**, not
-an implementation strategy. Adopting breadth-first execution means every FIR
-must newly cope with unsettled predecessors, and settled values may legitimately
-differ — which is exactly the condition under which the signed einmo baselines
-stop being a valid oracle, and therefore the condition under which a **separate
-implementation** is warranted rather than a mutation of the existing one.
+Called once a kind's full set of `foolish_children`/`ubc_children` are *all*
+`_constanic_enough` per that kind's own predicate (not per-child callbacks —
+one call per full-set transition, mirroring how `fir_op_step`'s existing
+`BRANING` arm already fires once per pass, not once per child). These are
+**not new dispatcher plumbing** — they are names for the logic that already
+lives inline inside each kind's `fir_op_step` `BRANING` arm; a kind may adopt
+the named handler split where it clarifies the code, or leave its
+`fir_op_step` as one block, exactly as today. The predicate override is the
+load-bearing part of this section; the handler names are a documentation/
+readability convention, not a new requirement.
 
-Breadth-first execution is a genuinely attractive design and is **not
-withdrawn** — it is renamed. It becomes **UBCc**, to be built beside UBCa rather
-than inside it, with its own baselines.
+#### Per-kind overrides, worked out as we implement
 
-## D. Massively distributed message passing — **UBCd**
+- **Default (unchanged for most kinds)**: `is_constanic()`. Nothing to do.
+- **`OperatorFir`-style (arithmetic: `OperatorFir`, `ComparisonFir`,
+  `ModuloFir`, `OrFir`)**: needs the *stricter* `constantew` gate
+  (`Constant | Independent | Nk` — already a live predicate,
+  `nyes_ext.rs::is_constantew`), not the default `is_constanic()`. An
+  `ECONSTANIC`/`WOCONSTANIC` operand is not "enough" for an operator to
+  compute a real result from — it needs to wait, or downgrade to
+  `WOCONSTANIC` itself, not treat an operand that might still resolve as
+  done. **Caution (carried over from the ground-truth survey, still
+  correct)**: `OperatorFir`'s any-`NK`-poison check runs first and
+  separately from the constanew wait — an override here must preserve that
+  ordering, not silently fold NK into the constanew gate.
+- **`ConcatenationFir`/`BraneConcatOp`**: needs something looser than the
+  default, not stricter — `child.is_constanic() && !(child is a Search &&
+  child.terminates_econstanic())`. This is the D9 fix's actual payload: a
+  concatenation element that is a search chain bottoming out in `ECONSTANIC`
+  is NOT "enough" — it may still resolve once the concatenation's own
+  recoordination gives it real neighbours, so the concatenation must keep
+  waiting on it rather than treating `ECONSTANIC` as terminal-for-this-kind
+  the way the default would. Requires `terminates_econstanic()` (new,
+  `SearchFir`-only):
+  ```
+  fn terminates_econstanic(S) -> bool:
+      if S.nyes == ECONSTANIC:
+          return true                    // base case: found it
+      if S.ubc_children[0] does not exist:
+          return false                   // no result yet
+      if S.ubc_children[0] is not a SearchFir:
+          return false                   // chain ends in a real value
+      return S.ubc_children[0].terminates_econstanic()   // walk the chain
+  ```
+  Walks forward through the chain of search results (`ubc_children[0]`, the
+  found statement's constanic clone, per the FOOP-23 two-child invariant) as
+  long as each hop is itself a `SearchFir`, returning `true` the moment any
+  hop is `ECONSTANIC`, `false` if the chain bottoms out in a non-search value
+  or an as-yet-unpopulated result.
+- **Open, to be resolved during implementation**: whether a kind's own
+  overall NYES-settlement decision (not just the dequeue gate) should also
+  be expressed in terms of `is_foolish_child_constanic_enough` — e.g.
+  whether "all children are constanic-enough" becomes the *condition for
+  leaving BRANING at all*, unifying the dequeue gate and the settle
+  decision into one predicate consulted at two points, rather than two
+  independently-maintained checks that could drift apart. Adjust as
+  implementation reveals the right shape; not decided up front.
 
-The most general proposal: each UBC is a small computer with its own state, and
-searches are dispatched as messages to parents, which reply when they can
-answer. Waiting stops being a drain loop and becomes a correspondence — a FIR
-that has its answer simply stops waiting, and nothing over-drains, because
-nothing was ever draining in the first place.
+#### Relationship to D9
 
-This subsumes the exercise's problem completely and several others besides. It
-is also a rewrite of the evaluator's core: it changes what a "step" *is*, and
-therefore every `steps=` in every einmo baseline. It cannot be carried by a FOOP
-whose purpose is to run one exercise.
+D9's real cause (see the D9 finding's "Correction 2026-08-24" section) is a
+`has_ancestral_sfm` scope-propagation leak, independent of this section and
+sequenced ahead of it (plan Phase 3I) — that leak must be fixed first,
+regardless of whether this section's predicate/handler machinery exists.
+Once fixed, `ConcatenationFir`'s `is_foolish_child_constanic_enough` override
+above is what lets a concatenation correctly proceed past a search element
+that resolves to a real value in its new context (not stuck `ECONSTANIC`),
+producing D9's expected result — `c={1,2,1,2}` for
+`{a = {1,2}, b=<<#-2>>, c= a b}`.
 
-It is recorded here as **UBCd**, a design worth its own Major.
 
-## The UBC lineage — authoritative code names
-
-**This section defines the UBC letter names, and these are the names to use in
-all ongoing discussion.** They have been used loosely before; from here they are
-fixed. A letter names an *implementation of the Foolish evaluator*, not a
-version of the language — all of them implement the same Foolish, and any two
-that disagree about what a program means have a bug in at least one of them.
-
-| Name | Design | Status |
-|------|--------|--------|
-| **UBCa** | The reference implementation. FIFO sequential draining, depth-first descent, greedy dependency resolution. | **In use.** §5 of this FOOP modifies it. |
-| **UBCb** | **Dependency tracking with priority stepping** — the evaluator records which FIRs are being waited on, and steps first those experiencing the most demand from dependents. | **Attempted for several months; not adopted.** Its dependency-tracking machinery is expected to be reusable. |
-| **UBCc** | **True breadth-first execution** (Appendix A.C) — `depth` as a real parameter of stepping, sweeping a bounded frontier that grows until the program settles. | Proposed. |
-| **UBCd** | **Massively distributed message passing** (Appendix A.D) — each UBC a small computer with its own state; searches dispatched as messages to parents, answered when answerable. | Proposed. |
-
-The relationships matter as much as the definitions:
-
-- **UBCb feeds UBCd.** Dependency tracking is not wasted work even though UBCb
-  was not adopted. Knowing *who is waiting on whom* is the same information a
-  message-passing evaluator needs in order to route a reply, so UBCb's machinery
-  is expected to be reusable in UBCd rather than discarded with it.
-- **UBCc stays close to UBCa.** Breadth-first execution is a change of traversal
-  within the same basic architecture — one machine, one tree, a task queue. It
-  is therefore the natural *next reference implementation*: near enough to UBCa
-  to be compared against it case by case, and far enough to answer the question
-  UBCa answers badly.
-- **UBCb and UBCc answer the same question from opposite ends** — *which
-  pending work should the machine do next?* UBCb measures demand; UBCc bounds
-  depth. Which is built next is deliberately left open here.
-
-None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
-
-## Last Updated
-
-**Date**: 2026-08-24
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Rewrote §11** (now "Braning States — four child-set event
-handlers for the kinds that wait", superseding its own first draft) after a
-ground-truth survey of every FIR kind's `fir_op_step` found the two-shape
-model the first draft was built on (`SearchFir` vs. `OperatorFir`) was
-incomplete: **at least four distinct `BRANING`-arm shapes exist** among the
-13 of 17 FIR kinds that enter `BRANING` at all — uniform-reduce-with-NK-
-poison (`OperatorFir`/`ComparisonFir`/`ModuloFir`/`OrFir`), uniform-reduce-
-no-poison (`BraneFir` — confirms the original `{a,b,c,d}` counter-example),
-single-anchor staged pipeline (`SearchFir`/`SearchPositionFir`/`IndexFir`),
-and external-trigger (the SF/SFF markers). The survey also found the
-`constanew` predicate the first draft coined **already exists in the code**,
-spelled `constantew`, defined exactly as guessed (`Constant|Independent|Nk`,
-doc-commented "constant everywhere"), with one production call site in
-`ConcatenationFir`'s type-error check — and found `OperatorFir`'s own gate
-is *not* simply "wait for constantew" (its any-NK poison runs first and
-separately). Added the **`is_foolish_child_constanic_enough`/
-`is_ubc_child_constanic_enough`** overridable predicate pair (default: plain
-`is_constanic()` for every kind that doesn't override), and
-**`terminates_econstanic()`**, a new `SearchFir`-only chain-walk method
-(returns true the moment a chain of search results bottoms out in
-`ECONSTANIC`) that `ConcatenationFir`'s override is built from. Renamed the
-concept **"Braning States"** and explicitly scoped it to only the
-Braning-capable kinds — not universal, correcting the first draft's implicit
-overreach. **Confirmed and corrected D9 by live trace**: a temporary test
-compiling D9's own example, `{a = {1,2}, b=<<#-2>>, c= a b}`, found
-patching the `push_ubc_child` guard D9 originally named to always-enqueue
-has **zero effect** — the actual cause is a `has_ancestral_sfm`
-scope-propagation leak in `step_inner` (`fir_trait.rs`): the flag is set
-`true` on entering a `StayFoolish` subtree but never reset back to `false`,
-so it wrongly marks unrelated later clones as SFF-descendant and preserves
-their stale `ECONSTANIC` NYES instead of resetting it via
-`transform_for_clone`'s general rule. D9's finding section now carries this
-correction, the `terminates_econstanic()`-based fix design, and the expected
-acceptance result (`c` settles CONSTANT to `{1,2,1,2}`) as an explicit
-target for the eventual einmo case. **Confirmed §8 (`@`) is implemented**
-(`SearchPositionFir::combine`, `fir_kinds.rs:751-794`), resolving the Phase
-3E DECIDE box: §7 (`ExtremumFir`) is superseded and removed (plan Phase
-3D2, code already landed); Phase 3D (`'ite`) is not superseded and proceeds
-unchanged. **Sequencing, confirmed by the human**: §11/Braning-States is
-deferred follow-on work, not a Euler-1 sub-task, and must not be worked
-inline with FOOP-55's active phases; the `has_ancestral_sfm` leak fix is
-independent of §11 and can land first (plan gained Phase 3I for it,
-ahead of Phase 3H). A temporary reproduction test, now
-`fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`, pins
-the current broken state pending that fix. Prior history of this section is
-in `git log`/`git blame` on this file, not accreted here.

@@ -433,6 +433,88 @@ pub trait Fir: std::fmt::Debug {
         matches!(self.kind(), FirKind::Search | FirKind::Index)
     }
 
+    /// Whether a `foolish_children` task is "done enough" for `self` (the
+    /// parent whose queue it sits in) to stop waiting on it — FOOP-55 §11.
+    ///
+    /// Default: plain [`Fir::is_constanic`]-style terminality, via the
+    /// existing `Nyes::is_constanic()` on `child`'s NYES — unchanged for
+    /// every kind that does not override this. This is the SAME rule
+    /// `step_inner`'s dequeue check used to hardcode identically for every
+    /// kind; the change is only that a kind may now express its own,
+    /// possibly looser or stricter, notion of "enough" — e.g.
+    /// `ConcatenationFir` must keep waiting on a search chain that is merely
+    /// `ECONSTANIC` (it may still resolve on recoordination, see D9),
+    /// tighter than the default; `OperatorFir`-style arithmetic needs the
+    /// stricter `constantew` gate (`Constant | Independent | Nk`) before an
+    /// operand is usable, since `ECONSTANIC`/`WOCONSTANIC` cannot yet supply
+    /// a real value to combine.
+    fn is_foolish_child_constanic_enough(&self, child: &FirRef) -> bool {
+        child.borrow().core().get_nyes().is_constanic()
+    }
+
+    /// [`Fir::is_foolish_child_constanic_enough`], for `ubc_children` (the
+    /// computed store — search results, `ConcatHelper`s, resolved SF/SFF
+    /// values) rather than `foolish_children` (the parsed/syntactic store).
+    /// Same default, same override pattern; the two stores are gated
+    /// independently since a kind's dependency policy may differ between
+    /// them.
+    fn is_ubc_child_constanic_enough(&self, child: &FirRef) -> bool {
+        child.borrow().core().get_nyes().is_constanic()
+    }
+
+    /// Whole-set aggregation of [`Fir::is_foolish_child_constanic_enough`]
+    /// over every `foolish_children()` member — FOOP-55 §11. Answers "has
+    /// the `foolish_children` PHASE fully drained," not "is one child
+    /// enough." `foolish_children` readies a kind's INPUT: this phase is
+    /// done once every syntactic operand/statement the kind was built from
+    /// has stepped to constanic (or whatever looser/stricter notion the
+    /// kind's own [`Fir::is_foolish_child_constanic_enough`] override
+    /// expresses).
+    fn are_foolish_children_ready_for_op(&self) -> bool {
+        self.core()
+            .foolish_children()
+            .iter()
+            .all(|c| self.is_foolish_child_constanic_enough(c))
+    }
+
+    /// [`Fir::are_foolish_children_ready_for_op`], for `ubc_children`.
+    /// `ubc_children` is the work queue where a kind does its OWN further
+    /// computation, if it has any beyond simply receiving a value from its
+    /// inputs — e.g. `BraneConcatOp` builds and steps `ConcatHelper`s here
+    /// to actually perform a join; most kinds (e.g. `OperatorFir`) have
+    /// nothing further to do once inputs are ready and this phase is
+    /// trivially satisfied by whatever single computed result lands here.
+    /// **Phasing rule**: consult this only after
+    /// [`Fir::are_foolish_children_ready_for_op`] is already true — a
+    /// kind's `ubc_children` readiness is not meaningful before its
+    /// `foolish_children` phase has completed.
+    fn are_ubc_children_ready_for_op(&self) -> bool {
+        self.core()
+            .ubc_children()
+            .iter()
+            .all(|c| self.is_ubc_child_constanic_enough(c))
+    }
+
+    /// Called once [`Fir::are_foolish_children_ready_for_op`] is true.
+    /// Reports the NYES this kind should settle to — `Some(nyes)` to commit
+    /// it, or `None` to defer to the shared fallback
+    /// (`_decide_nyes_due_to_children` over `foolish_children()`) — FOOP-55
+    /// §11. **Does not call `set_nyes` itself**: the caller (the default
+    /// `fir_op_step` body) is the one place that commits the result, so
+    /// every kind's settlement goes through one uniform path regardless of
+    /// which handler (or the fallback) produced it.
+    fn on_foolish_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        None
+    }
+
+    /// [`Fir::on_foolish_op_ready`], for the `ubc_children` phase — called
+    /// once [`Fir::are_ubc_children_ready_for_op`] is true. Same
+    /// report-don't-set contract; fallback is `_decide_nyes_due_to_children`
+    /// over `ubc_children()`.
+    fn on_ubc_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        None
+    }
+
     // ── UBCA debugging facilities ──
 
     /// Peek at the front of the task queue without removing it.
@@ -511,7 +593,14 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
 
     match front {
         Some(front_rc) => {
-            if front_rc.borrow().core().get_nyes().is_constanic() {
+            // FOOP-55 §11: the dequeue gate is `this`'s own (overridable)
+            // notion of "done enough" for this queued child, not a bare
+            // `is_constanic()` hardcoded here for every kind alike. Default
+            // is unchanged (`is_constanic()`); a kind overrides
+            // `is_foolish_child_constanic_enough` to express its own policy
+            // (e.g. `ConcatenationFir` keeps waiting on a search chain that
+            // is merely ECONSTANIC — see D9).
+            if this.borrow().is_foolish_child_constanic_enough(&front_rc) {
                 this.borrow().core().pop_front_task();
             } else {
                 let this_kind = this.borrow().kind();
