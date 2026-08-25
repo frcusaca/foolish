@@ -715,14 +715,114 @@ not redo it.
         377 passed / 2 pre-existing failures, unchanged. (2026-08-24)
   - [x] Ran all tests after each sub-step above (this sub-step's own gate).
         (2026-08-24)
-- [ ] **Step 5 — `OperatorFir`-style override**, same `_deprecating_op_step`
-      migration path, for `OperatorFir`, `ComparisonFir`, `ModuloFir`,
-      `OrFir`: override `is_foolish_child_constanic_enough` to the stricter
-      `constantew` gate, override `on_foolish_op_ready` to preserve the
-      existing any-`NK`-poison short-circuit (checked first, separately,
-      returning `Some(Nyes::Nk)` directly — do not rely on the
-      `_decide_nyes_due_to_children` fallback, which does not reproduce
-      this ordering). One kind at a time, full suite green after each.
+- [x] **Step 5 — `OperatorFir`-style override**, same `_deprecating_op_step`
+      migration path. `OperatorFir` DONE; `ComparisonFir`/`ModuloFir`/`OrFir`
+      still outstanding (tracked below as their own sub-item, since they
+      live in `system_foo.rs` and were not reached this session).
+      (2026-08-25)
+  - [x] `OperatorFir` migrated via `_deprecating_op_step`: `combine`'s body
+        moved into `on_foolish_op_ready` (every `set_nyes`+early-return
+        converted to `Some(nyes)`), `_deprecating_op_step` collapsed back
+        into `fir_op_step` directly once empty (same pattern as
+        `ConcatenationFir`). The any-NK-poison short-circuit's ordering
+        (checked first, separately, before the values/constantew wait) is
+        preserved intact. New shared helper `push_nk_result` (was three
+        near-identical inline NK-construction blocks). (2026-08-25)
+  - [x] **Real behavior change, human-directed**: the unknown-operator arm
+        (previously a hard `UbcError::Eval`, unrepresentable in
+        `on_foolish_op_ready`'s `Option<Nyes>` signature) now settles NK
+        with an explanation instead. Unreachable in practice (parser only
+        constructs known operators); parser-side validation to make it
+        TRULY unreachable is tracked in Phase 4B. New regression test:
+        `unknown_operator_settles_nk_not_hard_error`. (2026-08-25)
+  - [x] **`are_foolish_children_ready_for_op`'s DEFAULT corrected** (human,
+        2026-08-25): checks `constantew` on every `foolish_children`
+        member DIRECTLY (`c.get_nyes().is_constantew()`), NOT by
+        aggregating `is_foolish_child_constanic_enough` (that predicate
+        stays independently defaulted to `is_constanic()`, gating the
+        QUEUE-DRAIN dequeue point in `step_inner` — a different question
+        from whether the kind's OWN operation may be attempted). Wired
+        into `OperatorFir::fir_op_step`'s `Braning` arm per the shape
+        `if any_nk { ... } else if are_foolish_children_ready_for_op() {
+        on_foolish_op_ready() } else { _decide_nyes_due_to_children(...) }`
+        — the NK-poison check still runs first, unconditionally, ahead of
+        the readiness gate (an NK poisons regardless of what else is
+        waiting). New test:
+        `are_foolish_children_ready_for_op_default_waits_for_all` (updated
+        semantics), full suite re-verified green after the change.
+        (2026-08-25)
+  - [x] **Real bug found and fixed via this instrumentation, NOT
+        `OperatorFir`-specific**: `key@+1` (`SearchPositionFir`/`@` as an
+        `OperatorFir` operand) broke under the corrected default, exposing
+        that `@`'s own top-level NYES was hardcoded `Woconstanic` even
+        once it had computed a final, permanent integer — a pre-existing
+        mismatch between what `@` computed and what state it reported,
+        invisible before because the OLD arithmetic code reached through
+        `.value()` rather than checking an operand's own NYES directly.
+        Root-caused and fixed properly (human-directed), not patched
+        around — see the `SearchFir::found_context`/`Fir::is_found` and
+        `SearchPositionFir` sub-items below. New regression test:
+        `hash_accepts_a_search_expression_operand` (pre-existing test,
+        confirmed still green after the fix, not new — the fix restores
+        it rather than adding new coverage for this specific case).
+  - [x] **New: `SearchFir::found_context` / `Fir::is_found()` /
+        `Fir::found_context_index()`** (human, 2026-08-25). A search
+        captures its found statement's `(home brane, statement index)` the
+        MOMENT `handle_found` discovers it — before `clone_stmt_result`
+        constanic-clones the body and reparents the clone away from the
+        original. `is_found()` (default `false`, `SearchFir` overrides via
+        `found_context.is_some()`) answers "did this search find something"
+        independent of whether the found statement's own VALUE ever
+        resolves (a WOCONSTANIC/ECONSTANIC find is still a genuine find —
+        D9/§5.5). This is a DIRECT, named alternative to the existing
+        positional convention (`ubc_children.get(1)`'s `FoolRefFir`, still
+        used unchanged by `contexted_search_from_anchor` — NOT migrated
+        onto the new mechanism this session, left alone per human
+        direction "using those features, updating just `@`"). TODO
+        (Phase 4B): the stored `FirRef` to the home brane is a GC hazard —
+        needs releasing once the whole statement is constanic; see the
+        code comment at the field definition and Phase 4B's own entry.
+  - [x] **`SearchPositionFir` (`@`) fully migrated** via the same
+        `on_foolish_op_ready`/`is_foolish_child_constanic_enough` pattern:
+        - `is_foolish_child_constanic_enough` overridden — the anchor is
+          "done enough" the moment `anchor.is_found()`, OR (fallback) once
+          it is plain `is_constanic()`. `is_constanic()` alone was already
+          `true` for a WOCONSTANIC anchor, so this override's real purpose
+          is not about the DEQUEUE gate at all — it is about letting
+          `on_foolish_op_ready` distinguish "found, value pending" from
+          "genuinely still searching" the moment the anchor is dequeued,
+          without waiting for a fully-settled anchor when a found-but-
+          unresolved one already carries a real answer.
+        - `on_foolish_op_ready` replaces `combine`: reads `is_found()` /
+          `found_context_index()` directly instead of reaching into
+          `ubc_children[1]`'s `FoolRefFir`; `settle_nk`/`settle_index`
+          converted from `set_nyes`-calling void methods to
+          `Nyes`-returning ones.
+        - **The actual fix for `key@+1`**: `settle_index` now reports
+          `Nyes::Independent` (matching the genuinely final, permanent
+          integer it just computed) instead of the old hardcoded
+          `Nyes::Woconstanic` (which asserted an ongoing wait that did not
+          exist once the index was known — the original `// one
+          dependency, and it is constanic: WOCONSTANIC` comment's
+          reasoning conflated "the anchor being constanic" with "`@` itself
+          still depends on something further," which it does not once
+          `settle_index` runs). This is what lets `OperatorFir`'s
+          corrected `constantew` check see `@` as ready with no
+          `@`-specific special-casing needed on the consumer side.
+        Full suite: 377 passed, 0 unit-test failures (einmo gates hit a
+        PRE-EXISTING catastrophe-crumb race under concurrent gate runs,
+        unrelated to this work — confirmed via repeated isolated runs of
+        `einmo_gate_checked` alone showing the SAME, already-known,
+        already-documented divergence set: FOOP-65 INPUT changes plus
+        `sff_nested`/`concat_sf_f_more` OUTPUT, all pending promotions from
+        before this session, not caused by any change in this step).
+        (2026-08-25)
+  - [ ] `ComparisonFir`/`ModuloFir`/`OrFir` (`system_foo.rs`) — same
+        `_deprecating_op_step` migration + `constantew` override, not yet
+        started.
+  - [ ] Run all tests — old and new — and make sure they all pass
+        correctly (final gate for this whole step, once the three
+        remaining kinds are done).
 - [ ] **Step 6 — `terminates_econstanic()` and `ConcatenationFir`'s D9
       override.** Add `terminates_econstanic()` to `SearchFir` per
       FOOP-55.md §11's algorithm. Override `ConcatenationFir`'s
@@ -1118,6 +1218,74 @@ rewritten to match), zero einmo OUTPUT regressions across the full suite.
 
 Not prerequisites, and not to be done inside this FOOP. Recorded here so the
 work is not lost when this plan closes.
+
+- [ ] **`SearchFir::found_context`'s brane reference needs releasing once
+      the whole statement is constanic (GC hazard).** Found 2026-08-25
+      while implementing `found_context: Option<(FirRef, usize)>` (the home
+      brane + statement index captured at discovery, backing
+      `Fir::is_found`). The stored `FirRef` to the home brane keeps that
+      brane alive for as long as the search node itself lives, even after
+      the search (and the whole statement containing it) has settled
+      constanic and no longer needs the reference — a live `Rc` an
+      already-finished computation has no further use for. Human direction
+      (2026-08-25): revisit this once needed, likely by clearing
+      `found_context` (or just the brane half of it) once the search's own
+      statement reaches a constanic NYES, facilitating garbage collection.
+      An earlier, since-reverted design (appending the found brane onto
+      `foolish_children` instead of a side field) was considered and set
+      aside — not the direction to pick back up without re-discussing.
+
+- [ ] **`foolish_children`/`ubc_children` positional-index smell.** Found
+      2026-08-25 while tracing how a contexted search / `@` (`SearchPositionFir`)
+      learns whether its anchor "has a context" (a found statement) versus
+      "has resolved a value." Both questions are answered today by reading
+      `anchor.core().ubc_children().get(1)` / `.get(0)` directly, at
+      multiple call sites (`contexted_search_from_anchor`,
+      `SearchPositionFir::combine`, others) — the FOOP-23 "two-child
+      invariant" (`[0]` = value, `[1]` = `FoolRefFir` referent) is enforced
+      only by convention/comment, not by any named accessor or the type
+      system. Human direction (2026-08-25): make `foolish_children` and
+      `ubc_children` PRIVATE on every `Fir` implementor that has them, and
+      provide named accessor/mutator methods instead of positional-index
+      reads scattered across the codebase — e.g. something like
+      `search_result_value()`/`search_result_referent()` in place of
+      `ubc_children().get(0)`/`.get(1)`. A real refactor (touches every
+      kind that has these fields), not a quick fix — scope and design in
+      its own FOOP/plan section when picked up, not folded into FOOP-55's
+      §11 work.
+
+- [ ] **Investigate: `t~c@` (no parens) absorbs `@` into the search
+      pattern.** Found 2026-08-25 while live-tracing `OperatorFir`'s
+      `constanic_enough` migration against `@`. `{t={a=1,b=2,c=d};
+      r=t~c@;}` parses/settles as a single search with literal pattern
+      `'c@'` (ANCHORED) — which finds nothing (no statement is named
+      `c@`) and settles NK — rather than `(t~c)` followed by a
+      `SearchPositionFir` (`@`) continuation, which is what `(t~c)@`
+      (parens required) actually produces (verified live: `r=2`, the
+      correct position of `c` in `t`). Shouldn't `@` be recognized as a
+      continuation operator directly after an unparenthesized search too
+      (matching `#`/`$`/`^`'s own postfix-continuation behavior elsewhere),
+      or is requiring explicit parens the intended, documented syntax for
+      `@`? FOOP-55.md §8 (`@` spec) doesn't appear to say either way —
+      check there first, then the parser's `is_concatenation_continuation`/
+      continuation-parsing logic (`parser.rs`) for how `#`/`$`/`^` are
+      recognized post-search versus how `@` is (or isn't) wired in
+      alongside them.
+
+- [ ] **Parser: validate operator strings at parse time.** Found 2026-08-24
+      while migrating `OperatorFir` onto FOOP-55 §11's handlers.
+      `OperatorFir::combine`'s `match self.op.as_str() { ... op => Err(...) }`
+      unknown-operator arm is unreachable in practice (the parser only ever
+      constructs `OperatorFir` with a known operator string), but nothing
+      structurally enforces that — an `OperatorFir` built with a bad `op`
+      string reaches this fallback at evaluation time, not construction
+      time. §11's migration changes this arm from a hard `Result::Err` to
+      an `NK` with an explanation (since `on_foolish_op_ready` reports
+      `Option<Nyes>`, not `Result`), which is the right FVM-level answer,
+      but the human's direction (2026-08-24) is that the PARSER should
+      reject an unrecognized operator at parse time, so a malformed
+      `OperatorFir` can never be constructed in the first place — that is
+      parser work, out of scope for this FOOP's FIR-kind migration.
 
 - [ ] **Create the "Search Context Access" FOOP** (run `foop_check.py gen_next`
       at creation time — do NOT reserve a number now). See FOOP-55.md

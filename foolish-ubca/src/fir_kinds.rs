@@ -445,6 +445,7 @@ impl ProtoBrane {
                         is_value_search: is_value,
                         contexted: is_contexted,
                         exhausted: std::cell::Cell::new(false),
+                found_context: RefCell::new(None),
                     })
                 })
             }
@@ -718,65 +719,29 @@ pub struct SearchPositionFir {
 }
 
 impl SearchPositionFir {
-    fn settle_nk(&self, reason: &str) {
+    /// Pushes an NK `ubc_child` with `reason` and reports `Nk` — the shared
+    /// shape behind every NK exit in [`Fir::on_foolish_op_ready`] below.
+    fn settle_nk(&self, reason: &str) -> Nyes {
         let nk_ref = NkFir::nk(reason, self.core.parent_weak());
         nk_ref.borrow().core().set_nyes(Nyes::Nk);
         self.core.push_ubc_child(nk_ref);
         self.core.set_alarm_reason(reason.to_owned());
-        self.core.set_nyes(Nyes::Nk);
+        Nyes::Nk
     }
 
-    fn settle_index(&self, index: i64) {
+    /// Pushes the computed index as an `IndepInt` `ubc_child` and reports
+    /// `Independent` — FOOP-55 §11 (human, 2026-08-25). `@` has computed a
+    /// final, self-contained integer here; there is nothing left to wait
+    /// ON. Reporting `Independent` (rather than the old hardcoded
+    /// `Woconstanic`, which asserted an ongoing wait that did not exist)
+    /// is what lets a consuming operator (e.g. `@+1`) see this operand as
+    /// genuinely ready via the standard `constantew` gate, without any
+    /// `@`-specific special-casing on the consumer's side.
+    fn settle_index(&self, index: i64) -> Nyes {
         let out = IndepIntFir::constant_int(index, self.core.parent_weak());
         out.borrow().core().set_nyes(Nyes::Independent);
         self.core.push_ubc_child(out);
-        // One dependency (the anchor), and it is constanic: WOCONSTANIC.
-        self.core.set_nyes(Nyes::Woconstanic);
-    }
-
-    fn combine(&self) -> Result<(), UbcError> {
-        let Some(anchor) = self.core.foolish_children().first().cloned() else {
-            self.settle_nk("@: no anchor");
-            return Ok(());
-        };
-
-        // §8: the anchor must BE a search. A malformed continuation is a true
-        // NK, not a compile error -- an unanswerable question, as elsewhere in
-        // Foolish.
-        if anchor.borrow().kind() != FirKind::Search {
-            self.settle_nk("@: anchor is not a search");
-            return Ok(());
-        }
-        if !anchor.borrow().core().get_nyes().is_constanic() {
-            return Ok(()); // still waiting on our one dependency
-        }
-
-        // The found statement is ubc_children[1] -- a FoolRefFir holding the
-        // original with its line number intact (FOOP-23's two-child
-        // invariant). That position has been carried all along; @ is the first
-        // thing in the language to read it.
-        let referent = {
-            let a = anchor.borrow();
-            a.core()
-                .ubc_children()
-                .get(1)
-                .and_then(|r| r.borrow().as_fool_ref_referent().cloned())
-        };
-
-        if let Some(stmt) = referent {
-            let idx = stmt.borrow().as_stmt_line_number().unwrap_or(0);
-            self.settle_index(idx as i64);
-            return Ok(());
-        }
-
-        // No referent: either the scan ran out of candidates, or there were
-        // never any. candidates_exhausted() is exactly that distinction.
-        if anchor.borrow().candidates_exhausted() {
-            self.settle_index(-1);
-        } else {
-            self.settle_nk("@: anchor never scanned (its own anchor was NK)");
-        }
-        Ok(())
+        Nyes::Independent
     }
 }
 
@@ -790,17 +755,79 @@ impl Fir for SearchPositionFir {
         FirKind::SearchPosition
     }
 
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 self.core.set_nyes(Nyes::Braning);
                 if let Some(anchor) = self.core.foolish_children().first().cloned() {
                     self.core.push_task(anchor);
                 }
-                Ok(())
             }
-            Nyes::Braning => self.combine(),
-            _ => Ok(()),
+            Nyes::Braning => {
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// FOOP-55 §11 (human, 2026-08-25): `@`'s one dependency (the anchor
+    /// search) is "done enough" the moment it has FOUND something
+    /// (`is_found()`), independent of whether the anchor's own NYES ever
+    /// reaches a terminal state — a search can be genuinely, permanently
+    /// `WOCONSTANIC` (found a statement whose value never resolves) and `@`
+    /// still has a real, final index to report. Without this override, the
+    /// default (`is_constanic()`) would leave such an anchor stuck on the
+    /// task queue forever, since `step_inner`'s dequeue gate uses this
+    /// predicate directly. Falls back to the default (plain `is_constanic()`)
+    /// once the anchor is NOT found — needed to let a genuine miss (NK
+    /// anchor, or an exhausted scan) still dequeue and reach
+    /// `on_foolish_op_ready`'s own miss-handling.
+    fn is_foolish_child_constanic_enough(&self, child: &FirRef) -> bool {
+        child.borrow().is_found() || child.borrow().core().get_nyes().is_constanic()
+    }
+
+    /// FOOP-55 §11: moved from `combine` (formerly called directly from the
+    /// `Braning` arm), converting every `set_nyes` into `Some(nyes)`.
+    fn on_foolish_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        let Some(anchor) = self.core.foolish_children().first().cloned() else {
+            return Some(self.settle_nk("@: no anchor"));
+        };
+
+        // §8: the anchor must BE a search. A malformed continuation is a true
+        // NK, not a compile error -- an unanswerable question, as elsewhere in
+        // Foolish.
+        if anchor.borrow().kind() != FirKind::Search {
+            return Some(self.settle_nk("@: anchor is not a search"));
+        }
+
+        // FOOP-55 §11 (human, 2026-08-25): `@` needs to know the anchor
+        // FOUND something, not that the anchor's own NYES reached any
+        // particular terminal state — a search can be genuinely,
+        // permanently WOCONSTANIC (found a statement whose value never
+        // resolves) and `@` still has a real, final index to report. Read
+        // that directly via `is_found()`/`found_context` rather than
+        // waiting on `is_constanic()` or reaching into `ubc_children[1]`.
+        if anchor.borrow().is_found() {
+            let idx = anchor
+                .borrow()
+                .found_context_index()
+                .expect("is_found() true implies found_context_index() is Some");
+            return Some(self.settle_index(idx as i64));
+        }
+
+        // Not found (yet, or ever). Only once the anchor is itself
+        // constanic can we distinguish "ran out of candidates" (a genuine
+        // miss, per `candidates_exhausted()`) from "still searching."
+        if !anchor.borrow().core().get_nyes().is_constanic() {
+            return None; // still waiting on our one dependency
+        }
+        if anchor.borrow().candidates_exhausted() {
+            Some(self.settle_index(-1))
+        } else {
+            Some(self.settle_nk("@: anchor never scanned (its own anchor was NK)"))
         }
     }
 }
@@ -887,7 +914,28 @@ impl Fir for OperatorFir {
                 }
             }
             Nyes::Braning => {
-                return self.combine(scope);
+                // FOOP-55 §11 (human, 2026-08-24): the any-NK-poison check
+                // still runs first and separately (it must fire even when
+                // NOT every child is constantew — an NK poisons regardless
+                // of what else is waiting). Only once past that does
+                // `are_foolish_children_ready_for_op()` gate whether the
+                // real operation may be ATTEMPTED at all; when it is not
+                // ready, fall back to the shared, honest
+                // `_decide_nyes_due_to_children` rather than guessing.
+                let children = self.core.foolish_children().to_vec();
+                let any_nk = children
+                    .iter()
+                    .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
+                let nyes = if any_nk {
+                    self.on_foolish_op_ready(scope)
+                        .expect("on_foolish_op_ready must report Some when an NK is present")
+                } else if self.are_foolish_children_ready_for_op() {
+                    self.on_foolish_op_ready(scope)
+                        .expect("on_foolish_op_ready must report Some once ready")
+                } else {
+                    _decide_nyes_due_to_children(&children).unwrap_or(Nyes::Woconstanic)
+                };
+                self.core.set_nyes(nyes);
             }
             _ => {}
         }
@@ -901,145 +949,148 @@ impl Fir for OperatorFir {
     fn as_op_name(&self) -> Option<&str> {
         Some(&self.op)
     }
+
+    /// FOOP-55 §11: moved from `combine` (formerly called directly from the
+    /// `Braning` arm), converting every `set_nyes` + early `return Ok(())`
+    /// into `Some(nyes)`. Preserves the existing any-`NK`-poison
+    /// short-circuit's ordering — checked FIRST, separately from the
+    /// values/constanew wait below, exactly as before (FOOP-55 §11's own
+    /// caution about this kind: its gate is NOT simply "wait for
+    /// constantew," the poison check runs first).
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        let children = self.core.foolish_children().to_vec();
+
+        let any_nk = children
+            .iter()
+            .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
+        if any_nk {
+            let reason = children
+                .iter()
+                .find_map(|c| {
+                    let b = c.borrow();
+                    if b.core().get_nyes() == Nyes::Nk {
+                        b.as_nk_reason().map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "operator nk".to_string());
+            self.push_nk_result(scope, reason);
+            return Some(Nyes::Nk);
+        }
+
+        let values: Vec<i64> = children
+            .iter()
+            .map(|c| c.value())
+            .filter_map(|v| v.borrow().as_i64())
+            .collect();
+
+        if values.len() != children.len() {
+            return Some(Nyes::Woconstanic);
+        }
+
+        let result = match self.op.as_str() {
+            "+" if values.len() == 2 => values[0] + values[1],
+            "-" if values.len() == 2 => values[0] - values[1],
+            "*" if values.len() == 2 => values[0] * values[1],
+            "/" if values.len() == 2 => {
+                if values[1] == 0 {
+                    self.push_nk_result(scope, "division by zero".to_string());
+                    return Some(Nyes::Nk);
+                }
+                values[0] / values[1]
+            }
+            "%" if values.len() == 2 => {
+                if values[1] == 0 {
+                    self.push_nk_result(scope, "division by zero".to_string());
+                    return Some(Nyes::Nk);
+                }
+                values[0] % values[1]
+            }
+            "-" if values.len() == 1 => -values[0], // unary negation
+            // FOOP-75 §7: the `"$"` arm that used to live here is DELETED.
+            //
+            // It served the old bespoke `=$` sugar, which built
+            // `BinaryOp("$", UnanchoredSeek{-1}, rhs)` in the parser. It
+            // validated that the RHS was a brane and then returned WITHOUT
+            // extracting the tail, so `y =$ b` settled to the whole brane
+            // rather than its last element -- contradicting FOOP-54 §D.5
+            // ("bind the value of the last statement of `b` to `a`").
+            // There was never a matching `"^"` arm at all, so `=^` never
+            // settled and leaked `Op^(...)` into rendered output.
+            //
+            // Both spellings now compile to `IndexFir` via
+            // `Astn::HeadTail`, exactly as the postfix `b$` / `b^` always
+            // did, so this operator path is unreachable and both defects
+            // dissolve rather than needing separate fixes.
+            //
+            // FOOP-55 §11 (2026-08-24): an unrecognized operator string is
+            // ALSO unreachable in practice (the parser only ever
+            // constructs a known operator) — this arm used to be a hard
+            // `UbcError::Eval`, which `on_foolish_op_ready`'s `Option<Nyes>`
+            // signature cannot express. Human direction: settle NK with an
+            // explanation here; the parser should additionally reject an
+            // unrecognized operator at construction time so this remains
+            // unreachable (tracked separately, Phase 4B).
+            op => {
+                self.push_nk_result(
+                    scope,
+                    format!("unknown operator: {op} ({} operands)", values.len()),
+                );
+                return Some(Nyes::Nk);
+            }
+        };
+
+        let self_weak = self.core.parent_weak();
+        let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                value: result,
+            })
+        });
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &result_ref,
+            &self_weak,
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        Some(Nyes::Constant)
+    }
 }
 
 impl OperatorFir {
-    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
-        {
-            let self_weak = self.core.parent_weak();
-            let children = self.core.foolish_children().to_vec();
-
-            let any_nk = children
-                .iter()
-                .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
-            if any_nk {
-                let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                    let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                    let reason = children
-                        .iter()
-                        .find_map(|c| {
-                            let b = c.borrow();
-                            if b.core().get_nyes() == Nyes::Nk {
-                                b.as_nk_reason().map(|s| s.to_string())
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or_else(|| "operator nk".to_string());
-                    RefCell::new(NkFir {
-                        core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                        reason,
-                    })
-                });
-                self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                    &nk_ref,
-                    &self_weak,
-                    0,
-                    scope.has_ancestral_sfm,
-                    false,
-                ));
-                self.core.set_nyes(Nyes::Nk);
-                return Ok(());
-            }
-
-            let values: Vec<i64> = children
-                .iter()
-                .map(|c| c.value())
-                .filter_map(|v| v.borrow().as_i64())
-                .collect();
-
-            if values.len() != children.len() {
-                self.core.set_nyes(Nyes::Woconstanic);
-                return Ok(());
-            }
-
-            let result = match self.op.as_str() {
-                "+" if values.len() == 2 => values[0] + values[1],
-                "-" if values.len() == 2 => values[0] - values[1],
-                "*" if values.len() == 2 => values[0] * values[1],
-                "/" if values.len() == 2 => {
-                    if values[1] == 0 {
-                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                            RefCell::new(NkFir {
-                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                reason: "division by zero".to_string(),
-                            })
-                        });
-                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                            &nk_ref,
-                            &self_weak,
-                            0,
-                            scope.has_ancestral_sfm,
-                            false,
-                        ));
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    }
-                    values[0] / values[1]
-                }
-                "%" if values.len() == 2 => {
-                    if values[1] == 0 {
-                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                            RefCell::new(NkFir {
-                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                reason: "division by zero".to_string(),
-                            })
-                        });
-                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                            &nk_ref,
-                            &self_weak,
-                            0,
-                            scope.has_ancestral_sfm,
-                            false,
-                        ));
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    }
-                    values[0] % values[1]
-                }
-                "-" if values.len() == 1 => -values[0], // unary negation
-                // FOOP-75 §7: the `"$"` arm that used to live here is DELETED.
-                //
-                // It served the old bespoke `=$` sugar, which built
-                // `BinaryOp("$", UnanchoredSeek{-1}, rhs)` in the parser. It
-                // validated that the RHS was a brane and then returned WITHOUT
-                // extracting the tail, so `y =$ b` settled to the whole brane
-                // rather than its last element -- contradicting FOOP-54 §D.5
-                // ("bind the value of the last statement of `b` to `a`").
-                // There was never a matching `"^"` arm at all, so `=^` never
-                // settled and leaked `Op^(...)` into rendered output.
-                //
-                // Both spellings now compile to `IndexFir` via
-                // `Astn::HeadTail`, exactly as the postfix `b$` / `b^` always
-                // did, so this operator path is unreachable and both defects
-                // dissolve rather than needing separate fixes.
-                op => {
-                    return Err(UbcError::Eval(format!(
-                        "unknown operator: {op} ({} operands)",
-                        values.len()
-                    )));
-                }
-            };
-
-            let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
-                let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                RefCell::new(IndepIntFir {
-                    core: ProtoBrane::new(vec![], parent, Nyes::Constant),
-                    value: result,
-                })
-            });
-            self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                &result_ref,
-                &self_weak,
-                0,
-                scope.has_ancestral_sfm,
-                false,
-            ));
-            self.core.set_nyes(Nyes::Constant);
-        }
-        Ok(())
+    /// FOOP-55 §11 migration: pre-migration `fir_op_step` body, moved here
+    /// verbatim (rename only, no logic change). Delete once every piece has
+    /// moved into named handlers and `fir_op_step` no longer calls it.
+    /// Pushes an NK `ubc_child` with `reason`, constanic-cloned into this
+    /// operator's context — the shared shape behind every NK exit in
+    /// [`Fir::on_foolish_op_ready`] below (any-operand-NK, division/modulo
+    /// by zero, and — new in FOOP-55 §11's migration — an unrecognized
+    /// operator, which used to be a hard `UbcError::Eval` before
+    /// `on_foolish_op_ready`'s `Option<Nyes>` signature made a genuine
+    /// error unrepresentable here; human direction 2026-08-24 was to make
+    /// this NK with an explanation, and to additionally have the PARSER
+    /// reject unknown operators at parse time so this case cannot be
+    /// reached in practice — the parser-side check is tracked separately,
+    /// Phase 4B).
+    fn push_nk_result(&self, scope: &Scope, reason: String) {
+        let self_weak = self.core.parent_weak();
+        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                reason,
+            })
+        });
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &nk_ref,
+            &self_weak,
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
     }
 }
 
@@ -1481,6 +1532,26 @@ pub struct SearchFir {
     /// having stopped at a match. Read through
     /// [`Fir::candidates_exhausted`].
     pub(crate) exhausted: std::cell::Cell<bool>,
+    /// FOOP-55 §11 (human, 2026-08-25): the found statement's ORIGINAL
+    /// `(home brane, statement index)`, captured the moment `handle_found`
+    /// discovers it — BEFORE `clone_stmt_result` constanic-clones the
+    /// statement's body into `ubc_children` and reparents that clone into
+    /// this search's own statement's brane. Reading a found statement's
+    /// position back out of `ubc_children` positionally (as
+    /// `contexted_search_from_anchor`/`SearchPositionFir::combine` still
+    /// do) works only because those callers separately read
+    /// `ubc_children[1]`'s `FoolRefFir`, which independently preserves the
+    /// original referent — this field is a DIRECT, named alternative to
+    /// that positional convention, read via [`Fir::is_found`]. `None`
+    /// until a search genuinely finds something; never reset once set
+    /// (a search settles once, per FOOP-62's stepping model).
+    ///
+    /// TODO(FOOP-55 Phase 4B, human 2026-08-25): refactor so this reference
+    /// to the search result's parent brane is removed once the entire
+    /// statement containing the current search is constanic — the stored
+    /// `FirRef` keeps that brane alive for the search node's whole
+    /// lifetime, longer than any computation still needs it, a GC hazard.
+    pub(crate) found_context: RefCell<Option<(FirRef, usize)>>,
 }
 
 impl SearchFir {
@@ -1530,6 +1601,19 @@ impl SearchFir {
     }
 
     fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
+        // FOOP-55 §11 (human, 2026-08-25): capture the ORIGINAL found
+        // statement's home brane and index HERE, before `clone_stmt_result`
+        // constanic-clones its body and `push_search_result_pair` reparents
+        // that clone into this search's own statement's brane. This is the
+        // direct, named record of "did I find something" — read via
+        // `Fir::is_found` — independent of the found statement's own VALUE
+        // ever resolving (see D9/§5.5: an ECONSTANIC/WOCONSTANIC found
+        // statement is still a genuine find).
+        if let Some(home_brane) = stmt.borrow()._get_my_brane(&stmt)
+            && let Some(idx) = home_brane.find_stmt_index(&stmt)
+        {
+            *self.found_context.borrow_mut() = Some((home_brane, idx));
+        }
         let self_weak = self.core.parent_weak();
         let clone = Self::clone_stmt_result(&stmt, &self_weak, scope.has_ancestral_sfm);
         push_search_result_pair(&self.core, clone, stmt);
@@ -2017,6 +2101,14 @@ impl Fir for SearchFir {
     }
     fn as_search_is_value(&self) -> bool {
         self.is_value_search
+    }
+
+    fn is_found(&self) -> bool {
+        self.found_context.borrow().is_some()
+    }
+
+    fn found_context_index(&self) -> Option<usize> {
+        self.found_context.borrow().as_ref().map(|(_, idx)| *idx)
     }
 
     fn candidates_exhausted(&self) -> bool {
@@ -3691,6 +3783,7 @@ mod tests {
                 is_value_search: false,
                 contexted: false,
                 exhausted: std::cell::Cell::new(false),
+                found_context: RefCell::new(None),
             })
         })
     }
@@ -10083,5 +10176,34 @@ mod tests {
         let scope = Scope::empty();
         assert_eq!(brane.borrow().on_foolish_op_ready(&scope), None);
         assert_eq!(brane.borrow().on_ubc_op_ready(&scope), None);
+    }
+
+    /// FOOP-55 §11 (2026-08-24): an `OperatorFir` built with an unrecognized
+    /// operator string settles NK with an explanation, rather than
+    /// propagating a hard `UbcError::Eval` — a behavior change forced by
+    /// `on_foolish_op_ready`'s `Option<Nyes>` signature (it cannot express
+    /// a Rust-level error). This path is unreachable through the parser in
+    /// practice (only known operators are ever constructed) but is pinned
+    /// here so the FVM-level answer for a malformed `OperatorFir` is
+    /// documented and does not silently drift. Parser-side validation to
+    /// make this truly unreachable is tracked separately (plan Phase 4B).
+    #[test]
+    fn unknown_operator_settles_nk_not_hard_error() {
+        let a = make_constant_int(1);
+        let b = make_constant_int(2);
+        let op = make_operator("¿unknown?", vec![Rc::clone(&a), Rc::clone(&b)]);
+        let scope = Scope::empty();
+
+        let trace = step_to_settled(&op, &scope);
+        assert_eq!(
+            *trace.last().unwrap(),
+            Nyes::Nk,
+            "unknown operator must settle NK, trace={trace:?}"
+        );
+        let reason = op.value().borrow().as_nk_reason().map(str::to_owned);
+        assert!(
+            reason.as_deref().is_some_and(|r| r.contains("unknown operator")),
+            "NK reason should explain the cause, got {reason:?}"
+        );
     }
 }

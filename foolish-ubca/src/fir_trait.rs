@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 use foolish_core::fir::Nyes;
 
+use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
 /// A FIR reference: `Rc<RefCell<dyn Fir>>`.
@@ -433,6 +434,31 @@ pub trait Fir: std::fmt::Debug {
         matches!(self.kind(), FirKind::Search | FirKind::Index)
     }
 
+    /// Whether this search has found its target — FOOP-55 §11 (human,
+    /// 2026-08-25). `true` iff a real statement was discovered
+    /// (`SearchFir::found_context` is `Some`), independent of whether that
+    /// statement's own VALUE has resolved yet (an ECONSTANIC/WOCONSTANIC
+    /// found statement is still a genuine find — see D9/§5.5). Default:
+    /// `false` — only `SearchFir` overrides this; every other kind has no
+    /// concept of "finding" anything.
+    ///
+    /// This exists so a caller that only needs "did the search land on
+    /// something" (e.g. `SearchPositionFir`'s readiness check) does not
+    /// have to wait for the searcher's own NYES to reach any particular
+    /// terminal state — a search can be genuinely, permanently `WOCONSTANIC`
+    /// (found something whose value never resolves) and `is_found()` is
+    /// still `true` from the moment of discovery onward.
+    fn is_found(&self) -> bool {
+        false
+    }
+
+    /// The found statement's index within its home brane, captured at the
+    /// moment of discovery — FOOP-55 §11 (human, 2026-08-25). `Some` iff
+    /// [`Fir::is_found`] is `true`. Default: `None`.
+    fn found_context_index(&self) -> Option<usize> {
+        None
+    }
+
     /// Whether a `foolish_children` task is "done enough" for `self` (the
     /// parent whose queue it sits in) to stop waiting on it — FOOP-55 §11.
     ///
@@ -462,19 +488,24 @@ pub trait Fir: std::fmt::Debug {
         child.borrow().core().get_nyes().is_constanic()
     }
 
-    /// Whole-set aggregation of [`Fir::is_foolish_child_constanic_enough`]
-    /// over every `foolish_children()` member — FOOP-55 §11. Answers "has
-    /// the `foolish_children` PHASE fully drained," not "is one child
-    /// enough." `foolish_children` readies a kind's INPUT: this phase is
-    /// done once every syntactic operand/statement the kind was built from
-    /// has stepped to constanic (or whatever looser/stricter notion the
-    /// kind's own [`Fir::is_foolish_child_constanic_enough`] override
-    /// expresses).
+    /// Whether the `foolish_children` PHASE has fully drained AND every
+    /// member is genuinely USABLE — FOOP-55 §11. Default: every
+    /// `foolish_children()` member is `constantew` (`Constant | Independent
+    /// | Nk`), independent of [`Fir::is_foolish_child_constanic_enough`]
+    /// (that predicate gates the QUEUE-DRAIN dequeue point in
+    /// `step_inner`; this gates whether the kind's own operation may be
+    /// ATTEMPTED at all — two different questions, two independently
+    /// overridable defaults). `foolish_children` readies a kind's INPUT:
+    /// this default answers "does every input already hold a real,
+    /// combinable value" — a merely `WOCONSTANIC`/`ECONSTANIC` child does
+    /// NOT satisfy it, so a kind relying on this default (e.g.
+    /// `OperatorFir`-style arithmetic) never attempts to compute from an
+    /// operand that cannot yet supply a value.
     fn are_foolish_children_ready_for_op(&self) -> bool {
         self.core()
             .foolish_children()
             .iter()
-            .all(|c| self.is_foolish_child_constanic_enough(c))
+            .all(|c| c.borrow().core().get_nyes().is_constantew())
     }
 
     /// [`Fir::are_foolish_children_ready_for_op`], for `ubc_children`.
@@ -972,6 +1003,7 @@ mod get_value_tests {
                 is_value_search: false,
                 contexted: false,
                 exhausted: std::cell::Cell::new(false),
+                found_context: RefCell::new(None),
             })
         })
     }
