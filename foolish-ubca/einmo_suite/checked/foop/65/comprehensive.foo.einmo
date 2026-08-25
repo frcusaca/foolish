@@ -1,74 +1,104 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/65/comprehensive.foo
-suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
-producer: 8fe5a810
-producer-diff: sha256:c87527e01a0c268826faa362812d38736f8431d45d8181a447b0c6cc3f56f2d1
-generated: 2026-08-11T22:37:08.000000000Z
+suite: /yolo/foolish/.claude/worktrees/foop-55-event-handlers/foolish-ubca/einmo_suite
+producer: 7e60bee6
+producer-diff: sha256:b97d8f7e250901bf117a5bbd45a61b5d4a0fa5cd10b08a6b60d8c882c3234148
+generated: 2026-08-24T19:08:26.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 {
+
+	!! ----
 	!! FOOP-65 — comprehensive test.
 	!! Exercises backtick (tail concatenator) interacting with existing features:
 	!! searches (? ~ # ^ $ .), $ extraction, SF/SFF markers, nested branes,
 	!! system operators, user-defined functions, and the §3.1 worked example.
+	!! ----
 
-	!! === §3.1 worked example: chain of backticks with trailing juxtaposition ===
+	!! ----
+	!! §3.1 worked example: chain of backticks with trailing juxtaposition
+	!! ----
 	a_brn = {1};
 	b_brn = {2};
 	c_brn = {3};
 	d_brn = {4};
 	e_brn = {5};
 	f_brn = {6};
+
+	!! ----
 	!! a`b`c`d e f ≡ (d e f) c b a — flat chain reverses source order
+	!! ----
 	chain_bt = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
 	chain_jx = d_brn e_brn f_brn c_brn b_brn a_brn;
 
-	!! === User-defined function: backtick vs juxtaposition equivalence ===
+	!! ----
+	!! User-defined function: backtick vs juxtaposition equivalence
+	!! ----
 	myfn = {result = a + b;};
 	bt_fn = myfn`{a=10, b=20};
 	jx_fn = {a=10, b=20} myfn;
 
-	!! === $ extraction from backtick result (spec §2: parenthesized) ===
+	!! ----
+	!! $ extraction from backtick result (spec §2: parenthesized)
 	!! (myfn`{a=5, b=15}) ≡ {a=5, b=15} myfn → {a=5; b=15; result=20}
 	!! $ extracts tail → 20
+	!! ----
 	extract_bt = (myfn`{a=5, b=15})$;
 
-	!! === Dot access on backtick result ===
+	!! ----
+	!! Dot access on backtick result
 	!! bt_fn = {a=10; b=20; result=30} → .result → 30
+	!! ----
 	dot_val = bt_fn.result;
 
-	!! === Head (^) and tail ($) search on backtick result ===
+	!! ----
+	!! Head (^) and tail ($) search on backtick result
+	!! ----
 	head_val = bt_fn^;
 	tail_val = bt_fn$;
 
-	!! === Anchored backward search (?) on backtick result ===
+	!! ----
+	!! Anchored backward search (?) on backtick result
+	!! ----
 	find_a = bt_fn?a;
 
-	!! === Index search (#) on backtick result ===
+	!! ----
+	!! Index search (#) on backtick result
+	!! ----
 	idx_0 = bt_fn#0;
 
-	!! === Forward search (~) on backtick result ===
+	!! ----
+	!! Forward search (~) on backtick result
+	!! ----
 	fwd_a = bt_fn~a;
 
-	!! === Backtick inside nested brane ===
+	!! ----
+	!! Backtick inside nested brane
+	!! ----
 	container = {
 		inner = {x = 7;};
 		applied = inner`{y = 3;};
 		z = applied.y;
 	};
 
-	!! === System operators via brane application idiom ===
+	!! ----
+	!! System operators via brane application idiom
+	!! ----
 	lt_true  = {1, 2, 'lt}$;
 	lt_false = {2, 1, 'lt}$;
 	eq_true  = {3, 3, 'eq}$;
 
-	!! === Backtick with SFF marker (deferred evaluation) ===
+	!! ----
+	!! Backtick with SFF marker (deferred evaluation)
+	!! ----
 	base = {p = 100;};
 	sf_bt = base`<<{q = base.p + 50}>>;
 	sf_jx = <<{q = base.p + 50}>> base;
 
-	!! === Chained backtick: result of one backtick used in another ===
+	!! ----
+	!! Chained backtick: result of one backtick used in another
+	!! ----
 	first = myfn`{a=1, b=2};
 	second = myfn`{a=100, b=200};
 	double_bt = second`first;
@@ -173,7 +203,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   }
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:656ec13e8141f9c42a442ba02e879ff1d98c7e24c47508f110d317df6d202560","timestamp":"2026-08-11T22:37:08.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:656ec13e8141f9c42a442ba02e879ff1d98c7e24c47508f110d317df6d202560","timestamp":"2026-08-11T22:37:08.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"orvvhT+9TlaVRfAFL9QQIoBXd8TcaecymgBF1BV+98wTK35ObhNfamcplYyB6bV2m6oo/+Zew5DBUnocFgitBg==","produced_by":"einmo 0.1.0 sha256:656ec13e8141f9c42a442ba02e879ff1d98c7e24c47508f110d317df6d202560","timestamp":"2026-08-11T22:37:08.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"0yAUeaErzHDguEUgVAfhaWYWcA2XZnhmBG9s5Zhb9DpZqPCRuxtGX7JFS4vKNG7nIv0jPBErbS2FBQmaQje1DA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T22:38:23.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8c615fdfc9903b082896f2f804b59fbe6a6414df74bf6e45e10736755d2028ba","timestamp":"2026-08-24T19:08:26.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8c615fdfc9903b082896f2f804b59fbe6a6414df74bf6e45e10736755d2028ba","timestamp":"2026-08-24T19:08:26.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"pD2AO2nUOhASsQS/svixFsjtwyCjdO1aZrUxK45ML6sLBmLCYTNtRRyE1atxWtnCe1Ry1pKcRert+A5yqB4TDA==","produced_by":"einmo 0.1.0 sha256:8c615fdfc9903b082896f2f804b59fbe6a6414df74bf6e45e10736755d2028ba","timestamp":"2026-08-24T19:08:26.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"z1F+5u/gX0Ky++C5STjKG4v5m6oeXKECFPPiuLtbh99/bby60tpUm17bGuaTKkZdrPGR+l3zNiBmN49+TKxKDA==","produced_by":"einmo 0.1.0 sha256:70ad14470d23b6d96032610cb3596b09d19ca27fbf4de499568fa64de1d23846","timestamp":"2026-08-25T20:45:52.000000000Z"}
