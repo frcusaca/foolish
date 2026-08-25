@@ -777,6 +777,22 @@ fn proto_to_core_fir_inner(
                 // that `joined`/`empty_done` just confirmed exists.
                 drop(borrowed);
                 let result = ubca_ref.value();
+                // FOOP-55 §11 (human, 2026-08-25): `.value()` does not
+                // always resolve to a `ConcatHelper` here — a type-error
+                // constituent (e.g. an OPERATOR, not a brane) settles NK
+                // by pushing an `Nk` `ubc_child` (see `ConcatenationFir`'s
+                // own type-error path), so `joined` is true but the
+                // "joined" result is an `Nk` marker, not a real brane.
+                // `stmt_count()`'s default (`None` → 0) silently rendered
+                // this as an EMPTY BRANE `{}` instead of NK — render the
+                // NK explicitly instead of falling through to the
+                // brane-shaped path below.
+                if result.borrow().kind() == FirKind::Nk {
+                    let reason_borrow = result.borrow();
+                    return NkFirBuilder::new(reason_borrow.as_nk_reason().unwrap_or("unknown"))
+                        .state(Nyes::Nk)
+                        .build();
+                }
                 let borrowed = result.borrow();
                 let count = borrowed.stmt_count().unwrap_or(0);
                 let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)

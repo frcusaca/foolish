@@ -652,6 +652,29 @@ not redo it.
       full SF/SFF corpus (§5) and the concatenation-ergonomics corpus (§9)
       frequently while implementing this; both depend on the drain path
       this section changes.
+- [ ] **Step 0 (prepended, human direction 2026-08-25) — migrate `IndexFir`,
+      then `SearchFir`, onto the same `on_foolish_op_ready`/
+      `is_foolish_child_constanic_enough` mechanism, AHEAD of the remaining
+      Step 5 kinds below.** `IndexFir` (`#N`/`^`/`$`) and `SearchFir` are
+      what `$` actually compiles to and have NOT been migrated at all yet —
+      still the old inline `fir_op_step`, unlike `SearchPositionFir`/`@`
+      (done) and `OperatorFir` (done). `IndexFir`'s anchored path
+      (`fir_kinds.rs`, `impl Fir for IndexFir`) has the SAME bug class `@`
+      had: `if !resolved.borrow().core().get_nyes().is_constanic() { return
+      Ok(()); }` waits for the anchor's fully-resolved VALUE to be
+      constanic, rather than checking whether the anchor has FOUND
+      something — confirmed live 2026-08-25 (traced, not yet fixed).
+      `IndexFir` is currently ~240 lines with four branches
+      (anchored/unanchored × contexted/not); `SearchFir` ~200 lines with
+      its own staged sequence (`ib_search_with_engine`/
+      `ab_search_with_engine`/`contexted_search_from_anchor`). **Human
+      assessment (2026-08-25): this size is a smell in itself — the new
+      predicate/handler shape should likely SHRINK this code, not just
+      wrap it as-is; do not treat 240/200 lines as a fixed target to
+      preserve line-for-line.** Order: `IndexFir` first, `SearchFir`
+      second, both before the remaining `ComparisonFir`/`ModuloFir`/`OrFir`
+      work already queued below. Same `_deprecating_op_step` discipline —
+      tests first, one piece moved at a time, full suite green after each.
 - [x] **Step 1 — per-child predicates, standalone.** Added
       `is_foolish_child_constanic_enough`/`is_ubc_child_constanic_enough` to
       the `Fir` trait (`fir_trait.rs`), alongside `is_constanic_branelike`/
@@ -1219,45 +1242,44 @@ rewritten to match), zero einmo OUTPUT regressions across the full suite.
 Not prerequisites, and not to be done inside this FOOP. Recorded here so the
 work is not lost when this plan closes.
 
-- [ ] **`OperatorFir` must settle NK (not WOCONSTANIC / empty brane) when an
-      operand is a brane, not a number.** Found 2026-08-25, human-directed —
-      confirmed live against `foolish-ubca/einmo_suite/input/foop/55/concat_ergonomics.foo`:
-      - `operator_nk = {1} (2 + 3);` (line 88) currently settles
-        `operatorˍnk={}` (an EMPTY BRANE) rather than `NK`. The input's own
-        `§9.2` comment (lines 84-86) says this line demonstrates "OPERATOR
-        constituent → NK, with a reason naming the kind ('cannot
-        concatenate number')" — the current output contradicts the test's
-        own documented intent.
-      - `worked = {b = {c = {e f g}}$ + 1; ...}` (line 118) currently
-        settles `b=Op+({brane}, 1, WOCONSTANIC)`, stuck forever — matching
-        the file's own pre-existing `@agent` comment (lines 98-106), which
-        already flags this exact case and already suggests the fix:
-        "Arguably it should settle NK ('cannot add a brane') rather than
-        stay WOCONSTANIC; that is an operator question, filed outside
-        §9.2." That `@agent` comment can be resolved/removed once this is
-        fixed, per `AGENTS.md`'s embedded-communication convention.
-      **Root cause (traced live, 2026-08-25)**: `OperatorFir`'s
-      `are_foolish_children_ready_for_op()` (FOOP-55 §11's corrected
-      default, `constantew` on every `foolish_children` member) returns
-      `true` once a brane operand is fully resolved — a settled brane IS
-      `Constant`/`Independent`, which passes `constantew` — so
-      `on_foolish_op_ready` runs; its `values.len() != children.len()`
-      check then catches the operand not being an integer and downgrades
-      to `Woconstanic` (an operand is not "yet unready," it is
-      permanently, structurally the wrong TYPE) instead of settling `NK`
-      with an explanation. `OperatorFir` needs updating the same way `@`
-      was (this session's `SearchPositionFir`/`is_found()` fix):
-      `on_foolish_op_ready` needs to distinguish "operand
-      not yet ready" (keep waiting / fall back to
-      `_decide_nyes_due_to_children`) from "operand is READY but is
-      structurally the wrong kind of thing for arithmetic" (a brane, not a
-      number) — the latter must settle `NK` with a reason naming the
-      problem, mirroring `ConcatenationFir`'s existing type-error-vs-not-
-      ready-yet distinction (`on_foolish_op_ready`'s own
-      `all_brane_like`/`type_errors` split, already correct there).
-      Scope this alongside (or ahead of) Step 5's remaining
-      `ComparisonFir`/`ModuloFir`/`OrFir` migration, since they may share
-      the same gap.
+- [x] **`OperatorFir` settles NK (not WOCONSTANIC / empty brane) when an
+      operand is a brane, not a number — FIXED 2026-08-25.** Confirmed live
+      against `foolish-ubca/einmo_suite/input/foop/55/concat_ergonomics.foo`:
+      - `operator_nk = {1} (2 + 3);` (line 88) now correctly settles NK
+        (`??? (concatenation constituent indexes where it's not a brane:
+        1)`) — matching the input's own `§9.2` comment's documented intent.
+      - `worked = {b = {c = {e f g}}$ + 1; ...}` (line 118) now correctly
+        settles `b` to NK (`??? (operator operand indexes that are not
+        integers: 0)`) instead of hanging WOCONSTANIC forever — resolving
+        the pre-existing `@agent` comment's concern (lines 98-106). That
+        `@agent` comment should be removed from the input file the next
+        time it is touched, per `AGENTS.md`'s embedded-communication
+        convention (not done in this pass — the input file itself was not
+        edited, only the code).
+      **Fix** (`fir_kinds.rs`, `OperatorFir::on_foolish_op_ready`): the old
+      `values.len() != children.len()` → `Woconstanic` branch conflated
+      "an operand is not ready yet" with "an operand is ready but
+      permanently the wrong type." Since this method is only ever called
+      once the caller has already established every child is `constantew`
+      (either via the any-NK check, or via
+      `are_foolish_children_ready_for_op`), a `constantew` child that still
+      fails to produce an integer here is ALWAYS a type error, never
+      "unready" — now settles NK, naming the offending operand indexes
+      (mirroring `ConcatenationFir`'s own `all_brane_like`/`type_errors`
+      split).
+      **Second bug found and fixed along the way (`evaluator.rs`,
+      `proto_to_core_fir_inner`'s `FirKind::Concatenation` arm)**: a
+      concatenation whose constituent-type-error NK path pushes an `Nk`
+      into `ubc_children` was rendering as an EMPTY BRANE `{}` rather than
+      NK — `.value()` correctly resolved to the `Nk` node, but
+      `stmt_count()`'s default (`None` → `0`) silently rendered it as a
+      zero-statement brane instead of falling through to NK rendering.
+      This bug PRE-DATES the `OperatorFir` fix above (confirmed via
+      `git stash`) and is what made `operator_nk` render wrong even though
+      its own NYES was already, correctly, `Nk`. Fixed by checking
+      `result.borrow().kind() == FirKind::Nk` before attempting
+      brane-shaped rendering.
+      Full suite: 377 passed, 0 unit-test failures, confirmed unchanged.
 
 - [ ] **`SearchFir::found_context`'s brane reference needs releasing once
       the whole statement is constanic (GC hazard).** Found 2026-08-25

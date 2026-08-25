@@ -979,15 +979,39 @@ impl Fir for OperatorFir {
             return Some(Nyes::Nk);
         }
 
+        // FOOP-55 §11 (human, 2026-08-25): by the time this method runs,
+        // the caller has already established every child is `constantew`
+        // (either via the any-NK check above, or via
+        // `are_foolish_children_ready_for_op`'s own `constantew` gate) —
+        // so a child that still fails to produce an integer here is not
+        // "not ready yet," it is PERMANENTLY the wrong TYPE (e.g. a brane,
+        // not a number). That must settle NK with a reason naming the
+        // problem, matching `ConcatenationFir`'s own type-error handling —
+        // not the old `Woconstanic`, which wrongly implied an ongoing wait
+        // for something that will never resolve.
+        let non_integer_indexes: Vec<usize> = children
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.value().borrow().as_i64().is_none())
+            .map(|(idx, _)| idx)
+            .collect();
+        if !non_integer_indexes.is_empty() {
+            let list = non_integer_indexes
+                .iter()
+                .map(usize::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+            self.push_nk_result(
+                scope,
+                format!("operator operand indexes that are not integers: {list}"),
+            );
+            return Some(Nyes::Nk);
+        }
+
         let values: Vec<i64> = children
             .iter()
-            .map(|c| c.value())
-            .filter_map(|v| v.borrow().as_i64())
+            .map(|c| c.value().borrow().as_i64().expect("checked above"))
             .collect();
-
-        if values.len() != children.len() {
-            return Some(Nyes::Woconstanic);
-        }
 
         let result = match self.op.as_str() {
             "+" if values.len() == 2 => values[0] + values[1],

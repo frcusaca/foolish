@@ -153,33 +153,50 @@ they have no case selection. Case selection lives in the einmo CLI and works on 
 
 The evaluator command below pipes each case's source through the Foolish CLI via `/dev/stdin`;
 `head -c -1` strips the trailing newline so the result matches the gate byte-for-byte. Run from
-the repository root and build the binaries first: `cargo build -p foolish-cli -p einmo` (then
-use `einmo` from your PATH, or `./target/debug/einmo`).
+the repository root.
+
+**Binary paths are NOT `./target/debug/...`** in every checkout — the cargo target directory can
+be relocated (e.g. by a workspace-level `CARGO_TARGET_DIR`, or a worktree sharing a parent
+target dir), so a plain `einmo` on PATH or a literal `./target/debug/einmo` may not resolve.
+Use `cargo run` for both binaries instead — it always finds the right build regardless of where
+the target directory actually lives, at the cost of a short "Finished/Running" preamble on each
+invocation once they're built:
+
+```bash
+# Build once (subsequent `cargo run` calls reuse this build and start fast):
+cargo build -p foolish-cli -p einmo
+```
 
 ```bash
 # Re-evaluate ONE case, then compare it against the signed checked/ baseline:
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
+cargo run -q -p einmo --bin einmo -- evaluate foolish-ubca/einmo_suite \
+    --command "sh -c 'cargo run -q -p foolish-cli -- run /dev/stdin | head -c -1'" \
     --filter "foop/23/name_value_atomic"
-einmo compare output checked foolish-ubca/einmo_suite \
+cargo run -q -p einmo --bin einmo -- compare output checked foolish-ubca/einmo_suite \
     foop/23/name_value_atomic.foo.einmo
 
 # Batch — the filter is a substring of the case path, so a shared prefix selects
 # many cases at once (here: every foop/23 case). Cases sharing no substring need
 # one invocation per group:
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
+cargo run -q -p einmo --bin einmo -- evaluate foolish-ubca/einmo_suite \
+    --command "sh -c 'cargo run -q -p foolish-cli -- run /dev/stdin | head -c -1'" \
     --filter "foop/23"
 
 # Compare several SPECIFIC cases in one invocation (mirror-relative paths):
-einmo compare output checked foolish-ubca/einmo_suite \
+cargo run -q -p einmo --bin einmo -- compare output checked foolish-ubca/einmo_suite \
     foop/23/name_value_atomic.foo.einmo \
     foop/23/comprehensive.foo.einmo \
     misc/simple_addition.foo.einmo
 
 # Which cases exist / currently differ:
-einmo list foolish-ubca/einmo_suite --filter "foop/23" --differing
+cargo run -q -p einmo --bin einmo -- list foolish-ubca/einmo_suite --filter "foop/23" --differing
 ```
+
+If you already know your checkout's target directory (most checkouts: `target/`), the direct
+binary paths are faster per-invocation — substitute `$TARGET_DIR/debug/einmo` and
+`$TARGET_DIR/debug/foolish-cli` for the `cargo run -q -p ... --` forms above, where
+`TARGET_DIR=$(cargo metadata --no-deps --format-version=1 | python3 -c \
+"import json,sys;print(json.load(sys.stdin)['target_directory'])")`.
 
 Note: einmo skips re-writing an output file whose evaluated body is unchanged; a file it DOES
 rewrite gets einmo's default `①` envelope separator rather than the suite's `!!` Foolish

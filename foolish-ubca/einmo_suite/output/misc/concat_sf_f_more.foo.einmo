@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: misc/concat_sf_f_more.foo
-suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
-producer: 8a16ab26
-producer-diff: sha256:86699aff7b58cde2f74c295f48fac2f70b22134d3000ac5ea609d30b2f9ac037
-generated: 2026-08-14T02:25:25.000000000Z
+suite: /yolo/foolish/.claude/worktrees/foop-55-event-handlers/foolish-ubca/einmo_suite
+producer: 3bd6f090
+producer-diff: sha256:71a53a631be144c8f9c8dc826b9bb894922b47ada85dcf5c6ea66b0c89e5a8b3
+generated: 2026-08-25T21:03:19.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -18,22 +18,28 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   f1 = {
      b = <<x+y>> + <<a>> + <b + c>;
      a = <x+y> + a + b;
+     check_b = b;
+     check_a = b;
   }
 
   f2 = {
      b= <<x+z>> + <a + <<b>> + <c> >;
+     check_b = b;
   }
 
   f3 = {
      c= <a + <<b + <x + y + z> >> + <c> >;
+     check_c = c;
   }
 
   o = f1 <f2> <<f3>>;
 
-  oo = o$;
+  oo = o;
+
+  ooo = o$;
 }
 !!
-{WOCONSTANIC
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
   a=1;
   b=2;
   c=3;
@@ -54,7 +60,9 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
           5,
           WOCONSTANIC
       );
-      a=-53
+      a=-53;
+      checkˍb=-78;
+      checkˍa=-78
   };
   f2={WOCONSTANIC
       b=Op+(
@@ -74,6 +82,26 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
               WOCONSTANIC
             )
           >,
+          WOCONSTANIC
+      );
+      checkˍb=?(
+          result=Op+(
+              -40,
+              Op+(
+                Op+(
+                  1,
+                  <<WOCONSTANIC
+                    ?(pattern='^b$', UNANCHORED)
+                  >>,
+                  WOCONSTANIC
+                ),
+                ?(result=3, pattern='^c$', UNANCHORED),
+                WOCONSTANIC
+              ),
+              WOCONSTANIC
+          ),
+          pattern='^b$',
+          UNANCHORED,
           WOCONSTANIC
       )
   };
@@ -100,7 +128,37 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
             ?(result=3, pattern='^c$', UNANCHORED),
             WOCONSTANIC
           )
-      >
+      >;
+      checkˍc=?(
+          result=Op+(
+              Op+(
+                1,
+                <<WOCONSTANIC
+                  Op+(
+                    ?(pattern='^b$', UNANCHORED, ECONSTANIC),
+                    <WOCONSTANIC
+                      Op+(
+                        Op+(
+                          ?(pattern='^x$', UNANCHORED, ECONSTANIC),
+                          ?(pattern='^y$', UNANCHORED, ECONSTANIC),
+                          WOCONSTANIC
+                        ),
+                        ?(pattern='^z$', UNANCHORED, ECONSTANIC),
+                        WOCONSTANIC
+                      )
+                    >,
+                    WOCONSTANIC
+                  )
+                >>,
+                WOCONSTANIC
+              ),
+              ?(result=3, pattern='^c$', UNANCHORED),
+              WOCONSTANIC
+          ),
+          pattern='^c$',
+          UNANCHORED,
+          WOCONSTANIC
+      )
   };
   o=⨃(
       elements=3,
@@ -115,7 +173,9 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
           5,
           WOCONSTANIC
       );
-      a=-53
+      a=-53;
+      checkˍb=-78;
+      checkˍa=-78
   },
   pattern='^f1$',
   UNANCHORED,
@@ -137,6 +197,12 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
             WOCONSTANIC
           ),
           WOCONSTANIC
+      );
+      checkˍb=?(
+          result=Op+(-40, Op+(Op+(1, ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC), 3, WOCONSTANIC), WOCONSTANIC),
+          pattern='^b$',
+          UNANCHORED,
+          WOCONSTANIC
       )
   },
   pattern='^f2$',
@@ -148,9 +214,10 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 >>,
       WOCONSTANIC
   );
-  oo=-116
+  oo=?(pattern='^o$', UNANCHORED, BRANING);
+  ooo =$ ?(pattern='^o$', UNANCHORED, PREMBRIONIC) (PREMBRIONIC)
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:25.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:25.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"3q+a3tSho+NaNY8UbXnPG+qi9FCPQ61eDQXSmqrCYbuf3xvWzPB0V39l92VqTkazv+2id62t8WdSEmtfPErxCQ==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:25.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"L1myK3Fi4PZIj68ACUtkMKjInIEJgkrjCZ9T4ks8qSaOt0qJcsh4PQ/6Gpr8aj5M+fsDYUm74MagwJrn3uk3Dg==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
