@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatProvenance, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir,
+    BraneConcatOpFir, BraneFir, ConcatProvenance, CreationFir, IndepIntFir, IndexFir, NkFir,
     OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
@@ -102,7 +102,10 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
     // its own join (D10's remaining case; see FOOP-55.md §9.2/§D10). The
     // original bug this row was written to fix is addressed differently now:
     // classify as its own kind, build unmarked, and let it run.
-    if matches!(ast, Astn::Concatenation { .. } | Astn::TailConcatenation { .. }) {
+    if matches!(
+        ast,
+        Astn::Concatenation { .. } | Astn::TailConcatenation { .. }
+    ) {
         return ConcatElemKind::BareConcatenation;
     }
     // Rule 5.
@@ -384,7 +387,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     is_value_search: false,
                     contexted: false,
                     exhausted: std::cell::Cell::new(false),
-                found_context: RefCell::new(None),
+                    found_context: RefCell::new(None),
                 })
             })
         }
@@ -510,7 +513,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             } else {
                 ConcatProvenance::Juxtaposition
             };
-            Rc::new_cyclic(|_me: &Weak<RefCell<ConcatenationFir>>| {
+            Rc::new_cyclic(|_me: &Weak<RefCell<BraneConcatOpFir>>| {
                 // FOOP-55 (human direction, 2026-08-26): a concatenation's
                 // ELEMENTS are parented to the concatenation's OWN parent —
                 // the `StatementFir` whose body this concatenation is — not
@@ -544,7 +547,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     .into_iter()
                     .map(|e| build_concat_element(e, &concat_parent, under_sff))
                     .collect();
-                RefCell::new(ConcatenationFir {
+                RefCell::new(BraneConcatOpFir {
                     core: ProtoBrane::new(children, concat_parent.clone(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
                     provenance,
@@ -919,10 +922,7 @@ mod tests {
             characterizations: vec![],
             statements: vec![],
         };
-        assert_eq!(
-            classify_concat_element(&brane),
-            ConcatElemKind::BareBrane,
-        );
+        assert_eq!(classify_concat_element(&brane), ConcatElemKind::BareBrane,);
         assert_ne!(
             classify_concat_element(&brane),
             classify_concat_element(&nested),

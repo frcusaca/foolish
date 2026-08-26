@@ -191,7 +191,7 @@ impl ComparisonFir {
         source: &std::cell::Ref<'_, dyn Fir>,
         new_parent: &Weak<RefCell<dyn Fir>>,
         nyes: Nyes,
-        descendent_of_sfm_and_foolishly_ignorant: bool,
+        disable_nyes_reset: bool,
         skip_foolish_children: bool,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ComparisonFir>>| {
@@ -201,7 +201,7 @@ impl ComparisonFir {
                 &self_weak,
                 new_parent,
                 nyes,
-                descendent_of_sfm_and_foolishly_ignorant,
+                disable_nyes_reset,
                 skip_foolish_children,
             );
             RefCell::new(ComparisonFir {
@@ -236,14 +236,14 @@ impl ComparisonFir {
     }
 
     /// Settle to `NK` with `reason`, storing the NK as this FIR's result.
-    fn settle_nk(&self, reason: &str, scope: &Scope) {
+    fn settle_nk(&self, reason: &str, _scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
         nk_ref.borrow().core().set_nyes(Nyes::Nk);
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &nk_ref,
             &self.core.parent_weak(),
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
@@ -338,11 +338,11 @@ impl Fir for ComparisonFir {
             )
         });
 
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &boolean,
             &self.core.parent_weak(),
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         Some(Nyes::Constant)
@@ -426,7 +426,7 @@ impl ModuloFir {
         source: &std::cell::Ref<'_, dyn Fir>,
         new_parent: &Weak<RefCell<dyn Fir>>,
         nyes: Nyes,
-        descendent_of_sfm_and_foolishly_ignorant: bool,
+        disable_nyes_reset: bool,
         skip_foolish_children: bool,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ModuloFir>>| {
@@ -436,7 +436,7 @@ impl ModuloFir {
                 &self_weak,
                 new_parent,
                 nyes,
-                descendent_of_sfm_and_foolishly_ignorant,
+                disable_nyes_reset,
                 skip_foolish_children,
             );
             RefCell::new(ModuloFir {
@@ -447,14 +447,14 @@ impl ModuloFir {
         })
     }
 
-    fn settle_nk(&self, reason: &str, scope: &Scope) {
+    fn settle_nk(&self, reason: &str, _scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
         nk_ref.borrow().core().set_nyes(Nyes::Nk);
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &nk_ref,
             &self.core.parent_weak(),
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
@@ -528,11 +528,11 @@ impl Fir for ModuloFir {
                 value: result,
             })
         });
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &result_ref,
             &self_weak,
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         Some(Nyes::Constant)
@@ -574,7 +574,7 @@ impl OrFir {
         source: &std::cell::Ref<'_, dyn Fir>,
         new_parent: &Weak<RefCell<dyn Fir>>,
         nyes: Nyes,
-        descendent_of_sfm_and_foolishly_ignorant: bool,
+        disable_nyes_reset: bool,
         skip_foolish_children: bool,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<OrFir>>| {
@@ -584,21 +584,21 @@ impl OrFir {
                 &self_weak,
                 new_parent,
                 nyes,
-                descendent_of_sfm_and_foolishly_ignorant,
+                disable_nyes_reset,
                 skip_foolish_children,
             );
             RefCell::new(OrFir { core, self_weak })
         })
     }
 
-    fn settle_nk(&self, reason: &str, scope: &Scope) {
+    fn settle_nk(&self, reason: &str, _scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
         nk_ref.borrow().core().set_nyes(Nyes::Nk);
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &nk_ref,
             &self.core.parent_weak(),
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
@@ -697,11 +697,11 @@ impl Fir for OrFir {
             panic!("system.foo must define 'True and 'False, but 'or could not resolve one")
         });
 
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
             &boolean,
             &self.core.parent_weak(),
             0,
-            scope.has_ancestral_sfm,
+            false,
             false,
         ));
         Some(Nyes::Constant)

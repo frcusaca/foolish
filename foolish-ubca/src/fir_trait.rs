@@ -206,7 +206,7 @@ pub trait Fir: std::fmt::Debug {
         &[]
     }
 
-    /// ConcatenationFir provenance. Default: Juxtaposition.
+    /// BraneConcatOpFir provenance. Default: Juxtaposition.
     fn as_concat_provenance(&self) -> crate::fir_kinds::ConcatProvenance {
         crate::fir_kinds::ConcatProvenance::Juxtaposition
     }
@@ -255,7 +255,7 @@ pub trait Fir: std::fmt::Debug {
         false
     }
 
-    /// FOOP-33 §4 — set by `ConcatenationFir`'s merge-collision check
+    /// FOOP-33 §4 — set by `BraneConcatOpFir`'s merge-collision check
     /// (`apply_null_const_rule_to_merged_stmt`) on a `StatementFir` it just
     /// cloned into the merge, when that clone conflicts with an
     /// already-merged null-characterized statement of the same name.
@@ -468,7 +468,7 @@ pub trait Fir: std::fmt::Debug {
     /// `step_inner`'s dequeue check used to hardcode identically for every
     /// kind; the change is only that a kind may now express its own,
     /// possibly looser or stricter, notion of "enough" — e.g.
-    /// `ConcatenationFir` must keep waiting on a search chain that is merely
+    /// `BraneConcatOpFir` must keep waiting on a search chain that is merely
     /// `ECONSTANIC` (it may still resolve on recoordination, see D9),
     /// tighter than the default; `OperatorFir`-style arithmetic needs the
     /// stricter `constantew` gate (`Constant | Independent | Nk`) before an
@@ -486,6 +486,24 @@ pub trait Fir: std::fmt::Debug {
     /// them.
     fn is_ubc_child_constanic_enough(&self, child: &FirRef) -> bool {
         child.borrow().core().get_nyes().is_constanic()
+    }
+
+    /// FOOP-55 D9 item 1/Step 6: does this search's result CHAIN bottom out
+    /// in `ECONSTANIC`? `SearchFir`-only (every other kind keeps the
+    /// default `false`). Walks forward through `ubc_children[0]` (the found
+    /// statement's constanic clone, per the FOOP-23 two-child invariant)
+    /// as long as each hop is itself a search, returning `true` the moment
+    /// any hop is `ECONSTANIC`, `false` if the chain bottoms out in a
+    /// non-search value or an as-yet-unpopulated result. Used by
+    /// `BraneConcatOpFir`'s `is_foolish_child_constanic_enough` override to
+    /// keep waiting on a search whose found content may still resolve via
+    /// recoordination (D9), rather than letting the default
+    /// `is_constanic()` gate dequeue it — and, critically, let it keep
+    /// STEPPING past that point on its own, running its found content's
+    /// nested marks to a premature, wrong-context resolution before the
+    /// concatenation ever gets a turn to place it.
+    fn terminates_econstanic(&self) -> bool {
+        false
     }
 
     /// Whether the `foolish_children` PHASE has fully drained AND every
@@ -629,7 +647,7 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
             // `is_constanic()` hardcoded here for every kind alike. Default
             // is unchanged (`is_constanic()`); a kind overrides
             // `is_foolish_child_constanic_enough` to express its own policy
-            // (e.g. `ConcatenationFir` keeps waiting on a search chain that
+            // (e.g. `BraneConcatOpFir` keeps waiting on a search chain that
             // is merely ECONSTANIC — see D9).
             if this.borrow().is_foolish_child_constanic_enough(&front_rc) {
                 this.borrow().core().pop_front_task();
@@ -931,7 +949,7 @@ pub(crate) mod tests {
 mod get_value_tests {
     use super::*;
     use crate::fir_kinds::{
-        BraneFir, ConcatProvenance, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir,
+        BraneConcatOpFir, BraneFir, ConcatProvenance, IndepIntFir, IndexFir, NkFir, OperatorFir,
         SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
     };
     use foolish_core::fir::Nyes;
@@ -1040,9 +1058,9 @@ mod get_value_tests {
     }
 
     fn make_cat(elements: Vec<FirRef>) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+        Rc::new_cyclic(|me: &Weak<RefCell<BraneConcatOpFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConcatenationFir {
+            RefCell::new(BraneConcatOpFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
                 _helpers_populated: std::cell::Cell::new(false),
                 provenance: ConcatProvenance::Juxtaposition,
@@ -1233,7 +1251,7 @@ mod get_value_tests {
         assert_eq!(result.borrow().kind(), FirKind::Statement);
     }
 
-    // ── 12. ConcatenationFir settled ────────────────────────────────────────
+    // ── 12. BraneConcatOpFir settled ────────────────────────────────────────
 
     /// FOOP-55 (BraneConcatOp correction): once constanic, `value()` unwraps
     /// to the settled result (the `ConcatHelper` in `ubc_children`), exactly
@@ -1261,7 +1279,7 @@ mod get_value_tests {
         assert_eq!(result.borrow().stmt_count(), Some(2));
     }
 
-    // ── 13. ConcatenationFir not settled ────────────────────────────────────
+    // ── 13. BraneConcatOpFir not settled ────────────────────────────────────
 
     #[test]
     fn get_value_concatenation_not_settled_returns_self() {

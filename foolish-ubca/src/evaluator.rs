@@ -780,7 +780,7 @@ fn proto_to_core_fir_inner(
                 // FOOP-55 §11 (human, 2026-08-25): `.value()` does not
                 // always resolve to a `ConcatHelper` here — a type-error
                 // constituent (e.g. an OPERATOR, not a brane) settles NK
-                // by pushing an `Nk` `ubc_child` (see `ConcatenationFir`'s
+                // by pushing an `Nk` `ubc_child` (see `BraneConcatOpFir`'s
                 // own type-error path), so `joined` is true but the
                 // "joined" result is an `Nk` marker, not a real brane.
                 // `stmt_count()`'s default (`None` → 0) silently rendered
