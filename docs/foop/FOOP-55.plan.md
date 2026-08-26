@@ -1607,6 +1607,35 @@ work is not lost when this plan closes.
       (that would newly collide the other way). Not scoped as part of this
       FOOP's own work; a standalone follow-up.
 
+- [ ] **Contract/combine `constanic_clone` methods using macros; search all
+      `fn constanic_*`/`fn *_constanic_clone*` methods and review for
+      redundancies.** Human request (2026-08-26), raised while reviewing
+      D9's fix: the clone machinery ended up with 4+ named methods
+      (`ProtoBrane::constanic_clone`, `ProtoBrane::_inner_constanic_clone`,
+      `ProtoBrane::clone_children_budgeted`,
+      `ProtoBrane::clone_children_for_constanic_clone`, plus one
+      `constanic_clone` per `system_foo.rs` kind —
+      `ComparisonFir`/`ModuloFir`/`OrFir` — needed only because those
+      structs live outside `fir_kinds.rs` and can't be built by its central
+      `match`) where the design called for 2 (`constanic_clone` the public
+      entry, `_inner_constanic_clone` the recursive worker). Two real,
+      separate sources of the bulk, worth addressing together:
+  - [ ] The `Rc::new_cyclic(|me| { let self_weak = me.clone(); RefCell::new(Struct {
+        core, self_weak, ...}) })` boilerplate repeated once per FIR kind
+        in `_inner_constanic_clone`'s `match` — some kinds don't even read
+        `self_weak` and could use a plain `Rc::new(RefCell::new(...))`
+        instead of `new_cyclic`.
+  - [ ] The per-kind reconstruction logic itself (each `match` arm
+        re-deriving a kind's fields via its own `as_*` accessors) might be
+        better as a trait method each kind implements on itself (e.g.
+        `fn clone_self_shallow(&self, cloned_children, new_parent) -> FirRef`),
+        replacing the one large central `match` — analogous to how
+        `on_foolish_op_ready` already moved per-kind Braning logic out of a
+        shared function and onto the kinds themselves (FOOP-55 §11).
+      Not scoped as part of this FOOP's active work — a structural
+      refactor, not a behavior fix; do it as its own deliberate pass once
+      D9's fix itself is correct and tested, not interleaved with it.
+
 ## Phase 5 — The D1 decision (leading-underscore names)
 
 Deferred to the end deliberately: the exercise runs on the `INTERN_`

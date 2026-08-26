@@ -510,8 +510,25 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             } else {
                 ConcatProvenance::Juxtaposition
             };
-            Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
-                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+            Rc::new_cyclic(|_me: &Weak<RefCell<ConcatenationFir>>| {
+                // FOOP-55 (human direction, 2026-08-26): a concatenation's
+                // ELEMENTS are parented to the concatenation's OWN parent —
+                // the `StatementFir` whose body this concatenation is — not
+                // to the concatenation node itself. **The effect is that a
+                // concatenation's inputs are part of the statement that
+                // contains the concatenation**: `_get_my_statement` from an
+                // element reaches that same statement, and `_get_my_brane`
+                // reaches that statement's brane, exactly as they would for
+                // any other sub-expression of the statement. An element is
+                // an INPUT to the join, evaluated in the statement's own
+                // context, not content living inside the joined result.
+                //
+                // `ubc_children` is deliberately NOT changed by this: the
+                // `_ConcatHelper` that `populate_concat_helpers` builds, and
+                // every line cloned into it, keep the existing
+                // helper-is-the-parent shape — those ARE the joined result,
+                // so the helper is their correct home brane.
+                let concat_parent = child_parent!();
                 // EXPERIMENT: TailConcatenation elements are stored in SOURCE
                 // order by the parser (leftmost backtick operand first), but
                 // FOOP-65 §1's equivalence (`fn`X` == `X fn`) requires the
@@ -525,10 +542,10 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 };
                 let children: Vec<FirRef> = elements
                     .into_iter()
-                    .map(|e| build_concat_element(e, &me_dyn, under_sff))
+                    .map(|e| build_concat_element(e, &concat_parent, under_sff))
                     .collect();
                 RefCell::new(ConcatenationFir {
-                    core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(children, concat_parent.clone(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
                     provenance,
                 })
