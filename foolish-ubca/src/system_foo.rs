@@ -247,66 +247,6 @@ impl ComparisonFir {
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
-        self.core.set_nyes(Nyes::Nk);
-    }
-
-    /// Run the comparison once both operands are constanic.
-    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
-        let operands = self.core.foolish_children().to_vec();
-
-        // An ECONSTANIC operand means "not evaluated IN THIS CONTEXT — may
-        // gain a value via recoordination". That is the state the operands sit
-        // in inside system.foo itself, which has no neighbours for them. The
-        // comparison must then settle ECONSTANIC TOO, and emphatically NOT NK:
-        // NK is terminal and would poison the `'lt` DEFINITION, so a search for
-        // `'lt` would hit `check_body_nyes`'s NkStop and never hand the
-        // definition out to be recoordinated — the operator could never be used
-        // anywhere. Settling ECONSTANIC keeps the definition available and
-        // inert exactly as FOOP-33 §5.0 requires ("'lt's #-2/#-1 operands sit
-        // ECONSTANIC inside system.foo ... and resolve against real neighbours
-        // once the reference is detached and recoordinated").
-        if operands.iter().any(operand_is_unevaluated_here) {
-            self.core.set_nyes(Nyes::Econstanic);
-            return Ok(());
-        }
-
-        // Read each operand THROUGH its SFF wrapper: `.value()` follows the
-        // settled chain to whatever the recoordinated index landed on.
-        let values: Vec<Option<i64>> = operands
-            .iter()
-            .map(|o| o.value().borrow().as_i64())
-            .collect();
-
-        let [Some(left), Some(right)] = values[..] else {
-            // The operands DID evaluate here, and at least one is not an
-            // integer (a brane, a creation, NK). FOOP-33 §5: "only integers are
-            // comparable" — the same principle default_equal follows. Unlike
-            // the ECONSTANIC case above, there is nothing more to learn from
-            // recoordination, so NK is right.
-            self.settle_nk("comparison: non-integer operand", scope);
-            return Ok(());
-        };
-
-        let verdict = self.op.compare(left, right);
-        let Some(boolean) = self.resolve_boolean(verdict) else {
-            // system.foo always defines 'True/'False, so failing to find them
-            // means the prelude itself is malformed — an interpreter defect,
-            // not an unevaluable program.
-            return Err(UbcError::InternalConsistency(format!(
-                "system.foo must define 'True and 'False, but {} could not resolve one",
-                self.op.searchable_name()
-            )));
-        };
-
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-            &boolean,
-            &self.core.parent_weak(),
-            0,
-            scope.has_ancestral_sfm,
-            false,
-        ));
-        self.core.set_nyes(Nyes::Constant);
-        Ok(())
     }
 }
 
@@ -335,9 +275,77 @@ impl Fir for ComparisonFir {
                 }
                 Ok(())
             }
-            Nyes::Braning => self.combine(scope),
+            Nyes::Braning => {
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// FOOP-55 §11: moved from `combine` (formerly called directly from the
+    /// `Braning` arm), converting every `set_nyes` + early `return Ok(())`
+    /// into `Some(nyes)`. Run the comparison once both operands are
+    /// constanic.
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        let operands = self.core.foolish_children().to_vec();
+
+        // An ECONSTANIC operand means "not evaluated IN THIS CONTEXT — may
+        // gain a value via recoordination". That is the state the operands sit
+        // in inside system.foo itself, which has no neighbours for them. The
+        // comparison must then settle ECONSTANIC TOO, and emphatically NOT NK:
+        // NK is terminal and would poison the `'lt` DEFINITION, so a search for
+        // `'lt` would hit `check_body_nyes`'s NkStop and never hand the
+        // definition out to be recoordinated — the operator could never be used
+        // anywhere. Settling ECONSTANIC keeps the definition available and
+        // inert exactly as FOOP-33 §5.0 requires ("'lt's #-2/#-1 operands sit
+        // ECONSTANIC inside system.foo ... and resolve against real neighbours
+        // once the reference is detached and recoordinated").
+        if operands.iter().any(operand_is_unevaluated_here) {
+            return Some(Nyes::Econstanic);
+        }
+
+        // Read each operand THROUGH its SFF wrapper: `.value()` follows the
+        // settled chain to whatever the recoordinated index landed on.
+        let values: Vec<Option<i64>> = operands
+            .iter()
+            .map(|o| o.value().borrow().as_i64())
+            .collect();
+
+        let [Some(left), Some(right)] = values[..] else {
+            // The operands DID evaluate here, and at least one is not an
+            // integer (a brane, a creation, NK). FOOP-33 §5: "only integers are
+            // comparable" — the same principle default_equal follows. Unlike
+            // the ECONSTANIC case above, there is nothing more to learn from
+            // recoordination, so NK is right.
+            self.settle_nk("comparison: non-integer operand", scope);
+            return Some(Nyes::Nk);
+        };
+
+        let verdict = self.op.compare(left, right);
+        // system.foo always defines 'True/'False, so failing to find them
+        // means the prelude itself is malformed — an interpreter defect, not
+        // an unevaluable program. `on_foolish_op_ready` cannot propagate a
+        // genuine `UbcError` (its signature is `Option<Nyes>`), so this is
+        // asserted rather than returned as `Err` — matching `OperatorFir`'s
+        // analogous `expect` sites for the same "must be Some" invariant.
+        let boolean = self.resolve_boolean(verdict).unwrap_or_else(|| {
+            panic!(
+                "system.foo must define 'True and 'False, but {} could not resolve one",
+                self.op.searchable_name()
+            )
+        });
+
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &boolean,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        Some(Nyes::Constant)
     }
 }
 
@@ -450,50 +458,6 @@ impl ModuloFir {
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
-        self.core.set_nyes(Nyes::Nk);
-    }
-
-    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
-        let operands = self.core.foolish_children().to_vec();
-
-        if operands.iter().any(operand_is_unevaluated_here) {
-            self.core.set_nyes(Nyes::Econstanic);
-            return Ok(());
-        }
-
-        let values: Vec<Option<i64>> = operands
-            .iter()
-            .map(|o| o.value().borrow().as_i64())
-            .collect();
-
-        let [Some(left), Some(right)] = values[..] else {
-            self.settle_nk("modulo: non-integer operand", scope);
-            return Ok(());
-        };
-
-        if right == 0 {
-            self.settle_nk("division by zero", scope);
-            return Ok(());
-        }
-
-        let result = self.op.compute(left, right);
-        let self_weak = self.self_weak.clone();
-        let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
-            let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(IndepIntFir {
-                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
-                value: result,
-            })
-        });
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-            &result_ref,
-            &self_weak,
-            0,
-            scope.has_ancestral_sfm,
-            false,
-        ));
-        self.core.set_nyes(Nyes::Constant);
-        Ok(())
     }
 }
 
@@ -520,9 +484,58 @@ impl Fir for ModuloFir {
                 }
                 Ok(())
             }
-            Nyes::Braning => self.combine(scope),
+            Nyes::Braning => {
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// FOOP-55 §11: moved from `combine` (formerly called directly from the
+    /// `Braning` arm), converting every `set_nyes` + early `return Ok(())`
+    /// into `Some(nyes)`.
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        let operands = self.core.foolish_children().to_vec();
+
+        if operands.iter().any(operand_is_unevaluated_here) {
+            return Some(Nyes::Econstanic);
+        }
+
+        let values: Vec<Option<i64>> = operands
+            .iter()
+            .map(|o| o.value().borrow().as_i64())
+            .collect();
+
+        let [Some(left), Some(right)] = values[..] else {
+            self.settle_nk("modulo: non-integer operand", scope);
+            return Some(Nyes::Nk);
+        };
+
+        if right == 0 {
+            self.settle_nk("division by zero", scope);
+            return Some(Nyes::Nk);
+        }
+
+        let result = self.op.compute(left, right);
+        let self_weak = self.self_weak.clone();
+        let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                value: result,
+            })
+        });
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &result_ref,
+            &self_weak,
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        Some(Nyes::Constant)
     }
 }
 
@@ -589,7 +602,6 @@ impl OrFir {
             false,
         ));
         self.core.set_alarm_reason(reason.to_owned());
-        self.core.set_nyes(Nyes::Nk);
     }
 
     fn resolve_boolean(&self, verdict: bool) -> Option<FirRef> {
@@ -616,45 +628,6 @@ impl OrFir {
         }
         None
     }
-
-    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
-        let operands = self.core.foolish_children().to_vec();
-
-        if operands.iter().any(operand_is_unevaluated_here) {
-            self.core.set_nyes(Nyes::Econstanic);
-            return Ok(());
-        }
-
-        let left_val = operands[0].value();
-        let right_val = operands[1].value();
-
-        let Some(left_is_true) = self.is_boolean_creation(&left_val) else {
-            self.settle_nk("or: non-boolean operand", scope);
-            return Ok(());
-        };
-        let Some(right_is_true) = self.is_boolean_creation(&right_val) else {
-            self.settle_nk("or: non-boolean operand", scope);
-            return Ok(());
-        };
-
-        let verdict = left_is_true || right_is_true;
-        let Some(boolean) = self.resolve_boolean(verdict) else {
-            return Err(UbcError::InternalConsistency(
-                "system.foo must define 'True and 'False, but 'or could not resolve one"
-                    .to_string(),
-            ));
-        };
-
-        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-            &boolean,
-            &self.core.parent_weak(),
-            0,
-            scope.has_ancestral_sfm,
-            false,
-        ));
-        self.core.set_nyes(Nyes::Constant);
-        Ok(())
-    }
 }
 
 impl Fir for OrFir {
@@ -680,9 +653,58 @@ impl Fir for OrFir {
                 }
                 Ok(())
             }
-            Nyes::Braning => self.combine(scope),
+            Nyes::Braning => {
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// FOOP-55 §11: moved from `combine` (formerly called directly from the
+    /// `Braning` arm), converting every `set_nyes` + early `return Ok(())`
+    /// into `Some(nyes)`.
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        let operands = self.core.foolish_children().to_vec();
+
+        if operands.iter().any(operand_is_unevaluated_here) {
+            return Some(Nyes::Econstanic);
+        }
+
+        let left_val = operands[0].value();
+        let right_val = operands[1].value();
+
+        let Some(left_is_true) = self.is_boolean_creation(&left_val) else {
+            self.settle_nk("or: non-boolean operand", scope);
+            return Some(Nyes::Nk);
+        };
+        let Some(right_is_true) = self.is_boolean_creation(&right_val) else {
+            self.settle_nk("or: non-boolean operand", scope);
+            return Some(Nyes::Nk);
+        };
+
+        let verdict = left_is_true || right_is_true;
+        // system.foo always defines 'True/'False, so failing to find them
+        // means the prelude itself is malformed — an interpreter defect, not
+        // an unevaluable program. `on_foolish_op_ready` cannot propagate a
+        // genuine `UbcError` (its signature is `Option<Nyes>`), so this is
+        // asserted rather than returned as `Err` — matching `ComparisonFir`'s
+        // and `OperatorFir`'s analogous `expect`/`unwrap_or_else` sites for
+        // the same "must be Some" invariant.
+        let boolean = self.resolve_boolean(verdict).unwrap_or_else(|| {
+            panic!("system.foo must define 'True and 'False, but 'or could not resolve one")
+        });
+
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &boolean,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        Some(Nyes::Constant)
     }
 }
 

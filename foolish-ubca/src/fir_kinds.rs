@@ -1918,106 +1918,132 @@ impl SearchFir {
                 self.core.set_nyes(Nyes::Braning);
             }
             Nyes::Braning => {
-                if !self.core.ubc_children().is_empty() {
-                    self.settle_from_ubc_result();
-                    return Ok(());
-                }
-                if !self.check_value_pattern_ready() {
-                    return Ok(());
-                }
-                let predicate = self.build_value_predicate().expect("checked ready");
-                let scan_outcome = if self.contexted && self.anchored {
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let anchor_settled = anchor.borrow().core().get_nyes().is_constanic();
-                    match self.contexted_search_from_anchor(scope) {
-                        Some((stmt, nyes)) => {
-                            self.handle_found(stmt, nyes, scope);
-                            return Ok(());
-                        }
-                        None => {
-                            if !anchor_settled {
-                                return Ok(());
-                            }
-                            ScanOutcome::Miss
-                        }
-                    }
-                } else if self.anchored {
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = anchor.resolve_anchor();
-                    let resolved_nyes = resolved.borrow().core().get_nyes();
-                    if resolved_nyes == Nyes::Nk {
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    }
-                    // FOOP-55 §5.5: `is_constanic_branelike`/scanning answer
-                    // a CONTENT question about `resolved` and require its
-                    // search context constanic -- a pre-constanic `resolved`
-                    // (e.g. a ConcatenationFir still Prembrionic) has not
-                    // been driven through its own fir_op_step gate yet, so
-                    // asking it now would reach the same premature-populate
-                    // path D10 named. Stay waiting instead of scanning.
-                    if !resolved_nyes.is_constanic() {
-                        return Ok(());
-                    }
-                    if !resolved.borrow().is_constanic_branelike() {
-                        ScanOutcome::Miss
-                    } else {
-                        let mut nav = BraneNavigator::new(&resolved, self.forward);
-                        contextful_search_scan(&mut nav, &predicate)
-                    }
-                } else {
-                    match find_enclosing_stmt_and_brane(&self.core) {
-                        Some((stmt_ref, brane_ref)) => {
-                            if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
-                                let brane_borrowed = brane_ref.borrow();
-                                let children = brane_borrowed.core().foolish_children();
-                                let len = children.len();
-                                if idx + 1 < len {
-                                    let mut nav = BraneNavigator::new(&brane_ref, true);
-                                    nav.set_range(idx + 1, len - 1);
-                                    let outcome = contextful_search_scan(&mut nav, &predicate);
-                                    drop(brane_borrowed);
-                                    outcome
-                                } else {
-                                    ScanOutcome::Miss
-                                }
-                            } else {
-                                ScanOutcome::Miss
-                            }
-                        }
-                        None => ScanOutcome::Miss,
-                    }
-                };
-                match scan_outcome {
-                    ScanOutcome::Found(stmt) => {
-                        let nyes = stmt
-                            .borrow()
-                            .core()
-                            .foolish_children()
-                            .first()
-                            .map(|b| b.borrow().core().get_nyes())
-                            .unwrap_or(Nyes::Nk);
-                        self.handle_found(stmt, nyes, scope);
-                    }
-                    ScanOutcome::NkStop => {
-                        self.core.set_nyes(Nyes::Nk);
-                    }
-                    ScanOutcome::Miss => {
-                        // The scan decided every candidate and none matched
-                        // (FOOP-55 §8). NkStop above never scanned, so it does
-                        // NOT set this — that is the distinction @ reads back.
-                        self.exhausted.set(true);
-                        self.core.set_nyes(if self.anchored {
-                            Nyes::Nk
-                        } else {
-                            Nyes::Econstanic
-                        });
-                    }
+                if let Some(nyes) = self.on_value_search_op_ready(scope) {
+                    self.core.set_nyes(nyes);
                 }
             }
             _ => {}
         }
         Ok(())
+    }
+
+    /// FOOP-55 §11: moved from `value_search_step`'s `Braning` arm,
+    /// converting every `self.core.set_nyes(X); return Ok(())` into
+    /// `Some(X)`, and every "still waiting" `return Ok(())` into `None`.
+    /// A call to `handle_found` already commits its own NYES internally
+    /// (it stays Braning to drain the freshly-pushed ubc_child on the next
+    /// step), so those paths report `None` after calling it — there is
+    /// nothing further for the shared caller in `fir_op_step` to commit.
+    ///
+    /// Also applies the `is_found()`-based fix (FOOP-55 §11, human,
+    /// 2026-08-25: "all searches should be like that") to the
+    /// anchored-and-not-contexted branch: the anchor's own NYES may be
+    /// permanently WOCONSTANIC while still holding a real, final resolved
+    /// value, so wait on `is_found()` first before falling back to
+    /// `is_constanic()`.
+    fn on_value_search_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        use contextful_search::{BraneNavigator, contextful_search_scan};
+        if !self.core.ubc_children().is_empty() {
+            self.settle_from_ubc_result();
+            return None;
+        }
+        if !self.check_value_pattern_ready() {
+            return None;
+        }
+        let predicate = self.build_value_predicate().expect("checked ready");
+        let scan_outcome = if self.contexted && self.anchored {
+            let anchor = Rc::clone(&self.core.foolish_children()[0]);
+            let anchor_settled =
+                anchor.borrow().is_found() || anchor.borrow().core().get_nyes().is_constanic();
+            match self.contexted_search_from_anchor(scope) {
+                Some((stmt, nyes)) => {
+                    self.handle_found(stmt, nyes, scope);
+                    return None;
+                }
+                None => {
+                    if !anchor_settled {
+                        return None;
+                    }
+                    ScanOutcome::Miss
+                }
+            }
+        } else if self.anchored {
+            let anchor = Rc::clone(&self.core.foolish_children()[0]);
+            let resolved = anchor.resolve_anchor();
+            let resolved_nyes = resolved.borrow().core().get_nyes();
+            if resolved_nyes == Nyes::Nk {
+                return Some(Nyes::Nk);
+            }
+            // FOOP-55 §5.5: `is_constanic_branelike`/scanning answer
+            // a CONTENT question about `resolved` and require its
+            // search context constanic -- a pre-constanic `resolved`
+            // (e.g. a ConcatenationFir still Prembrionic) has not
+            // been driven through its own fir_op_step gate yet, so
+            // asking it now would reach the same premature-populate
+            // path D10 named. Stay waiting instead of scanning.
+            //
+            // FOOP-55 §11 (human, 2026-08-25): but a permanently
+            // WOCONSTANIC anchor (found a statement whose own value
+            // never resolves) never reaches `is_constanic()` even
+            // though it has a real, final resolved brane -- so try
+            // `anchor.borrow().is_found()` first.
+            if !anchor.borrow().is_found() && !resolved_nyes.is_constanic() {
+                return None;
+            }
+            if !resolved.borrow().is_constanic_branelike() {
+                ScanOutcome::Miss
+            } else {
+                let mut nav = BraneNavigator::new(&resolved, self.forward);
+                contextful_search_scan(&mut nav, &predicate)
+            }
+        } else {
+            match find_enclosing_stmt_and_brane(&self.core) {
+                Some((stmt_ref, brane_ref)) => {
+                    if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
+                        let brane_borrowed = brane_ref.borrow();
+                        let children = brane_borrowed.core().foolish_children();
+                        let len = children.len();
+                        if idx + 1 < len {
+                            let mut nav = BraneNavigator::new(&brane_ref, true);
+                            nav.set_range(idx + 1, len - 1);
+                            let outcome = contextful_search_scan(&mut nav, &predicate);
+                            drop(brane_borrowed);
+                            outcome
+                        } else {
+                            ScanOutcome::Miss
+                        }
+                    } else {
+                        ScanOutcome::Miss
+                    }
+                }
+                None => ScanOutcome::Miss,
+            }
+        };
+        match scan_outcome {
+            ScanOutcome::Found(stmt) => {
+                let nyes = stmt
+                    .borrow()
+                    .core()
+                    .foolish_children()
+                    .first()
+                    .map(|b| b.borrow().core().get_nyes())
+                    .unwrap_or(Nyes::Nk);
+                self.handle_found(stmt, nyes, scope);
+                None
+            }
+            ScanOutcome::NkStop => Some(Nyes::Nk),
+            ScanOutcome::Miss => {
+                // The scan decided every candidate and none matched
+                // (FOOP-55 §8). NkStop above never scanned, so it does
+                // NOT set this — that is the distinction @ reads back.
+                self.exhausted.set(true);
+                Some(if self.anchored {
+                    Nyes::Nk
+                } else {
+                    Nyes::Econstanic
+                })
+            }
+        }
     }
 }
 
@@ -2027,89 +2053,7 @@ impl Fir for SearchFir {
         &self.core
     }
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
-        if self.is_value_search {
-            return self.value_search_step(scope);
-        }
-        match self.core.get_nyes() {
-            Nyes::Prembrionic => {
-                if self.anchored {
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    self.core.push_task(anchor);
-                    self.core.set_nyes(Nyes::Braning);
-                } else {
-                    self.core.set_nyes(Nyes::Embryonic);
-                }
-            }
-            Nyes::Embryonic => {
-                if self.anchored {
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    self.core.push_task(anchor);
-                    self.core.set_nyes(Nyes::Braning);
-                } else if !self.core.ubc_children().is_empty() {
-                    self.settle_from_ubc_result();
-                } else {
-                    match self.ib_search_with_engine(scope) {
-                        Some((stmt, nyes)) => {
-                            self.handle_found(stmt, nyes, scope);
-                            self.core.set_nyes(Nyes::Braning);
-                        }
-                        None => self.core.set_nyes(Nyes::Braning),
-                    }
-                }
-            }
-            Nyes::Braning => {
-                if !self.core.ubc_children().is_empty() {
-                    self.settle_from_ubc_result();
-                } else if self.contexted && self.anchored {
-                    let result = self.contexted_search_from_anchor(scope);
-                    match result {
-                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
-                        None => self.core.set_nyes(if self.anchored {
-                            Nyes::Nk
-                        } else {
-                            Nyes::Econstanic
-                        }),
-                    }
-                } else if self.anchored {
-                    use contextful_search::{
-                        BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
-                    };
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = anchor.resolve_anchor();
-                    let resolved_nyes = resolved.borrow().core().get_nyes();
-                    if resolved_nyes == Nyes::Nk {
-                        self.core.set_nyes(Nyes::Nk);
-                    } else if !resolved_nyes.is_constanic() {
-                        // FOOP-55 §5.5: `resolved` has not been driven
-                        // through its own fir_op_step gate yet -- its
-                        // brane-likeness is not yet knowable, not "no".
-                        // Stay Braning and try again once it settles.
-                    } else if !resolved.borrow().is_constanic_branelike() {
-                        self.core.set_nyes(Nyes::Nk);
-                    } else {
-                        let mut nav = BraneNavigator::new(&resolved, self.forward);
-                        let predicate = SearchPredicate::Name {
-                            pattern: self.pattern.clone(),
-                        };
-                        match contextful_search_scan_no_body_check(&mut nav, &predicate) {
-                            ScanOutcome::Found(stmt) => {
-                                let nyes = stmt.borrow().core().get_nyes();
-                                self.handle_found(stmt, nyes, scope);
-                            }
-                            _ => self.core.set_nyes(Nyes::Nk),
-                        }
-                    }
-                } else {
-                    let result = self.ab_search_with_engine(scope);
-                    match result {
-                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
-                        None => self.core.set_nyes(Nyes::Econstanic),
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(())
+        self._deprecating_op_step(scope)
     }
     fn kind(&self) -> FirKind {
         FirKind::Search
@@ -2143,6 +2087,131 @@ impl Fir for SearchFir {
     }
     fn set_contexted(&mut self, contexted: bool) {
         self.contexted = contexted;
+    }
+}
+
+impl SearchFir {
+    /// FOOP-55 §11 migration: pre-migration `fir_op_step` body, moved here
+    /// verbatim (rename only, no logic change). Delete once every piece has
+    /// moved into named handlers and `fir_op_step` no longer calls it.
+    fn _deprecating_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        if self.is_value_search {
+            return self.value_search_step(scope);
+        }
+        match self.core.get_nyes() {
+            Nyes::Prembrionic => {
+                if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.set_nyes(Nyes::Braning);
+                } else {
+                    self.core.set_nyes(Nyes::Embryonic);
+                }
+            }
+            Nyes::Embryonic => {
+                if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.set_nyes(Nyes::Braning);
+                } else if !self.core.ubc_children().is_empty() {
+                    self.settle_from_ubc_result();
+                } else {
+                    match self.ib_search_with_engine(scope) {
+                        Some((stmt, nyes)) => {
+                            self.handle_found(stmt, nyes, scope);
+                            self.core.set_nyes(Nyes::Braning);
+                        }
+                        None => self.core.set_nyes(Nyes::Braning),
+                    }
+                }
+            }
+            Nyes::Braning => {
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// FOOP-55 §11: moved from `_deprecating_op_step`'s (plain, non-value)
+    /// `Braning` arm, converting every `self.core.set_nyes(X)` with no
+    /// further code in that arm into `Some(X)`, the implicit "do nothing"
+    /// no-op arm into `None`, and a call to `handle_found` (which commits
+    /// its own NYES internally) into `handle_found(...); None`.
+    ///
+    /// Also applies the `is_found()`-based fix (FOOP-55 §11, human,
+    /// 2026-08-25: "all searches should be like that") to the
+    /// anchored-and-not-contexted branch, matching
+    /// `on_value_search_op_ready` and `SearchPositionFir`'s `@`: the
+    /// anchor's own NYES may be permanently WOCONSTANIC while still
+    /// holding a real, final resolved value.
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        use contextful_search::{
+            BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
+        };
+        if !self.core.ubc_children().is_empty() {
+            self.settle_from_ubc_result();
+            return None;
+        }
+        if self.contexted && self.anchored {
+            let result = self.contexted_search_from_anchor(scope);
+            return match result {
+                Some((stmt, nyes)) => {
+                    self.handle_found(stmt, nyes, scope);
+                    None
+                }
+                None => Some(if self.anchored {
+                    Nyes::Nk
+                } else {
+                    Nyes::Econstanic
+                }),
+            };
+        }
+        if self.anchored {
+            let anchor = Rc::clone(&self.core.foolish_children()[0]);
+            let resolved = anchor.resolve_anchor();
+            let resolved_nyes = resolved.borrow().core().get_nyes();
+            if resolved_nyes == Nyes::Nk {
+                return Some(Nyes::Nk);
+            }
+            // FOOP-55 §5.5: `resolved` has not been driven through its own
+            // fir_op_step gate yet -- its brane-likeness is not yet
+            // knowable, not "no". Stay Braning and try again once it
+            // settles.
+            //
+            // FOOP-55 §11 (human, 2026-08-25): but a permanently
+            // WOCONSTANIC anchor (found a statement whose own value never
+            // resolves) never reaches `is_constanic()` even though it has
+            // a real, final resolved brane -- so try `is_found()` first.
+            if !anchor.borrow().is_found() && !resolved_nyes.is_constanic() {
+                return None;
+            }
+            if !resolved.borrow().is_constanic_branelike() {
+                return Some(Nyes::Nk);
+            }
+            let mut nav = BraneNavigator::new(&resolved, self.forward);
+            let predicate = SearchPredicate::Name {
+                pattern: self.pattern.clone(),
+            };
+            return match contextful_search_scan_no_body_check(&mut nav, &predicate) {
+                ScanOutcome::Found(stmt) => {
+                    let nyes = stmt.borrow().core().get_nyes();
+                    self.handle_found(stmt, nyes, scope);
+                    None
+                }
+                _ => Some(Nyes::Nk),
+            };
+        }
+        let result = self.ab_search_with_engine(scope);
+        match result {
+            Some((stmt, nyes)) => {
+                self.handle_found(stmt, nyes, scope);
+                None
+            }
+            None => Some(Nyes::Econstanic),
+        }
     }
 }
 
@@ -2231,6 +2300,170 @@ impl Fir for IndexFir {
         &self.core
     }
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        self._deprecating_op_step(scope)
+    }
+    fn kind(&self) -> FirKind {
+        FirKind::Index
+    }
+    fn as_index_offset(&self) -> i32 {
+        self.offset
+    }
+    fn as_index_anchored(&self) -> bool {
+        self.anchored
+    }
+    fn as_search_contexted(&self) -> bool {
+        self.contexted
+    }
+    fn set_contexted(&mut self, contexted: bool) {
+        self.contexted = contexted;
+    }
+
+    /// FOOP-55 §11: moved from `_deprecating_op_step`'s `Braning` arm
+    /// (after the drain check), converting every `set_nyes` + early
+    /// `return Ok(())` into `Some(nyes)`, and the "still waiting, do
+    /// nothing" `return Ok(())` into `None`. Two internal modes, matching
+    /// `IndexFir`'s two anchored-search shapes (contexted-from-anchor vs
+    /// plain-anchored) — see each inline comment for its own readiness
+    /// question.
+    fn on_foolish_op_ready(&self, scope: &Scope) -> Option<Nyes> {
+        use contextful_search::{
+            BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
+        };
+        if self.contexted && self.anchored {
+            let anchor = Rc::clone(&self.core.foolish_children()[0]);
+            let fool_ref_fir = {
+                let borrowed = anchor.borrow();
+                borrowed.core().ubc_children().get(1).cloned()
+            };
+            let contexted_result = fool_ref_fir.and_then(|frf| {
+                let referent = frf.borrow().as_fool_ref_referent().cloned()?;
+                let h_brane = referent.borrow()._get_my_brane(&referent)?;
+                let p = h_brane.find_stmt_index(&referent)?;
+                // A computed index (FOOP-55 §8) that did not settle to
+                // an integer has no navigable position; this closure
+                // reports "no result" with None.
+                let effective_offset = self.effective_offset()?;
+                let target = p as i32 + effective_offset;
+                let len = h_brane.borrow().stmt_count().unwrap_or(0) as i32;
+                if target < 0 || target >= len {
+                    return None;
+                }
+                let mut nav = BraneNavigator::new(&h_brane, true);
+                let predicate = SearchPredicate::Index(target);
+                match contextful_search_scan_no_body_check(&mut nav, &predicate) {
+                    ScanOutcome::Found(stmt) => {
+                        let body = statement_value_for_comparison(&stmt)?;
+                        Some((stmt, body))
+                    }
+                    _ => None,
+                }
+            });
+            if let Some((stmt, body)) = contexted_result {
+                let self_weak = self.core.parent_weak();
+                let clone = ProtoBrane::constanic_clone_at(
+                    &body,
+                    &self_weak,
+                    0,
+                    scope.has_ancestral_sfm,
+                    false,
+                );
+                push_search_result_pair(&self.core, clone, stmt);
+                return Some(Nyes::Braning);
+            } else if !anchor.borrow().core().get_nyes().is_constanic() {
+                // Still waiting on our one dependency (the anchor).
+                return None;
+            } else {
+                return Some(Nyes::Nk);
+            }
+        }
+        if self.anchored {
+            let anchor = Rc::clone(&self.core.foolish_children()[0]);
+            let resolved = anchor.resolve_anchor();
+            if !resolved.borrow().core().get_nyes().is_constanic() {
+                // FOOP-55 §5.5: `resolved` has not been driven
+                // through its own fir_op_step gate yet -- its
+                // brane-likeness is not yet knowable, not "no" (and
+                // therefore not grounds for the permanent NK below).
+                return None;
+            }
+            if !resolved.borrow().is_constanic_branelike() {
+                // FOOP-75 §7: settling NK is only half the answer —
+                // record WHY. An anchored search demands its anchor
+                // resolve *through* to a brane (AGENTS.md §Searches);
+                // when it does not, name the offending value so the
+                // rendered output reads
+                //     d =$ ??? (4 is not a brane)
+                // rather than a bare `d =$ 4 (???)`, which says the
+                // result is unknown without saying what went wrong.
+                // Diagnose only when the offending anchor can be
+                // NAMED — an integer literal, as in `d =$ 4`. Then
+                // the reason travels as the search's RESULT (the
+                // sequencer renders that; `alarm_reason` alone is
+                // never read on the rendering path), giving
+                //     d =$ ??? (4 is not a brane)
+                //
+                // When the anchor is some other FIR — commonly another
+                // search that itself settled NK — there is no value to
+                // name, and `"<kind> is not a brane"` would report an
+                // interpreter type rather than anything the Foolisher
+                // wrote. Leaving the result unset keeps the existing
+                // rendering, which shows the failed anchor itself:
+                //     also_not_found =^ ?(pattern='^z$', ANCHORED, NK) (???)
+                let named = resolved.borrow().as_i64().map(|v| v.to_string());
+                if let Some(shown) = named {
+                    let reason = format!("{} is not a brane", shown);
+                    let self_weak = self.core.parent_weak();
+                    let nk_ref = NkFir::nk(&reason, self_weak.clone());
+                    nk_ref.borrow().core().set_nyes(Nyes::Nk);
+                    self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                        &nk_ref,
+                        &self_weak,
+                        0,
+                        scope.has_ancestral_sfm,
+                        false,
+                    ));
+                    self.core.set_alarm_reason(reason);
+                }
+                return Some(Nyes::Nk);
+            }
+            let mut nav = BraneNavigator::new(&resolved, true);
+            let Some(effective_offset) = self.effective_offset() else {
+                // A computed index (FOOP-55 §8) that did not settle to an
+                // integer has no navigable position.
+                return Some(Nyes::Nk);
+            };
+            let predicate = SearchPredicate::Index(effective_offset);
+            return match contextful_search_scan_no_body_check(&mut nav, &predicate) {
+                ScanOutcome::Found(stmt) => {
+                    let body = statement_value_for_comparison(&stmt);
+                    match body {
+                        Some(body) => {
+                            let self_weak = self.core.parent_weak();
+                            let clone = ProtoBrane::constanic_clone_at(
+                                &body,
+                                &self_weak,
+                                0,
+                                scope.has_ancestral_sfm,
+                                false,
+                            );
+                            push_search_result_pair(&self.core, clone, stmt);
+                            Some(Nyes::Braning)
+                        }
+                        None => Some(Nyes::Nk),
+                    }
+                }
+                _ => Some(Nyes::Nk),
+            };
+        }
+        Some(Nyes::Nk)
+    }
+}
+
+impl IndexFir {
+    /// FOOP-55 §11 migration: pre-migration `fir_op_step` body, moved here
+    /// verbatim (rename only, no logic change). Delete once every piece has
+    /// moved into named handlers and `fir_op_step` no longer calls it.
+    fn _deprecating_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 if self.anchored {
@@ -2311,157 +2544,13 @@ impl Fir for IndexFir {
             Nyes::Braning => {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
-                } else if self.contexted && self.anchored {
-                    use contextful_search::{
-                        BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
-                    };
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let fool_ref_fir = {
-                        let borrowed = anchor.borrow();
-                        borrowed.core().ubc_children().get(1).cloned()
-                    };
-                    let contexted_result = fool_ref_fir.and_then(|frf| {
-                        let referent = frf.borrow().as_fool_ref_referent().cloned()?;
-                        let h_brane = referent.borrow()._get_my_brane(&referent)?;
-                        let p = h_brane.find_stmt_index(&referent)?;
-                        // A computed index (FOOP-55 §8) that did not settle to
-                        // an integer has no navigable position; this closure
-                        // reports "no result" with None.
-                        let effective_offset = self.effective_offset()?;
-                        let target = p as i32 + effective_offset;
-                        let len = h_brane.borrow().stmt_count().unwrap_or(0) as i32;
-                        if target < 0 || target >= len {
-                            return None;
-                        }
-                        let mut nav = BraneNavigator::new(&h_brane, true);
-                        let predicate = SearchPredicate::Index(target);
-                        match contextful_search_scan_no_body_check(&mut nav, &predicate) {
-                            ScanOutcome::Found(stmt) => {
-                                let body = statement_value_for_comparison(&stmt)?;
-                                Some((stmt, body))
-                            }
-                            _ => None,
-                        }
-                    });
-                    if let Some((stmt, body)) = contexted_result {
-                        let self_weak = self.core.parent_weak();
-                        let clone = ProtoBrane::constanic_clone_at(
-                            &body,
-                            &self_weak,
-                            0,
-                            scope.has_ancestral_sfm,
-                            false,
-                        );
-                        push_search_result_pair(&self.core, clone, stmt);
-                    } else if !anchor.borrow().core().get_nyes().is_constanic() {
-                        return Ok(());
-                    } else {
-                        self.core.set_nyes(Nyes::Nk);
-                    }
-                } else if self.anchored {
-                    use contextful_search::{
-                        BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
-                    };
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = anchor.resolve_anchor();
-                    if !resolved.borrow().core().get_nyes().is_constanic() {
-                        // FOOP-55 §5.5: `resolved` has not been driven
-                        // through its own fir_op_step gate yet -- its
-                        // brane-likeness is not yet knowable, not "no" (and
-                        // therefore not grounds for the permanent NK below).
-                        return Ok(());
-                    }
-                    if !resolved.borrow().is_constanic_branelike() {
-                        // FOOP-75 §7: settling NK is only half the answer —
-                        // record WHY. An anchored search demands its anchor
-                        // resolve *through* to a brane (AGENTS.md §Searches);
-                        // when it does not, name the offending value so the
-                        // rendered output reads
-                        //     d =$ ??? (4 is not a brane)
-                        // rather than a bare `d =$ 4 (???)`, which says the
-                        // result is unknown without saying what went wrong.
-                        // Diagnose only when the offending anchor can be
-                        // NAMED — an integer literal, as in `d =$ 4`. Then
-                        // the reason travels as the search's RESULT (the
-                        // sequencer renders that; `alarm_reason` alone is
-                        // never read on the rendering path), giving
-                        //     d =$ ??? (4 is not a brane)
-                        //
-                        // When the anchor is some other FIR — commonly another
-                        // search that itself settled NK — there is no value to
-                        // name, and `"<kind> is not a brane"` would report an
-                        // interpreter type rather than anything the Foolisher
-                        // wrote. Leaving the result unset keeps the existing
-                        // rendering, which shows the failed anchor itself:
-                        //     also_not_found =^ ?(pattern='^z$', ANCHORED, NK) (???)
-                        let named = resolved.borrow().as_i64().map(|v| v.to_string());
-                        if let Some(shown) = named {
-                            let reason = format!("{} is not a brane", shown);
-                            let self_weak = self.core.parent_weak();
-                            let nk_ref = NkFir::nk(&reason, self_weak.clone());
-                            nk_ref.borrow().core().set_nyes(Nyes::Nk);
-                            self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                                &nk_ref,
-                                &self_weak,
-                                0,
-                                scope.has_ancestral_sfm,
-                                false,
-                            ));
-                            self.core.set_alarm_reason(reason);
-                        }
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    }
-                    let mut nav = BraneNavigator::new(&resolved, true);
-                    let Some(effective_offset) = self.effective_offset() else {
-                        // A computed index (FOOP-55 §8) that did not settle to an
-                        // integer has no navigable position.
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    };
-                    let predicate = SearchPredicate::Index(effective_offset);
-                    match contextful_search_scan_no_body_check(&mut nav, &predicate) {
-                        ScanOutcome::Found(stmt) => {
-                            let body = statement_value_for_comparison(&stmt);
-                            match body {
-                                Some(body) => {
-                                    let self_weak = self.core.parent_weak();
-                                    let clone = ProtoBrane::constanic_clone_at(
-                                        &body,
-                                        &self_weak,
-                                        0,
-                                        scope.has_ancestral_sfm,
-                                        false,
-                                    );
-                                    push_search_result_pair(&self.core, clone, stmt);
-                                }
-                                None => self.core.set_nyes(Nyes::Nk),
-                            }
-                        }
-                        _ => self.core.set_nyes(Nyes::Nk),
-                    }
-                } else {
-                    self.core.set_nyes(Nyes::Nk);
+                } else if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
                 }
             }
             _ => {}
         }
         Ok(())
-    }
-    fn kind(&self) -> FirKind {
-        FirKind::Index
-    }
-    fn as_index_offset(&self) -> i32 {
-        self.offset
-    }
-    fn as_index_anchored(&self) -> bool {
-        self.anchored
-    }
-    fn as_search_contexted(&self) -> bool {
-        self.contexted
-    }
-    fn set_contexted(&mut self, contexted: bool) {
-        self.contexted = contexted;
     }
 }
 
