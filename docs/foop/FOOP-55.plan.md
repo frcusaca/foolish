@@ -1528,6 +1528,27 @@ work is not lost when this plan closes.
       question this FOOP does not need answered — §5 routes through
       juxtaposition, which works — but the next person will hit it.
 
+- [ ] **Switch `foolish-ubca/einmo_suite`'s separator back to einmo's own
+      default, `①` (circled digit one, `DEFAULT_SEPARATOR` in
+      `einmo/src/format.rs`), instead of the current `FOOLISH_SEPARATOR`
+      (`"!!\n"`, chosen because `!!` is a Foolish line-comment token — see
+      `EinmoConfig::foolish_separator` in `einmo/src/config.rs`).** Human
+      request (2026-08-26), found while adding
+      `foop/55/d9_recoordinated_index.foo`: a `.foo` input comment written
+      as a BARE `!!` line (no trailing text, used as a visual spacer between
+      paragraphs — a style already present in this suite, e.g.
+      `concat_ergonomics.foo`) collides with the section separator and
+      einmo refuses to write the file (`"section \"INPUT\" contains the
+      configured separator"`). `①` cannot appear in ordinary Foolish
+      comments, so it would not collide the same way. **Trade-off to weigh,
+      not yet decided**: `!!` reads naturally as "this is a Foolish
+      comment" when a human opens a raw `.einmo` file's INPUT section,
+      which `①` does not — confirm with a human reviewer before switching,
+      and check whether any existing `.foo.einmo` file's INPUT/OUTPUT/
+      COMMENTS content contains a literal `①` character before flipping
+      (that would newly collide the other way). Not scoped as part of this
+      FOOP's own work; a standalone follow-up.
+
 ## Phase 5 — The D1 decision (leading-underscore names)
 
 Deferred to the end deliberately: the exercise runs on the `INTERN_`
@@ -1588,18 +1609,17 @@ the exercise is green and the real cost is known.
 
 ## Last Updated
 
-**Date**: 2026-08-25
+**Date**: 2026-08-26
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Checked Phase 3H's Step 0 (`IndexFir`/`SearchFir` migration)
-and the remainder of Step 5 (`ComparisonFir`/`ModuloFir`/`OrFir`
-migration, plus that step's final "run all tests" gate) as complete — see
-each checkbox for the full account. All four kinds now use
-`on_foolish_op_ready` (`SearchFir` also gained a parallel
-`on_value_search_op_ready` for its separately-dispatched value-search
-path); every anchored-search branch across `IndexFir`/`SearchFir` that
-previously waited on an anchor's `is_constanic()` alone now checks
-`is_found()` first (the same fix class already applied to
-`SearchPositionFir`/`@`). Step 6 (`terminates_econstanic()` /
-`ConcatenationFir`'s D9 override) remains blocked on Phase 3I per its
-existing note — not started this session. Prior history of this section is
-in `git log`/`git blame` on this file, not accreted here.
+**Changes**: Added `foop/55/d9_recoordinated_index.foo` (einmo suite),
+compiling D9's own example `{a = {1,2}, b=<<#-2>>, c= a b}` — the human
+asked to SEE the defect the plan's Step 6/Phase 3I notes describe, not
+just read about it. Marked `@agent`-known-broken (AGENTS.md's exception)
+rather than promoted to `checked`, matching the plan's existing "do not
+implement this fix before... write and promote the real `.foo`/`.foo.einmo`
+pair once the fix lands" guidance under D9. New Phase 4B follow-up item:
+switch the suite's einmo separator from `FOOLISH_SEPARATOR` (`"!!\n"`) back
+to einmo's own default `①`, found because a bare `!!` spacer line in the
+new input collided with the separator and einmo refused to write it — not
+done, logged as a trade-off for a human decision. Prior history of this
+section is in `git log`/`git blame` on this file, not accreted here.

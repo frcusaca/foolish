@@ -1,0 +1,69 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/55/d9_recoordinated_index.foo
+suite: /yolo/foolish/.claude/worktrees/foop-55-event-handlers/foolish-ubca/einmo_suite
+producer: e95c3b30
+producer-diff: sha256:715bf0831f7d7bfb63f0978a2363c584af93f0b0eb5742ff6c93530ed9558b93
+generated: 2026-08-26T06:54:51.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-55 D9 (docs/foop/FOOP-55.md) — a recoordinated SFF-marked index
+	!! search, once found by an unanchored name search inside a
+	!! concatenation, must be re-stepped in its NEW context (c's) rather
+	!! than kept frozen in the ECONSTANIC state it settled to at its
+	!! ORIGINAL definition site (b's).
+	!! a  = {1,2}                     -- a two-statement brane
+	!! b  = <<#-2>>                   -- SFF-marked index, ECONSTANIC where
+	!!                                   written (nothing two-back from a
+	!!                                   top-level statement)
+	!! c  = a b                       -- concatenation: ?b finds b, and the
+	!!                                   found body (the #-2 search) is
+	!!                                   constanic-cloned and recoordinated
+	!!                                   into c's own context, where #-2 now
+	!!                                   has a real target (a, two back from
+	!!                                   b's position in c) and should run.
+	!! @agent NOTE (2026-08-26): `c` currently stalls at WOCONSTANIC instead
+	!! of settling CONSTANT to the flattened {1,2,1,2} FOOP-55's own D9
+	!! "Correction" section predicts. Root cause (live-traced, not yet
+	!! fixed): a `has_ancestral_sfm` scope-propagation leak in `step_inner`
+	!! (foolish-ubca/src/fir_trait.rs) — see docs/foop/FOOP-55.plan.md's
+	!! Phase 3I and the pinned unit test
+	!! `fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`.
+	!! This OUTPUT is the CURRENT BROKEN result, not the correct one — do
+	!! not treat this baseline as a spec to preserve. Once Phase 3I lands,
+	!! re-run, confirm `c` now settles to {1,2,1,2}, remove this note, and
+	!! promote the corrected output.
+	a = {1,2};
+	b = <<#-2>>;
+	c = a b;
+}
+!!
+{WOCONSTANIC
+  a={
+      1;
+      2
+  };
+  b=<<WOCONSTANIC
+      #(offset=-2, UNANCHORED, ECONSTANIC)
+  >>;
+  c=⨃(
+      elements=2,
+      ?(
+  result={
+      1;
+      2
+  },
+  pattern='^a$',
+  UNANCHORED
+),
+      <ECONSTANIC
+  ?(result=#(offset=-2, UNANCHORED, ECONSTANIC), pattern='^b$', UNANCHORED, WOCONSTANIC)
+>,
+      WOCONSTANIC
+  )
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:71dd8f85c21d3f555d91b8f72e161ea8d5c696afdc7701ef33eee7560727bdee","timestamp":"2026-08-26T06:54:51.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:71dd8f85c21d3f555d91b8f72e161ea8d5c696afdc7701ef33eee7560727bdee","timestamp":"2026-08-26T06:54:51.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"r/pSxRGJrL/htpo62AWkyKjHM6JecYdHGrTgheV6x85J7gKx0kCzPLos2EpopVPijLKA1itP+iN1YgRsiDmhCA==","produced_by":"einmo 0.1.0 sha256:71dd8f85c21d3f555d91b8f72e161ea8d5c696afdc7701ef33eee7560727bdee","timestamp":"2026-08-26T06:54:51.000000000Z"}

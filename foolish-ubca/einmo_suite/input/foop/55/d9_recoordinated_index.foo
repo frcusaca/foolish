@@ -1,0 +1,31 @@
+{
+	!! FOOP-55 D9 (docs/foop/FOOP-55.md) — a recoordinated SFF-marked index
+	!! search, once found by an unanchored name search inside a
+	!! concatenation, must be re-stepped in its NEW context (c's) rather
+	!! than kept frozen in the ECONSTANIC state it settled to at its
+	!! ORIGINAL definition site (b's).
+	!! a  = {1,2}                     -- a two-statement brane
+	!! b  = <<#-2>>                   -- SFF-marked index, ECONSTANIC where
+	!!                                   written (nothing two-back from a
+	!!                                   top-level statement)
+	!! c  = a b                       -- concatenation: ?b finds b, and the
+	!!                                   found body (the #-2 search) is
+	!!                                   constanic-cloned and recoordinated
+	!!                                   into c's own context, where #-2 now
+	!!                                   has a real target (a, two back from
+	!!                                   b's position in c) and should run.
+	!! @agent NOTE (2026-08-26): `c` currently stalls at WOCONSTANIC instead
+	!! of settling CONSTANT to the flattened {1,2,1,2} FOOP-55's own D9
+	!! "Correction" section predicts. Root cause (live-traced, not yet
+	!! fixed): a `has_ancestral_sfm` scope-propagation leak in `step_inner`
+	!! (foolish-ubca/src/fir_trait.rs) — see docs/foop/FOOP-55.plan.md's
+	!! Phase 3I and the pinned unit test
+	!! `fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`.
+	!! This OUTPUT is the CURRENT BROKEN result, not the correct one — do
+	!! not treat this baseline as a spec to preserve. Once Phase 3I lands,
+	!! re-run, confirm `c` now settles to {1,2,1,2}, remove this note, and
+	!! promote the corrected output.
+	a = {1,2};
+	b = <<#-2>>;
+	c = a b;
+}
