@@ -1668,7 +1668,23 @@ impl SearchFir {
     /// to re-evaluate is decided by THIS clone's own budget as it descends,
     /// not by any ambient `Scope` flag the caller happened to be stepping
     /// under.
-    fn clone_stmt_result(stmt: &FirRef, new_parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
+    /// Constanic-copy the found statement's body into this search's
+    /// `ubc_children`.
+    ///
+    /// `inside_sf_mark` carries `scope.has_ancestral_sfm`: SF enforcement
+    /// happens during constanic cloning (human, 2026-08-26). When this
+    /// search is itself running inside an SF mark, the copy starts with no
+    /// strip budget, so a mark on the found body is PRESERVED rather than
+    /// stripped and run — `{a={1,2}, b=<<#-2>>, c= a b}` copies `b`'s body
+    /// into the search's `ubc_children` still `<<#-2>>`-wrapped, because
+    /// that search sits inside `c`'s auto-SF-wrapped element. Outside any
+    /// SF mark the budget starts fresh and the outermost mark strips as
+    /// usual.
+    fn clone_stmt_result(
+        stmt: &FirRef,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        inside_sf_mark: bool,
+    ) -> FirRef {
         // Prefer settled_result() over the raw written body: for a plain
         // StatementFir this is None (unchanged behavior — falls through to the
         // body below); the null-characterized name constant rule (FOOP-33 §4)
@@ -1676,10 +1692,10 @@ impl SearchFir {
         // NK for the written RHS without mutating the body's own FIR/nyes.
         let body = statement_value_for_comparison(stmt).expect("statement must have a body");
         let index = stmt.borrow().as_stmt_line_number().unwrap_or(0);
-        ProtoBrane::constanic_clone(&body, new_parent, index, false, false)
+        ProtoBrane::constanic_clone(&body, new_parent, index, false, inside_sf_mark)
     }
 
-    fn handle_found(&self, stmt: FirRef, _nyes: Nyes, _scope: &Scope) {
+    fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
         // FOOP-55 §11 (human, 2026-08-25): capture the ORIGINAL found
         // statement's home brane and index HERE, before `clone_stmt_result`
         // constanic-clones its body and `push_search_result_pair` reparents
@@ -1694,7 +1710,7 @@ impl SearchFir {
             *self.found_context.borrow_mut() = Some((home_brane, idx));
         }
         let self_weak = self.core.parent_weak();
-        let clone = Self::clone_stmt_result(&stmt, &self_weak);
+        let clone = Self::clone_stmt_result(&stmt, &self_weak, scope.has_ancestral_sfm);
         push_search_result_pair(&self.core, clone, stmt);
         self.core.set_nyes(Nyes::Braning);
     }
