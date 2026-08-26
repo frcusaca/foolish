@@ -564,12 +564,72 @@ not built yet (§11):**
    to concatenation.** The `is_*_constanic_enough` predicates default to plain
    `is_constanic()` everywhere else; nothing here changes that default for
    any other kind.
-3. Likely still needed, not yet designed: some adjustment to the SF/SFF
-   marking mechanics (possibly the `has_ancestral_sfm` propagation itself, or
-   how the strip budget interacts with a concatenation's own coordination) so
-   that a concatenation actually reaches successful, correct execution under
-   this rule end to end — not just so the immediate `#-2` clone resets
-   correctly. Flagged as follow-up work, not yet specified.
+3. **Designed (human, live conversation 2026-08-26) — the actual fix for the
+   `has_ancestral_sfm` leak, superseding the "reset the flag in `step_inner`"
+   framing above.** The leak is not that `step_inner` forgets to reset
+   `has_ancestral_sfm` on the way out of a `StayFoolish` subtree (that flag
+   *is* correctly scoped to `step_inner`'s own recursion — each call computes
+   its own `child_scope` fresh, and it goes out of scope exactly when the
+   stack frame does). The actual defect: `descendent_of_sfm_and_foolishly_ignorant`
+   (threaded into every `constanic_clone_at` call as `scope.has_ancestral_sfm`)
+   is decided ONCE, far away, by whatever SF/SFF ancestor `step_inner`'s walk
+   most recently passed through — and that single ambient decision is reused
+   for **every subsequent clone**, including clones of content that crosses
+   into an entirely different, nested SF/SFF mark the ambient flag was never
+   actually about. In D9: the search for `b` inside `c = a b` is auto-SF-
+   wrapped by concatenation ergonomics (§9.2 rule 3, `BareSearch`) — correctly
+   setting `has_ancestral_sfm = true` while that search steps. But once the
+   search RESOLVES and clones `b`'s own body (`<<#-2>>`, a *separate*,
+   *nested* SFF mark `b`'s own definition carries), that clone call still
+   receives the outer search-wrapper's `true`, so `transform_for_clone`
+   preserves `b`'s `#-2` body's stale `ECONSTANIC` instead of resetting it —
+   even though the outer SF mark was never stripping *that* mark at all.
+
+   **The fix moves the "am I foolishly ignorant" decision out of the ambient
+   `Scope` and into the clone call itself, scoped to a fresh strip budget per
+   call:**
+
+   - `constanic_clone_at`/`constanic_clone_at_budgeted` are renamed to an
+     internal `_inner_constanic_clone(node, stay_budget, disable_nyes_reset)`
+     — same recursive structure as today (its own self-recursion for
+     ordinary structural cloning: operator operands, brane statements, etc.,
+     `disable_nyes_reset` passed through unchanged on those, each distinct
+     child getting its own **fresh** `stay_budget`, never inherited or inches
+     from the parent's own value). `disable_nyes_reset` is a straight rename
+     of today's `descendent_of_sfm_and_foolishly_ignorant` (same meaning:
+     `true` skips the NYES-reset-to-`Embryonic` step).
+   - When `_inner_constanic_clone` is handed a node that is itself SF- or
+     SFF-marked (one shared budget pool — either kind draws from the same
+     `stay_budget`, matching how `StripBudget` already treats them
+     identically today):
+     - `stay_budget ≥ 1` → strip the mark, recurse directly on its content:
+       `_inner_constanic_clone(mark_content, stay_budget - 1, disable_nyes_reset)`
+       (`disable_nyes_reset` unchanged — a genuine strip means the content is
+       free to re-evaluate, exactly as before this fix).
+     - `stay_budget == 0` → do **not** strip. Clone the mark node itself as a
+       wrapper (a new `StayFoolishFir`/`StayFullyFoolishFir`), with
+       `disable_nyes_reset = true` for **this** clone call only — the content
+       stays genuinely under an unstripped mark, so preserving its NYES
+       verbatim is correct here, decided locally at the mark, not inherited
+       from an unrelated ancestor.
+   - A new **public** `constanic_clone(node)` becomes the entry point every
+     `Fir` kind implementation calls (replacing direct calls to
+     `ProtoBrane::constanic_clone_at` at every existing call site —
+     `SearchFir::clone_stmt_result`, `OperatorFir`'s child cloning, etc.). It
+     always calls `_inner_constanic_clone(node, stay_budget=1, disable_nyes_reset=false)`
+     — fixed starting values, every time. It never decides
+     `disable_nyes_reset` itself; that decision belongs entirely to
+     `_inner_constanic_clone`, made fresh at whatever mark (if any) it
+     actually encounters.
+
+   This makes SF/SFF-ness of a clone target self-contained to the clone call
+   that reaches it, rather than dependent on which ancestor `step_inner`'s
+   walk happened to pass through to get there — `Scope`/`has_ancestral_sfm`
+   is no longer read at any `constanic_clone` call site once this lands (it
+   may still be needed elsewhere in `Scope` for unrelated purposes; check
+   before removing the field outright). §11's Braning micro-state
+   instrumentation this item's precondition named is now built (Phase 3H
+   Steps 0-5, landed 2026-08-25), so that blocker is cleared.
 
 **The expected result, once fixed — the acceptance target for `D9's own
 example`:**
@@ -2986,54 +3046,44 @@ None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
 
 ## Last Updated
 
-**Date**: 2026-08-24
+**Date**: 2026-08-26
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Rewrote §11** (now "Braning States — four child-set event
-handlers for the kinds that wait", superseding its own first draft) after a
-ground-truth survey of every FIR kind's `fir_op_step` found the two-shape
-model the first draft was built on (`SearchFir` vs. `OperatorFir`) was
-incomplete: **at least four distinct `BRANING`-arm shapes exist** among the
-13 of 17 FIR kinds that enter `BRANING` at all — uniform-reduce-with-NK-
-poison (`OperatorFir`/`ComparisonFir`/`ModuloFir`/`OrFir`), uniform-reduce-
-no-poison (`BraneFir` — confirms the original `{a,b,c,d}` counter-example),
-single-anchor staged pipeline (`SearchFir`/`SearchPositionFir`/`IndexFir`),
-and external-trigger (the SF/SFF markers). The survey also found the
-`constanew` predicate the first draft coined **already exists in the code**,
-spelled `constantew`, defined exactly as guessed (`Constant|Independent|Nk`,
-doc-commented "constant everywhere"), with one production call site in
-`ConcatenationFir`'s type-error check — and found `OperatorFir`'s own gate
-is *not* simply "wait for constantew" (its any-NK poison runs first and
-separately). Added the **`is_foolish_child_constanic_enough`/
-`is_ubc_child_constanic_enough`** overridable predicate pair (default: plain
-`is_constanic()` for every kind that doesn't override), and
-**`terminates_econstanic()`**, a new `SearchFir`-only chain-walk method
-(returns true the moment a chain of search results bottoms out in
-`ECONSTANIC`) that `ConcatenationFir`'s override is built from. Renamed the
-concept **"Braning States"** and explicitly scoped it to only the
-Braning-capable kinds — not universal, correcting the first draft's implicit
-overreach. **Confirmed and corrected D9 by live trace**: a temporary test
-compiling D9's own example, `{a = {1,2}, b=<<#-2>>, c= a b}`, found
-patching the `push_ubc_child` guard D9 originally named to always-enqueue
-has **zero effect** — the actual cause is a `has_ancestral_sfm`
-scope-propagation leak in `step_inner` (`fir_trait.rs`): the flag is set
-`true` on entering a `StayFoolish` subtree but never reset back to `false`,
-so it wrongly marks unrelated later clones as SFF-descendant and preserves
-their stale `ECONSTANIC` NYES instead of resetting it via
-`transform_for_clone`'s general rule. D9's finding section now carries this
-correction, the `terminates_econstanic()`-based fix design, and the expected
-acceptance result (`c` settles CONSTANT to `{1,2,1,2}`) as an explicit
-target for the eventual einmo case. **Confirmed §8 (`@`) is implemented**
-(`SearchPositionFir::combine`, `fir_kinds.rs:751-794`), resolving the Phase
-3E DECIDE box: §7 (`ExtremumFir`) is superseded and removed (plan Phase
-3D2, code already landed); Phase 3D (`'ite`) is not superseded and proceeds
-unchanged. **Sequencing, confirmed by the human**: §11/Braning-States is
-deferred follow-on work, not a Euler-1 sub-task, and must not be worked
-inline with FOOP-55's active phases; the `has_ancestral_sfm` leak fix is
-independent of §11 and can land first (plan gained Phase 3I for it,
-ahead of Phase 3H). A temporary reproduction test, now
-`fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`, pins
-the current broken state pending that fix. Prior history of this section is
-in `git log`/`git blame` on this file, not accreted here.
+**Changes**: **D9's root-cause framing corrected again** (human, live
+conversation) — the previous "Last Updated" entry's "`step_inner` never
+resets `has_ancestral_sfm` back to `false`" diagnosis is itself superseded.
+Traced precisely: `step_inner`'s `child_scope` IS freshly computed on every
+call and correctly goes out of scope with its stack frame — there is no
+propagation leak inside `step_inner` itself. The real defect is that
+`descendent_of_sfm_and_foolishly_ignorant` (threaded into every
+`constanic_clone_at` call as `scope.has_ancestral_sfm`) is decided ONCE, by
+whichever SF/SFF ancestor `step_inner`'s walk most recently passed through,
+and that single ambient decision is reused for every subsequent clone —
+including a clone that crosses into a DIFFERENT, nested SF/SFF mark the
+ambient flag was never actually about. In D9: the search for `b` inside
+`c = a b` is auto-SF-wrapped by concatenation ergonomics (§9.2 rule 3,
+correctly setting `has_ancestral_sfm = true` while that search steps), but
+once the search resolves and clones `b`'s own body (`<<#-2>>`, a *separate*
+nested SFF mark from `b`'s own definition), that clone still inherits the
+outer search-wrapper's `true`, so `transform_for_clone` wrongly preserves
+the stale `ECONSTANIC` instead of resetting it. D9's finding section (item
+3, superseding its earlier "not yet designed" placeholder) now specifies
+the fix: rename `constanic_clone_at`/`constanic_clone_at_budgeted` to an
+internal `_inner_constanic_clone(node, stay_budget, disable_nyes_reset)`
+taking a **per-call, non-inherited** strip budget (each distinct child gets
+its own fresh budget, not the parent's), and a new public
+`constanic_clone(node)` — the entry point every `Fir` kind calls instead of
+today's direct `constanic_clone_at` calls — always starting that inner call
+with `stay_budget=1, disable_nyes_reset=false`. The SF/SFF-mark-encounter
+arm decides `disable_nyes_reset` locally, at the mark, from its OWN
+remaining budget (strip-and-recurse-fresh if budget remains; clone the
+still-wrapped mark with `disable_nyes_reset=true` if not) — never inherited
+from an ambient `Scope`. `Scope`/`has_ancestral_sfm` is no longer read at
+any clone call site once this lands. Items 1-2 (`terminates_econstanic()`,
+`ConcatenationFir`'s override — Phase 3H Step 6's concern) are unchanged and
+still needed on top of this. Phase 3I's plan checklist rewritten to match
+this design; not yet implemented (tests-first work starts next). Prior
+history of this section is in `git log`/`git blame` on this file, not
+accreted here.
 
 ---
 

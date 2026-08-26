@@ -924,38 +924,96 @@ not redo it.
       §5.6, and the concatenation-ergonomics corpus (§9) — this changes a
       drain condition every Braning-capable kind's stepping depends on.
 
-## Phase 3I — Fix the `has_ancestral_sfm` scope-propagation leak (D9's real cause)
+## Phase 3I — Fix the `constanic_clone` SF/SFF-mark ambient-flag defect (D9's real cause)
 
-**Independent of Phase 3H/§11's Steps 1-5 — land this before Phase 3H's Step
-6** (`terminates_econstanic()`/`ConcatenationFir`'s D9 override), since Step
-6 cannot produce D9's expected result without this fix in place first, per
-Phase 3H's Step 6 note. Steps 1-5 of Phase 3H do not depend on this and may
-be done in either order relative to it. Read FOOP-55.md's D9 finding
-("Correction 2026-08-24, live-traced") in full before starting.
+**Independent of Phase 3H/§11's Steps 1-5 (both done) — land this before
+Phase 3H's Step 6** (`terminates_econstanic()`/`ConcatenationFir`'s D9
+override), since Step 6 cannot produce D9's expected result without this
+fix in place first, per Phase 3H's Step 6 note. Read FOOP-55.md's D9
+finding, item 3 ("Designed, human, live conversation 2026-08-26" —
+supersedes the earlier `step_inner`-reset framing) in full before starting.
+
+**Design summary** (full spec is FOOP-55.md's D9 item 3): rename
+`constanic_clone_at`/`constanic_clone_at_budgeted` to an internal
+`_inner_constanic_clone(node, stay_budget, disable_nyes_reset)`. Add a new
+public `constanic_clone(node)` that every `Fir` kind calls instead of
+today's direct `constanic_clone_at` calls, always starting with
+`stay_budget=1, disable_nyes_reset=false`. When `_inner_constanic_clone`
+meets an SF/SFF mark (one shared budget pool, either kind): `stay_budget≥1`
+→ strip it, recurse on its content with `stay_budget-1` and
+`disable_nyes_reset` unchanged; `stay_budget==0` → clone the mark itself as
+a wrapper with `disable_nyes_reset=true` for that call only. Ordinary
+structural recursion (operator operands, brane statements, etc.) passes
+`disable_nyes_reset` through unchanged, but each distinct child gets its
+own **fresh** `stay_budget`, never inherited/decremented from the parent.
 
 - [ ] Establish relevant tests for this phase. Use
       [these instructions](../../README.md#running-specific-tests) to run
       unit test: `foolish-ubca::fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`
       (currently pins the BROKEN state — update its assertions once fixed,
-      per the doc comment on that test). Also run the full SF/SFF-related
-      corpus (§5's existing tests) frequently — this touches shared scope-
-      propagation machinery every SFF-marked term depends on.
-- [ ] Trace exactly where `step_inner` (`fir_trait.rs:502-535`) should reset
-      `has_ancestral_sfm` back to `false` on the way back out of a
-      `StayFoolish` subtree (it currently only ever sets it `true`, never
-      resets it, so it leaks to every sibling/descendant stepped afterward
-      in the same recursive call chain). Confirm the fix does not simply
-      move the bug (e.g. resetting too early, before the SFF body's own
-      deferred searches have had their chance to read the flag).
-- [ ] Fix it. Re-run `d9_recoordinated_index_currently_stuck_woconstanic` —
-      it should now FAIL (the broken-state assertions no longer hold).
-      Update the test's assertions to match D9's expected result
-      (`c` settles CONSTANT to `{1,2,1,2}`) and rename it to drop
-      "currently_stuck_woconstanic" once it asserts the fixed behavior.
+      per the doc comment on that test), `cloning_sf_strips_the_mark`, and
+      `step_sets_foolish_scope_inside_sf`. Also run the full SF/SFF-related
+      corpus (§5's existing tests) frequently — this touches shared clone
+      machinery every SFF-marked term depends on.
+- [ ] **Tests first.** Before touching `constanic_clone_at`, write new unit
+      tests pinning the NEW mechanism's contract, at minimum:
+  - [ ] A clone of a node that IS itself SF/SFF-marked strips exactly the
+        outer mark and leaves a nested (mark-inside-a-mark) constituent
+        still wrapped — i.e. `stay_budget=1` strips one layer only, per any
+        single path to a leaf.
+  - [ ] A clone of a plain (unmarked) node containing MULTIPLE independent
+        SF/SFF-marked descendants (e.g. sibling statements in a brane, or
+        an operator's several operands) strips the outer mark on EACH
+        independently — confirms budget is per-child-call, not shared/
+        threaded across siblings from one parent budget.
+  - [ ] A `Fir` kind's `constanic_clone` call reaching a FRESH mark (one
+        the ambient ancestor scope had nothing to do with — modeling D9's
+        exact shape: a search's own found-body clone, itself SF/SFF-marked
+        independently of whatever marked the search) strips that mark and
+        resets its NYES, regardless of what any calling context "remembers"
+        about a DIFFERENT, unrelated mark higher up. This is the test that
+        should fail today and pass once fixed.
+  - [ ] Two or three levels of NESTING (a mark directly wrapping another
+        mark, wrapping another) to pin exactly one layer strips per
+        `constanic_clone` call, confirming the second and deeper marks stay
+        intact until their OWN fresh `constanic_clone` call reaches them
+        (e.g. via a later search result, as D9's `b` does).
+- [ ] Implement: rename to `_inner_constanic_clone`, add `stay_budget`/
+      `disable_nyes_reset` params, add the public `constanic_clone` entry
+      point, and switch every existing call site (`SearchFir`,
+      `OperatorFir`, `ComparisonFir`, `ModuloFir`, `OrFir`,
+      `SearchPositionFir`, `IndexFir`, and any other `Fir` kind currently
+      calling `ProtoBrane::constanic_clone_at` directly) to call the new
+      public `constanic_clone` instead. Confirm `scope.has_ancestral_sfm`
+      is no longer read at any of these call sites once done; check whether
+      `Scope::has_ancestral_sfm`/`with_ancestral_sfm` has any OTHER caller
+      before considering removing the field itself (do not remove it as
+      part of this step if anything else still depends on it — a separate,
+      reviewed cleanup).
+- [ ] Re-run `d9_recoordinated_index_currently_stuck_woconstanic` — it
+      should now FAIL (the broken-state assertions no longer hold). Update
+      its assertions to match D9's expected result (`c` settles CONSTANT to
+      `{1,2,1,2}`) and rename it to drop "currently_stuck_woconstanic" once
+      it asserts the fixed behavior.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
       Pay particular attention to the SFF strip-budget corpus (§5) and
-      anything D10/§5.5/§5.6 touch — this is shared scope-propagation
-      machinery, a regression here would be silent and wide-reaching.
+      anything D10/§5.5/§5.6 touch — this is shared clone machinery every
+      SFF-marked term depends on, a regression here would be silent and
+      wide-reaching.
+- [ ] Run the full einmo suite (`einmo_gate_checked`) and diff EVERY
+      divergence against `checked/` case by case — this change touches the
+      shared clone path every SF/SFF-marked construction in the suite goes
+      through, so expect multiple pre-existing `checked/` baselines to
+      shift. **Do not promote any of them without the human's own review**
+      (human, 2026-08-26: "I will have to reapprove a lot of tests... I
+      will review to verify the tests" — this promotion pass is the
+      human's, not the agent's, once the agent's own line-by-line
+      Promotion Review Gate justification is written down for each case).
+- [ ] Promote `foop/55/d9_recoordinated_index.foo.einmo` (added 2026-08-26,
+      currently `@agent`-marked known-broken) once its OUTPUT genuinely
+      shows `c` settling CONSTANT to `{1,2,1,2}` — remove the `@agent` note
+      from the input first, per AGENTS.md's embedded-communication
+      resolution discipline.
 
 ## Phase 3G — §9: concatenation ergonomics  ← **PRIORITY 2 (correctness)**
 
@@ -1611,15 +1669,23 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-26
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added `foop/55/d9_recoordinated_index.foo` (einmo suite),
-compiling D9's own example `{a = {1,2}, b=<<#-2>>, c= a b}` — the human
-asked to SEE the defect the plan's Step 6/Phase 3I notes describe, not
-just read about it. Marked `@agent`-known-broken (AGENTS.md's exception)
-rather than promoted to `checked`, matching the plan's existing "do not
-implement this fix before... write and promote the real `.foo`/`.foo.einmo`
-pair once the fix lands" guidance under D9. New Phase 4B follow-up item:
-switch the suite's einmo separator from `FOOLISH_SEPARATOR` (`"!!\n"`) back
-to einmo's own default `①`, found because a bare `!!` spacer line in the
-new input collided with the separator and einmo refused to write it — not
-done, logged as a trade-off for a human decision. Prior history of this
-section is in `git log`/`git blame` on this file, not accreted here.
+**Changes**: **Rewrote Phase 3I's checklist** to match the corrected D9
+root-cause design worked out live with the human (see FOOP-55.md's D9 item
+3, and this file's own retitled Phase 3I header) — the earlier
+`step_inner`-reset framing is superseded. New design: rename
+`constanic_clone_at` to an internal `_inner_constanic_clone(node,
+stay_budget, disable_nyes_reset)` with a per-call (not inherited) strip
+budget, plus a new public `constanic_clone(node)` entry point every `Fir`
+kind calls instead of today's direct `constanic_clone_at` calls, always
+starting `stay_budget=1, disable_nyes_reset=false`. Added explicit
+tests-first sub-checkboxes (nested-mark, multi-sibling-mark, and
+fresh-mark-reached-via-a-different-ancestor cases) per the human's request
+to test deeper nesting/unnesting scenarios, not just D9's single case.
+Added an explicit "human reviews and promotes einmo divergences" checkbox —
+this shared-clone-path change is expected to shift multiple pre-existing
+`checked/` baselines, and per the human's own instruction (2026-08-26) that
+promotion pass is the human's to do, not the agent's. Not yet implemented
+— tests-first work starts next, then implementation, then the agent's own
+line-by-line review of every einmo divergence (written down, not promoted)
+before handing off to the human. Prior history of this section is in `git
+log`/`git blame` on this file, not accreted here.
