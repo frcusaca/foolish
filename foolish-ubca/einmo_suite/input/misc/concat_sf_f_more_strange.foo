@@ -9,14 +9,18 @@
   f1 = {
      b = <<x+y>> + <<a>> + <b + c>;
      a = <x+y> + a + b;
+     check_b = b;
+     check_a = b;
   }
 
   f2 = {
      b= <<x+z>> + <a + <<b>> + <c> >;
+     check_b = b;
   }
 
   f3 = {
      c= <a + <<b + <x + y + z> >> + <c> >;
+     check_c = c;
   }
 
   o = f1 <f2> <<f3>>;

@@ -1242,6 +1242,40 @@ rewritten to match), zero einmo OUTPUT regressions across the full suite.
 Not prerequisites, and not to be done inside this FOOP. Recorded here so the
 work is not lost when this plan closes.
 
+- [ ] **`misc/concat_sf_f_more_strange.foo` (new, split off 2026-08-25) is
+      MUCH slower/more step-hungry than `misc/concat_sf_f_more.foo`, and it
+      is not yet known whether it terminates at all.** History, corrected
+      from an earlier draft of this entry that wrongly claimed a confirmed
+      infinite loop (see below):
+      - The committed `concat_sf_f_more.foo` originally had only
+        `oo = o$;` (tail-extraction). `oo = o;`/`ooo = o$;` (full-clone of
+        `o`, then tail) were tried as an addition and INITIALLY appeared to
+        hang under a small (3000-step) raw test harness — that was a
+        **false alarm**: re-run with the real composed-with-`system.foo`
+        path and the CLI's actual 20000-step default budget, it settles
+        cleanly (`root=Woconstanic`, `ooo=Constant`, matching the CLI's
+        `ooo=-116`). **`oo = o;`/`ooo = o$;` is now the content of
+        `concat_sf_f_more.foo`** (human direction, 2026-08-25) — this is
+        the "working" version, confirmed settling within budget.
+      - Separately, adding `check_b = b;`/`check_a = b;`/`check_c = c;`
+        trailing statements to `f1`/`f2`/`f3` (to inspect `b`/`c` directly)
+        DOES still leave the program `Braning`/`Prembrionic` after the same
+        20000-step budget — genuinely much slower or non-terminating,
+        NOT yet distinguished (human direction: no need to investigate
+        whether more iterations would finish it, for now). Split into its
+        own file, `misc/concat_sf_f_more_strange.foo` (`oo = o;`/
+        `ooo = o$;` PLUS the three `check_*` statements), rather than kept
+        as a variant of the working file.
+      **TODO**: investigate `concat_sf_f_more_strange.foo` further —
+      determine whether it is genuinely unbounded (per D8's "honest
+      non-termination is not a bug" precedent) or a budget/efficiency
+      question (per D12's retracted framing earlier this session — more
+      steps might resolve it, or the `has_ancestral_sfm` leak tracked as
+      Phase 3I might be the actual cause, given `check_c = c` in `f3`
+      changes what `$`'s tail-extraction resolves through). Not scoped or
+      started; revisit after Phase 3I lands, since that fix may resolve or
+      clarify this file for free.
+
 - [x] **`OperatorFir` settles NK (not WOCONSTANIC / empty brane) when an
       operand is a brane, not a number — FIXED 2026-08-25.** Confirmed live
       against `foolish-ubca/einmo_suite/input/foop/55/concat_ergonomics.foo`:
