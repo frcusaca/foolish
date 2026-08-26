@@ -652,7 +652,7 @@ not redo it.
       full SF/SFF corpus (§5) and the concatenation-ergonomics corpus (§9)
       frequently while implementing this; both depend on the drain path
       this section changes.
-- [ ] **Step 0 (prepended, human direction 2026-08-25) — migrate `IndexFir`,
+- [x] **Step 0 (prepended, human direction 2026-08-25) — migrate `IndexFir`,
       then `SearchFir`, onto the same `on_foolish_op_ready`/
       `is_foolish_child_constanic_enough` mechanism, AHEAD of the remaining
       Step 5 kinds below.** `IndexFir` (`#N`/`^`/`$`) and `SearchFir` are
@@ -675,6 +675,37 @@ not redo it.
       second, both before the remaining `ComparisonFir`/`ModuloFir`/`OrFir`
       work already queued below. Same `_deprecating_op_step` discipline —
       tests first, one piece moved at a time, full suite green after each.
+      **DONE (2026-08-25):** Both migrated. `IndexFir`: renamed
+      `fir_op_step` to `_deprecating_op_step`; the Braning arm's contexted-
+      anchored and plain-anchored lookup logic both moved verbatim into
+      `on_foolish_op_ready`, converting `set_nyes`+early-`return Ok(())`
+      into `Some(nyes)` and the bare "still waiting" `return Ok(())` into
+      `None`; the FOOP-75 §7 "X is not a brane" diagnostic and the
+      computed-index (`#(expr)`) NK path preserved verbatim. `SearchFir`:
+      same rename; its TWO Braning-arm flavors (plain name/anchored search,
+      and the separately-dispatched value-search path) each got their own
+      handler (`on_foolish_op_ready` for the plain path,
+      `on_value_search_op_ready` for `value_search_step`'s Braning arm —
+      `is_value_search` still dispatches at the top of `fir_op_step` before
+      reaching the NYES match, unchanged). Both `SearchFir` handlers, and
+      `IndexFir`'s, additionally received the `is_found()`-based fix (the
+      same class as `@`'s fix below) on every branch that previously
+      waited on `resolved.is_constanic()`/`anchor.is_constanic()` alone: a
+      search anchor can be permanently WOCONSTANIC (found a statement whose
+      value never resolves) while still holding a real, final resolved
+      position/value, so `is_found()` is now checked first, falling back to
+      `is_constanic()` only when not found. Note: the code was NOT
+      meaningfully shrunk by this migration (contrary to the human's
+      pre-migration guess above) — the Braning-arm logic was already a
+      single flat sequence per branch with no cross-arm duplication to
+      collapse; the win is confined to the intended one (readiness
+      decision vs. commit now separated, matching every other migrated
+      kind), not a line-count reduction. Full suite: 377 passed / 0 failed
+      throughout, verified after each of the four handler edits
+      individually. `einmo_gate_checked`'s failure set confirmed
+      byte-identical before/after via `git stash` comparison (all
+      pre-existing, already-tracked pending items — see Step 5's own
+      note below for the list).
 - [x] **Step 1 — per-child predicates, standalone.** Added
       `is_foolish_child_constanic_enough`/`is_ubc_child_constanic_enough` to
       the `Fir` trait (`fir_trait.rs`), alongside `is_constanic_branelike`/
@@ -840,12 +871,42 @@ not redo it.
         `sff_nested`/`concat_sf_f_more` OUTPUT, all pending promotions from
         before this session, not caused by any change in this step).
         (2026-08-25)
-  - [ ] `ComparisonFir`/`ModuloFir`/`OrFir` (`system_foo.rs`) — same
+  - [x] `ComparisonFir`/`ModuloFir`/`OrFir` (`system_foo.rs`) — same
         `_deprecating_op_step` migration + `constantew` override, not yet
-        started.
-  - [ ] Run all tests — old and new — and make sure they all pass
+        started. **DONE (2026-08-25), via sub-agent (all three kinds'
+        `fir_op_step` bodies were already small — Prembrionic|Embryonic
+        enqueue arm, Braning arm calling `combine`, catch-all — so no
+        rename/redirect step was needed; `combine`'s body moved directly
+        into `on_foolish_op_ready` in place).** `settle_nk` no longer calls
+        `set_nyes` itself (only pushes the NK ubc_child + sets
+        `alarm_reason`); every call site became
+        `self.settle_nk(reason, scope); return Some(Nyes::Nk);`. The two
+        "system.foo must define 'True/'False" invariant-violation paths in
+        `ComparisonFir`/`OrFir`, previously
+        `Err(UbcError::InternalConsistency(...))`, became `panic!(...)`
+        with identical message text — forced by `on_foolish_op_ready`'s
+        `Option<Nyes>` signature, which cannot propagate a typed `Err`;
+        matches the existing `.expect(...)`-based precedent used elsewhere
+        in this migration for the same "must be Some" invariant, and this
+        path is unreachable in practice (system.foo always defines both).
+        Full suite: 377 passed / 0 failed, verified after each of the
+        three kinds individually.
+  - [x] Run all tests — old and new — and make sure they all pass
         correctly (final gate for this whole step, once the three
-        remaining kinds are done).
+        remaining kinds are done). **DONE (2026-08-25):** full suite
+        377 passed / 0 failed with all of Step 0 and Step 5 landed
+        together; `einmo_gate_checked` fails only on the same pre-existing,
+        already-tracked set confirmed unchanged by this work:
+        `exercises/fibonacci/1.foo`, `exercises/project_euler/1.foo`,
+        `foop/55/cmod.foo`, `foop/55/euler_small.foo`, `foop/55/ite.foo`
+        (all "missing entirely from checked/, present in output/" — not
+        yet promoted from earlier session work), and
+        `misc/concat_sf_f_more.foo`/`misc/concat_sf_f_more_strange.foo`
+        (the already-documented slow/non-terminating investigation,
+        deferred to revisit after Phase 3I). Confirmed via `git stash`
+        that this exact failure list is identical on the pre-Step-0 commit
+        — zero new divergences from Steps 0/5's logic changes, including
+        the `is_found()`-based behavior changes.
 - [ ] **Step 6 — `terminates_econstanic()` and `ConcatenationFir`'s D9
       override.** Add `terminates_econstanic()` to `SearchFir` per
       FOOP-55.md §11's algorithm. Override `ConcatenationFir`'s
@@ -1527,23 +1588,18 @@ the exercise is green and the real cost is known.
 
 ## Last Updated
 
-**Date**: 2026-08-24
+**Date**: 2026-08-25
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Checked Phase 3H's DECIDE box with a corrected answer: D9's
-originally-named fix location (`push_ubc_child`'s enqueue guard) is
-confirmed NOT the actual blocker via a live trace (patching it to
-always-enqueue had zero effect) — the real cause is a `has_ancestral_sfm`
-scope-propagation leak in `step_inner` (`fir_trait.rs`), independent of §11.
-**New Phase 3I** tracks fixing that leak, sequenced BEFORE Phase 3H/§11
-since it does not depend on the Braning-states machinery. Phase 3H itself
-is retitled ("Braning States", matching FOOP-55.md §11's rewrite) and its
-status note strengthened per explicit human confirmation: this is deferred
-follow-on work, not a Euler-1 sub-task, and must not be worked inline with
-FOOP-55's active phases. A new task in Phase 3H asks for the ground-truth
-per-kind NYES-state document §11's Open Questions call for, as the concrete
-next step once that phase is actually started. `d9_recoordinated_index_currently_stuck_woconstanic`
-(`foolish-ubca/src/fir_kinds.rs`) is the promoted regression pin for D9's
-current (broken) behavior, replacing an earlier `temporary_reproduce_to_debug_*`
-scratch test per the `foolish-debugging` skill's promote-or-delete
-discipline. Prior history of this section is in `git log`/`git blame` on
-this file, not accreted here.
+**Changes**: Checked Phase 3H's Step 0 (`IndexFir`/`SearchFir` migration)
+and the remainder of Step 5 (`ComparisonFir`/`ModuloFir`/`OrFir`
+migration, plus that step's final "run all tests" gate) as complete — see
+each checkbox for the full account. All four kinds now use
+`on_foolish_op_ready` (`SearchFir` also gained a parallel
+`on_value_search_op_ready` for its separately-dispatched value-search
+path); every anchored-search branch across `IndexFir`/`SearchFir` that
+previously waited on an anchor's `is_constanic()` alone now checks
+`is_found()` first (the same fix class already applied to
+`SearchPositionFir`/`@`). Step 6 (`terminates_econstanic()` /
+`ConcatenationFir`'s D9 override) remains blocked on Phase 3I per its
+existing note — not started this session. Prior history of this section is
+in `git log`/`git blame` on this file, not accreted here.
