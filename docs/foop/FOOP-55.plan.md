@@ -1126,15 +1126,12 @@ and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supers
       the settled SearchFir clone path (the `:486`-style arm that duplicates
       `clone_children_budgeted` solely to honor this flag).
 
-      **Resolved 2026-08-27: keep the parameter, turn it on later.** The human
-      confirmed the intent is `true` by default. That is blocked on branes
-      keeping their statements somewhere other than `foolish_children` alone —
-      see the Phase 4B item **"Default `skip_foolish_children` to `true`, and
-      have a brane operate out of `ubc_children` once constanic"**, which
-      carries the full measurement, the human's reference-not-clone proposal,
-      and the open questions. Human's call on timing: *"it's not worth it to do
-      so now."* So: not scaffolding to delete, and not a default to flip today
-      — a real feature waiting on a prerequisite.
+      **RESOLVED (human, 2026-08-27): leave it `false`, do not delete it.** The
+      flag is wanted ON eventually; what blocks it is that a brane keeps its
+      statements only in `foolish_children`. Both halves — flipping the default
+      AND making `BraneFir` operate out of `ubc_children` once constanic — are
+      recorded together in the **"Deferred — NOT worth doing now"** section at
+      the bottom of this plan, and are explicitly out of scope for FOOP-55.
 - [ ] Lexer: `<@` / `@>`. Check for collisions the way `<*` was checked — build a
       one-line program and see what it parses to TODAY before assuming it is free.
 - [ ] Token, AST node (`Astn::UnstayFoolish`), parser arm.
@@ -1795,62 +1792,6 @@ work is not lost when this plan closes.
       refactor, not a behavior fix; do it as its own deliberate pass once
       D9's fix itself is correct and tested, not interleaved with it.
 
-- [ ] **Default `skip_foolish_children` to `true`, and have a brane operate
-      out of `ubc_children` once constanic.** Human direction, 2026-08-27:
-      **"but it's not worth it to do so now."** Recorded here so the
-      reasoning is not lost; do NOT start it as part of FOOP-55.
-
-      **The two halves are one change and must land in this order.**
-
-      *Why the flag cannot flip today.* `skip_foolish_children` makes a clone's
-      `foolish_children` come out empty (`ubc_children` still cloned) — "keep
-      the computed result, drop the written expression." But **a brane's
-      statements ARE its `foolish_children`**, and nothing else holds them, so
-      dropping them clones the brane away to nothing. Measured, 2026-08-27:
-      flipping the default fails 55 of 385 unit tests, and after repairing the
-      two worst call sites (`SearchFir::clone_stmt_result` and
-      `BraneConcatOpFir`'s per-line statement clone) it still produces **5 new
-      einmo divergences** — all nested-brane/seek cases. The shape of the loss,
-      from `misc/nested_brane_boundary`:
-
-      ```
-      checked:  f={NK                            output:  f={}
-                    c=#(offset=-1, UNANCHORED, NK);
-                    d=2;
-                    e=2
-                }
-      ```
-
-      *The unblock (human's proposal).* Have a brane, during its op step, push
-      its constanic `foolish_children` into `ubc_children` **as references, not
-      clones** — "just a reference." Then the statements have a second home,
-      dropping `foolish_children` on clone is no longer lossy, and the flag
-      means what it always claimed to mean. As the human put it: this is
-      *"something we didn't do because keeping everything in `foolish_children`
-      was fine."*
-
-      References, not clones, for two reasons: a clone would re-enter
-      `_inner_constanic_clone`, spend strip budget and reset NYES —
-      reintroducing D9 one level down; and identity must survive, since
-      `FoolRefFir` and `find_stmt_index` both depend on it.
-
-      *Open questions to settle first (not yet investigated):*
-  - [ ] `push_ubc_child` auto-enqueues for stepping. Pushing already-constanic
-        statements must not re-step them or disturb the drain — the constanic
-        gate probably makes it a no-op, but verify rather than assume.
-  - [ ] "All the constanic `foolish_children`" is a growing subset while a
-        brane is still settling. Decide whether the push happens once at
-        settle or incrementally per statement; that choice changes what a
-        mid-flight clone observes.
-  - [ ] Expect real einmo movement across the nested-brane/seek corpus, to be
-        read case by case — this is a genuine change to what a brane's
-        `ubc_children` contains, not a refactor.
-
-      *Current state:* the flag stays `false` at every production call site;
-      the only `true`s are two tests that exercise the flag itself. See also
-      the Phase 3J checkbox recording the same finding from the other
-      direction.
-
 ## Phase 5 — The D1 decision (leading-underscore names)
 
 Deferred to the end deliberately: the exercise runs on the `INTERN_`
@@ -1885,6 +1826,66 @@ the exercise is green and the real cost is known.
       so it is a documented choice rather than a local hack.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
+## Deferred — NOT worth doing now (human, 2026-08-27)
+
+Recorded so the reasoning survives; **explicitly out of scope for FOOP-55**.
+Do not start this as part of this FOOP.
+
+- [ ] **Turn `skip_foolish_children` on by default, and make `BraneFir` operate
+      out of `ubc_children` once constanic.** These are ONE change, in this
+      order — the first is not safe without the second.
+
+      **Why it cannot flip today.** A brane's statements live ONLY in its
+      `foolish_children`, so dropping them on clone loses the brane's contents
+      outright. Measured, not assumed (2026-08-27): flipping the default fails
+      **55 of 385** unit tests and adds **5 new einmo divergences**
+      (`head_tail_chained_on_nested`, `head_tail_nested_brane`,
+      `nested_brane_boundary`, `seek_across_nested_brane_boundary`,
+      `unanchored_seek_with_head_tail`). `misc/nested_brane_boundary` shows it
+      plainly:
+
+      ```
+      checked:  f={NK                          output:  f={}
+                    c=#(offset=-1, UNANCHORED, NK);
+                    d=2;
+                    e=2
+                }
+      ```
+
+      Narrowing the flag to top-level-only does NOT rescue it: the two
+      dominant call sites are `SearchFir::clone_stmt_result` (the found-body
+      copy — dropping its children guts every search) and the
+      `BraneConcatOpFir` per-line statement clone (a `StatementFir`'s body is
+      also its `foolish_children`). Both are legitimately cloning containers
+      whose contents live in that store.
+
+      **The unblock (human's proposal, 2026-08-27).** *"For branes we should
+      always just add all the constanic `foolish_children` into `ubc_children`
+      during the op step — not a clone, just a reference. It's something we
+      didn't do because keeping everything in `foolish_children` was fine."*
+      Once a brane's settled statements are ALSO reachable through
+      `ubc_children`, dropping `foolish_children` on clone stops being lossy
+      and the flag means what it always claimed: keep the computed result,
+      drop the written expression.
+
+      References, not clones — deliberately. A clone would re-enter
+      `_inner_constanic_clone`, spend strip budget, and reset NYES,
+      reintroducing D9 one level down; a reference preserves identity, which
+      `FoolRefFir` and `find_stmt_index` both depend on.
+
+      Two things to settle when this is actually taken up:
+  - [ ] `push_ubc_child` auto-enqueues for stepping — confirm pushing
+        already-constanic statements is a no-op for the drain and does not
+        re-step them.
+  - [ ] Decide WHICH statements and WHEN: for a brane still settling, "all the
+        constanic `foolish_children`" is a growing subset. Once at settle, or
+        incrementally per statement? That choice changes what a mid-flight
+        clone observes.
+
+      Related: this would also retire the `skip_foolish_children` decision
+      checkbox in Phase 3J and settle the remaining half of Phase 4B's
+      "contract/combine the `constanic_clone` family" item.
+
 ## Merge
 
 - [ ] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-55-project-euler-1 and committed to `foop-55-project-euler-1`
@@ -1913,35 +1914,32 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-27
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added a Phase 4B item at the end recording the human's decision
-(2026-08-27) to eventually default `skip_foolish_children` to `true` **and**
-have a brane push its constanic `foolish_children` into `ubc_children` as
-REFERENCES (not clones) during its op step — one change in two halves, in that
-order — together with the human's explicit "but it's not worth it to do so
-now." Carries the measurement behind it: flipping the flag alone fails 55 of
-385 unit tests, and after repairing the two worst call sites still yields 5 new
-einmo divergences, all nested-brane/seek, with `misc/nested_brane_boundary`
-cloning `f` away to `f={}`. Reason references beat clones there: a clone would
-re-enter `_inner_constanic_clone`, spend strip budget and reset NYES
-(reintroducing D9 one level down), and identity must survive for `FoolRefFir`
-and `find_stmt_index`. Three open questions listed as sub-checkboxes
-(auto-enqueue on `push_ubc_child`, once-at-settle vs incremental, expected
-einmo movement). Corrected the Phase 3J checkbox accordingly: the flag is NOT
-dead scaffolding to delete — the earlier "recommendation: delete the parameter"
-is superseded — it is a real feature waiting on a prerequisite. Nothing
-implemented; the flag stays `false` at every production call site.
+**Changes**: Added a **"Deferred — NOT worth doing now"** section just before
+Merge, recording (human decision, 2026-08-27) that turning
+`skip_foolish_children` on by default and making `BraneFir` operate out of
+`ubc_children` once constanic are ONE change in that order, and are explicitly
+out of scope for FOOP-55. Captures the measured blocker — flipping the default
+alone fails 55 of 385 unit tests and adds 5 new einmo divergences, with
+`misc/nested_brane_boundary` cloning a nested brane empty (`f={}` where
+`checked` has three statements) — why narrowing the flag to top-level-only does
+not rescue it, and the human's unblock: push a brane's constanic
+`foolish_children` into `ubc_children` during the op step as REFERENCES, not
+clones (a clone would re-enter `_inner_constanic_clone`, spend strip budget and
+reset NYES, reintroducing D9 one level down). Two open questions noted for
+whoever takes it up: whether `push_ubc_child`'s auto-enqueue is a no-op for
+already-constanic statements, and whether the push happens once at settle or
+incrementally. Phase 3J's `skip_foolish_children` checkbox now resolves to
+"leave it false, do not delete it" and points at that section instead of
+recommending deletion.
 
 Earlier the same day: Phase 4B — refreshed the "contract/combine
-`constanic_clone` methods" item and answered the "can we `friend` a module?"
-question in place (Rust has none; `pub(in crate::path)` restricts by ancestor
-and cannot privilege one sibling; visibility was the symptom, ~10
-near-identical bodies the disease). Implemented the
-`budgeted_constanic_clone!` macro (`ce3d0f17`), collapsing
-`ComparisonFir`/`ModuloFir`/`OrFir`'s identical clone bodies to three
-one-liners — the point being that one macro body means one place the budget is
-threaded, so the `779b63f5` bug class (a copy that silently minted a fresh
-budget) cannot recur. Phase 3J — checked off the `OpInstructions` enum
-(`Normal`/`InsideSfm`/`InsideUfm`, each choosing its own starting strip budget)
-and the `system_foo.rs` budget refactor left half done by `779b63f5`, both in
-`55caa37d`. Prior history of this section is in `git log`/`git blame` on this
-file.
+`constanic_clone` methods" item and implemented its first half as
+`budgeted_constanic_clone!` (commit `ce3d0f17`), collapsing the three
+`system_foo` bodies to one-line invocations so the strip budget is threaded in
+exactly one place and cannot be re-dropped by copy-paste. Answered the "can we
+`friend` a module?" question in place: Rust has no `friend`, `pub(in path)`
+restricts by ancestor and cannot privilege one sibling, and visibility is the
+symptom rather than the disease. Phase 3J — checked off two items (commit
+`55caa37d`): the `OpInstructions` enum replacing `inside_sf_mark: bool`, and
+the `system_foo.rs` budget refactor left half-done by `779b63f5`. Prior history
+of this section is in `git log`/`git blame` on this file.
