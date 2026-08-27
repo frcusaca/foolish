@@ -55,6 +55,86 @@ impl Parser {
         tok
     }
 
+    /// Consume a closer (`>`, `>>`, `>>>`) from a possibly-longer run.
+    ///
+    /// FOOP-55 Phase 3J (human, 2026-08-27). The OPENER side is strict — a
+    /// run of 4+ `<` is illegal — and that strictness is precisely what lets
+    /// the CLOSER side be greedy: because every opener is unambiguous, the
+    /// recursive-descent stack always knows how many `>` this frame needs, so
+    /// it takes its 1/2/3 and leaves the remainder in place for its parent.
+    /// That is what makes `<<a+<<b>>>>` parse with no space before the final
+    /// `>>`.
+    ///
+    /// The lexer emits a maximal closer token (`>>>` preferred over `>>`), so
+    /// the split happens here: if the token on the cursor is LONGER than what
+    /// this frame wants, it is rewritten in place to the remainder.
+    fn expect_closer(&mut self, want: usize) -> Result<TokenAndLocation> {
+        let Some(first) = self.current().cloned() else {
+            return Err(ParseError::Eof { line: 0, col: 0 });
+        };
+        let width = |t: &Token| match t {
+            Token::Gt => 1usize,
+            Token::GtGt => 2,
+            Token::GtGtGt => 3,
+            _ => 0,
+        };
+        let have = width(&first.token);
+        if have == 0 {
+            return Err(ParseError::UnexpectedToken {
+                expected: "<token>",
+                found: format!("{:?}", first.token),
+                line: first.line,
+                col: first.column,
+            });
+        }
+        if have > want {
+            // Longer token than this frame needs: take `want`, rewrite the
+            // remainder in place for the enclosing frame.
+            let remainder = match have - want {
+                1 => Token::Gt,
+                2 => Token::GtGt,
+                _ => Token::GtGtGt,
+            };
+            self.tokens[self.pos].token = remainder;
+            self.tokens[self.pos].column += want as u32;
+            return Ok(first);
+        }
+        // Take this token, then keep pulling adjacent `>` until satisfied --
+        // a long run arrives as single `Gt`s (see the lexer's closer arm).
+        self.advance();
+        let mut got = have;
+        while got < want {
+            let Some(next) = self.current().cloned() else {
+                return Err(ParseError::Eof {
+                    line: first.line,
+                    col: first.column,
+                });
+            };
+            let w = width(&next.token);
+            if w == 0 {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "<token>",
+                    found: format!("{:?}", next.token),
+                    line: next.line,
+                    col: next.column,
+                });
+            }
+            if got + w > want {
+                let remainder = match got + w - want {
+                    1 => Token::Gt,
+                    2 => Token::GtGt,
+                    _ => Token::GtGtGt,
+                };
+                self.tokens[self.pos].token = remainder;
+                self.tokens[self.pos].column += (want - got) as u32;
+                return Ok(first);
+            }
+            self.advance();
+            got += w;
+        }
+        Ok(first)
+    }
+
     fn expect(&mut self, expected: &Token) -> Result<TokenAndLocation> {
         let cur = self.current().cloned();
         match cur {
@@ -1165,7 +1245,7 @@ impl Parser {
             Some(Token::LtLtLt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(&Token::GtGtGt)?;
+                self.expect_closer(3)?;
                 Ok(Astn::UnstayFoolish {
                     expr: Box::new(expr),
                 })
@@ -1173,7 +1253,7 @@ impl Parser {
             Some(Token::LtLt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(&Token::GtGt)?;
+                self.expect_closer(2)?;
                 Ok(Astn::StayFullyFoolish {
                     expr: Box::new(expr),
                 })
@@ -1181,7 +1261,7 @@ impl Parser {
             Some(Token::Lt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(&Token::Gt)?;
+                self.expect_closer(1)?;
                 Ok(Astn::StayFoolish {
                     expr: Box::new(expr),
                 })
@@ -2285,6 +2365,50 @@ mod tests {
                         );
                     }
                     other => panic!("expected StayFoolish, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// FOOP-55 Phase 3J (human, 2026-08-27): `<<a + <<b>>>>` MUST parse with
+    /// no space before the final `>>`.
+    ///
+    /// This is the whole reason the OPENER rule is strict. Because `<<` and
+    /// `<<<` openers are unambiguous, the parser always knows the nesting
+    /// depth, so a closer run is consumed greedily 2-or-3 at a time and the
+    /// extra space is not needed.
+    #[test]
+    fn foop55_unspaced_closer_run_parses() {
+        let ast = parse_single("{a=1,b=2; c=<<a+<<b>>>>;}")
+            .expect("`<<a+<<b>>>>` must parse -- greedy closer consumption");
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[2] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::StayFullyFoolish { .. } => {}
+                    other => panic!("expected outer SFF, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// A UFM closed out of a longer run: `<<< <<b>>>>>` is UFM(SFF(b)) --
+    /// 5 closers split 2 then 3.
+    #[test]
+    fn foop55_unspaced_closer_run_splits_for_ufm() {
+        let ast = parse_single("{b=2; c=<<< <<b>>>>>;}")
+            .expect("`<<< <<b>>>>>` must parse: closers split 2 then 3");
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[1] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::UnstayFoolish { expr: inner } => assert!(
+                        matches!(&**inner, Astn::StayFullyFoolish { .. }),
+                        "UFM must wrap the SFF, got {inner:?}"
+                    ),
+                    other => panic!("expected UnstayFoolish, got {other:?}"),
                 },
                 other => panic!("expected assignment, got {other:?}"),
             },

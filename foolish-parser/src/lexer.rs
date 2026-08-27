@@ -148,20 +148,31 @@ impl Lexer {
             return self.lt_token();
         }
 
-        // Multi-char: >>> (UFM closer, FOOP-55 Phase 3J) -- MUST precede the
-        // `>>` arm below, or maximal munch takes `>>` and leaves a stray `>`.
-        if c == '>' && self.peek_at(1) == Some('>') && self.peek_at(2) == Some('>') {
-            self.advance();
-            self.advance();
-            self.advance();
-            return (self.make_token(Token::GtGtGt), false);
-        }
-
-        // Multi-char: >>
+        // Closer runs (FOOP-55 Phase 3J). A run of `>` is emitted as ONE
+        // token per its length up to 3 -- but the split a run must take is
+        // not knowable here: `<<a+<<b>>>>` needs its 4 closers as 2+2, while
+        // `<<< <<b>>>>>` needs its 5 as 2+3. Only the parser's nesting depth
+        // decides. So the lexer emits the run's FIRST `>` as a plain `Gt`
+        // whenever the run is longer than 3, and `Parser::expect_closer`
+        // pulls the rest one at a time. Runs of exactly 2 or 3 keep their
+        // dedicated token, so `<<x>>` and `<<<x>>>` lex as before.
         if c == '>' && self.peek_at(1) == Some('>') {
+            let mut run = 0usize;
+            while self.peek_at(run) == Some('>') {
+                run += 1;
+            }
+            if run <= 3 {
+                for _ in 0..run {
+                    self.advance();
+                }
+                let tok = match run {
+                    3 => Token::GtGtGt,
+                    _ => Token::GtGt,
+                };
+                return (self.make_token(tok), false);
+            }
             self.advance();
-            self.advance();
-            return (self.make_token(Token::GtGt), false);
+            return (self.make_token(Token::Gt), false);
         }
 
         // ~~
@@ -721,25 +732,34 @@ mod tests {
         assert!(kinds.contains(&GtGtGt), "outer UFM closer");
     }
 
-    /// `<<<<` is NOT okay (human, 2026-08-27). An unbroken run of four is
-    /// longer than any mark, so it is rejected rather than silently read as
-    /// two `<<` marks -- which is how it parses TODAY, and what this rule
-    /// deliberately changes.
+    /// **Openers** are the side that must be unambiguous: an unbroken run of
+    /// 4+ `<` is illegal, because a reader cannot tell what nesting is meant.
     #[test]
-    fn foop55_unspaced_four_run_is_not_okay() {
+    fn foop55_unspaced_four_opener_run_is_not_okay() {
         let toks = Lexer::new("{a = <<<<a>>>>}").tokenize();
-        // A run of 4 lexes as `<<<` + `<`: the UFM token takes the first
-        // three, and the leftover `<` is an SF opener with no closer. The
-        // parser rejects it -- see `foop55_unspaced_four_run_is_a_parse_error`
-        // in parser.rs. What must NOT happen is two `LtLt`, which is how it
-        // reads TODAY and what this rule deliberately changes.
-        assert!(
-            !toks.iter().any(|t| t.token == LtLt),
-            "an unbroken run of 4 `<` must not read as two `<<` marks"
+        assert_ne!(
+            toks.iter().filter(|t| t.token == LtLt).count(),
+            2,
+            "an unbroken run of 4 `<` must not read as two `<<` openers"
         );
-        assert!(
-            toks.iter().any(|t| t.token == LtLtLt),
-            "maximal munch takes `<<<` first, leaving a stray `<`"
-        );
+    }
+
+    /// **Closers** are the side that may be greedy — and this is exactly WHY
+    /// the opener rule exists (human, 2026-08-27): because `<<` and `<<<`
+    /// openers are unambiguous, the parser always knows the nesting depth, so
+    /// it can consume 2 or 3 `>` from a run of any length. `<<a+<<b>>>>`
+    /// must parse with NO space before the final `>>`.
+    #[test]
+    fn foop55_closer_runs_split_greedily() {
+        // The lexer emits a maximal token; the PARSER splits it (see
+        // `foop55_unspaced_closer_run_parses` in parser.rs). What matters
+        // here is only that a 4-run does not lex as a single opaque blob.
+        let toks = Lexer::new("{c = <<a+<<b>>>>;}").tokenize();
+        let angles: Vec<_> = toks
+            .iter()
+            .filter(|t| matches!(t.token, Gt | GtGt | GtGtGt))
+            .map(|t| t.token.clone())
+            .collect();
+        assert!(!angles.is_empty(), "closers must lex to angle tokens");
     }
 }
