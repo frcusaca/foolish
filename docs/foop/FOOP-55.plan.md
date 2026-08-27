@@ -1751,13 +1751,30 @@ work is not lost when this plan closes.
       D9's fix: the clone machinery ended up with 4+ named methods
       (`ProtoBrane::constanic_clone`, `ProtoBrane::_inner_constanic_clone`,
       `ProtoBrane::clone_children_budgeted`,
-      `ProtoBrane::clone_children_for_constanic_clone`, plus one
-      `constanic_clone` per `system_foo.rs` kind —
-      `ComparisonFir`/`ModuloFir`/`OrFir` — needed only because those
-      structs live outside `fir_kinds.rs` and can't be built by its central
-      `match`) where the design called for 2 (`constanic_clone` the public
-      entry, `_inner_constanic_clone` the recursive worker). Two real,
-      separate sources of the bulk, worth addressing together:
+      ~~`ProtoBrane::clone_children_for_constanic_clone`~~ *(deleted
+      2026-08-27, `55caa37d`)*, plus one `constanic_clone` per
+      `system_foo.rs` kind — `ComparisonFir`/`ModuloFir`/`OrFir` — needed
+      only because those structs live outside `fir_kinds.rs` and can't be
+      built by its central `match`) where the design called for 2
+      (`constanic_clone` the public entry, `_inner_constanic_clone` the
+      recursive worker). Two real, separate sources of the bulk, worth
+      addressing together:
+
+      **On "can't we just `friend` the module?" (human, 2026-08-27).** Rust
+      has no `friend`. The nearest tools are `pub(in crate::path)` (a
+      narrower `pub(crate)`, but it restricts by ancestor module — it cannot
+      name one sibling as privileged) and simply making the two files one
+      module. Neither is the right answer here, because **visibility is the
+      symptom, not the disease**: the bulk is ~10 near-identical bodies (8
+      `Rc::new_cyclic` arms in `fir_kinds.rs`, 7 of them calling
+      `clone_children_budgeted` verbatim, plus these 3), and merging the
+      modules would leave ~10 near-identical bodies in one file. The
+      `clone_self_shallow` sub-item below dissolves the module boundary
+      outright — a trait method needs no visibility grant at all, each kind
+      implements it where the type already lives, and the 3 `system_foo`
+      functions disappear rather than merely getting shorter. Prefer it over
+      both the macro and the module move; keep macros in reserve for
+      whatever boilerplate survives in the central `match`.
   - [ ] The `Rc::new_cyclic(|me| { let self_weak = me.clone(); RefCell::new(Struct {
         core, self_weak, ...}) })` boilerplate repeated once per FIR kind
         in `_inner_constanic_clone`'s `match` — some kinds don't even read
@@ -1836,19 +1853,35 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-27
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 3J — checked off two items, both in commit `55caa37d`.
-(1) `constanic_clone`'s `inside_sf_mark: bool` is replaced by the three-variant
-`OpInstructions` enum (`Normal` / `InsideSfm` / `InsideUfm`), each variant
-choosing its own starting strip budget; behavior for the two pre-existing
-conditions is unchanged (einmo divergence set byte-identical), and four new
-tests pin all three variants. (2) The `system_foo.rs` budget refactor left half
-done by `779b63f5` is finished — the Comparison/Modulo/Or dispatch arms now
-thread `stay_budget`, and the `clone_children_for_constanic_clone` wrapper is
-deleted with zero callers; recorded that those three are dispatch arms of
-`_inner_constanic_clone`, not clone entry points, so they do legitimately clone.
-Added a new decision checkbox recording that `skip_foolish_children` must NOT be
-defaulted to `true`: a brane's statements ARE its `foolish_children`, so
-enabling it empties every cloned brane and fails 55 of 385 unit tests; the flag
-is dead (all production call sites pass `false`) and the recommendation is
-deletion, pending the human's word since the ask was to enable it. Prior
-history of this section is in `git log`/`git blame` on this file.
+**Changes**: Phase 4B — refreshed the "contract/combine `constanic_clone`
+methods" item: struck `clone_children_for_constanic_clone` from its list of
+methods (deleted 2026-08-27 in `55caa37d`) and answered the human's
+2026-08-27 question "is there no way to `friend` a module so all the clone
+code can be together?" in place. Recorded that Rust has no `friend`; that
+`pub(in crate::path)` restricts by ancestor module and cannot privilege one
+sibling; and that visibility is the symptom rather than the disease, since
+the bulk is ~10 near-identical bodies (8 `Rc::new_cyclic` arms in
+`fir_kinds.rs`, 7 calling `clone_children_budgeted` verbatim, plus the 3 in
+`system_foo.rs`) that a module merge would leave untouched. Names the
+existing `clone_self_shallow` trait-method sub-item as the preferred fix
+over both the macro and the module move — it needs no visibility grant and
+removes the three `system_foo` functions entirely — with macros held in
+reserve for boilerplate surviving in the central `match`.
+
+Earlier the same day: Phase 3J — checked off two items, both in commit
+`55caa37d`. (1) `constanic_clone`'s `inside_sf_mark: bool` is replaced by the
+three-variant `OpInstructions` enum (`Normal` / `InsideSfm` / `InsideUfm`),
+each variant choosing its own starting strip budget; behavior for the two
+pre-existing conditions is unchanged (einmo divergence set byte-identical),
+and four new tests pin all three variants. (2) The `system_foo.rs` budget
+refactor left half done by `779b63f5` is finished — the Comparison/Modulo/Or
+dispatch arms now thread `stay_budget`, and the
+`clone_children_for_constanic_clone` wrapper is deleted with zero callers;
+recorded that those three are dispatch arms of `_inner_constanic_clone`, not
+clone entry points, so they do legitimately clone. Added a decision checkbox
+recording that `skip_foolish_children` must NOT be defaulted to `true`: a
+brane's statements ARE its `foolish_children`, so enabling it empties every
+cloned brane and fails 55 of 385 unit tests; the flag is dead (all production
+call sites pass `false`) and the recommendation is deletion, pending the
+human's word since the ask was to enable it. Prior history of this section is
+in `git log`/`git blame` on this file.
