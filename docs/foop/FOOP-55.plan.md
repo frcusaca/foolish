@@ -1155,7 +1155,61 @@ and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supers
       SF-of-position-projection and both evaluate to `0`. A lexer that greedily
       takes `@>` as a UFM closer would silently change the meaning of every
       such program. Whitespace is not a way out — both spacings already parse.
-- [ ] **DECIDE the closer, given `@>` is taken.** Options, none yet chosen:
+      **DECIDED (human, 2026-08-27): the UFM is `<<<` / `>>>`.** `<@`/`@>` is
+      dropped — `@>` collides with `@`-projection (above) and the angle-run
+      spelling keeps all three marks in one visual family.
+
+      **The chain rule.** A run of `<` (or `>`) is terminated by ANY character
+      that is not `<` or `>` — whitespace or otherwise. The run LENGTH is the
+      mark: 1 = SF, 2 = SFF, 3 = UFM. A reader never counts an unbroken pile to
+      learn the nesting, so nesting is written with a break: `<<< < a > >>>`.
+
+      **A run of 4+ is ILLEGAL** (human, 2026-08-27: *"`<<<<` 4 angle should be
+      illegal, there's no way to determine what is meant by it conveniently"*).
+      This is deliberately NOT delegated to the parser. The parser's
+      recursive-descent stack COULD disambiguate `>>>>` (the frame that opened
+      `<<` knows it needs `>>`, and could consume 2 of 4) — but the ambiguity
+      that matters is the READER's, not the lexer's. `<<<<` is unreadable
+      whichever way the machine resolves it, so it is rejected at the lexer.
+
+      **Implemented 2026-08-27** (working tree, NOT committed — see the blocker
+      below): `Token::LtLtLt`/`GtGtGt`, both lexer arms ordered before their
+      2-char forms, `Display` arms, and 5 lexer tests
+      (`foop55_ufm_lexes_as_one_mark`,
+      `foop55_any_non_angle_char_breaks_the_chain`,
+      `foop55_run_length_selects_the_mark`, `foop55_spaced_nesting_is_fine`,
+      `foop55_unspaced_four_run_is_not_okay`). 386 workspace unit tests pass
+      (parser 62 -> 67).
+
+- [ ] **BLOCKED — needs the human's key: `misc/sff_nested` must be respelled.**
+      The rule breaks exactly ONE program in the suite (swept: it is the only
+      input with a 3+ angle run):
+
+      ```
+      input/misc/sff_nested.foo:  {a=1,b=2; c=<<a+<<b>>>>; c=c; c;}
+                                                       ^^^^ run of 4
+      checked: status: normal      -> renders the full nested SFF tree
+      output:  status: input-error -> "expected <token>, found GtGtGt at line 1, column 22"
+      ```
+
+      The fix is a one-character respelling — `c=<<a+<<b>> >>` — which is what
+      the new rule asks every nested mark to look like.
+
+      **Why the agent must not do it unilaterally:** `misc/sff_nested` is a
+      FOREIGN baseline (not `foop/55/*`) AND it has a `verified/` twin
+      (`verified/misc/sff_nested.foo.einmo`). `rust_instructions.md`
+      §"Phase-by-phase testing discipline" freezes it: *"If a `verified/` twin
+      exists for a test, its `checked/` baseline is frozen — do not promote
+      over it without a human reviewer's key."* Editing the INPUT is a larger
+      step than promoting, not a smaller one.
+
+      Human decision needed on: (a) respell the input and re-sign both
+      `checked/` and `verified/` with the reviewer key; or (b) keep the old
+      spelling legal after all; or (c) something else. Until then the UFM
+      lexer work stays uncommitted.
+
+- [x] ~~**DECIDE the closer, given `@>` is taken.**~~ *(answered above,
+      2026-08-27: the UFM is `<<<`/`>>>`, not `<@`/`@>`.)*  Original options: Options, none yet chosen:
       (a) an asymmetric closer that cannot collide (e.g. `@)`, `>@`);
       (b) keep `@>` but require the lexer to only produce it when a matching
       unclosed `<@` is open — a mode/nesting-depth flag, which makes the lexer
@@ -1944,29 +1998,28 @@ Do not start this as part of this FOOP.
 
 **Date**: 2026-08-27
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 3J — ran the mandated UFM lexer collision check against the
-current parser and recorded the probe table. **`<@` is free** (fails loudly:
-`expected primary expression, found At`), but **`@>` is NOT**: `@` is a real
-in-use operator (FOOP-55 §8 position projection, `lexer.rs:282`), so `<a@>`
-and `<a @>` already parse today as SF-of-position-projection and both evaluate
-to `0`; whitespace does not disambiguate. Amended the "fixed decisions" block
-accordingly — the opener is settled, the closer is now an OPEN question — and
-added a DECIDE checkbox listing the options (asymmetric closer, context-
-sensitive lexer mode keyed to an open `<@`, or a different pair), with the
-instruction to re-run the probe table against whatever is chosen and land the
-surviving rows as parser tests.
+**Changes**: Phase 3J — the UFM syntax is DECIDED: `<<<` / `>>>`, not `<@`/`@>`
+(human, 2026-08-27). Recorded the chain rule (a run of `<`/`>` is terminated by
+any non-angle character; run LENGTH is the mark — 1 SF, 2 SFF, 3 UFM; nesting
+is written with a break, `<<< < a > >>>`) and that a run of 4+ is ILLEGAL.
+Noted explicitly that this is NOT delegated to the parser even though the
+recursive-descent stack could disambiguate `>>>>`: the ambiguity that matters
+is the reader's, not the lexer's.
 
-Also added a **"Deferred — NOT worth doing now"** section before Merge
-(human decision, 2026-08-27): turning `skip_foolish_children` on by default
-and making `BraneFir` operate out of `ubc_children` once constanic are ONE
-change in that order, explicitly out of scope for FOOP-55. Captures the
-measured blocker — flipping the default alone fails 55 of 385 unit tests and
-adds 5 new einmo divergences, with `misc/nested_brane_boundary` cloning a
-nested brane empty — and the human's unblock: push a brane's constanic
-`foolish_children` into `ubc_children` during the op step as REFERENCES, not
-clones. Phase 3J's `skip_foolish_children` checkbox resolves to "leave it
-false, do not delete it".
+Implemented in the working tree (NOT committed): `Token::LtLtLt`/`GtGtGt`, both
+lexer arms ordered ahead of their 2-char forms, `Display` arms, 5 new lexer
+tests; 386 workspace unit tests pass (parser 62→67).
 
-Earlier the same day: Phase 4B's `budgeted_constanic_clone!` macro
-(`ce3d0f17`) and Phase 3J's `OpInstructions` enum plus the `system_foo` budget
-refactor (`55caa37d`). Prior history is in `git log`/`git blame` on this file.
+**Blocked on the human's key.** The rule breaks exactly one program in the
+suite — `misc/sff_nested.foo` (`c=<<a+<<b>>>>`, an unbroken run of 4), which
+now fails to compile. The fix is a one-character respelling (`<<b>> >>`), but
+that baseline is FOREIGN to FOOP-55 and has a `verified/` twin, which
+`rust_instructions.md` freezes; editing its input is a bigger step than
+promoting, so it needs a reviewer key. The UFM lexer work stays uncommitted
+until that is resolved.
+
+Earlier the same day: the "Deferred — NOT worth doing now" section
+(`skip_foolish_children` + brane-from-`ubc_children` as one out-of-scope
+change), Phase 4B's `budgeted_constanic_clone!` macro (`ce3d0f17`), and Phase
+3J's `OpInstructions` enum plus the `system_foo` budget refactor (`55caa37d`).
+Prior history is in `git log`/`git blame` on this file.
