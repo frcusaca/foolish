@@ -23,7 +23,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use foolish_parser::{AssignmentOperator, Astn};
 
-use crate::fir_kinds::{IndepIntFir, OpInstructions, StripBudget};
+use crate::fir_kinds::{IndepIntFir, OpInstructions, StripBudget, budgeted_constanic_clone};
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::proto_brane::ProtoBrane;
 
@@ -177,42 +177,7 @@ impl ComparisonFir {
         })
     }
 
-    /// Constanic-clone a comparison FIR onto `new_parent`.
-    ///
-    /// This is the clone that makes comparisons work: `'lt` is cloned out of
-    /// `system.foo` and recoordinated into the brane that referenced it, and
-    /// the clone's operand lookups then resolve against THAT brane's
-    /// neighbours. Children are cloned by the shared
-    /// `clone_children_budgeted` helper, exactly as `OperatorFir`'s
-    /// clone does — the operands must come across as ordinary children so the
-    /// recoordination applies to them too.
-    pub(crate) fn constanic_clone(
-        op: ComparisonOp,
-        source: &std::cell::Ref<'_, dyn Fir>,
-        new_parent: &Weak<RefCell<dyn Fir>>,
-        nyes: Nyes,
-        disable_nyes_reset: bool,
-        skip_foolish_children: bool,
-        stay_budget: StripBudget,
-    ) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<ComparisonFir>>| {
-            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_budgeted(
-                source.core(),
-                &self_weak,
-                new_parent,
-                nyes,
-                disable_nyes_reset,
-                skip_foolish_children,
-                stay_budget,
-            );
-            RefCell::new(ComparisonFir {
-                core,
-                op,
-                self_weak,
-            })
-        })
-    }
+    budgeted_constanic_clone!(ComparisonFir, op: ComparisonOp);
 
     /// Resolve `'True`/`'False` by ordinary ancestral search from this FIR's
     /// own position. Because this FIR lives inside `system.foo`, the search
@@ -423,33 +388,7 @@ impl ModuloFir {
         })
     }
 
-    pub(crate) fn constanic_clone(
-        op: ArithOp,
-        source: &std::cell::Ref<'_, dyn Fir>,
-        new_parent: &Weak<RefCell<dyn Fir>>,
-        nyes: Nyes,
-        disable_nyes_reset: bool,
-        skip_foolish_children: bool,
-        stay_budget: StripBudget,
-    ) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<ModuloFir>>| {
-            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_budgeted(
-                source.core(),
-                &self_weak,
-                new_parent,
-                nyes,
-                disable_nyes_reset,
-                skip_foolish_children,
-                stay_budget,
-            );
-            RefCell::new(ModuloFir {
-                core,
-                op,
-                self_weak,
-            })
-        })
-    }
+    budgeted_constanic_clone!(ModuloFir, op: ArithOp);
 
     fn settle_nk(&self, reason: &str, _scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
@@ -574,28 +513,7 @@ impl OrFir {
         })
     }
 
-    pub(crate) fn constanic_clone(
-        source: &std::cell::Ref<'_, dyn Fir>,
-        new_parent: &Weak<RefCell<dyn Fir>>,
-        nyes: Nyes,
-        disable_nyes_reset: bool,
-        skip_foolish_children: bool,
-        stay_budget: StripBudget,
-    ) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<OrFir>>| {
-            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_budgeted(
-                source.core(),
-                &self_weak,
-                new_parent,
-                nyes,
-                disable_nyes_reset,
-                skip_foolish_children,
-                stay_budget,
-            );
-            RefCell::new(OrFir { core, self_weak })
-        })
-    }
+    budgeted_constanic_clone!(OrFir);
 
     fn settle_nk(&self, reason: &str, _scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());

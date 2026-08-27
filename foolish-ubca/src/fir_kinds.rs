@@ -247,6 +247,63 @@ impl OpInstructions {
     }
 }
 
+/// Define a FIR kind's `constanic_clone` dispatch arm (FOOP-55 §5, Phase 4B).
+///
+/// A kind whose clone is "rebuild me around a budgeted clone of my children"
+/// gets its whole body from here. `$Kind` is the struct; each `$field` is
+/// extra state carried beside `core`/`self_weak`, taken as a same-named
+/// parameter ahead of the standard ones.
+///
+/// **This exists to make the budget un-droppable.** These bodies were
+/// duplicated per kind, and `779b63f5` threaded `StripBudget` through the
+/// copies in `fir_kinds.rs` while missing the ones in `system_foo.rs` — which
+/// then minted `StripBudget::fresh()` and silently discarded the descending
+/// budget for two months. With one body, a kind cannot get that wrong by
+/// copy-paste: there is exactly one place the budget is threaded, and adding
+/// a kind cannot fork it.
+///
+/// Macros are used sparingly here (`rust_instructions.md` §5). This is the
+/// sanctioned case — unavoidable repetition, removed without loss of clarity
+/// — because the bodies differ only in a struct name and an optional field.
+macro_rules! budgeted_constanic_clone {
+    ($Kind:ident $(, $field:ident : $FieldTy:ty)* $(,)?) => {
+        /// Constanic-clone this FIR onto `new_parent`, recoordinating it.
+        ///
+        /// This is the clone that makes the `system.foo` operators work:
+        /// `'lt` is cloned out of `system.foo` and recoordinated into the
+        /// brane that referenced it, and the clone's operand lookups then
+        /// resolve against THAT brane's neighbours. Children go through
+        /// `clone_children_budgeted` — the operands must come across as
+        /// ordinary children so the recoordination applies to them too, and
+        /// so `stay_budget` keeps descending rather than being re-minted.
+        pub(crate) fn constanic_clone(
+            $($field: $FieldTy,)*
+            source: &std::cell::Ref<'_, dyn Fir>,
+            new_parent: &Weak<RefCell<dyn Fir>>,
+            nyes: Nyes,
+            disable_nyes_reset: bool,
+            skip_foolish_children: bool,
+            stay_budget: StripBudget,
+        ) -> FirRef {
+            Rc::new_cyclic(|me: &Weak<RefCell<$Kind>>| {
+                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                let core = ProtoBrane::clone_children_budgeted(
+                    source.core(),
+                    &self_weak,
+                    new_parent,
+                    nyes,
+                    disable_nyes_reset,
+                    skip_foolish_children,
+                    stay_budget,
+                );
+                RefCell::new($Kind { core, $($field,)* self_weak })
+            })
+        }
+    };
+}
+
+pub(crate) use budgeted_constanic_clone;
+
 impl ProtoBrane {
     /// Clone a source core's children into a new core, carrying the
     /// in-progress clone operation's strip budget (FOOP-55 §5).
