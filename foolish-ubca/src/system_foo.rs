@@ -23,7 +23,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use foolish_parser::{AssignmentOperator, Astn};
 
-use crate::fir_kinds::IndepIntFir;
+use crate::fir_kinds::{IndepIntFir, OpInstructions, StripBudget};
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::proto_brane::ProtoBrane;
 
@@ -183,7 +183,7 @@ impl ComparisonFir {
     /// `system.foo` and recoordinated into the brane that referenced it, and
     /// the clone's operand lookups then resolve against THAT brane's
     /// neighbours. Children are cloned by the shared
-    /// `clone_children_for_constanic_clone` helper, exactly as `OperatorFir`'s
+    /// `clone_children_budgeted` helper, exactly as `OperatorFir`'s
     /// clone does — the operands must come across as ordinary children so the
     /// recoordination applies to them too.
     pub(crate) fn constanic_clone(
@@ -193,16 +193,18 @@ impl ComparisonFir {
         nyes: Nyes,
         disable_nyes_reset: bool,
         skip_foolish_children: bool,
+        stay_budget: StripBudget,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ComparisonFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_for_constanic_clone(
+            let core = ProtoBrane::clone_children_budgeted(
                 source.core(),
                 &self_weak,
                 new_parent,
                 nyes,
                 disable_nyes_reset,
                 skip_foolish_children,
+                stay_budget,
             );
             RefCell::new(ComparisonFir {
                 core,
@@ -244,7 +246,7 @@ impl ComparisonFir {
             &self.core.parent_weak(),
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         self.core.set_alarm_reason(reason.to_owned());
     }
@@ -343,7 +345,7 @@ impl Fir for ComparisonFir {
             &self.core.parent_weak(),
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         Some(Nyes::Constant)
     }
@@ -428,16 +430,18 @@ impl ModuloFir {
         nyes: Nyes,
         disable_nyes_reset: bool,
         skip_foolish_children: bool,
+        stay_budget: StripBudget,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ModuloFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_for_constanic_clone(
+            let core = ProtoBrane::clone_children_budgeted(
                 source.core(),
                 &self_weak,
                 new_parent,
                 nyes,
                 disable_nyes_reset,
                 skip_foolish_children,
+                stay_budget,
             );
             RefCell::new(ModuloFir {
                 core,
@@ -455,7 +459,7 @@ impl ModuloFir {
             &self.core.parent_weak(),
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         self.core.set_alarm_reason(reason.to_owned());
     }
@@ -533,7 +537,7 @@ impl Fir for ModuloFir {
             &self_weak,
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         Some(Nyes::Constant)
     }
@@ -576,16 +580,18 @@ impl OrFir {
         nyes: Nyes,
         disable_nyes_reset: bool,
         skip_foolish_children: bool,
+        stay_budget: StripBudget,
     ) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<OrFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = ProtoBrane::clone_children_for_constanic_clone(
+            let core = ProtoBrane::clone_children_budgeted(
                 source.core(),
                 &self_weak,
                 new_parent,
                 nyes,
                 disable_nyes_reset,
                 skip_foolish_children,
+                stay_budget,
             );
             RefCell::new(OrFir { core, self_weak })
         })
@@ -599,7 +605,7 @@ impl OrFir {
             &self.core.parent_weak(),
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         self.core.set_alarm_reason(reason.to_owned());
     }
@@ -702,7 +708,7 @@ impl Fir for OrFir {
             &self.core.parent_weak(),
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         Some(Nyes::Constant)
     }

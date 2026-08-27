@@ -136,12 +136,16 @@ impl FirRefNavExt for FirRef {
 /// the parent's remaining budget, but spending it in one child must not affect
 /// that child's siblings.
 ///
-/// Wraps a plain count (not a bool) so a future higher budget (more than one
-/// strip per path) is a matter of starting `constanic_clone` with a bigger
-/// number, not a new type (human, 2026-08-26).
+/// Wraps a count (not a bool) so a future higher budget (more than one strip
+/// per path) is a matter of starting `constanic_clone` with a bigger number,
+/// not a new type (human, 2026-08-26). The count is optional so that
+/// "unlimited" is carried explicitly by `None` rather than by a sentinel
+/// value (human, 2026-08-26).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StripBudget {
-    remaining: u32,
+    /// `None` = unlimited: every strip is permitted and nothing is ever
+    /// decremented. `Some(n)` = `n` strips remain on this path.
+    remaining: Option<u32>,
 }
 
 impl StripBudget {
@@ -154,7 +158,17 @@ impl StripBudget {
     /// rather than being freed to run in a context the SF's own deferral
     /// has not yet decided is final.
     fn new(n: u32) -> Self {
-        StripBudget { remaining: n }
+        StripBudget { remaining: Some(n) }
+    }
+
+    /// A budget with no limit: every mark on the path may be stripped, and
+    /// spending never exhausts it.
+    ///
+    /// This is what [`OpInstructions::InsideUfm`] starts with — the Unstay
+    /// Foolishness Mark's whole purpose is removing ALL SF/SFF layers below
+    /// it, not merely the outermost one.
+    fn unlimited() -> Self {
+        StripBudget { remaining: None }
     }
 
     /// A budget with one strip available — one path's worth, the ordinary
@@ -165,42 +179,82 @@ impl StripBudget {
 
     /// Spend one strip if available. Returns `(may_strip, remaining_budget)`.
     /// The caller passes `remaining_budget` down the path it descends.
+    ///
+    /// An unlimited budget (`None`) always permits the strip and comes back
+    /// unchanged. A limited one permits the strip while any remain, and
+    /// decrements with `saturating_sub` so the count can never wrap around.
     fn spend(self) -> (bool, Self) {
-        if self.remaining > 0 {
-            (true, StripBudget::new(self.remaining - 1))
-        } else {
-            (false, self)
+        match self.remaining {
+            None => (true, self),
+            Some(0) => (false, self),
+            Some(n) => (true, StripBudget::new(n.saturating_sub(1))),
+        }
+    }
+}
+
+/// What the STEPPER calling [`ProtoBrane::constanic_clone`] is currently
+/// stepping inside, which decides the strip budget the clone begins with
+/// (FOOP-55 §5, Phase 3J).
+///
+/// This names the *call site's* ambient condition, never a property of the
+/// clone TARGET: the same subtree cloned under different instructions keeps
+/// or loses its marks accordingly. A mark encountered mid-descent is still
+/// handled by [`ProtoBrane::_inner_constanic_clone`]'s own mark arm; these
+/// variants only choose what budget that descent starts with.
+///
+/// Replaces the former `inside_sf_mark: bool` (human, 2026-08-27): a boolean
+/// could name only two of the three real conditions, and UFM needs the third.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OpInstructions {
+    /// An ordinary step, outside any mark. Budget of **one**: the outermost
+    /// SF/SFF mark on each path strips, and a nested one survives.
+    Normal,
+    /// Stepping inside an SF mark (`scope.has_ancestral_sfm`). Continues with
+    /// a budget of one that is **already spent**, so nothing strips: the
+    /// enclosing SF has not yet decided this content's final position, so the
+    /// found body's own marks stay wrapped and their NYES preserved verbatim.
+    InsideSfm,
+    /// Stepping inside a UFM (`<@ … @>`). Continues with an **unlimited**
+    /// budget: every SF/SFF layer below strips, however deeply nested. UFM
+    /// removes the effects of `<>`/`<<>>` throughout its whole subtree.
+    ///
+    /// Constructed only by tests until the UFM operator itself lands (Phase
+    /// 3J); the budget semantics it selects are already implemented and
+    /// pinned, so the operator only has to name this variant.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "UFM operator (Phase 3J) is the caller; semantics pinned by tests now"
+        )
+    )]
+    InsideUfm,
+}
+
+impl OpInstructions {
+    /// The strip budget a clone under these instructions begins with.
+    ///
+    /// `InsideSfm` spends the fresh budget down by one rather than naming a
+    /// zero constructor, keeping "one path's worth, already used" visible as
+    /// the single formula it is (human, 2026-08-26: "you can just do
+    /// budget-1 when inside an SFMark").
+    fn starting_budget(self) -> StripBudget {
+        match self {
+            OpInstructions::Normal => StripBudget::fresh(),
+            OpInstructions::InsideSfm => StripBudget::fresh().spend().1,
+            OpInstructions::InsideUfm => StripBudget::unlimited(),
         }
     }
 }
 
 impl ProtoBrane {
-    /// `pub(crate)` for `system_foo::ComparisonFir::constanic_clone`, which
-    /// clones its children exactly as the kinds in this module do.
-    pub(crate) fn clone_children_for_constanic_clone(
-        source: &ProtoBrane,
-        self_weak: &Weak<RefCell<dyn Fir>>,
-        new_parent: &Weak<RefCell<dyn Fir>>,
-        nyes: Nyes,
-        sfm: bool,
-        skip_foolish_children: bool,
-    ) -> ProtoBrane {
-        // Children of one clone share that clone's budget (FOOP-55 §5).
-        let budget = StripBudget::fresh();
-        Self::clone_children_budgeted(
-            source,
-            self_weak,
-            new_parent,
-            nyes,
-            sfm,
-            skip_foolish_children,
-            budget,
-        )
-    }
-
-    /// [`Self::clone_children_for_constanic_clone`], carrying an existing
-    /// clone operation's strip budget (FOOP-55 §5).
-    #[allow(clippy::too_many_arguments)]
+    /// Clone a source core's children into a new core, carrying the
+    /// in-progress clone operation's strip budget (FOOP-55 §5).
+    ///
+    /// `pub(crate)` for the `system_foo` kinds (`ComparisonFir`, `ModuloFir`,
+    /// `OrFir`), whose `constanic_clone` dispatch arms live in that module
+    /// only because their types do; they clone children exactly as the kinds
+    /// in this module do, and pass down the same descending `budget`.
     pub(crate) fn clone_children_budgeted(
         source: &ProtoBrane,
         self_weak: &Weak<RefCell<dyn Fir>>,
@@ -241,21 +295,13 @@ impl ProtoBrane {
     /// that it is stepping inside an SF mark, the clones do not reset
     /// nyes").
     ///
-    /// Every clone is one **operation** with one **strip budget** (at most
-    /// one SF/SFF mark, wherever in the cloned tree it happens to sit) and
-    /// its own **fresh** `disable_nyes_reset = false` starting point. What
-    /// IS carried in is `inside_sf_mark`: whether the STEPPER calling this
-    /// (not some unrelated ancestor of the clone TARGET) is currently
-    /// stepping inside an SF wrapper's subtree — `step_inner`'s
-    /// `scope.has_ancestral_sfm`. When `true`, the fresh budget is spent
-    /// down by one before the clone ever starts (`budget - 1`), leaving it
-    /// already exhausted: the SF mark currently being stepped has not yet
-    /// decided this content's final position, so
-    /// nothing this clone touches should be freed to run either — the
-    /// found statement's own nested SF/SFF mark stays wrapped, its NYES
-    /// preserved verbatim, exactly as if the strip had already happened
-    /// and failed. When `false` (an ordinary, unwrapped step), the budget
-    /// starts fresh, matching every prior case.
+    /// Every clone is one **operation** with one **strip budget** and its own
+    /// **fresh** `disable_nyes_reset = false` starting point. What IS carried
+    /// in is [`OpInstructions`]: what the STEPPER calling this (not some
+    /// unrelated ancestor of the clone TARGET) is currently stepping inside.
+    /// That choice, and only that choice, sets the starting budget —
+    /// `Normal` one strip, `InsideSfm` none, `InsideUfm` unlimited. See
+    /// [`OpInstructions::starting_budget`].
     ///
     /// This is DIFFERENT from the superseded design (D9 item 3, first
     /// draft): that version ignored ambient scope entirely, which broke a
@@ -273,24 +319,15 @@ impl ProtoBrane {
         new_parent: &Weak<RefCell<dyn Fir>>,
         index: usize,
         skip_foolish_children: bool,
-        inside_sf_mark: bool,
+        instructions: OpInstructions,
     ) -> FirRef {
-        // Always start from the same fresh budget; being inside an SF mark
-        // simply spends it down by one before the clone ever begins (human,
-        // 2026-08-26: "that way you can just do budget-1 when inside an
-        // SFMark") — one formula, no separate none()/fresh() branch.
-        let (_, stay_budget) = if inside_sf_mark {
-            StripBudget::fresh().spend()
-        } else {
-            (true, StripBudget::fresh())
-        };
         Self::_inner_constanic_clone(
             fir_ref,
             new_parent,
             index,
             false,
             skip_foolish_children,
-            stay_budget,
+            instructions.starting_budget(),
         )
     }
 
@@ -402,6 +439,7 @@ impl ProtoBrane {
                         nyes,
                         disable_nyes_reset,
                         skip_foolish_children,
+                        stay_budget,
                     ),
                     None => Rc::new(RefCell::new(NkFir {
                         core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
@@ -421,6 +459,7 @@ impl ProtoBrane {
                         nyes,
                         disable_nyes_reset,
                         skip_foolish_children,
+                        stay_budget,
                     ),
                     None => Rc::new(RefCell::new(NkFir {
                         core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
@@ -434,6 +473,7 @@ impl ProtoBrane {
                 nyes,
                 disable_nyes_reset,
                 skip_foolish_children,
+                stay_budget,
             ),
             FirKind::SearchPosition => Rc::new_cyclic(|me: &Weak<RefCell<SearchPositionFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
@@ -484,7 +524,11 @@ impl ProtoBrane {
                     let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
                     if let Some(ref econ) = chain_econstanic {
                         core.push_ubc_child(ProtoBrane::constanic_clone(
-                            econ, &self_weak, 0, false, false,
+                            econ,
+                            &self_weak,
+                            0,
+                            false,
+                            OpInstructions::Normal,
                         ));
                     } else {
                         for ubc in borrowed.core().ubc_children() {
@@ -1140,7 +1184,7 @@ impl Fir for OperatorFir {
             &self_weak,
             0,
             false,
-            false,
+            OpInstructions::Normal,
         ));
         Some(Nyes::Constant)
     }
@@ -1171,7 +1215,11 @@ impl OperatorFir {
             })
         });
         self.core.push_ubc_child(ProtoBrane::constanic_clone(
-            &nk_ref, &self_weak, 0, false, false,
+            &nk_ref,
+            &self_weak,
+            0,
+            false,
+            OpInstructions::Normal,
         ));
     }
 }
@@ -1671,7 +1719,8 @@ impl SearchFir {
     /// Constanic-copy the found statement's body into this search's
     /// `ubc_children`.
     ///
-    /// `inside_sf_mark` carries `scope.has_ancestral_sfm`: SF enforcement
+    /// `instructions` carries `scope.has_ancestral_sfm` as
+    /// [`OpInstructions::InsideSfm`]: SF enforcement
     /// happens during constanic cloning (human, 2026-08-26). When this
     /// search is itself running inside an SF mark, the copy starts with no
     /// strip budget, so a mark on the found body is PRESERVED rather than
@@ -1683,7 +1732,7 @@ impl SearchFir {
     fn clone_stmt_result(
         stmt: &FirRef,
         new_parent: &Weak<RefCell<dyn Fir>>,
-        inside_sf_mark: bool,
+        instructions: OpInstructions,
     ) -> FirRef {
         // Prefer settled_result() over the raw written body: for a plain
         // StatementFir this is None (unchanged behavior — falls through to the
@@ -1692,7 +1741,7 @@ impl SearchFir {
         // NK for the written RHS without mutating the body's own FIR/nyes.
         let body = statement_value_for_comparison(stmt).expect("statement must have a body");
         let index = stmt.borrow().as_stmt_line_number().unwrap_or(0);
-        ProtoBrane::constanic_clone(&body, new_parent, index, false, inside_sf_mark)
+        ProtoBrane::constanic_clone(&body, new_parent, index, false, instructions)
     }
 
     fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
@@ -1710,7 +1759,15 @@ impl SearchFir {
             *self.found_context.borrow_mut() = Some((home_brane, idx));
         }
         let self_weak = self.core.parent_weak();
-        let clone = Self::clone_stmt_result(&stmt, &self_weak, scope.has_ancestral_sfm);
+        let clone = Self::clone_stmt_result(
+            &stmt,
+            &self_weak,
+            if scope.has_ancestral_sfm {
+                OpInstructions::InsideSfm
+            } else {
+                OpInstructions::Normal
+            },
+        );
         push_search_result_pair(&self.core, clone, stmt);
         self.core.set_nyes(Nyes::Braning);
     }
@@ -2448,7 +2505,13 @@ impl Fir for IndexFir {
             });
             if let Some((stmt, body)) = contexted_result {
                 let self_weak = self.core.parent_weak();
-                let clone = ProtoBrane::constanic_clone(&body, &self_weak, 0, false, false);
+                let clone = ProtoBrane::constanic_clone(
+                    &body,
+                    &self_weak,
+                    0,
+                    false,
+                    OpInstructions::Normal,
+                );
                 push_search_result_pair(&self.core, clone, stmt);
                 return Some(Nyes::Braning);
             } else if !anchor.borrow().core().get_nyes().is_constanic() {
@@ -2498,7 +2561,11 @@ impl Fir for IndexFir {
                     let nk_ref = NkFir::nk(&reason, self_weak.clone());
                     nk_ref.borrow().core().set_nyes(Nyes::Nk);
                     self.core.push_ubc_child(ProtoBrane::constanic_clone(
-                        &nk_ref, &self_weak, 0, false, false,
+                        &nk_ref,
+                        &self_weak,
+                        0,
+                        false,
+                        OpInstructions::Normal,
                     ));
                     self.core.set_alarm_reason(reason);
                 }
@@ -2517,8 +2584,13 @@ impl Fir for IndexFir {
                     match body {
                         Some(body) => {
                             let self_weak = self.core.parent_weak();
-                            let clone =
-                                ProtoBrane::constanic_clone(&body, &self_weak, 0, false, false);
+                            let clone = ProtoBrane::constanic_clone(
+                                &body,
+                                &self_weak,
+                                0,
+                                false,
+                                OpInstructions::Normal,
+                            );
                             push_search_result_pair(&self.core, clone, stmt);
                             Some(Nyes::Braning)
                         }
@@ -2587,7 +2659,11 @@ impl IndexFir {
                                                 Some(body) => {
                                                     let self_weak = self.core.parent_weak();
                                                     let clone = ProtoBrane::constanic_clone(
-                                                        &body, &self_weak, 0, false, false,
+                                                        &body,
+                                                        &self_weak,
+                                                        0,
+                                                        false,
+                                                        OpInstructions::Normal,
                                                     );
                                                     push_search_result_pair(
                                                         &self.core, clone, stmt,
@@ -3381,8 +3457,13 @@ impl BraneConcatOpFir {
             let count = resolved.borrow().stmt_count().unwrap_or(0);
             for i in 0..count {
                 if let Some(stmt) = resolved.borrow().stmt_at(i) {
-                    let clone =
-                        ProtoBrane::constanic_clone(&stmt, &helper_weak, global_idx, false, false);
+                    let clone = ProtoBrane::constanic_clone(
+                        &stmt,
+                        &helper_weak,
+                        global_idx,
+                        false,
+                        OpInstructions::Normal,
+                    );
                     Self::apply_null_const_rule_to_merged_stmt(&clone, &cloned_stmts);
                     cloned_stmts.push(clone);
                     global_idx += 1;
@@ -5167,7 +5248,8 @@ mod tests {
         let sf = make_stay_foolish(Rc::clone(&inner));
         sf.borrow().core().set_nyes(Nyes::Econstanic);
 
-        let cloned = ProtoBrane::constanic_clone(&sf, &dangling_parent(), 0, false, false);
+        let cloned =
+            ProtoBrane::constanic_clone(&sf, &dangling_parent(), 0, false, OpInstructions::Normal);
         assert_ne!(
             cloned.borrow().kind(),
             FirKind::StayFoolish,
@@ -5197,7 +5279,13 @@ mod tests {
         // `constanic_clone`'s fixed `disable_nyes_reset=false` starting
         // value, independent of whatever ambient SF wrapper a caller (like
         // the search-for-`b` in `c = a b`) happened to be stepping under.
-        let cloned = ProtoBrane::constanic_clone(&b_body_mark, &dangling_parent(), 0, false, false);
+        let cloned = ProtoBrane::constanic_clone(
+            &b_body_mark,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::Normal,
+        );
 
         assert_ne!(
             cloned.borrow().kind(),
@@ -5227,7 +5315,13 @@ mod tests {
         let outer_mark = make_stay_foolish(Rc::clone(&inner_mark));
         outer_mark.borrow().core().set_nyes(Nyes::Econstanic);
 
-        let cloned = ProtoBrane::constanic_clone(&outer_mark, &dangling_parent(), 0, false, false);
+        let cloned = ProtoBrane::constanic_clone(
+            &outer_mark,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::Normal,
+        );
 
         assert_ne!(
             cloned.borrow().kind(),
@@ -5267,7 +5361,8 @@ mod tests {
         let op = make_operator("+", vec![left_mark, right_mark]);
         op.borrow().core().set_nyes(Nyes::Woconstanic);
 
-        let cloned = ProtoBrane::constanic_clone(&op, &dangling_parent(), 0, false, false);
+        let cloned =
+            ProtoBrane::constanic_clone(&op, &dangling_parent(), 0, false, OpInstructions::Normal);
 
         let cloned_children = cloned.borrow().core().foolish_children().to_vec();
         assert_eq!(cloned_children.len(), 2);
@@ -5281,6 +5376,140 @@ mod tests {
             FirKind::StayFullyFoolish,
             "right sibling's own SFF mark must be stripped independently, \
              not blocked by the left sibling having already spent a budget"
+        );
+    }
+
+    /// `OpInstructions::Normal` is the ordinary, unwrapped step: one strip per
+    /// path, so the outermost mark comes off and a nested one survives. This
+    /// restates `constanic_clone_strips_exactly_one_nested_layer` against the
+    /// enum spelling, pinning `Normal` to the historical `inside_sf_mark =
+    /// false` behavior.
+    #[test]
+    fn op_instructions_normal_strips_exactly_one_layer() {
+        let leaf = make_constant_int(5);
+        leaf.borrow().core().set_nyes(Nyes::Econstanic);
+        let inner_mark = make_stay_fully_foolish(Rc::clone(&leaf));
+        inner_mark.borrow().core().set_nyes(Nyes::Econstanic);
+        let outer_mark = make_stay_foolish(Rc::clone(&inner_mark));
+        outer_mark.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let cloned = ProtoBrane::constanic_clone(
+            &outer_mark,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::Normal,
+        );
+
+        assert_eq!(
+            cloned.borrow().kind(),
+            FirKind::StayFullyFoolish,
+            "Normal: outer mark stripped, inner mark survives -- one layer"
+        );
+    }
+
+    /// `OpInstructions::InsideSfm` continues with a budget of ONE that the
+    /// stepper has ALREADY spent — so nothing strips at all and the mark is
+    /// preserved verbatim. This is the D9 fix: a search running inside an SF
+    /// wrapper copies its found body with its own marks still intact.
+    #[test]
+    fn op_instructions_inside_sfm_preserves_the_mark() {
+        let compound = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        compound.borrow().core().set_nyes(Nyes::Econstanic);
+        let mark = make_stay_fully_foolish(Rc::clone(&compound));
+        mark.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let cloned = ProtoBrane::constanic_clone(
+            &mark,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::InsideSfm,
+        );
+
+        assert_eq!(
+            cloned.borrow().kind(),
+            FirKind::StayFullyFoolish,
+            "InsideSfm: the mark must survive -- the enclosing SF has not yet \
+             decided this content's final position"
+        );
+        assert_eq!(
+            cloned.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "InsideSfm: an unstripped mark's content is preserved verbatim, \
+             never reset to EMBRYONIC"
+        );
+    }
+
+    /// `OpInstructions::InsideUfm` continues with an INFINITE budget: every
+    /// mark on the path is stripped, however deeply nested. This is what makes
+    /// `<@ … @>` remove ALL SF/SFF layers below it rather than just one.
+    #[test]
+    fn op_instructions_inside_ufm_strips_every_nested_layer() {
+        let leaf = make_constant_int(7);
+        leaf.borrow().core().set_nyes(Nyes::Econstanic);
+        let innermost = make_stay_fully_foolish(Rc::clone(&leaf));
+        innermost.borrow().core().set_nyes(Nyes::Econstanic);
+        let middle = make_stay_foolish(Rc::clone(&innermost));
+        middle.borrow().core().set_nyes(Nyes::Econstanic);
+        let outer = make_stay_fully_foolish(Rc::clone(&middle));
+        outer.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let cloned = ProtoBrane::constanic_clone(
+            &outer,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::InsideUfm,
+        );
+
+        assert_eq!(
+            cloned.borrow().kind(),
+            FirKind::IndepInt,
+            "InsideUfm: ALL THREE nested marks must be stripped, exposing the \
+             bare leaf -- an unlimited budget, not one layer"
+        );
+    }
+
+    /// The unlimited budget must not be consumed by breadth either: an
+    /// UFM-instructed clone strips each sibling's mark AND keeps stripping
+    /// deeper on each path.
+    #[test]
+    fn op_instructions_inside_ufm_strips_siblings_and_depth_together() {
+        let left_leaf = make_constant_int(1);
+        left_leaf.borrow().core().set_nyes(Nyes::Econstanic);
+        let left_inner = make_stay_foolish(Rc::clone(&left_leaf));
+        left_inner.borrow().core().set_nyes(Nyes::Econstanic);
+        let left_mark = make_stay_fully_foolish(Rc::clone(&left_inner));
+        left_mark.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let right_leaf = make_constant_int(2);
+        right_leaf.borrow().core().set_nyes(Nyes::Econstanic);
+        let right_mark = make_stay_foolish(Rc::clone(&right_leaf));
+        right_mark.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let op = make_operator("+", vec![left_mark, right_mark]);
+        op.borrow().core().set_nyes(Nyes::Woconstanic);
+
+        let cloned = ProtoBrane::constanic_clone(
+            &op,
+            &dangling_parent(),
+            0,
+            false,
+            OpInstructions::InsideUfm,
+        );
+
+        let kids = cloned.borrow().core().foolish_children().to_vec();
+        assert_eq!(kids.len(), 2);
+        assert_eq!(
+            kids[0].borrow().kind(),
+            FirKind::IndepInt,
+            "UFM strips BOTH of the left path's nested marks"
+        );
+        assert_eq!(
+            kids[1].borrow().kind(),
+            FirKind::IndepInt,
+            "UFM strips the right sibling's mark too"
         );
     }
 
@@ -9454,7 +9683,7 @@ mod tests {
             })
         });
         let new_parent = Rc::downgrade(&dummy);
-        let clone = ProtoBrane::constanic_clone(&cat, &new_parent, 0, true, false);
+        let clone = ProtoBrane::constanic_clone(&cat, &new_parent, 0, true, OpInstructions::Normal);
 
         // The CLONE's identity as an operator node is what's under test here
         // -- it must still be Concatenation-kinded and constanic. Content
@@ -9495,7 +9724,8 @@ mod tests {
             })
         });
         let new_parent = Rc::downgrade(&dummy);
-        let clone = ProtoBrane::constanic_clone(&brane, &new_parent, 0, true, false);
+        let clone =
+            ProtoBrane::constanic_clone(&brane, &new_parent, 0, true, OpInstructions::Normal);
 
         assert_eq!(clone.borrow().kind(), FirKind::Brane);
         assert!(
@@ -9872,8 +10102,13 @@ mod tests {
     fn creation_constanic_clone_preserves_identity() {
         let parent = make_brane(vec![]);
         let creation = CreationFir::creation(Rc::downgrade(&parent));
-        let clone =
-            ProtoBrane::constanic_clone(&creation, &Rc::downgrade(&parent), 0, false, false);
+        let clone = ProtoBrane::constanic_clone(
+            &creation,
+            &Rc::downgrade(&parent),
+            0,
+            false,
+            OpInstructions::Normal,
+        );
         assert!(
             Rc::ptr_eq(&creation, &clone),
             "constanic clone of CreationFir must return same Rc"
@@ -10271,7 +10506,8 @@ mod tests {
         // Use a real brane as the new parent (Weak::new doesn't work for dyn Fir).
         let dummy_parent = make_brane(vec![]);
         let new_parent: std::rc::Weak<RefCell<dyn Fir>> = std::rc::Rc::downgrade(&dummy_parent);
-        let cloned = ProtoBrane::constanic_clone(&cat, &new_parent, 0, false, false);
+        let cloned =
+            ProtoBrane::constanic_clone(&cat, &new_parent, 0, false, OpInstructions::Normal);
         assert_eq!(
             cloned.borrow().as_concat_provenance(),
             ConcatProvenance::TailConcatenation,
