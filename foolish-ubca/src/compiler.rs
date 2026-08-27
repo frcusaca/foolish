@@ -6,7 +6,7 @@ use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
     BraneConcatOpFir, BraneFir, ConcatProvenance, CreationFir, IndepIntFir, IndexFir, NkFir,
-    OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir, UfmFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -263,6 +263,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         }
         Astn::StayFoolish { expr } => validate_astn(expr),
         Astn::StayFullyFoolish { expr } => validate_astn(expr),
+        Astn::UnstayFoolish { expr } => validate_astn(expr),
         Astn::IntLit(_)
         | Astn::UnknownLit
         | Astn::Creation
@@ -574,6 +575,19 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 RefCell::new(StayFullyFoolishFir { core })
             })
         }
+        // FOOP-55 Phase 3J: the UFM. `under_sff` is passed through UNCHANGED
+        // -- a UFM is not a detachment mark, so it neither sets nor clears
+        // the compile-time "born ECONSTANIC" rule. Its unstripping is a
+        // STEPPING act (OpInstructions::InsideUfm), which is what lets it
+        // undo an SFF's compile-time detachment without a compile-time half:
+        // re-birthing the content EMBRYONIC is exactly that undo.
+        Astn::UnstayFoolish { expr } => Rc::new_cyclic(|me: &Weak<RefCell<UfmFir>>| {
+            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+            let e = build_fir(*expr, Some(&me_dyn), under_sff);
+            RefCell::new(UfmFir {
+                core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
+            })
+        }),
         Astn::ContextedSearch { inner } => {
             let fir = build_fir(*inner, parent, under_sff);
             fir.borrow_mut().set_contexted(true);

@@ -29,11 +29,15 @@ pub enum Token {
     At, // @
     Ampersand,        // &
 
-    Lt,         // <
-    Gt,         // >
-    LtEqGt,     // <=>
-    LtLt,       // <<
-    GtGt,       // >>
+    Lt,     // <
+    Gt,     // >
+    LtEqGt, // <=>
+    LtLt,   // <<
+    GtGt,   // >>
+    /// `<<<` — UFM (Unstay Foolishness Mark) opener, FOOP-55 Phase 3J.
+    LtLtLt, // <<<
+    /// `>>>` — UFM closer.
+    GtGtGt, // >>>
     LtLtEqGtGt, // <<=>>>
 
     Apostrophe, // '

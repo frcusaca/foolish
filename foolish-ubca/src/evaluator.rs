@@ -660,6 +660,18 @@ fn proto_to_core_fir_inner(
             }
             builder.build()
         }
+        // FOOP-55 Phase 3J: a UFM is CONSUMED by producing its result, like
+        // any other operator -- so it renders AS that result, never as a
+        // surviving wrapper (contrast SF/SFF, which do render their marks).
+        // Before the strip-clone exists, render the content as written.
+        FirKind::Ufm => {
+            let stripped = borrowed.core().ubc_children().into_iter().next();
+            let shown = stripped.or_else(|| borrowed.core().foolish_children().first().cloned());
+            match shown {
+                Some(inner) => proto_to_core_fir_inner(&inner, false, current_stmt),
+                None => NkFirBuilder::new("ufm: no content").state(state).build(),
+            }
+        }
         FirKind::StayFoolish => {
             let inner = borrowed.core().foolish_children();
             let inner_ref = inner.first();

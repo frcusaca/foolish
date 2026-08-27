@@ -159,6 +159,17 @@ pub enum Astn {
         expr: Box<Astn>,
     },
 
+    /// UFM marker: <<<expr>>> (FOOP-55 Phase 3J).
+    ///
+    /// The Unstay Foolishness Mark. A MARK to the Foolisher, an OPERATOR to
+    /// the evaluator: it owns its content, waits for it to go constanic, then
+    /// constanic-clones it stripping EVERY SF/SFF layer below and steps the
+    /// result again. Where `<<x>>` removes one layer of detachment,
+    /// `<<<x>>>` removes all of them, on every path.
+    UnstayFoolish {
+        expr: Box<Astn>,
+    },
+
     /// Detachment brane: [...]{...}
     DetachmentBrane {
         statements: Vec<Astn>,

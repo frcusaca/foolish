@@ -558,6 +558,7 @@ impl Parser {
             // parse gap that made `{a,b,c}'cmod` unwritable.
             | Token::Apostrophe
             | Token::Up
+            | Token::LtLtLt
             | Token::LtLt
             | Token::Lt => {
                 let Some(prev_idx) = self.pos.checked_sub(1) else {
@@ -1161,6 +1162,14 @@ impl Parser {
                 self.expect(&Token::RParen)?;
                 Ok(expr)
             }
+            Some(Token::LtLtLt) => {
+                self.advance();
+                let expr = self.parse_expr()?;
+                self.expect(&Token::GtGtGt)?;
+                Ok(Astn::UnstayFoolish {
+                    expr: Box::new(expr),
+                })
+            }
             Some(Token::LtLt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
@@ -1363,6 +1372,8 @@ impl std::fmt::Display for Token {
             Token::Gt => write!(f, ">"),
             Token::LtEqGt => write!(f, "<=>"),
             Token::LtLt => write!(f, "<<"),
+            Token::LtLtLt => write!(f, "<<<"),
+            Token::GtGtGt => write!(f, ">>>"),
             Token::GtGt => write!(f, ">>"),
             Token::LtLtEqGtGt => write!(f, "<<=>>>"),
             Token::Apostrophe => write!(f, "'"),
@@ -2274,6 +2285,43 @@ mod tests {
                         );
                     }
                     other => panic!("expected StayFoolish, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// FOOP-55 Phase 3J: `<<<x>>>` parses to `Astn::UnstayFoolish`.
+    #[test]
+    fn foop55_ufm_parses() {
+        let ast = parse_single("{r = <<<a>>>;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::UnstayFoolish { .. } => {}
+                    other => panic!("expected UnstayFoolish, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// A UFM nests an SF, written with a break: `<<< < a > >>>`.
+    #[test]
+    fn foop55_ufm_nests_an_sf() {
+        let ast = parse_single("{r = <<< <a> >>>;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::UnstayFoolish { expr: inner } => {
+                        assert!(
+                            matches!(&**inner, Astn::StayFoolish { .. }),
+                            "UFM must wrap the inner SF, got {inner:?}"
+                        );
+                    }
+                    other => panic!("expected UnstayFoolish, got {other:?}"),
                 },
                 other => panic!("expected assignment, got {other:?}"),
             },

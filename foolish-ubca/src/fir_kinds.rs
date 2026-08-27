@@ -218,16 +218,7 @@ pub(crate) enum OpInstructions {
     /// budget: every SF/SFF layer below strips, however deeply nested. UFM
     /// removes the effects of `<>`/`<<>>` throughout its whole subtree.
     ///
-    /// Constructed only by tests until the UFM operator itself lands (Phase
-    /// 3J); the budget semantics it selects are already implemented and
-    /// pinned, so the operator only has to name this variant.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "UFM operator (Phase 3J) is the caller; semantics pinned by tests now"
-        )
-    )]
+    /// Named by `UfmFir::on_foolish_op_ready` (Phase 3J) for its strip-clone.
     InsideUfm,
 }
 
@@ -639,6 +630,23 @@ impl ProtoBrane {
             FirKind::StayFoolish | FirKind::StayFullyFoolish => {
                 unreachable!("SF/SFF stripped at fn top")
             }
+            // A UFM clones like any other operator: rebuild the wrapper around
+            // a budgeted clone of its children. It is NOT stripped at the fn
+            // top -- only SF/SFF marks are; a UFM in a cloned tree still has
+            // its own unstripping to do when it steps.
+            FirKind::Ufm => Rc::new_cyclic(|me: &Weak<RefCell<UfmFir>>| {
+                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                let core = ProtoBrane::clone_children_budgeted(
+                    borrowed.core(),
+                    &self_weak,
+                    new_parent,
+                    nyes,
+                    disable_nyes_reset,
+                    skip_foolish_children,
+                    stay_budget,
+                );
+                RefCell::new(UfmFir { core })
+            }),
             FirKind::Concatenation => {
                 let helpers_populated = !borrowed.core().ubc_children().is_empty();
                 let provenance = borrowed.as_concat_provenance();
@@ -3332,6 +3340,135 @@ impl Fir for StayFullyFoolishFir {
     }
 }
 
+/// UFM — the Unstay Foolishness Mark, `<<<…>>>` (FOOP-55 Phase 3J).
+///
+/// A **mark** to the Foolisher; an **operator** to the evaluator. It owns its
+/// content in `foolish_children`, waits for that to go constanic, then
+/// constanic-clones it into `ubc_children` stripping **every** SF/SFF layer
+/// below (`OpInstructions::InsideUfm`, an unlimited strip budget) and lets the
+/// result step again.
+///
+/// Where `<<x>>` removes ONE layer of detachment, `<<<x>>>` removes ALL of
+/// them, on every path. It undoes SFF's compile-time detachment without
+/// needing a compile-time half: SFF's detachment lives entirely in "this
+/// search was born ECONSTANIC", and `Nyes::transform_for_clone(false)` maps
+/// `Econstanic → Embryonic`, so re-birthing the content EMBRYONIC undoes it.
+/// The governing principle stays intact — **SF and UFM affect STEPPING; SFF
+/// detaches during COMPILATION.**
+///
+/// The UFM does not survive its own clone: it is consumed by producing its
+/// result, like any other operator.
+#[derive(Debug)]
+pub struct UfmFir {
+    pub(crate) core: ProtoBrane,
+}
+
+impl UfmFir {
+    pub fn ufm(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(UfmFir {
+            core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
+        }))
+    }
+}
+
+impl Fir for UfmFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                self.core.set_nyes(Nyes::Braning);
+                for child in self.core.foolish_children() {
+                    self.core.push_task(Rc::clone(child));
+                }
+            }
+            Nyes::Braning => {
+                // FOOP-55 §11 event-driven shape, same as BraneConcatOpFir:
+                // pure orchestration. Ask each phase; commit what it reports;
+                // `None` means "still working".
+                if let Some(nyes) = self.on_foolish_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                    return Ok(());
+                }
+                if let Some(nyes) = self.on_ubc_op_ready(scope) {
+                    self.core.set_nyes(nyes);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// The UFM's readiness gate: ANY constanic content is ready.
+    ///
+    /// The default `are_foolish_children_ready_for_op` demands `constantew`
+    /// (`Constant|Independent|Nk`), which a marked body never reaches: a
+    /// nested `<<a>>` settles WOCONSTANIC precisely BECAUSE its mark is
+    /// deferring the search. Waiting for it to resolve on its own is waiting
+    /// for the thing this operator exists to do, so the UFM would never fire
+    /// and the evaluator would spin to ITERATION-EXCEEDED. Stripping is what
+    /// unblocks it, so "constanic" is the right bar here.
+    fn are_foolish_children_ready_for_op(&self) -> bool {
+        self.core
+            .foolish_children()
+            .iter()
+            .all(|c| c.borrow().core().get_nyes().is_constanic())
+    }
+
+    /// Phase 1 — the content has gone constanic: strip-clone it.
+    ///
+    /// Reports `None` throughout: this phase never settles the UFM. Its job
+    /// is to produce the stripped clone; `push_ubc_child` auto-enqueues that
+    /// clone (born EMBRYONIC by `transform_for_clone`), so the re-step is
+    /// free and phase 2 settles from the drained result.
+    fn on_foolish_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        if !self.are_foolish_children_ready_for_op() {
+            return None;
+        }
+        // Only strip once -- a second pass would re-clone the already-stripped
+        // result and undo nothing, but would reset its NYES again and spin.
+        if !self.core.ubc_children().is_empty() {
+            return None;
+        }
+        let content = self.core.foolish_children().first().cloned()?;
+        let self_weak = self.core.parent_weak();
+        self.core.push_ubc_child(ProtoBrane::constanic_clone(
+            &content,
+            &self_weak,
+            0,
+            false,
+            OpInstructions::InsideUfm,
+        ));
+        None
+    }
+
+    /// Phase 2 — the stripped clone has re-stepped: settle from it.
+    fn on_ubc_op_ready(&self, _scope: &Scope) -> Option<Nyes> {
+        if self.core.ubc_children().is_empty() || !self.are_ubc_children_ready_for_op() {
+            return None;
+        }
+        let result_nyes = self
+            .core
+            .ubc_children()
+            .into_iter()
+            .next()?
+            .borrow()
+            .core()
+            .get_nyes();
+        // Same rule as SFF/SearchFir: the wrapper is not itself a search, so
+        // it cannot be ECONSTANIC -- an ECONSTANIC result means it is WAITING
+        // on that search.
+        Some(SearchFir::nyes_from_found(result_nyes))
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Ufm
+    }
+}
+
 /// Internal storage brane for ConcatBrane.
 /// Holds constanic-cloned statements from concatenated elements.
 /// Transparent: inherits all defaults, BraneFir-shaped stepping.
@@ -5855,6 +5992,50 @@ mod tests {
         let sff = make_stay_fully_foolish(make_constant_int(42));
         let trace = step_to_settled(&sff, &Scope::empty());
         assert_progression(&trace, Nyes::Constant, "StayFullyFoolish");
+    }
+
+    /// FOOP-55 Phase 3J: the UFM's NYES progression (AGENTS.md requires a
+    /// `*_nyes_transitions` test for every FIR kind).
+    #[test]
+    fn ufm_nyes_transitions() {
+        let ufm = UfmFir::ufm(make_constant_int(42), dangling_parent());
+        let trace = step_to_settled(&ufm, &Scope::empty());
+        // CONSTANT, not INDEPENDENT: the UFM settles via
+        // `SearchFir::nyes_from_found` over its stripped result, the same
+        // rule SFF uses -- the wrapper reports "I have a value", not "I am
+        // self-contained", even when the content itself is independent.
+        assert_progression(&trace, Nyes::Constant, "Ufm");
+    }
+
+    /// The UFM's defining property: it removes EVERY SF/SFF layer below it,
+    /// not just the outermost one. A plain SFF clone would strip one layer
+    /// and leave the rest wrapped; the UFM leaves nothing wrapped.
+    #[test]
+    fn ufm_strips_every_nested_layer() {
+        let leaf = make_constant_int(7);
+        leaf.borrow().core().set_nyes(Nyes::Econstanic);
+        let inner = make_stay_fully_foolish(Rc::clone(&leaf));
+        inner.borrow().core().set_nyes(Nyes::Econstanic);
+        let middle = make_stay_foolish(Rc::clone(&inner));
+        middle.borrow().core().set_nyes(Nyes::Econstanic);
+        let outer = make_stay_fully_foolish(Rc::clone(&middle));
+        outer.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let ufm = UfmFir::ufm(outer, dangling_parent());
+        step_to_settled(&ufm, &Scope::empty());
+
+        let stripped = ufm
+            .borrow()
+            .core()
+            .ubc_children()
+            .into_iter()
+            .next()
+            .expect("UFM must produce a stripped clone");
+        assert_eq!(
+            stripped.borrow().kind(),
+            FirKind::IndepInt,
+            "all three nested marks must be gone, exposing the bare leaf"
+        );
     }
 
     use crate::compiler::Compiler;

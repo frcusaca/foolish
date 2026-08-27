@@ -37,6 +37,9 @@ pub enum FirKind {
     Index,
     StayFoolish,
     StayFullyFoolish,
+    /// UFM — the Unstay Foolishness Mark, `<<<…>>>` (FOOP-55 Phase 3J).
+    /// A mark to the Foolisher, an operator to the evaluator.
+    Ufm,
     Concatenation,
     /// Internal storage brane for ConcatBrane — holds constanic-cloned statements.
     /// Transparent: inherits all defaults, BraneFir-shaped stepping.

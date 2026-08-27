@@ -148,6 +148,15 @@ impl Lexer {
             return self.lt_token();
         }
 
+        // Multi-char: >>> (UFM closer, FOOP-55 Phase 3J) -- MUST precede the
+        // `>>` arm below, or maximal munch takes `>>` and leaves a stray `>`.
+        if c == '>' && self.peek_at(1) == Some('>') && self.peek_at(2) == Some('>') {
+            self.advance();
+            self.advance();
+            self.advance();
+            return (self.make_token(Token::GtGtGt), false);
+        }
+
         // Multi-char: >>
         if c == '>' && self.peek_at(1) == Some('>') {
             self.advance();
@@ -425,6 +434,18 @@ impl Lexer {
             );
         }
 
+        // <<< (UFM opener, FOOP-55 Phase 3J) -- MUST precede the `<<` arm,
+        // or maximal munch takes `<<` and leaves a stray `<`. The first `<`
+        // is already consumed, so peek_at(0)/(1) are the 2nd and 3rd chars.
+        if self.peek_at(0) == Some('<') && self.peek_at(1) == Some('<') {
+            self.advance();
+            self.advance();
+            return (
+                TokenAndLocation::new(Token::LtLtLt, line, column, false),
+                false,
+            );
+        }
+
         // <<
         if self.peek_at(0) == Some('<') {
             self.advance();
@@ -641,6 +662,84 @@ mod tests {
         assert!(
             toks[0].preceded_by_space,
             "leading whitespace flags the first token"
+        );
+    }
+
+    /// FOOP-55 Phase 3J: the UFM (Unstay Foolishness Mark) is `<<< … >>>`.
+    ///
+    /// **The chain rule (human, 2026-08-27):** a run of `<` (or `>`) is
+    /// terminated by ANY character that is not `<` or `>` — whitespace or
+    /// otherwise. That terminator is what tells `<`, `<<` and `<<<` apart;
+    /// a reader never counts an unbroken pile to learn the nesting. So the
+    /// run length IS the mark, and a run longer than 3 is not a legal
+    /// spelling of anything.
+    #[test]
+    fn foop55_ufm_lexes_as_one_mark() {
+        let toks = Lexer::new("{a = <<< a >>>}").tokenize();
+        assert!(
+            toks.iter().any(|t| t.token == LtLtLt),
+            "`<<<` is a UFM opener"
+        );
+        assert!(
+            toks.iter().any(|t| t.token == GtGtGt),
+            "`>>>` is a UFM closer"
+        );
+    }
+
+    /// Any non-`<>` character breaks the chain — a space is not required.
+    /// `<<<a` is a UFM opener because `a` terminates the run.
+    #[test]
+    fn foop55_any_non_angle_char_breaks_the_chain() {
+        for src in ["{a = <<<a>>>}", "{a = <<< a >>>}", "{a = <<<\ta\t>>>}"] {
+            let toks = Lexer::new(src).tokenize();
+            assert!(
+                toks.iter().any(|t| t.token == LtLtLt),
+                "a non-angle character terminates the run: {src:?}"
+            );
+        }
+    }
+
+    /// Each run length is its own mark, and they still lex correctly.
+    #[test]
+    fn foop55_run_length_selects_the_mark() {
+        let toks = Lexer::new("{a = <a>}").tokenize();
+        assert!(toks.iter().any(|t| t.token == Lt), "one `<` is SF");
+        let toks = Lexer::new("{a = <<a>>}").tokenize();
+        assert!(toks.iter().any(|t| t.token == LtLt), "two `<` is SFF");
+        let toks = Lexer::new("{a = <<<a>>>}").tokenize();
+        assert!(toks.iter().any(|t| t.token == LtLtLt), "three `<` is UFM");
+    }
+
+    /// Nesting is spelled with a break between the marks: `<<< < a > >>>`.
+    #[test]
+    fn foop55_spaced_nesting_is_fine() {
+        let toks = Lexer::new("{a = <<< < a > >>>}").tokenize();
+        let kinds: Vec<_> = toks.iter().map(|t| t.token.clone()).collect();
+        assert!(kinds.contains(&LtLtLt), "outer UFM opener");
+        assert!(kinds.contains(&Lt), "inner SF opener");
+        assert!(kinds.contains(&Gt), "inner SF closer");
+        assert!(kinds.contains(&GtGtGt), "outer UFM closer");
+    }
+
+    /// `<<<<` is NOT okay (human, 2026-08-27). An unbroken run of four is
+    /// longer than any mark, so it is rejected rather than silently read as
+    /// two `<<` marks -- which is how it parses TODAY, and what this rule
+    /// deliberately changes.
+    #[test]
+    fn foop55_unspaced_four_run_is_not_okay() {
+        let toks = Lexer::new("{a = <<<<a>>>>}").tokenize();
+        // A run of 4 lexes as `<<<` + `<`: the UFM token takes the first
+        // three, and the leftover `<` is an SF opener with no closer. The
+        // parser rejects it -- see `foop55_unspaced_four_run_is_a_parse_error`
+        // in parser.rs. What must NOT happen is two `LtLt`, which is how it
+        // reads TODAY and what this rule deliberately changes.
+        assert!(
+            !toks.iter().any(|t| t.token == LtLt),
+            "an unbroken run of 4 `<` must not read as two `<<` marks"
+        );
+        assert!(
+            toks.iter().any(|t| t.token == LtLtLt),
+            "maximal munch takes `<<<` first, leaving a stray `<`"
         );
     }
 }
