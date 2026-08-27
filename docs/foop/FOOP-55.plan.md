@@ -1023,9 +1023,12 @@ and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supers
 
 **Decisions already made — fixed, do not re-litigate:**
 
-- **Name and syntax:** it is the **Unstay Foolishness Mark**, written `<@ … @>`.
+- **Name and syntax:** it is the **Unstay Foolishness Mark**, opener `<@`.
   It remains a MARK to the Foolisher. (`<* … *>` was rejected: `<* 5 >` parses
   *today* as `StayFoolish{UnaryOp{"*"}}` and evaluates to NK.)
+  **Amended 2026-08-27:** the opener `<@` is confirmed free, but the closer
+  `@>` is NOT — `<a@>` already parses as SF-of-`@`-projection and evaluates to
+  `0`. The closer is an OPEN question; see the collision-check checkbox below.
 - **Implementation is an OPERATOR.** A mark to the Foolisher, an operator to the
   evaluator. It owns its content in `foolish_children`, waits for it to go
   constanic, constanic-clones it stripping **every** SF/SFF mark into
@@ -1132,8 +1135,35 @@ and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supers
       AND making `BraneFir` operate out of `ubc_children` once constanic — are
       recorded together in the **"Deferred — NOT worth doing now"** section at
       the bottom of this plan, and are explicitly out of scope for FOOP-55.
-- [ ] Lexer: `<@` / `@>`. Check for collisions the way `<*` was checked — build a
-      one-line program and see what it parses to TODAY before assuming it is free.
+- [x] **Collision check done (2026-08-27) — `<@` is free, `@>` is NOT.**
+      Probed against the CURRENT parser, per this checkbox's own instruction:
+
+      | probe | result today |
+      |---|---|
+      | `{a = 1; b = <@ a @>}` | **parse error**: `expected primary expression, found At` |
+      | `{a = 1; b = a@}` | `b=0` — valid: FOOP-55 §8 position projection |
+      | `{a = 1; b = <a@>}` | `b=0` — **valid**: SF wrapping `a@` |
+      | `{a = 1; b = <a @>}` | `b=0` — same; whitespace does NOT disambiguate |
+      | `{a = 1; b = a @> 2}` | parse error: `expected primary expression, found Gt` |
+
+      `<@` fails loudly, which is what we want — it is unambiguously available
+      and cannot silently mean something else (the trap `<*` fell into, where
+      `<* 5 >` parses as `StayFoolish{UnaryOp{"*"}}`).
+
+      **But `@>` collides.** `@` is a real in-use operator (§8 position
+      projection, `lexer.rs:282`), so `<a@>` and `<a @>` ALREADY parse today as
+      SF-of-position-projection and both evaluate to `0`. A lexer that greedily
+      takes `@>` as a UFM closer would silently change the meaning of every
+      such program. Whitespace is not a way out — both spacings already parse.
+- [ ] **DECIDE the closer, given `@>` is taken.** Options, none yet chosen:
+      (a) an asymmetric closer that cannot collide (e.g. `@)`, `>@`);
+      (b) keep `@>` but require the lexer to only produce it when a matching
+      unclosed `<@` is open — a mode/nesting-depth flag, which makes the lexer
+      context-sensitive and is a real cost to weigh;
+      (c) a different pair entirely.
+      Whatever is chosen, re-run the probe table above against it BEFORE
+      writing the lexer arm, and add the surviving rows as parser tests so the
+      collision cannot regress.
 - [ ] Token, AST node (`Astn::UnstayFoolish`), parser arm.
 - [ ] `FirKind::Ufm` + `UfmFir`, built to the FOOP-55 §11 event-driven idiom
       (`BraneConcatOpFir` is the worked example): `fir_op_step` is pure
@@ -1914,32 +1944,29 @@ Do not start this as part of this FOOP.
 
 **Date**: 2026-08-27
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added a **"Deferred — NOT worth doing now"** section just before
-Merge, recording (human decision, 2026-08-27) that turning
-`skip_foolish_children` on by default and making `BraneFir` operate out of
-`ubc_children` once constanic are ONE change in that order, and are explicitly
-out of scope for FOOP-55. Captures the measured blocker — flipping the default
-alone fails 55 of 385 unit tests and adds 5 new einmo divergences, with
-`misc/nested_brane_boundary` cloning a nested brane empty (`f={}` where
-`checked` has three statements) — why narrowing the flag to top-level-only does
-not rescue it, and the human's unblock: push a brane's constanic
-`foolish_children` into `ubc_children` during the op step as REFERENCES, not
-clones (a clone would re-enter `_inner_constanic_clone`, spend strip budget and
-reset NYES, reintroducing D9 one level down). Two open questions noted for
-whoever takes it up: whether `push_ubc_child`'s auto-enqueue is a no-op for
-already-constanic statements, and whether the push happens once at settle or
-incrementally. Phase 3J's `skip_foolish_children` checkbox now resolves to
-"leave it false, do not delete it" and points at that section instead of
-recommending deletion.
+**Changes**: Phase 3J — ran the mandated UFM lexer collision check against the
+current parser and recorded the probe table. **`<@` is free** (fails loudly:
+`expected primary expression, found At`), but **`@>` is NOT**: `@` is a real
+in-use operator (FOOP-55 §8 position projection, `lexer.rs:282`), so `<a@>`
+and `<a @>` already parse today as SF-of-position-projection and both evaluate
+to `0`; whitespace does not disambiguate. Amended the "fixed decisions" block
+accordingly — the opener is settled, the closer is now an OPEN question — and
+added a DECIDE checkbox listing the options (asymmetric closer, context-
+sensitive lexer mode keyed to an open `<@`, or a different pair), with the
+instruction to re-run the probe table against whatever is chosen and land the
+surviving rows as parser tests.
 
-Earlier the same day: Phase 4B — refreshed the "contract/combine
-`constanic_clone` methods" item and implemented its first half as
-`budgeted_constanic_clone!` (commit `ce3d0f17`), collapsing the three
-`system_foo` bodies to one-line invocations so the strip budget is threaded in
-exactly one place and cannot be re-dropped by copy-paste. Answered the "can we
-`friend` a module?" question in place: Rust has no `friend`, `pub(in path)`
-restricts by ancestor and cannot privilege one sibling, and visibility is the
-symptom rather than the disease. Phase 3J — checked off two items (commit
-`55caa37d`): the `OpInstructions` enum replacing `inside_sf_mark: bool`, and
-the `system_foo.rs` budget refactor left half-done by `779b63f5`. Prior history
-of this section is in `git log`/`git blame` on this file.
+Also added a **"Deferred — NOT worth doing now"** section before Merge
+(human decision, 2026-08-27): turning `skip_foolish_children` on by default
+and making `BraneFir` operate out of `ubc_children` once constanic are ONE
+change in that order, explicitly out of scope for FOOP-55. Captures the
+measured blocker — flipping the default alone fails 55 of 385 unit tests and
+adds 5 new einmo divergences, with `misc/nested_brane_boundary` cloning a
+nested brane empty — and the human's unblock: push a brane's constanic
+`foolish_children` into `ubc_children` during the op step as REFERENCES, not
+clones. Phase 3J's `skip_foolish_children` checkbox resolves to "leave it
+false, do not delete it".
+
+Earlier the same day: Phase 4B's `budgeted_constanic_clone!` macro
+(`ce3d0f17`) and Phase 3J's `OpInstructions` enum plus the `system_foo` budget
+refactor (`55caa37d`). Prior history is in `git log`/`git blame` on this file.
