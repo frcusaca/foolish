@@ -653,6 +653,26 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
                 this.borrow().core().pop_front_task();
             } else {
                 let this_kind = this.borrow().kind();
+                // `StayFoolish` ONLY — the omission of `StayFullyFoolish` here
+                // is deliberate, not an oversight (human, 2026-08-27):
+                //
+                //   **SF (and UFM) affect how STEPPING works; SFF achieves
+                //   detachment from the environment during COMPILATION.**
+                //
+                // SFF does its work in `compiler.rs`'s `build_fir`, which
+                // passes `under_sff = true` down its whole subtree so every
+                // descendant search is BORN `ECONSTANIC` ("SFF marker: from
+                // here down, searches are built ECONSTANIC"). A search with no
+                // environment to read needs no runtime flag to keep it from
+                // reading one — the detachment is already structural by the
+                // time stepping begins. SF, by contrast, passes `under_sff`
+                // through unchanged ("SF does NOT make descendants
+                // econstanic"), so its deferral has to be expressed here, at
+                // step time, by this flag.
+                //
+                // So `has_ancestral_sfm` is a STEPPING concern, and SFF has no
+                // business in it. Adding `StayFullyFoolish` to this condition
+                // would be double-counting a deferral SFF already achieved.
                 let mut child_scope = if this_kind == FirKind::StayFoolish {
                     scope.with_ancestral_sfm(true)
                 } else {
