@@ -1015,6 +1015,144 @@ own **fresh** `stay_budget`, never inherited/decremented from the parent.
       from the input first, per AGENTS.md's embedded-communication
       resolution discipline.
 
+## Phase 3J — UFM, the Unstay Foolishness Mark `<@ … @>`  ← **EARLY: implement before 3G**
+
+**Human direction, 2026-08-27.** Scoping study with full call-graph, git archaeology
+and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supersedes
+§C/§E wherever those assume the wrapper shape).
+
+**Decisions already made — fixed, do not re-litigate:**
+
+- **Name and syntax:** it is the **Unstay Foolishness Mark**, written `<@ … @>`.
+  It remains a MARK to the Foolisher. (`<* … *>` was rejected: `<* 5 >` parses
+  *today* as `StayFoolish{UnaryOp{"*"}}` and evaluates to NK.)
+- **Implementation is an OPERATOR.** A mark to the Foolisher, an operator to the
+  evaluator. It owns its content in `foolish_children`, waits for it to go
+  constanic, constanic-clones it stripping **every** SF/SFF mark into
+  `ubc_children`, and lets it step again.
+- **Removes ALL layers.** `{a=x}` removes one layer of SFF detachment;
+  `{a=<@ x @>}` removes all of them, on every path below.
+- **UFM does not survive the clone** — it is consumed by producing its result,
+  like any other operator.
+- **It undoes SFF's COMPILE-TIME detachment**, which the wrapper shape could not.
+  The mechanism is already in the code: `transform_for_clone(false)` maps
+  `Econstanic → Embryonic`, and SFF's detachment lives entirely in "this search
+  was born ECONSTANIC". Re-birthing it EMBRYONIC undoes it, so UFM needs no
+  compile-time half and the governing principle stays intact:
+  **SF and UFM affect STEPPING; SFF detaches during COMPILATION.**
+
+- [ ] Establish relevant tests for this phase — see
+      [these instructions](../../README.md#running-specific-tests). The SF/SFF
+      corpus (§5) and `misc/sf_of_sff`, `foop/62/sf_sff_nested_combined`.
+- [x] **`OpInstructions` enum replaces `inside_sf_mark: bool`.** *(2026-08-27,
+      commit `55caa37d`)* Human direction: a bool can name only two of the three
+      real conditions. `constanic_clone`'s last parameter is now
+      `OpInstructions::{Normal, InsideSfm, InsideUfm}`, and each variant chooses
+      the starting budget via `OpInstructions::starting_budget()` —
+      `fresh()` / `fresh().spend().1` / `unlimited()` respectively. Behavior for
+      the two pre-existing conditions is unchanged (einmo divergence set is
+      byte-identical before and after). Four new tests pin all three variants,
+      including that the unlimited budget is consumed by neither depth nor
+      breadth. `StripBudget::unlimited()` lost its `#[expect(dead_code)]` — this
+      is the caller it was waiting for, so the later "Wire `unlimited()`" item
+      below is now only about the UFM *operator* naming the variant.
+- [x] **Blocker: finish the budget refactor into `system_foo.rs`.**
+      *(2026-08-27, commit `55caa37d`)* Fixed as described below: the three
+      kind-arms now take and pass `stay_budget`, calling
+      `clone_children_budgeted` like the `OperatorFir` arm; the
+      `clone_children_for_constanic_clone` wrapper had zero callers left and is
+      deleted. Worth recording precisely what these three are, since the naming
+      misleads: **they are not clone entry points.** They are dispatch arms of
+      `_inner_constanic_clone`'s `match kind`, living in `system_foo.rs` only
+      because their types do — so yes, they genuinely do need to clone (`'lt` is
+      cloned out of `system.foo` and recoordinated into the referencing brane,
+      and its operands must cross as children so recoordination reaches them).
+      The defect was never *that* they clone, only *which budget* they cloned
+      with.
+- [ ] ~~Blocker first: finish the budget refactor into `system_foo.rs`.~~
+      This is an INCOMPLETE REFACTORING, not a design choice (human, 2026-08-27;
+      confirmed from history). `779b63f5` "FOOP-55 §5 Phase 3A: implement the SFF
+      strip budget" introduced `StripBudget` and threaded it through every clone
+      arm — but its diffstat shows it touched only `evaluator.rs` and
+      `fir_kinds.rs`. **`system_foo.rs` was never updated.**
+
+      The result: `ComparisonFir`/`ModuloFir`/`OrFir::constanic_clone` take
+      `nyes`, `disable_nyes_reset`, `skip_foolish_children` — but NO budget
+      parameter — so they call the pre-budget
+      `ProtoBrane::clone_children_for_constanic_clone`, which mints
+      `StripBudget::fresh()` unconditionally (`fir_kinds.rs:210`). Its comment
+      still reads "Children of one clone share that clone's budget", describing
+      a budget it never receives. Compare `fir_kinds.rs`'s own `FirKind::Operator`
+      arm (`:398`), structurally identical, which correctly passes `stay_budget`.
+      The three kinds differ ONLY because they live across a module boundary, so
+      the worker delegates to them and the threading stopped there.
+
+      Consequence for UFM: `unlimited()` silently truncates to `Some(1)` the
+      moment a path crosses a Comparison/Modulo/Or operand — defeating "remove
+      ALL layers" exactly where nested marks are thickest, since `system.foo`'s
+      operators are built from `<<#-2>>`/`<<#-1>>` operands.
+
+      Fix: give the three `constanic_clone` methods a `stay_budget` parameter and
+      have them call `clone_children_budgeted`, matching the `OperatorFir` arm;
+      then `clone_children_for_constanic_clone` has no callers and is deleted.
+      That deletion also settles part of Phase 4B's "contract/combine the
+      constanic_clone family" item. **This is a pre-existing latent bug in its own
+      right — sibling marks under those three operators get a strip they should
+      not — so it is worth fixing and testing on its own, ahead of UFM.**
+- [ ] **`skip_foolish_children` — do NOT turn it on by default; decide its fate.**
+      Human asked (2026-08-27) that it default to `true`. **Tried, and it must
+      not be** — recorded here with the evidence so the question is settled and
+      not re-opened blind.
+
+      What it does: the clone's `foolish_children` comes out EMPTY;
+      `ubc_children` is still cloned. Read plainly, "copy the computed result,
+      drop the written expression that produced it."
+
+      Why default-on breaks the language: **a `BraneFir`'s statements ARE its
+      `foolish_children`** (see the `FirKind::Brane` arm of
+      `_inner_constanic_clone`). Cloning a brane with the flag on therefore
+      yields an EMPTY brane, and every search into it finds nothing. Flipping
+      all call sites to `true` fails **55 of 385 unit tests** — `&?`/`&~`
+      contexted searches return `None` instead of a found index, operator
+      operands arrive as 0 children instead of 2, and concat cross-element
+      resolution collapses. The old test's own assertion says it outright:
+      `"skip_foolish_children must drop brane children"`.
+
+      Status today: **dead** — every production call site passes `false`; the
+      only `true`s are two tests. Born in `69c6e281` (FOOP-13 A3 step 6) whose
+      message states "All existing call sites pass false by default" and names
+      two intended callers that were never wired: a settled ConcatBrane clone
+      (obsolete — that is now `BraneConcatOpFir`, an operator, not a brane) and
+      the settled SearchFir clone path (the `:486`-style arm that duplicates
+      `clone_children_budgeted` solely to honor this flag).
+
+      Recommendation: **delete the parameter** and collapse that duplicated arm,
+      folding it into Phase 4B's "contract/combine the constanic_clone family".
+      It is scaffolding for a design that has since changed, not a capability
+      awaiting a caller. Needs the human's word before removal, since the ask
+      was to enable it.
+- [ ] Lexer: `<@` / `@>`. Check for collisions the way `<*` was checked — build a
+      one-line program and see what it parses to TODAY before assuming it is free.
+- [ ] Token, AST node (`Astn::UnstayFoolish`), parser arm.
+- [ ] `FirKind::Ufm` + `UfmFir`, built to the FOOP-55 §11 event-driven idiom
+      (`BraneConcatOpFir` is the worked example): `fir_op_step` is pure
+      orchestration; `on_foolish_op_ready` gates readiness and does the
+      strip-clone; `on_ubc_op_ready` gates on `are_ubc_children_ready_for_op()`
+      and settles from the drained result. `push_ubc_child` auto-enqueues the
+      stripped EMBRYONIC clone, so the re-step is free — no explicit task push.
+- [ ] Have the UFM operator name `OpInstructions::InsideUfm` for its strip-clone
+      (the budget wiring and its `#[expect(dead_code)]` removal are already done,
+      2026-08-27) and drop `InsideUfm`'s `cfg_attr(not(test), expect(dead_code))`
+      once the operator constructs it.
+- [ ] `foolish-core::Fir` variant and its satellite sites (~15), sequencer arm.
+- [ ] `classify_concat_element`: a UFM is operator-shaped, so §9.2 rule 5 would
+      currently make it an NK concatenation element. Decide its rule.
+- [ ] DECIDE, then record: what does a UFM settle to when its content settles NK,
+      or ECONSTANIC-after-unfreezing?
+- [ ] DECIDE, then record: `< <@ x @> >` — the outer SF defers the UFM; once the
+      UFM runs it strips everything below it. Confirm against a written example.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 3G — §9: concatenation ergonomics  ← **PRIORITY 2 (correctness)**
 
 Read FOOP-55.md §9 first. **It supersedes every earlier statement in this FOOP
@@ -1696,25 +1834,21 @@ the exercise is green and the real cost is known.
 
 ## Last Updated
 
-**Date**: 2026-08-26
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Rewrote Phase 3I's checklist** to match the corrected D9
-root-cause design worked out live with the human (see FOOP-55.md's D9 item
-3, and this file's own retitled Phase 3I header) — the earlier
-`step_inner`-reset framing is superseded. New design: rename
-`constanic_clone_at` to an internal `_inner_constanic_clone(node,
-stay_budget, disable_nyes_reset)` with a per-call (not inherited) strip
-budget, plus a new public `constanic_clone(node)` entry point every `Fir`
-kind calls instead of today's direct `constanic_clone_at` calls, always
-starting `stay_budget=1, disable_nyes_reset=false`. Added explicit
-tests-first sub-checkboxes (nested-mark, multi-sibling-mark, and
-fresh-mark-reached-via-a-different-ancestor cases) per the human's request
-to test deeper nesting/unnesting scenarios, not just D9's single case.
-Added an explicit "human reviews and promotes einmo divergences" checkbox —
-this shared-clone-path change is expected to shift multiple pre-existing
-`checked/` baselines, and per the human's own instruction (2026-08-26) that
-promotion pass is the human's to do, not the agent's. Not yet implemented
-— tests-first work starts next, then implementation, then the agent's own
-line-by-line review of every einmo divergence (written down, not promoted)
-before handing off to the human. Prior history of this section is in `git
-log`/`git blame` on this file, not accreted here.
+**Date**: 2026-08-27
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Phase 3J — checked off two items, both in commit `55caa37d`.
+(1) `constanic_clone`'s `inside_sf_mark: bool` is replaced by the three-variant
+`OpInstructions` enum (`Normal` / `InsideSfm` / `InsideUfm`), each variant
+choosing its own starting strip budget; behavior for the two pre-existing
+conditions is unchanged (einmo divergence set byte-identical), and four new
+tests pin all three variants. (2) The `system_foo.rs` budget refactor left half
+done by `779b63f5` is finished — the Comparison/Modulo/Or dispatch arms now
+thread `stay_budget`, and the `clone_children_for_constanic_clone` wrapper is
+deleted with zero callers; recorded that those three are dispatch arms of
+`_inner_constanic_clone`, not clone entry points, so they do legitimately clone.
+Added a new decision checkbox recording that `skip_foolish_children` must NOT be
+defaulted to `true`: a brane's statements ARE its `foolish_children`, so
+enabling it empties every cloned brane and fails 55 of 385 unit tests; the flag
+is dead (all production call sites pass `false`) and the recommendation is
+deletion, pending the human's word since the ask was to enable it. Prior
+history of this section is in `git log`/`git blame` on this file.
