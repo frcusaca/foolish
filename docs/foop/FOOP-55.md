@@ -1071,6 +1071,16 @@ Bisect evidence on `jia` @ `62706518`:
 
 ### §5. The SFF mark defers one coordination per nesting level
 
+> **Addendum — the step-chain vs clone-chain cross-tabulation.** How the strip
+> budget behaves depends on TWO independent paths: whether the *stepping* path
+> that initiated a clone crossed an SF/SFF, and whether the *clone descent*
+> itself already crossed one. Those two were long conflated under the single
+> word "SFM". The full 3x3 table — confirmed correct by the human on
+> 2026-08-27, including why rows 7-9 have no answer at all — is
+> [`FOOP-55.addendum.step_cc_marker_table.md`](FOOP-55.addendum.step_cc_marker_table.md).
+> Read it before changing anything about `StripBudget`, `has_ancestral_sfm`,
+> or `disable_nyes_reset`.
+
 **The defect.** The exercise computes *nothing* — every statement settles
 PREMBRIONIC at a 40000-step budget. The proximate cause is that
 `answer = {cond2, sum35, <loop>, 'ite}$` drives its discarded `<loop>` branch to
@@ -3046,311 +3056,16 @@ None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
 
 ## Last Updated
 
-**Date**: 2026-08-26
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **D9's root-cause framing corrected again** (human, live
-conversation) — the previous "Last Updated" entry's "`step_inner` never
-resets `has_ancestral_sfm` back to `false`" diagnosis is itself superseded.
-Traced precisely: `step_inner`'s `child_scope` IS freshly computed on every
-call and correctly goes out of scope with its stack frame — there is no
-propagation leak inside `step_inner` itself. The real defect is that
-`descendent_of_sfm_and_foolishly_ignorant` (threaded into every
-`constanic_clone_at` call as `scope.has_ancestral_sfm`) is decided ONCE, by
-whichever SF/SFF ancestor `step_inner`'s walk most recently passed through,
-and that single ambient decision is reused for every subsequent clone —
-including a clone that crosses into a DIFFERENT, nested SF/SFF mark the
-ambient flag was never actually about. In D9: the search for `b` inside
-`c = a b` is auto-SF-wrapped by concatenation ergonomics (§9.2 rule 3,
-correctly setting `has_ancestral_sfm = true` while that search steps), but
-once the search resolves and clones `b`'s own body (`<<#-2>>`, a *separate*
-nested SFF mark from `b`'s own definition), that clone still inherits the
-outer search-wrapper's `true`, so `transform_for_clone` wrongly preserves
-the stale `ECONSTANIC` instead of resetting it. D9's finding section (item
-3, superseding its earlier "not yet designed" placeholder) now specifies
-the fix: rename `constanic_clone_at`/`constanic_clone_at_budgeted` to an
-internal `_inner_constanic_clone(node, stay_budget, disable_nyes_reset)`
-taking a **per-call, non-inherited** strip budget (each distinct child gets
-its own fresh budget, not the parent's), and a new public
-`constanic_clone(node)` — the entry point every `Fir` kind calls instead of
-today's direct `constanic_clone_at` calls — always starting that inner call
-with `stay_budget=1, disable_nyes_reset=false`. The SF/SFF-mark-encounter
-arm decides `disable_nyes_reset` locally, at the mark, from its OWN
-remaining budget (strip-and-recurse-fresh if budget remains; clone the
-still-wrapped mark with `disable_nyes_reset=true` if not) — never inherited
-from an ambient `Scope`. `Scope`/`has_ancestral_sfm` is no longer read at
-any clone call site once this lands. Items 1-2 (`terminates_econstanic()`,
-`ConcatenationFir`'s override — Phase 3H Step 6's concern) are unchanged and
-still needed on top of this. Phase 3I's plan checklist rewritten to match
-this design; not yet implemented (tests-first work starts next). Prior
-history of this section is in `git log`/`git blame` on this file, not
-accreted here.
-
----
-
-# Appendix B — §11's superseded four-handler/microstate draft
-
-**Superseded 2026-08-24 (human direction): §11 is replaced by the simpler
-`is_foolish_child_constanic_enough`/`is_ubc_child_constanic_enough` +
-`on_foolish_children_constanic_enough`/`on_ubc_children_constanic_enough`
-design now in §11 proper.** This draft's two-tier (`constanic`/`constanew`)
-four-handler proposal, its "Braning States" microstate framing, and its
-ground-truth survey are preserved here for record — the survey's per-kind
-findings (13 Braning-capable kinds, 4 distinct `BRANING`-arm shapes,
-`constantew`'s existing codebase spelling, `OperatorFir`'s NK-poison
-ordering) remain factually accurate and are referenced by §11's
-implementation notes; only the *shape of the fix* (four handlers plus a
-formalized microstate machine) was dropped in favor of a minimal change to
-the existing task-queue drain loop's dequeue condition. Do not implement
-against this appendix; it is historical.
-
-### §11. Braning States — four child-set event handlers for the kinds that wait
-
-**Status: under discussion (2026-08-24, revised same day after a ground-truth
-survey of every FIR kind's `fir_op_step` and a live D9 trace). This section
-supersedes its own first draft — the survey found the two-shape model that
-draft was built on (`SearchFir` vs. `OperatorFir`) was incomplete, and the
-`constanew` predicate it invented turned out to already exist in the
-codebase under a different spelling. This is still not a specification an
-implementer can build from — the Open Questions below are unresolved, and
-the plan's Phase 3H explicitly blocks on them.** Do not begin implementation
-from this section until this notice is removed. **This is deferred follow-on
-work, sequenced to start only after FOOP-55's main line of work (Euler 1,
-fibonacci) is otherwise complete or explicitly paused for it — it is not a
-Euler-1 sub-task and must not be worked inline with FOOP-55's active
-phases** (human correction, 2026-08-24; the plan's Phase 3H reflects this).
-
-#### Motivation
-
-Debugging the fibonacci `'match` trace (D9) required reading each FIR kind's
-`fir_op_step` by hand to answer a question that recurred across kinds: *when,
-exactly, does an operator become entitled to look at its dependents and
-possibly settle?* The answer turned out to be different per kind, hand-written
-each time, with no shared vocabulary.
-
-#### Naming: "Braning States," and which kinds this applies to
-
-**Not every FIR kind is in scope.** A ground-truth survey of all 17 `impl Fir
-for <Kind>` blocks (`foolish-ubca/src/fir_kinds.rs`,
-`foolish-ubca/src/system_foo.rs`) found **13 kinds enter `BRANING`**
-(`BraneFir`, `ComparisonFir`, `ConcatHelper`, `ConcatenationFir`,
-`IndexFir`, `ModuloFir`, `OperatorFir`, `OrFir`, `SearchFir`,
-`SearchPositionFir`, `StatementFir`, `StayFoolishFir`,
-`StayFullyFoolishFir`) and **4 never do** (`CreationFir`, `NkFir`,
-`IndepIntFir`, `FoolRefFir` — born-terminal leaves, or settled via
-name-resolution logic with no child-wait at all). This section's proposed
-states and handlers apply only to the 13 — hence **"Braning States,"** not a
-universal FIR concept (human correction, 2026-08-24: the original draft's
-"four handlers for every kind" framing was too broad).
-
-**At least four distinct `BRANING`-arm shapes exist among the 13**, not the
-two (`SearchFir`, `OperatorFir`) the first draft was built from:
-
-1. **Uniform-reduce-with-NK-poison** — `OperatorFir`, `ComparisonFir`,
-   `ModuloFir`, `OrFir`. Push all `foolish_children` as tasks; wait for all
-   constanic; combine. Any child at `NK` poisons the whole result to `NK`
-   (checked first, independent of the rest); otherwise every child must be
-   `Constant`/`Independent` to actually compute, else downgrade to
-   `WOCONSTANIC`.
-2. **Uniform-reduce-no-poison** — `BraneFir` alone (confirmed via its shared
-   helper `_decide_nyes_due_to_children`, also reused at two other call
-   sites — existing infrastructure, not something to rebuild). Push all
-   `foolish_children`; `NK` is checked **last**, after pre-constanic, so a
-   brane with one waiting member and one `NK` member correctly stays
-   `BRANING` rather than poisoning early. **This is the human's original
-   `{a,b,c,d}` counter-example, confirmed real and already correctly
-   handled** — a brane does not propagate a sibling's `NK`.
-3. **Single-anchor staged pipeline** — `SearchFir`, `SearchPositionFir`,
-   `IndexFir`. Push exactly one anchor child, then run sequential internal
-   gates (anchor `NK` check → anchor `is_constanic()` → anchor
-   `is_constanic_branelike()` → scan) with no uniform "wait for all
-   children" shape at all. `is_constanic_branelike()` in particular is a
-   **content/shape** question, orthogonal to whether a NYES state is "good
-   enough" — it does not fit into either predicate below without further
-   design (see Open Questions).
-4. **External-trigger** — `StayFoolishFir`/`StayFullyFoolishFir` (SF/SFF
-   markers). `BRANING` here waits on an external unmark/recoordinate event,
-   not its own children reaching constanic — not a reduce or a pipeline at
-   all.
-
-The dispatcher itself (`step_inner`, `fir_trait.rs:502-535`) contributes no
-policy across any of these — it only decides whether to recurse into a
-queued task or call `fir_op_step` on `self` once the queue is empty. Every
-settlement decision is hand-written separately, per kind, inside
-`fir_op_step`.
-
-**The proposal**: replace each Braning-capable kind's hand-rolled
-`fir_op_step`/`combine` with (up to) four named event handlers, so the
-*shape* of a kind's dependency policy is visible from which handlers it
-implements:
-
-- `on_foolish_children_constanic`
-- `on_foolish_children_constanew`
-- `on_ubc_children_constanic`
-- `on_ubc_children_constanew`
-
-Most of a kind's four handlers are expected to be trivial pass-throughs that
-only advance an internal micro-state, not places real logic runs (human,
-2026-08-24): for `OperatorFir`, reaching `on_foolish_children_constanic`
-does not mean "act now" — it typically just means "that gate is satisfied,
-now wait for the stricter `constanew` gate," where the real computation
-happens. Only one or two handlers per kind are expected to carry real logic;
-the rest are bookkeeping.
-
-#### `constanic` and `constantew` — one of these already exists in the code
-
-- **`constanic`** — the existing `is_constanic()` predicate, unchanged: any
-  terminal NYES state (`ECONSTANIC`, `WOCONSTANIC`, `CONSTANT`,
-  `INDEPENDENT`, `NK`). A child at `ECONSTANIC`/`WOCONSTANIC` is terminal
-  *for now* but may still gain a value via recoordination — see §5.5 and D9.
-- **`constantew`** (this is the codebase's actual spelling — the survey
-  found it live, not a term this FOOP is coining) — `Constant | Independent
-  | Nk` only, matching the human's independently-given gloss *"Constant
-  EveryWhere"* word for word, including the doc comment. **It already has
-  exactly one production call site**: `ConcatenationFir`'s type-error check
-  in its `BRANING` arm (`elem.borrow().core().get_nyes().is_constantew()`,
-  used alongside `!brane_like` to decide whether a non-brane-like element is
-  a genuine type error). Every `constantew` child is `constanic`; the
-  converse does not hold.
-
-**Caution found by the survey, not yet resolved**: `OperatorFir`'s own
-gate is *not* simply "wait for `constantew`." Its any-`NK`-poison
-short-circuit runs **first and separately**, so by the time its
-`values.len() == children.len()` check runs, every remaining child is
-already known non-`NK` — meaning that check's effective meaning is "every
-*non-NK* child is `Constant`/`Independent`," not "every child satisfies
-`is_constantew()`" applied directly (which would also accept a bare `NK`
-per-child rather than treating it as a prior, separate poison). Naming
-`OperatorFir`'s post-wait gate `is_constantew()` verbatim, without carving
-out the NK-poison as a distinct earlier check, would misstate its actual
-behavior.
-
-#### `is_foolish_child_constanic_enough` / `is_ubc_child_constanic_enough`
-
-Two overridable predicates (human, 2026-08-24), **each defaulting to plain
-`is_constanic()`** — this default is unchanged for every kind that does not
-override it; the loosened rule below is `ConcatenationFir`-specific, not a
-new universal rule:
-
-```
-is_foolish_child_constanic_enough(child) -> bool   // default: child.is_constanic()
-is_ubc_child_constanic_enough(child)     -> bool   // default: child.is_constanic()
-```
-
-A kind overrides one or both to express its own, possibly looser, notion of
-"I have enough from this child to stop waiting" — distinct from
-`constantew`'s "this child is permanently usable as a value." The two
-predicate pairs answer different questions: `constanic`/`constantew` are
-fixed NYES-based classifications; `is_*_constanic_enough` are per-kind,
-overridable gates a handler consults before leaving `BRANING`.
-
-**`ConcatenationFir`'s concrete override** (the case that motivated the
-predicate pair, resolving the D9 trace below) needs one new primitive first:
-
-**`terminates_econstanic()`** — defined only on `SearchFir`. Called on a
-search node `S`:
-
-```
-fn terminates_econstanic(S) -> bool:
-    if S.nyes == ECONSTANIC:
-        return true                    // base case: found it
-    if S.ubc_children[0] does not exist:
-        return false                   // no result yet
-    if S.ubc_children[0] is not a SearchFir:
-        return false                   // chain ends in a real value
-    return S.ubc_children[0].terminates_econstanic()   // walk the chain
-```
-
-It walks forward through the chain of search results (`ubc_children[0]`,
-the found statement's constanic clone, per the FOOP-23 two-child invariant)
-as long as each hop is itself a `SearchFir`, returning `true` the moment any
-hop is `ECONSTANIC`, `false` if the chain bottoms out in a non-search value
-or an as-yet-unpopulated result.
-
-`ConcatenationFir` overrides `is_foolish_child_constanic_enough` to:
-
-```
-child.is_constanic() && !(child is a Search && child.terminates_econstanic())
-```
-
-— ordinarily constanic, **and** not a search chain that bottoms out in
-`ECONSTANIC`. This override is specific to concatenation; it does not
-change the default for any other kind.
-
-**D9, corrected and connected to this design.** The live D9 trace (see the
-D9 finding above, "Correction 2026-08-24") found the actual blocker was
-*not* the enqueue guard D9 originally named, but a `has_ancestral_sfm`
-scope-propagation leak (`step_inner`, `fir_trait.rs`) that wrongly preserves
-a recoordinated clone's stale `ECONSTANIC` NYES instead of resetting it.
-Fixing that leak is a prerequisite, independent of this section. **Once
-fixed**, the `terminates_econstanic()`/`is_foolish_child_constanic_enough`
-machinery above is what lets `ConcatenationFir` correctly proceed past an
-element whose search chain resolves to a real value (not stuck ECONSTANIC),
-producing D9's expected result — see the D9 finding for the worked example
-and expected output (`c={1,2,1,2}`). **This fix must not be implemented
-before this section's Braning-state/predicate machinery exists** (human,
-2026-08-24) — it is written against that infrastructure, not as a
-standalone patch. A further, not-yet-designed adjustment to the SF/SFF
-marking mechanics may also be needed to get a concatenation to *fully*
-execute correctly end to end under this rule, beyond just the immediate
-clone reset (human, 2026-08-24) — flagged as follow-up, not specified here.
-
-#### Open Questions
-
-- **Does the any-NK short-circuit belong on `OperatorFir` specifically, or on
-  a shared default a kind can opt out of?** The `BraneFir` counter-example
-  (shape 2 above) shows it is not universal. Each kind's NK-propagation
-  policy needs to be an explicit part of its own handler bodies —
-  `ProtoBrane` currently has no NK-specific logic in `new`, `push_ubc_child`,
-  or `push_task`, and this proposal should keep it that way.
-- **What happens to `SearchFir`'s staged pipeline (shape 3) under a
-  four-handler model?** It does not obviously decompose into "wait for
-  foolish_children" then "combine" — `is_constanic_branelike()` is a
-  content/shape question orthogonal to either predicate as scoped, and the
-  anchor-check-then-scan sequence is closer to internal staging than a
-  fan-in reduce. Whether this needs a fifth shape, or fits inside
-  `on_foolish_children_constanic` with internal staging, is undecided.
-- **What happens to the external-trigger shape (shape 4, SF/SFF markers)?**
-  Its `BRANING` wait is not driven by its own children reaching constanic at
-  all — it is unclear any of the four handlers as named actually apply to
-  it, or whether it is legitimately outside this section's scope entirely.
-- **Should the four handlers correspond to a formalized internal state
-  machine, not just event callbacks?** Raised by the human (2026-08-24, tone
-  explicitly tentative — "not sure yet"), then refined: the six phases
-  (stepping `foolish_children`; reached-`constanic`; reached-`constantew`;
-  stepping `ubc_children`; reached-`constanic`; reached-`constantew`) are
-  proposed to be called **Braning States**, and are understood to apply only
-  to the Braning-capable kinds (not universally — see the naming discussion
-  above), which resolves part of the original ambiguity. **Still open**:
-  whether this 6-state shape is uniform across all four Braning-arm shapes
-  found by the survey (it plainly does not fit shape 3's staged pipeline or
-  shape 4's external-trigger without reinterpretation, and shape 2's
-  no-poison rule needs its own accounting); whether it layers *alongside*
-  `Nyes` or folds into/replaces part of it; and the asymmetry between
-  `foolish_children` (pushed as initial tasks) and `ubc_children`
-  (populated *as a result of* stepping) — phase 4 may not be an independent
-  input the way phase 1 is. A full statement of **what each existing NYES
-  state currently does and what condition gates leaving it, per kind** is
-  needed before this can be written down precisely — no such authoritative,
-  per-kind statement exists yet anywhere in the docs (the survey confirmed
-  this; `FOOP-62.md` covers stepping mechanics generally, not per-kind NYES
-  meaning; AGENTS.md's glossary is kind-agnostic; the `*_nyes_transitions`
-  unit tests pin behavior, not meaning). **This ground-truth statement is
-  the next concrete step for this section**, ahead of finalizing the
-  6-state shape.
-- **Exact method signatures and default behavior.** E.g. does a kind that
-  implements only `on_foolish_children_constanew` get a no-op default for
-  the other three? Not yet designed.
-- **Scope and sequencing.** This section is deferred follow-on work — see
-  the status notice at the top. It is not gated on, nor gating, the Euler-1/
-  fibonacci fix's own correctness understanding (D9's corrected mechanism
-  and expected result are recorded above independent of this section's
-  completion), but the *fix itself* is written against this section's
-  machinery and must wait for it, per the human's explicit ordering
-  (2026-08-24).
-
-
----
-
+**Date**: 2026-08-27
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added a pointer at the head of §5 to the new addendum
+`FOOP-55.addendum.step_cc_marker_table.md` — the step-chain vs clone-chain
+cross-tabulation, confirmed correct by the human 2026-08-27. It separates two
+conditions long conflated as "SFM" (did the STEPPING path that began a clone
+cross a mark, vs did the CLONE DESCENT already cross one), gives all nine
+rows, and records that rows 7-9 have no answer because `constanic_clone` is
+never called when SFF has detached at compile time. Read it before changing
+`StripBudget`, `has_ancestral_sfm`, or `disable_nyes_reset`.
 ## Appendix B.2 — §11's superseded "overridable dequeue gate" draft (no phasing)
 
 **Superseded 2026-08-24 (human direction, same day): §11 gained the

@@ -1017,6 +1017,16 @@ own **fresh** `stay_budget`, never inherited/decremented from the parent.
 
 ## Phase 3J — UFM, the Unstay Foolishness Mark `<@ … @>`  ← **EARLY: implement before 3G**
 
+**Reference — read before touching the strip budget.**
+[`FOOP-55.addendum.step_cc_marker_table.md`](FOOP-55.addendum.step_cc_marker_table.md)
+holds the step-chain vs clone-chain cross-tabulation (confirmed correct by the
+human, 2026-08-27): rows 1-3 the `Normal` family where the budget decrement is
+itself the record of "this path already passed a mark", rows 4-6 the
+`InsideSfm` family where a budget of 0 is correct, and rows 7-9 which have NO
+answer because `constanic_clone` is never called (SFF detaches at compile
+time). It also records three documentation defects — the behavior is right,
+the comments describing it are not.
+
 **Human direction, 2026-08-27.** Scoping study with full call-graph, git archaeology
 and blast radius: `docs/foop/UFM-scoping-study.md` (read §F first — it supersedes
 §C/§E wherever those assume the wrapper shape).
@@ -1998,28 +2008,19 @@ Do not start this as part of this FOOP.
 
 **Date**: 2026-08-27
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 3J — the UFM syntax is DECIDED: `<<<` / `>>>`, not `<@`/`@>`
-(human, 2026-08-27). Recorded the chain rule (a run of `<`/`>` is terminated by
-any non-angle character; run LENGTH is the mark — 1 SF, 2 SFF, 3 UFM; nesting
-is written with a break, `<<< < a > >>>`) and that a run of 4+ is ILLEGAL.
-Noted explicitly that this is NOT delegated to the parser even though the
-recursive-descent stack could disambiguate `>>>>`: the ambiguity that matters
-is the reader's, not the lexer's.
+**Changes**: Added a reference at the head of Phase 3J to the new addendum
+`FOOP-55.addendum.step_cc_marker_table.md` (also linked from FOOP-55.md §5) —
+the step-chain vs clone-chain cross-tabulation the human confirmed correct on
+2026-08-27. Rows 1-3: the `Normal` family, where the budget decrement is
+itself the record that this path already passed a mark, so no further tracking
+is needed. Rows 4-6: the `InsideSfm` family, where a starting budget of 0 is
+correct. Rows 7-9: no answer at all, because SFF's compile-time detachment
+means the search never runs and `constanic_clone` is never called. The
+addendum also records three documentation defects (the behavior is correct;
+the comments claiming `disable_nyes_reset` becomes true are not).
 
-Implemented in the working tree (NOT committed): `Token::LtLtLt`/`GtGtGt`, both
-lexer arms ordered ahead of their 2-char forms, `Display` arms, 5 new lexer
-tests; 386 workspace unit tests pass (parser 62→67).
-
-**Blocked on the human's key.** The rule breaks exactly one program in the
-suite — `misc/sff_nested.foo` (`c=<<a+<<b>>>>`, an unbroken run of 4), which
-now fails to compile. The fix is a one-character respelling (`<<b>> >>`), but
-that baseline is FOREIGN to FOOP-55 and has a `verified/` twin, which
-`rust_instructions.md` freezes; editing its input is a bigger step than
-promoting, so it needs a reviewer key. The UFM lexer work stays uncommitted
-until that is resolved.
-
-Earlier the same day: the "Deferred — NOT worth doing now" section
-(`skip_foolish_children` + brane-from-`ubc_children` as one out-of-scope
-change), Phase 4B's `budgeted_constanic_clone!` macro (`ce3d0f17`), and Phase
-3J's `OpInstructions` enum plus the `system_foo` budget refactor (`55caa37d`).
-Prior history is in `git log`/`git blame` on this file.
+Earlier the same day: Phase 3J implemented the UFM as `<<<…>>>` (`a3656833`)
+with greedy closer consumption (`e18c31dd`), and the earlier `OpInstructions`
+enum plus `system_foo` budget refactor (`55caa37d`) and
+`budgeted_constanic_clone!` macro (`ce3d0f17`). Prior history is in `git
+log`/`git blame` on this file.
