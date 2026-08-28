@@ -807,15 +807,18 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-27
+**Date**: 2026-08-28
 **Updated By**: Claude Code / claude-opus-5
 **Changes**: Added §MISC → **"Re-anchor the Human: Redisplay Input, Output and Expected"**, a new
 subsection placed just before §"Uncertainty and Other Utterances in Conversing with Human". It
 directs agents to redisplay input/output/expected before continuing a complex discussion —
 especially after a long stretch of generated text — on the grounds that a busy human's context
-window is about the size of their terminal, so re-anchoring is the generating party's job. It also
-requires a **Foolish index** (e.g. `example_1#-3`) rather than vague prose when pointing at an
-input with no line numbers or a statement with no name.
+window is about the size of their terminal, so re-anchoring is the generating party's job. It now
+also **insists the original input actually be on screen on every debugging turn**, either
+reproduced verbatim or given as a link/path to the file it lives in (e.g. the einmo input path
+`foolish-ubca/einmo_suite/input/misc/sf_of_sff.foo`) — describing or merely naming it does not
+count. And it requires a **Foolish index** (e.g. `example_1#-3`) rather than vague prose when
+pointing at an input with no line numbers or a statement with no name.
 
 ### MISC
 
@@ -878,6 +881,15 @@ terminal**, and certainly not a dozen terminal-lengths. An agent generates far m
 reader can hold in view, so the scrollback that feels present to the agent has long since left the
 human's screen. Re-anchoring is therefore the agent's job, not the reader's — the party that
 produced the flood clears the view.
+
+**The original input must actually be on screen — insist on it, every debugging turn.** Describing
+the input, naming it, or trusting that it scrolled by several turns ago does not count; across a
+multi-turn back-and-forth the program under discussion disappears from view, and the human must
+never have to hunt for it. On **each** turn, give it one of two ways:
+
+- **Reproduce the original input text verbatim** on screen, or
+- **Give a link/path to the file it lives in** — for an einmo case, the input path, e.g.
+  `foolish-ubca/einmo_suite/input/misc/sf_of_sff.foo` — so the human can open it directly.
 
 When pointing at an input that carries no line numbers, or at a statement with no name, address it
 with a **Foolish index** rather than vague prose. Write "The brane `example_1#-3` is where things
