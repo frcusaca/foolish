@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: misc/concat_sf_f_more.foo
 suite: /yolo/foolish/.claude/worktrees/foop-55-event-handlers/foolish-ubca/einmo_suite
-producer: 3bd6f090
-producer-diff: sha256:71a53a631be144c8f9c8dc826b9bb894922b47ada85dcf5c6ea66b0c89e5a8b3
-generated: 2026-08-25T21:03:19.000000000Z
+producer: f78742ec
+producer-diff: sha256:90e35503c32046b3f5c7a32a36bd78584a9f33d1cbadb4aa6da2ea91c2557046
+generated: 2026-08-28T17:47:56.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -18,18 +18,14 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   f1 = {
      b = <<x+y>> + <<a>> + <b + c>;
      a = <x+y> + a + b;
-     check_b = b;
-     check_a = b;
   }
 
   f2 = {
      b= <<x+z>> + <a + <<b>> + <c> >;
-     check_b = b;
   }
 
   f3 = {
      c= <a + <<b + <x + y + z> >> + <c> >;
-     check_c = c;
   }
 
   o = f1 <f2> <<f3>>;
@@ -39,7 +35,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   ooo = o$;
 }
 !!
-{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+{WOCONSTANIC
   a=1;
   b=2;
   c=3;
@@ -60,9 +56,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
           5,
           WOCONSTANIC
       );
-      a=-53;
-      checkˍb=-78;
-      checkˍa=-78
+      a=-53
   };
   f2={WOCONSTANIC
       b=Op+(
@@ -82,26 +76,6 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
               WOCONSTANIC
             )
           >,
-          WOCONSTANIC
-      );
-      checkˍb=?(
-          result=Op+(
-              -40,
-              Op+(
-                Op+(
-                  1,
-                  <<WOCONSTANIC
-                    ?(pattern='^b$', UNANCHORED)
-                  >>,
-                  WOCONSTANIC
-                ),
-                ?(result=3, pattern='^c$', UNANCHORED),
-                WOCONSTANIC
-              ),
-              WOCONSTANIC
-          ),
-          pattern='^b$',
-          UNANCHORED,
           WOCONSTANIC
       )
   };
@@ -128,63 +102,22 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
             ?(result=3, pattern='^c$', UNANCHORED),
             WOCONSTANIC
           )
-      >;
-      checkˍc=?(
-          result=Op+(
-              Op+(
-                1,
-                <<WOCONSTANIC
-                  Op+(
-                    ?(pattern='^b$', UNANCHORED, ECONSTANIC),
-                    <WOCONSTANIC
-                      Op+(
-                        Op+(
-                          ?(pattern='^x$', UNANCHORED, ECONSTANIC),
-                          ?(pattern='^y$', UNANCHORED, ECONSTANIC),
-                          WOCONSTANIC
-                        ),
-                        ?(pattern='^z$', UNANCHORED, ECONSTANIC),
-                        WOCONSTANIC
-                      )
-                    >,
-                    WOCONSTANIC
-                  )
-                >>,
-                WOCONSTANIC
-              ),
-              ?(result=3, pattern='^c$', UNANCHORED),
-              WOCONSTANIC
-          ),
-          pattern='^c$',
-          UNANCHORED,
-          WOCONSTANIC
-      )
+      >
   };
   o=⨃(
       elements=3,
       ?(
-  result={WOCONSTANIC
-      b=Op+(
-          Op+(
-            Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-            ?(pattern='^a$', UNANCHORED, ECONSTANIC),
-            WOCONSTANIC
-          ),
-          5,
-          WOCONSTANIC
-      );
-      a=-53;
-      checkˍb=-78;
-      checkˍa=-78
+  result={
+      b=-24;
+      a=-53
   },
   pattern='^f1$',
-  UNANCHORED,
-  WOCONSTANIC
+  UNANCHORED
 ),
       ?(
   result={WOCONSTANIC
       b=Op+(
-          Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+          -40,
           Op+(
             Op+(
               1,
@@ -197,12 +130,6 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
             WOCONSTANIC
           ),
           WOCONSTANIC
-      );
-      checkˍb=?(
-          result=Op+(-40, Op+(Op+(1, ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC), 3, WOCONSTANIC), WOCONSTANIC),
-          pattern='^b$',
-          UNANCHORED,
-          WOCONSTANIC
       )
   },
   pattern='^f2$',
@@ -214,10 +141,38 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 >>,
       WOCONSTANIC
   );
-  oo=?(pattern='^o$', UNANCHORED, BRANING);
-  ooo =$ ?(pattern='^o$', UNANCHORED, PREMBRIONIC) (PREMBRIONIC)
+  oo=?(
+      result={WOCONSTANIC
+          b=-24;
+          a=-53;
+          b=-60;
+          c=Op+(
+              Op+(
+                1,
+                Op+(
+                  -60,
+                  <WOCONSTANIC
+                    Op+(
+                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+                      ?(pattern='^z$', UNANCHORED, ECONSTANIC),
+                      WOCONSTANIC
+                    )
+                  >,
+                  WOCONSTANIC
+                ),
+                WOCONSTANIC
+              ),
+              3,
+              WOCONSTANIC
+          )
+      },
+      pattern='^o$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  ooo=-116
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"L1myK3Fi4PZIj68ACUtkMKjInIEJgkrjCZ9T4ks8qSaOt0qJcsh4PQ/6Gpr8aj5M+fsDYUm74MagwJrn3uk3Dg==","produced_by":"einmo 0.1.0 sha256:f7bcf131a3b268178e5ca919a285ae33b3f5afaf404a0ac4534ab9f37d27e8d6","timestamp":"2026-08-25T21:03:20.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:90e229a134d529b37097ca494b79a9e691abd7721681bf07c2b27e5c4e9b92dd","timestamp":"2026-08-28T17:47:56.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:90e229a134d529b37097ca494b79a9e691abd7721681bf07c2b27e5c4e9b92dd","timestamp":"2026-08-28T17:47:56.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Kv2rvMtqaQ1N6GrHEGNpuP1lZNrsxDWVDDXNvCzFkCTU6+klw15r9BSF86BA7uphX1uOmromstyNh9O3lFLpCg==","produced_by":"einmo 0.1.0 sha256:90e229a134d529b37097ca494b79a9e691abd7721681bf07c2b27e5c4e9b92dd","timestamp":"2026-08-28T17:47:56.000000000Z"}
