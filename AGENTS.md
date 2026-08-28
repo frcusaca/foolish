@@ -807,15 +807,15 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-12
-**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
-**Changes**: Pointed the §Build Commands test sections at the new CENTRAL reference —
-`README.md` §"Running specific tests" (running one test or a subset: unit-test name filters,
-batch filters, `--exact`, and einmo case selection via the einmo CLI). Removed the broken
-`einmo evaluate --command "cat"` examples (cat echoes INPUT as OUTPUT — never a real
-evaluation; the working `foolish-cli run /dev/stdin | head -c -1` form lives in the README
-section) and added the batch-filter example to §Unit Tests. Noted in §FOOP the per-sub-section
-"Establish relevant tests" checkbox discipline (`foop.md` §"Sub-Section Test Subsets").
+**Date**: 2026-08-27
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added §MISC → **"Re-anchor the Human: Redisplay Input, Output and Expected"**, a new
+subsection placed just before §"Uncertainty and Other Utterances in Conversing with Human". It
+directs agents to redisplay input/output/expected before continuing a complex discussion —
+especially after a long stretch of generated text — on the grounds that a busy human's context
+window is about the size of their terminal, so re-anchoring is the generating party's job. It also
+requires a **Foolish index** (e.g. `example_1#-3`) rather than vague prose when pointing at an
+input with no line numbers or a statement with no name.
 
 ### MISC
 
@@ -865,6 +865,25 @@ probably best to think through D before asking user to clarify." Give clear
 instructions to your self. Dump code snippets in code fences if code or pseudo code
 is more clear.
 
+
+#### Re-anchor the Human: Redisplay Input, Output and Expected
+
+When working through a complex problem with the human — and **especially once a long stretch of
+text has gone by** — redisplay the **input**, the **output**, and the **expected** before carrying
+the discussion further. Do not assume an earlier display is still on screen, and do not refer back
+to one as though it were. Show them again, compactly, and then make your point.
+
+The reason is worth stating plainly: a busy human's context window is roughly **the size of their
+terminal**, and certainly not a dozen terminal-lengths. An agent generates far more text than a
+reader can hold in view, so the scrollback that feels present to the agent has long since left the
+human's screen. Re-anchoring is therefore the agent's job, not the reader's — the party that
+produced the flood clears the view.
+
+When pointing at an input that carries no line numbers, or at a statement with no name, address it
+with a **Foolish index** rather than vague prose. Write "The brane `example_1#-3` is where things
+broke down" — where `example_1` is searched in the root brane of the program under debug — instead
+of "the third-from-last brane in that example". The index is precise, it is checkable, and it is
+the language's own way of naming a position.
 
 #### Uncertainty and Other Utterances in Conversing with Human
 
