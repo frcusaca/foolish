@@ -1840,6 +1840,33 @@ work is not lost when this plan closes.
       (that would newly collide the other way). Not scoped as part of this
       FOOP's own work; a standalone follow-up.
 
+- [ ] **Sequencer: an SF/SFF wrapper around a search result renders as the
+      wrapper, hiding the value inside it.** Raised by the human 2026-08-28
+      while reading `misc/sf_of_sff`
+      (`foolish-ubca/einmo_suite/input/misc/sf_of_sff.foo`):
+
+      ```foolish
+      {a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}
+      ```
+
+      Statement `#3` (`sf = <sff>`) renders as
+      `sf=?(result=<<WOCONSTANIC Op+(...)>>, pattern='^sff$', ...)`, and the
+      human's first reading was that the `Op+` "was rendered poorly". It is
+      not only a rendering problem — traced, the wrapper is genuinely present
+      in the FIR (`#3 search.ubc[0] kind=StayFullyFoolish`, with the `Op+` and
+      its two ECONSTANIC operands one layer inside). But the RENDERING does
+      make the two situations indistinguishable on screen: a value that is
+      merely *displayed* under a mark and a value that is *blocked* by one
+      look identical.
+
+      Worth deciding separately from the mark-stripping question: should the
+      sequencer show the value inside a settled wrapper (perhaps annotating
+      the mark), so a reader can tell "wrapped but readable" from "wrapped and
+      therefore unresolvable"? Note the FIR shape here is otherwise correct —
+      `?a` and `?b` ARE ECONSTANIC as the baseline wants; only the extra layer
+      differs. Do not conflate this with the row-4 budget decision recorded in
+      `FOOP-55.addendum.step_cc_marker_table.md`.
+
 - [ ] **Contract/combine `constanic_clone` methods using macros; search all
       `fn constanic_*`/`fn *_constanic_clone*` methods and review for
       redundancies.** Human request (2026-08-26), raised while reviewing
