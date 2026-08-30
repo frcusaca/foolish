@@ -146,11 +146,18 @@ not that the test plumbing is wrong.
 
 All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never touched.
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the full `foolish-ubca2` suite via `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked`; run unit tests: `foolish-ubca2::fir_kinds` (substring match covers the `*_nyes_transitions` and `ContextfulSearch` test modules). Run this subset after each per-kind task below; add each new arena-specific unit test to this list as it's written.
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the full `foolish-ubca2` suite via `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked`; run unit tests: `foolish-ubca2::fir_kinds` (substring match covers the `*_nyes_transitions` and `ContextfulSearch` test modules). Run this subset after each per-kind task below; add each new arena-specific unit test to this list as it's written.
+      (2026-08-30 15:30)
 
-- [ ] Re-verify the authoritative FIR-kind list before splitting work
+- [x] Re-verify the authoritative FIR-kind list before splitting work
+      (2026-08-30 15:30)
   - Run `grep -n "^impl Fir for" foolish-ubca2/src/fir_kinds.rs` and compare against the list this plan was written against: `IndepIntFir`, `NkFir`, `OperatorFir`, `StatementFir`, `BraneFir`, `SearchFir`, `IndexFir`, `FoolRefFir`, `StayFoolishFir`, `StayFullyFoolishFir`, `ConcatenationFir`, `CreationFir`, and `ConcatHelper` (13 `impl Fir for` sites total — `ConcatHelper` is a supporting type for `ConcatenationFir` but itself implements `Fir`, confirmed by grep when this plan was written).
   - If the list differs (a kind was added, removed, or renamed since this plan was written), add or adjust the per-kind tasks below to match reality before proceeding — do not silently skip a kind that exists, and do not invent a task for a kind that no longer does.
+      Confirmed exact match: grep found 13 `impl Fir for` sites at lines 442 (IndepIntFir), 539
+      (NkFir), 585 (OperatorFir), 969 (StatementFir), 1077 (BraneFir), 1589 (SearchFir), 1754
+      (IndexFir), 1992 (FoolRefFir), 2428 (StayFoolishFir), 2489 (StayFullyFoolishFir), 2557
+      (ConcatHelper), 2784 (ConcatenationFir), 3128 (CreationFir) — identical kind set and order
+      to the plan's list. No adjustment needed.
 
 - [ ] (read FOOP-16.md §Specification "`FirPointer` — a validated arena handle" and "`FVMStorage` — the arena") Add the `FirPointer`, `FVMStorage`, `Slot`, `ArenaId`, and `FirSpec` types to `foolish-ubca2`
   - New module, e.g. `foolish-ubca2/src/fvm_storage.rs` (or wherever `foolish-ubca2/src/lib.rs`'s module structure naturally fits it — check `foolish-ubca2/src/lib.rs`'s existing `mod` declarations first).
