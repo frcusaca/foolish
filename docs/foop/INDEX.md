@@ -71,6 +71,7 @@ ls | rev | sort -V | rev
 | [FOOP-75](FOOP-75.md) | Assignment Attached Searches — `LHS =SEARCH_SPEC RHS` as sugar for `LHS = RHS SEARCH_SPEC` | Draft | phase-2 | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-85](FOOP-85.md) | The einmo Foolish separator collides with Foolish block comments | Draft | meta | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-95](FOOP-95.md) | Add Embryonic and Resequencing EINMO Sections | Draft | phase-2 | 2026-08-08 | Sisyphus / claude-opus-5 |
+| [FOOP-16](FOOP-16.md) | foolish-ubca2 — arena-backed FIR storage via copy-migration | Draft | phase-2 | 2026-08-30 | Claude Code / claude-sonnet-5 |
 
 ---
 
@@ -466,12 +467,15 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-08-08
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-95** — *Add Embryonic and Resequencing EINMO Sections*: every einmo
-test gains an **EMBRYONIC** rendering of the program sequenced **before any step** (the only
-vantage from which FOOP-65's backtick form is visible, and generally a direct view of
-parser/precedence structure that today surfaces only as value diffs), and — landing last — a
+**Date**: 2026-08-30
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Added **FOOP-16** — *foolish-ubca2 — arena-backed FIR storage via copy-migration*:
+proposes a new `foolish-ubca2` crate, copy-migrated from `foolish-ubca` and moved onto a
+`u32`-indexed arena (`FVMStorage`/`FirPointer`) in place of `Rc<RefCell<dyn Fir>>`/`Weak`,
+validated case-by-case against `foolish-ubca`'s existing (untouched) einmo `checked/` baselines
+via the crate-agnostic `einmo::Evaluator` trait. Noted in passing: **FOOP-06** (sort key 60,
+`Generate to output.gen...`) predates this entry but was never added to this index — a
+pre-existing gap, left unfixed here since it is out of this edit's scope.
 **Foolish Resequencer** emitting **parsable** Foolish from the FIR tree (**RESEQUENCED**) plus
 a new **normalization**, checked by two equalities (fidelity to the normalized input;
 idempotence of resequence∘parse), which turns the whole corpus into a round-trip property test
