@@ -1,0 +1,66 @@
+{
+	!! FOOP-65 — comprehensive test.
+	!! Exercises backtick (tail concatenator) interacting with existing features:
+	!! searches (? ~ # ^ $ .), $ extraction, SF/SFF markers, nested branes,
+	!! system operators, user-defined functions, and the §3.1 worked example.
+
+	!! === §3.1 worked example: chain of backticks with trailing juxtaposition ===
+	a_brn = {1};
+	b_brn = {2};
+	c_brn = {3};
+	d_brn = {4};
+	e_brn = {5};
+	f_brn = {6};
+	!! a`b`c`d e f ≡ (d e f) c b a — flat chain reverses source order
+	chain_bt = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
+	chain_jx = d_brn e_brn f_brn c_brn b_brn a_brn;
+
+	!! === User-defined function: backtick vs juxtaposition equivalence ===
+	myfn = {result = a + b;};
+	bt_fn = myfn`{a=10, b=20};
+	jx_fn = {a=10, b=20} myfn;
+
+	!! === $ extraction from backtick result (spec §2: parenthesized) ===
+	!! (myfn`{a=5, b=15}) ≡ {a=5, b=15} myfn → {a=5; b=15; result=20}
+	!! $ extracts tail → 20
+	extract_bt = (myfn`{a=5, b=15})$;
+
+	!! === Dot access on backtick result ===
+	!! bt_fn = {a=10; b=20; result=30} → .result → 30
+	dot_val = bt_fn.result;
+
+	!! === Head (^) and tail ($) search on backtick result ===
+	head_val = bt_fn^;
+	tail_val = bt_fn$;
+
+	!! === Anchored backward search (?) on backtick result ===
+	find_a = bt_fn?a;
+
+	!! === Index search (#) on backtick result ===
+	idx_0 = bt_fn#0;
+
+	!! === Forward search (~) on backtick result ===
+	fwd_a = bt_fn~a;
+
+	!! === Backtick inside nested brane ===
+	container = {
+		inner = {x = 7;};
+		applied = inner`{y = 3;};
+		z = applied.y;
+	};
+
+	!! === System operators via brane application idiom ===
+	lt_true  = {1, 2, 'lt}$;
+	lt_false = {2, 1, 'lt}$;
+	eq_true  = {3, 3, 'eq}$;
+
+	!! === Backtick with SFF marker (deferred evaluation) ===
+	base = {p = 100;};
+	sf_bt = base`<<{q = base.p + 50}>>;
+	sf_jx = <<{q = base.p + 50}>> base;
+
+	!! === Chained backtick: result of one backtick used in another ===
+	first = myfn`{a=1, b=2};
+	second = myfn`{a=100, b=200};
+	double_bt = second`first;
+}

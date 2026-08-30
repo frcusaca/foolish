@@ -1,0 +1,32 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/boolean/constants.foo
+suite: /yolo/foolish/.claude/worktrees/agent-acc469a69f28cc43c/foolish-ubca2/einmo_suite
+producer: c7379c71
+producer-diff: sha256:22b0659bb9c3089dcaac6f6cb6f045b68fd96389cd6af6ea9199f845f0e942ac
+generated: 2026-08-30T22:18:26.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-33 §4: 'True and 'False resolve as ordinary ancestral (sibling)
+	!! lookups into system.foo -- composed as the implicit root ancestor of
+	!! every program. Note the LEADING QUOTE is required: a bare True (no
+	!! quote) can never match the null-characterized 'True (searchable_name
+	!! comparison is unconditional -- see FOOP-33.md §3 "quote-bearing
+	!! search").
+	!! FOOP-33 Phase 9: t1/t2/f1 now render as 'True/'True/'False (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	t1 = 'True;
+	t2 = 'True;
+	f1 = 'False;
+}
+!!
+{
+  t1='True;
+  t2='True;
+  f1='False
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:94ddc2bc8e65a876477e5ecb815f4ebe0cc4f0e9af10854cc2511128b9ca01da","timestamp":"2026-08-30T22:18:26.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:94ddc2bc8e65a876477e5ecb815f4ebe0cc4f0e9af10854cc2511128b9ca01da","timestamp":"2026-08-30T22:18:26.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Oc19xmkvwoTztLTyy7WMjZLL6nqikSc4KClzG1nBG0KW0Dw18vysgYroE4lF3s+MTcwDA8AJd/Lsw/StmyVcCg==","produced_by":"einmo 0.1.0 sha256:94ddc2bc8e65a876477e5ecb815f4ebe0cc4f0e9af10854cc2511128b9ca01da","timestamp":"2026-08-30T22:18:26.000000000Z"}

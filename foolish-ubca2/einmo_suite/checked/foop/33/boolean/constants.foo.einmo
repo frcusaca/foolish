@@ -1,0 +1,33 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/boolean/constants.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
+producer: d95ef48e
+producer-diff: sha256:bbf368b220f1ec4088d324ef7443076ebec9d77d3ed872640379ccecea8ce1ad
+generated: 2026-08-09T20:02:11.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-33 §4: 'True and 'False resolve as ordinary ancestral (sibling)
+	!! lookups into system.foo -- composed as the implicit root ancestor of
+	!! every program. Note the LEADING QUOTE is required: a bare True (no
+	!! quote) can never match the null-characterized 'True (searchable_name
+	!! comparison is unconditional -- see FOOP-33.md §3 "quote-bearing
+	!! search").
+	!! FOOP-33 Phase 9: t1/t2/f1 now render as 'True/'True/'False (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	t1 = 'True;
+	t2 = 'True;
+	f1 = 'False;
+}
+!!
+{
+  t1='True;
+  t2='True;
+  f1='False
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"YCrEWxqMgq+bUoPW8id2gU1LNjTI7L74yWy8AzjFvcUI4Kek6vH7AU5RkH0f09i/XUvuB/EZE0paAOZR2ohuAg==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"R/kkCJwuKbOTSddBoPiYqbnm9z33lGVe8Ya9gR423EGJN0Hk/Y6ImsMEYGhL+QhNeQ+OaSGHx4H8WBdhZIIDBA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T21:59:37.000000000Z"}

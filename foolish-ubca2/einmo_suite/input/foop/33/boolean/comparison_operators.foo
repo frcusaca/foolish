@@ -1,0 +1,35 @@
+{
+	!! FOOP-33 §5.0: the five comparison operators, defined in system.foo as
+	!! null-characterized creations ('lt/'gt/'le/'ge/'eq) and reached by the
+	!! SAME ordinary ancestral search that finds 'True/'False. There is no
+	!! parse-time or name-based special-casing of 'lt.
+	!! --
+	!! Placement is POSTFIX: both operands come BEFORE the operator, which
+	!! reads them as <<#-2>> op <<#-1>>. The brane literal alone is not the
+	!! whole expression -- the computed boolean becomes the brane's TAIL, and
+	!! $ reads it out.
+	!! --
+	!! The mechanism is detachment and recoordination, not new machinery: the
+	!! operand lookups sit ECONSTANIC inside system.foo (no neighbours there),
+	!! and resolve against 1 and 2 once the reference is recoordinated into
+	!! the brane below.
+	!! --
+	!! FOOP-33 Phase 9: the sequencer now renders each result by the name of
+	!! the 'True/'False creation it settled to, instead of the bare ⬤ glyph.
+	!! Each line's comment states which boolean it IS.
+
+	lt_true  = {1, 2, 'lt}$;    !! 1 < 2  -> 'True
+	lt_false = {2, 1, 'lt}$;    !! 2 < 1  -> 'False
+
+	gt_true  = {2, 1, 'gt}$;    !! 2 > 1  -> 'True
+	gt_false = {1, 2, 'gt}$;    !! 1 > 2  -> 'False
+
+	le_true  = {2, 2, 'le}$;    !! 2 <= 2 -> 'True
+	le_false = {2, 1, 'le}$;    !! 2 <= 1 -> 'False
+
+	ge_true  = {2, 2, 'ge}$;    !! 2 >= 2 -> 'True
+	ge_false = {1, 2, 'ge}$;    !! 1 >= 2 -> 'False
+
+	eq_true  = {3, 3, 'eq}$;    !! 3 == 3 -> 'True
+	eq_false = {3, 4, 'eq}$;    !! 3 != 4 -> 'False
+}

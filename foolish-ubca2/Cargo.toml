@@ -1,0 +1,21 @@
+[package]
+name = "foolish-ubca2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+foolish-core = { path = "../foolish-core" }
+foolish-parser = { path = "../foolish-parser" }
+anyhow = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# einmo: the signed-snapshot harness (FOOP-64). einmo has zero dependency on any
+# workspace crate, so this dev-dep introduces no cycle.
+einmo = { path = "../einmo" }
+num_cpus = "1"
+
+[lints.rust]
+unsafe_code = "warn"

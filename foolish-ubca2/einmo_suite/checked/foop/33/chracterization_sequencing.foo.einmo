@@ -1,0 +1,64 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/chracterization_sequencing.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
+producer: d95ef48e
+producer-diff: sha256:579981a429fd095310c5c127431f0e4d06b16f9f0d394d297518112cf2238527
+generated: 2026-08-09T20:02:11.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+
+  is_it = 'True; !! Null-characterized system creation should be rendered as 'True
+
+  !! Render the creation symbol at the site of the creation.
+  !! The names on the LHS of these statements with a singular creation on RHS are
+  !! called those creations' orignal names.
+  'a    = {*};
+   a    = {*};
+  bs    = {b={*}; 'b={*}; 'bad='b};
+
+  !! Can we see the names now?
+  what_was_tick_a = 'a;
+  what_was_tick_a = #-4;
+
+  what_was_a = a;      !! Rule is characterizations who's name is not null-characterized are not rendered by their original name
+  what_was_a = ?='a&#1; !! defined on the line after 'a
+
+  what_is_tick_b_called_from_another_brane_1 = bs.'b;
+  what_is_tick_b_called_from_another_brane_2 = bs~'b;
+  what_is_tick_b_called_from_another_brane_3 = bs?'b;
+  what_is_tick_b_called_from_another_brane_4 = bs#1;
+  what_is_b_called_from_another_brane_1      = bs.b;
+  what_is_b_called_from_another_brane_2      = bs#0;
+  'how_bad_can_it_b_1                        = bs#1;
+  how_bad_can_it_b_2                         = bs#1;
+}
+!!
+{NK
+  isˍit='True;
+  'a=⬤;
+  a=⬤;
+  bs={NK
+      b=⬤;
+      'b=⬤;
+      'bad=??? ('bad not-foolish (Named creations cannot be renamed))
+  };
+  whatˍwasˍtickˍa='a;
+  whatˍwasˍtickˍa='a;
+  whatˍwasˍa=⬤;
+  whatˍwasˍa=⬤;
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1='b;
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2='b;
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3='b;
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4='b;
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1=⬤;
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2=⬤;
+  'howˍbadˍcanˍitˍbˍ1=??? ('howˍbadˍcanˍitˍbˍ1 not-foolish (Named creations cannot be renamed));
+  howˍbadˍcanˍitˍbˍ2='b
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"9HRn9Yihif3ax/f2/diNHuQwatG1pzQglqFGJ562Y/SO1aMtc86IBqcjinZHN+wTtlK7aGMrwoQ6Th+u4c24Dg==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:11.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"S98SkqLz0B6UQD3WNbrcne3NFZOr/9nVTyLPHAkveBoZrc/J5QWbnq6v9hNQiwPb6sqqfimE+MgbktiNgNMrAA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T21:59:38.000000000Z"}
