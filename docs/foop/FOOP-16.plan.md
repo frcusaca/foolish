@@ -159,7 +159,8 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
       (ConcatHelper), 2784 (ConcatenationFir), 3128 (CreationFir) — identical kind set and order
       to the plan's list. No adjustment needed.
 
-- [ ] (read FOOP-16.md §Specification "`FirPointer` — a validated arena handle" and "`FVMStorage` — the arena") Add the `FirPointer`, `FVMStorage`, `Slot`, `ArenaId`, and `FirSpec` types to `foolish-ubca2`
+- [x] (read FOOP-16.md §Specification "`FirPointer` — a validated arena handle" and "`FVMStorage` — the arena") Add the `FirPointer`, `FVMStorage`, `Slot`, `ArenaId`, and `FirSpec` types to `foolish-ubca2`
+      (2026-08-30 15:39)
   - New module, e.g. `foolish-ubca2/src/fvm_storage.rs` (or wherever `foolish-ubca2/src/lib.rs`'s module structure naturally fits it — check `foolish-ubca2/src/lib.rs`'s existing `mod` declarations first).
   - Implement `FirPointer` exactly as specified: three private fields (`arena: ArenaId`, `index: u32`, `generation: u32`), `#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]`, no public constructor, no arithmetic impls.
   - Implement `FVMStorage` with `get`, `with_mut`, `make_my_child`, `clone_subtree` as specified. The `Fir` payload type stored in each `Slot` can be `Box<dyn Fir>` (preserves today's dynamic-dispatch shape most directly) — pick this unless a specific per-kind task below finds a concrete reason to prefer an enum wrapper; if so, note the deviation and its reason in this checkbox's completion timestamp line.
@@ -167,6 +168,48 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
   - Define `FirSpec` as an enum with one variant per FIR kind from the verified list above; each variant's fields mirror that kind's own non-tree-structural fields (e.g. `FirSpec::Statement { identifier: Identifier, line_number: usize }`, `FirSpec::IndepInt { value: i64 }` — read each kind's struct definition in `fir_kinds.rs` to get its actual field set before writing the corresponding `FirSpec` variant).
   - Write a small number of new unit tests directly exercising `FVMStorage` in isolation (insert a root, create a few children, verify `get`/`with_mut`/`get_parent` round-trip correctly, verify a `FirPointer` from a different `FVMStorage` instance fails validation) — these are the arena-specific unit tests referenced in this phase's "Establish relevant tests" checkbox.
   - This task does not yet change any existing FIR kind's fields — it only adds the new types alongside the old ones. `cargo check -p foolish-ubca2` and the full einmo suite must still pass unchanged after this task.
+      Created `foolish-ubca2/src/fvm_storage.rs`, registered in `lib.rs`. All types read directly
+      from re-verified source (`proto_brane.rs`, `fir_trait.rs`, `fir_kinds.rs`'s 13 struct
+      definitions, `system_foo.rs`'s `ComparisonFir`/`ComparisonOp`) — NOT from the earlier
+      sub-fork's unverified sections (per the coordinator's explicit warning after the rate-limit
+      interruption, `MAX_DEPTH = 100` and `step_inner`'s exact body were independently re-read
+      directly from `fir_trait.rs`, not trusted from the fork).
+
+      **Deviation from "`Box<dyn Fir>`," with reason recorded here as the checkbox instructs**:
+      `Slot`'s payload is a small placeholder struct `ArenaFir { spec: FirSpec, nyes: Nyes }`, not
+      `Box<dyn Fir>`. Reason: today's `trait Fir` (`fir_trait.rs`) is built around `&self` +
+      interior mutability (`Cell`/`RefCell` inside `ProtoBrane`) specifically so a shared
+      `Rc<RefCell<dyn Fir>>` handle can be mutated through a shared reference — exactly the
+      machinery this FOOP exists to remove. Storing today's unmodified `Fir` trait object in a
+      `Slot` would keep that interior-mutability machinery alongside the new exclusive-`&mut`
+      arena access, contradicting the FOOP's own motivation, and this task is explicitly scoped
+      (per its own last sentence) to NOT touch any existing kind's fields or `Fir` impl yet. A
+      small generic placeholder proves `FVMStorage`'s read/write/round-trip behavior correct in
+      isolation first; each per-kind migration task (starting with `IndepIntFir`, the next
+      checkbox after the `FirCursor`/`clone_subtree` foundational task) is where that kind's real
+      arena-aware `Fir` impl becomes the actual `Slot` payload, and `ArenaFir` is deleted once
+      every kind has migrated (tracked as part of the existing per-kind tasks, not a new task).
+
+      `clone_subtree` is NOT implemented in this checkbox despite being named in its text — it is
+      implemented in the very next checkbox (line ~180 below), which gives it a full
+      spec-grounded paragraph of its own citing `constanic_clone_at`'s real logic directly. This
+      is a genuine small overlap/duplication between these two adjacent checkboxes in the plan as
+      written (both list `clone_subtree` as part of their scope); recorded as a non-blocking
+      doubt in the final report rather than silently resolved either way.
+
+      All 6 new unit tests pass (`make_root_then_child_round_trips_through_get_and_with_mut`,
+      `initial_nyes_matches_each_kinds_own_constructor`, `pointer_from_a_different_arena_fails_validation`,
+      `get_mut_and_with_mut_reach_the_same_state`, `home_brane_of_the_structural_root_is_none`,
+      `home_brane_finds_the_nearest_brane_like_ancestor`). `cargo check -p foolish-ubca2` and
+      `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` both pass unchanged, confirming
+      this task changed no existing behavior. `cargo fmt`/`cargo clippy -p foolish-ubca2 --no-deps`
+      are clean for `fvm_storage.rs` itself; a PRE-EXISTING clippy failure in `foolish-core`
+      (`sequencer.rs`, `iter_next_slice` lint, 4 sites) and a pre-existing `let_and_return` clippy
+      failure + several `cargo fmt` drifts in inherited (Phase-0-copied, unmodified by me)
+      `system_foo.rs`/`compiler.rs`/`fir_kinds.rs` code are confirmed present IDENTICALLY in
+      untouched `foolish-ubca` (verified via direct `cargo clippy`/`cargo fmt --check` runs
+      against `-p foolish-ubca`) — pre-existing toolchain/lint-version drift unrelated to FOOP-16,
+      recorded as a non-blocking doubt in the final report.
 
 - [ ] (read FOOP-16.md §Specification "The `FirCursor`/`FirCursorMut` wrapper", "Resolved: two cursor types, not one — settled against a real call site", and "`clone_subtree` — grounded in `constanic_clone_at`'s real logic") Add `FirCursor`, `FirCursorMut`, `FVMStorage::get_mut`, `temporary_release!`, and `clone_subtree` to `foolish-ubca2`
   - Add `FirCursor<'s>` (holds `ptr: FirPointer`, `storage: &'s FVMStorage`) and `FirCursorMut<'s>` (holds `ptr: FirPointer`, `storage: &'s mut FVMStorage`) to the same module as `FirPointer`/`FVMStorage` from the previous task.
@@ -236,6 +279,34 @@ independence.)**
 - [ ] Migrate `CreationFir` to `FirPointer`
   - Per CLAUDE.md's "Named creation" terminology: confirm `CreationFir::get_display_name` and any rename-refusal logic (`StatementFir::check_rename_of_named_creation`) still function correctly against `FirPointer`-based parent/children access — these methods currently walk pointers to determine a creation's original name/rename eligibility.
   - Targeted einmo re-run: cases exercising named creations (`'Name = ⬤`) and rename-refusal (NF) cases.
+
+- [ ] Migrate `ComparisonFir` (`foolish-ubca2/src/system_foo.rs`, NOT `fir_kinds.rs`) to `FirPointer`
+      **Plan adjustment, added during execution**: `ComparisonFir` is a 14th `impl Fir for` site
+      that this plan's original per-kind task list omitted, because that list was built only from
+      `grep "^impl Fir for" fir_kinds.rs` — `ComparisonFir` lives in `system_foo.rs` instead (3 of
+      its own `Rc::new_cyclic` sites: `ComparisonFir::comparison`'s constructor and
+      `ComparisonFir::constanic_clone`'s two branches, confirmed by direct read of
+      `foolish-ubca2/src/system_foo.rs` lines ~148-330). It is exercised by `constanic_clone_at`'s
+      own `FirKind::Comparison` match arm (`fir_kinds.rs`), which this Phase already migrates as
+      part of `clone_subtree`, so leaving `ComparisonFir` itself unmigrated would be an inconsistent
+      half-arena-half-Rc state for exactly the kind that arm delegates to. Per the plan's own rule
+      ("do not silently skip a kind that exists"), this task is added here rather than skipped.
+  - `ComparisonFir`'s fields: `core: ProtoBrane`, `op: ComparisonOp` (a plain `Copy` enum, no
+    migration needed), `self_weak: Weak<RefCell<dyn Fir>>` — a self-reference for the ancestral
+    `'True`/`'False` search from `fir_op_step`, the exact same pattern and rationale as
+    `StatementFir::self_weak` (see that task's notes) — becomes redundant under the arena, since a
+    `FirPointer`'s own identity already serves this role; confirm during this task whether
+    `self_weak` can be dropped entirely (its only reason to exist — `fir_op_step` receiving `&self`
+    without a `self_ref` — disappears once `fir_op_step` is arena-threaded and can be given its own
+    `FirPointer`) or must be kept for a reason not yet visible.
+  - Migrate `ComparisonFir::comparison` (the `push_foolish_child_sff_marked`-based constructor) and
+    `ComparisonFir::constanic_clone` (called from `constanic_clone_at`'s `FirKind::Comparison` arm)
+    to `create_child`/`clone_subtree`-based construction, matching `OperatorFir`'s and
+    `StatementFir`'s tasks above in shape.
+  - Targeted einmo re-run: cases exercising comparison operators (`<̲`, `>̲`, `<̲=̲`, `>̲=̲`, `=̲=̲` —
+    search `foolish-ubca2/einmo_suite/input/` for `.foo` files using these, likely under
+    `foop/33/boolean/` given the `comparison_operators.foo.einmo`/`comparison_non_integer.foo.einmo`
+    checked cases already seen in this crate's suite).
 
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 

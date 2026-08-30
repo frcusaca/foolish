@@ -16,6 +16,7 @@ pub mod compiler;
 pub mod evaluator;
 pub mod fir_kinds;
 pub mod fir_trait;
+pub mod fvm_storage;
 pub(crate) mod identifier;
 pub mod nyes_ext;
 pub mod proto_brane;
