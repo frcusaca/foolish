@@ -27,6 +27,7 @@
 //! phrasing for this task: "it only adds the new types alongside the old
 //! ones."
 
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use foolish_core::fir::Nyes;
@@ -85,24 +86,139 @@ pub struct FirPointer {
 struct Slot {
     payload: ArenaFir,
     parent: FirPointer,
-    children: Vec<FirPointer>,
+    /// Parse-time children (immutable topology), mirroring
+    /// `ProtoBrane::foolish_children`.
+    foolish_children: Vec<FirPointer>,
     generation: u32,
 }
 
 /// Placeholder per-node payload for this foundational task.
 ///
 /// Deliberately NOT `trait Fir` — see this module's top-level doc comment for
-/// why. Holds exactly the data every kind needs generically (a `FirSpec`
-/// classifying which kind this slot represents, plus a mutable `Nyes`) so
-/// `FVMStorage`'s own read/write/round-trip behavior can be proven correct in
-/// isolation before any real kind depends on it. Each per-kind migration task
-/// replaces reads/writes of this placeholder with that kind's own arena-aware
-/// `Fir` impl; `ArenaFir` itself is deleted once every kind has migrated
-/// (tracked as part of Phase 1's per-kind tasks, not a separate cleanup).
+/// why. Holds exactly the data every kind needs generically, mirroring every
+/// field [`crate::proto_brane::ProtoBrane`] carries today EXCEPT
+/// `foolish_children`/`parent` (those live directly on [`Slot`], since the
+/// arena — not each node — owns tree structure) so [`FirCursor`]/
+/// [`FirCursorMut`]'s method table (FOOP-16.md §Specification "The
+/// `FirCursor`/`FirCursorMut` wrapper") has something real to read and write.
+/// Each per-kind migration task replaces reads/writes of this placeholder
+/// with that kind's own arena-aware `Fir` impl; `ArenaFir` itself is deleted
+/// once every kind has migrated (tracked as part of Phase 1's per-kind tasks,
+/// not a separate cleanup).
 #[derive(Debug, Clone)]
-struct ArenaFir {
+pub(crate) struct ArenaFir {
     spec: FirSpec,
     nyes: Nyes,
+    /// Compute-time children, mirroring `ProtoBrane::ubc_children`. A plain
+    /// `Vec` here, not `RefCell<Vec<_>>` — the arena's `&mut FVMStorage`
+    /// borrow is the only exclusivity check needed, so the `RefCell` this
+    /// field wraps today becomes unnecessary (see FOOP-16.md §Specification
+    /// "`FirCursor`/`FirCursorMut`", `ubc_children` row: "removes the
+    /// `self.ubc_children.borrow().clone()` dance").
+    ubc_children: Vec<FirPointer>,
+    /// Task queue, mirroring `ProtoBrane::tasks`.
+    tasks: VecDeque<FirPointer>,
+    /// Mirrors `ProtoBrane::alarm_reason`.
+    alarm_reason: Option<String>,
+}
+
+impl ArenaFir {
+    /// Mirrors `ProtoBrane::get_nyes`. No caller yet — every current read
+    /// goes through `FVMStorage::get_nyes` instead, which has direct slot
+    /// access; kept as the symmetric counterpart to `set_nyes` below for a
+    /// future caller that already holds an `&ArenaFir` (e.g. inside a
+    /// `with_mut`/`get_mut` closure) and would otherwise need to route back
+    /// through `FVMStorage` just to read what it already has in hand.
+    #[expect(
+        dead_code,
+        reason = "no caller yet — symmetric counterpart to set_nyes"
+    )]
+    pub(crate) fn get_nyes(&self) -> Nyes {
+        self.nyes
+    }
+
+    /// Mirrors `ProtoBrane::set_nyes`. Not further visibility-restricted here
+    /// (unlike `ProtoBrane::set_nyes`'s `pub(crate)`, itself already the
+    /// tightest this module needs) because `ArenaFir` itself is `pub(crate)`
+    /// — the OWNERSHIP CONTRACT (FOOP-62 #10, quoted in full on
+    /// `ProtoBrane::set_nyes`) still applies and is enforced the same way:
+    /// only a node's own `fir_op_step` or construction may call this, once
+    /// each per-kind migration task wires a real `fir_op_step` through
+    /// `FVMStorage::with_mut`/`get_mut`. This module has no caller yet to
+    /// misuse it.
+    pub(crate) fn set_nyes(&mut self, n: Nyes) {
+        self.nyes = n;
+    }
+
+    /// Mirrors `ProtoBrane::ubc_children`. Returns a slice directly — no
+    /// clone-out-of-`Vec` dance, since there is no `RefCell` to reenter (see
+    /// this struct's own doc comment on the `ubc_children` field, and
+    /// FOOP-16.md §Specification's `FirCursor` method table).
+    pub(crate) fn ubc_children(&self) -> &[FirPointer] {
+        &self.ubc_children
+    }
+
+    /// Mirrors `ProtoBrane::push_ubc_child`: pushes to `ubc_children` AND
+    /// enqueues as a task if the child is not already constanic. Takes the
+    /// child's current `Nyes` as a parameter (rather than looking it up
+    /// itself) because `ArenaFir` cannot reach across slots to read another
+    /// node's state — the caller ([`FirCursorMut::push_ubc_child`]) already
+    /// has `&FVMStorage` access to read it first.
+    pub(crate) fn push_ubc_child(&mut self, child: FirPointer, child_nyes: Nyes) {
+        self.ubc_children.push(child);
+        if !child_nyes.is_constanic() {
+            self.tasks.push_back(child);
+        }
+    }
+
+    /// Mirrors `ProtoBrane::push_search_result`'s SINGULAR-RESULT INVARIANT
+    /// (FOOP-62) `debug_assert!`, verbatim.
+    pub(crate) fn push_search_result(&mut self, result: FirPointer, result_nyes: Nyes) {
+        debug_assert!(
+            self.ubc_children.is_empty(),
+            "search FIR already has a result; existing searches are singular-result \
+             (ubc_children must be <= 1)"
+        );
+        self.push_ubc_child(result, result_nyes);
+    }
+
+    /// Mirrors `ProtoBrane::clear_ubc_children`.
+    pub(crate) fn clear_ubc_children(&mut self) {
+        self.ubc_children.clear();
+    }
+
+    /// Mirrors `ProtoBrane::front_task`.
+    pub(crate) fn front_task(&self) -> Option<FirPointer> {
+        self.tasks.front().copied()
+    }
+
+    /// Mirrors `ProtoBrane::pop_front_task`.
+    pub(crate) fn pop_front_task(&mut self) {
+        self.tasks.pop_front();
+    }
+
+    /// Mirrors `ProtoBrane::push_task`.
+    pub(crate) fn push_task(&mut self, t: FirPointer) {
+        self.tasks.push_back(t);
+    }
+
+    /// Mirrors `ProtoBrane::set_alarm_reason`.
+    #[expect(
+        dead_code,
+        reason = "no caller yet — wired in by a later Phase 1 per-kind task"
+    )]
+    pub(crate) fn set_alarm_reason(&mut self, reason: String) {
+        self.alarm_reason = Some(reason);
+    }
+
+    /// Mirrors `ProtoBrane::alarm_reason`.
+    #[expect(
+        dead_code,
+        reason = "no caller yet — wired in by a later Phase 1 per-kind task"
+    )]
+    pub(crate) fn alarm_reason(&self) -> Option<&str> {
+        self.alarm_reason.as_deref()
+    }
 }
 
 /// The arena. Owns every node reachable from any [`FirPointer`] it minted.
@@ -257,30 +373,34 @@ impl FVMStorage {
     /// runtime borrow tracking is needed: the `&mut self` borrow on
     /// `FVMStorage` is the only exclusivity check required.
     ///
-    /// The closure receives `&mut Nyes` only (not the whole slot) at this
-    /// foundational stage — `set_nyes` is the one placeholder mutation this
-    /// task needs to prove `with_mut`/`get_mut` round-trip correctly; a real
-    /// per-kind `&mut dyn Fir` receiver arrives with the first per-kind
-    /// migration task.
-    pub fn with_mut<R>(&mut self, ptr: FirPointer, f: impl FnOnce(&mut Nyes) -> R) -> R {
+    /// `pub(crate)` for now, not `pub`: the FOOP-16.md spec's final signature
+    /// takes `impl FnOnce(&mut Fir) -> R` once a real arena-aware `Fir` trait
+    /// exists; today's receiver is the internal [`ArenaFir`] placeholder,
+    /// which must not leak as public API before that trait is real (Rule
+    /// zero: private defensively, public by design). Widens to `pub` in the
+    /// per-kind migration task that gives it its final signature.
+    pub(crate) fn with_mut<R>(&mut self, ptr: FirPointer, f: impl FnOnce(&mut ArenaFir) -> R) -> R {
         let index = self.validate(ptr);
-        f(&mut self.slots[index].payload.nyes)
+        f(&mut self.slots[index].payload)
     }
 
-    /// Retrieve one exclusive, held `&mut Nyes` for a run of several
+    /// Retrieve one exclusive, held `&mut ArenaFir` for a run of several
     /// SEQUENTIAL writes with nothing storage-needing interleaved between
     /// them. See FOOP-16.md §Specification "`FVMStorage` — the arena" and the
     /// `OperatorFir::combine` walkthrough that motivated this alongside
     /// `with_mut` — the two are equally powerful; the choice is style.
-    pub fn get_mut(&mut self, ptr: FirPointer) -> &mut Nyes {
+    ///
+    /// `pub(crate)` for now — same reasoning as [`Self::with_mut`] above.
+    pub(crate) fn get_mut(&mut self, ptr: FirPointer) -> &mut ArenaFir {
         let index = self.validate(ptr);
-        &mut self.slots[index].payload.nyes
+        &mut self.slots[index].payload
     }
 
-    /// This pointer's children, in construction order.
-    pub fn children(&self, ptr: FirPointer) -> &[FirPointer] {
+    /// This pointer's parse-time children, in construction order, mirroring
+    /// `ProtoBrane::foolish_children`.
+    pub fn foolish_children(&self, ptr: FirPointer) -> &[FirPointer] {
         let index = self.validate(ptr);
-        &self.slots[index].children
+        &self.slots[index].foolish_children
     }
 
     /// This pointer's parent.
@@ -303,7 +423,7 @@ impl FVMStorage {
     pub fn make_my_child(&mut self, parent: FirPointer, spec: FirSpec) -> FirPointer {
         self.validate(parent);
         let ptr = self.allocate(spec, parent);
-        self.slots[parent.index as usize].children.push(ptr);
+        self.slots[parent.index as usize].foolish_children.push(ptr);
         ptr
     }
 
@@ -341,9 +461,15 @@ impl FVMStorage {
         };
         let nyes = spec.initial_nyes();
         self.slots.push(Slot {
-            payload: ArenaFir { spec, nyes },
+            payload: ArenaFir {
+                spec,
+                nyes,
+                ubc_children: Vec::new(),
+                tasks: VecDeque::new(),
+                alarm_reason: None,
+            },
             parent,
-            children: Vec::new(),
+            foolish_children: Vec::new(),
             generation: 0,
         });
         ptr
@@ -353,6 +479,36 @@ impl FVMStorage {
 impl Default for FVMStorage {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+impl FVMStorage {
+    /// Creates a fresh arena containing a single self-rooting leaf, mirroring
+    /// `fir_trait.rs::tests::make_leaf`'s signature closely enough that a
+    /// reader who knows one recognizes the other (FOOP-16.md §Specification
+    /// "Test helpers"). A leaf here is an `IndepInt` — the simplest kind with
+    /// no interesting children — at the given `Nyes`.
+    pub(crate) fn test_leaf(nyes: Nyes) -> (Self, FirPointer) {
+        let mut storage = Self::new();
+        let ptr = storage.make_root(FirSpec::IndepInt { value: 0 });
+        storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
+        (storage, ptr)
+    }
+
+    /// Creates a fresh arena containing a root `Brane` with the given
+    /// children specs, mirroring `fir_trait.rs::tests::make_root_brane`'s
+    /// signature closely enough that a reader who knows one recognizes the
+    /// other (FOOP-16.md §Specification "Test helpers").
+    pub(crate) fn test_root_brane(children_specs: &[FirSpec]) -> (Self, FirPointer) {
+        let mut storage = Self::new();
+        let root = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        for spec in children_specs {
+            root.create_child(&mut storage, spec.clone());
+        }
+        (storage, root)
     }
 }
 
@@ -400,15 +556,511 @@ impl FirPointer {
         if parent == self {
             return None;
         }
-        let parent_is_brane_like = matches!(
-            storage.get(parent),
-            FirSpec::Brane { .. } | FirSpec::ConcatHelper
-        );
-        if parent_is_brane_like {
+        if parent.is_brane_like(storage) {
             Some(parent)
         } else {
             parent.home_brane(storage)
         }
+    }
+
+    /// Whether this pointer is brane-like (has statements to iterate).
+    /// Placeholder-stage judgment, same caveat as [`Self::home_brane`]'s doc
+    /// comment: superseded by each per-kind migration's own `is_brane_like`.
+    fn is_brane_like(self, storage: &FVMStorage) -> bool {
+        matches!(
+            storage.get(self),
+            FirSpec::Brane { .. } | FirSpec::ConcatHelper
+        )
+    }
+
+    /// Whether this pointer is a `Statement`.
+    fn is_statement(self, storage: &FVMStorage) -> bool {
+        matches!(storage.get(self), FirSpec::Statement { .. })
+    }
+
+    /// The statement this pointer's search would read as its position,
+    /// mirroring [`crate::fir_trait::Fir::_get_my_statement`] exactly: climb
+    /// until a `Statement` kind is found, or until `parent()` pointer-equals
+    /// `self` (structural root, returned as-is).
+    fn get_my_statement(self, storage: &FVMStorage) -> FirPointer {
+        if self.is_statement(storage) {
+            return self;
+        }
+        let parent = storage.parent(self);
+        if parent == self {
+            self
+        } else {
+            parent.get_my_statement(storage)
+        }
+    }
+
+    /// The settled result this pointer resolves to, if any, mirroring
+    /// [`crate::fir_trait::Fir::settled_result`]'s CONTRACT verbatim:
+    /// "applies the constanic gate ITSELF — pre-constanic always answers
+    /// None."
+    fn settled_result(self, storage: &FVMStorage) -> Option<FirPointer> {
+        if !storage.get_nyes(self).is_constanic() {
+            return None;
+        }
+        let index = storage.validate(self);
+        storage.slots[index].payload.ubc_children().first().copied()
+    }
+
+    /// Arena-threaded [`crate::fir_trait::FirRefExt::value`]: recursively
+    /// unwraps through `settled_result`, returning `self` when there is none.
+    pub fn value(self, storage: &FVMStorage) -> FirPointer {
+        match self.settled_result(storage) {
+            Some(child) => child.value(storage),
+            None => self,
+        }
+    }
+
+    /// Performs ONE stepping action (check-then-act) and reports progress.
+    ///
+    /// Direct arena-threaded translation of [`crate::fir_trait::step_inner`],
+    /// re-read verbatim from `fir_trait.rs` before writing this (not from any
+    /// earlier reconstructed notes): same `MAX_DEPTH` guard, same front-task
+    /// constanic-gate (pop vs. recurse), same `Scope` mutation for
+    /// `StayFoolish`/`Statement`/brane-like kinds before recursing.
+    ///
+    /// `fir_op_step` itself is NOT wired in yet — no kind has an arena-aware
+    /// `fir_op_step` at this foundational stage (see this module's top-level
+    /// doc comment). This method is complete and tested up to that point: the
+    /// front-task-present branches (pop / recurse) are exercised by this
+    /// task's own tests; the `None` branch (call `fir_op_step`) is a
+    /// `todo!()` until the first per-kind migration task gives it something
+    /// real to call.
+    pub fn step(self, storage: &mut FVMStorage) -> FirPointer {
+        step_inner(self, storage, 0)
+    }
+}
+
+/// Guard against runaway recursion on pathologically deep trees. Same value
+/// as `fir_trait.rs`'s `MAX_DEPTH`, re-read directly from that file (not
+/// reconstructed) to confirm the match.
+const MAX_DEPTH: usize = 100;
+
+/// Recursion companion for [`FirPointer::step`], carrying the depth counter.
+/// Direct translation of `fir_trait.rs`'s real `step_inner`, re-read in full
+/// immediately before writing this function:
+///
+/// ```text
+/// fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, UbcError> {
+///     if depth > MAX_DEPTH { return Ok(StepReport::NoProgress); }
+///     let front = this.borrow().core().front_task();
+///     match front {
+///         Some(front_rc) => {
+///             if front_rc.borrow().core().get_nyes().is_constanic() {
+///                 this.borrow().core().pop_front_task();
+///             } else {
+///                 // Scope mutation for StayFoolish/Statement/brane-like, then recurse.
+///                 step_inner(&front_rc, &child_scope, depth + 1)?;
+///             }
+///             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
+///         }
+///         None => {
+///             this.borrow().fir_op_step(scope)?;
+///             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
+///         }
+///     }
+/// }
+/// ```
+///
+/// This translation returns the pointer itself rather than a `StepReport` —
+/// callers read `storage.get_nyes(ptr)` for the report; `Scope` threading and
+/// `fir_op_step` dispatch are deferred to the per-kind/evaluator migration
+/// tasks that give them something real to operate on (Phase 1 per-kind tasks,
+/// Phase 3 for the evaluator loop itself) — this function proves the
+/// pop-vs-recurse shape is faithfully preserved under the arena now, before
+/// any kind depends on it.
+fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, depth: usize) -> FirPointer {
+    if depth > MAX_DEPTH {
+        return ptr;
+    }
+    let front = storage.with_mut(ptr, |fir| fir.front_task());
+    match front {
+        Some(front_ptr) => {
+            if storage.get_nyes(front_ptr).is_constanic() {
+                storage.with_mut(ptr, |fir| fir.pop_front_task());
+            } else {
+                step_inner(front_ptr, storage, depth + 1);
+            }
+            ptr
+        }
+        None => {
+            // fir_op_step dispatch has no real implementation to call yet —
+            // every kind is still the ArenaFir placeholder. Left as a
+            // deliberate todo!() rather than a silent no-op, per
+            // rust_instructions.md's "implement fully or don't add it": a
+            // function that silently did nothing here would look tested and
+            // working while actually never exercising the real per-kind
+            // logic once it exists.
+            todo!(
+                "fir_op_step dispatch: wired in by the first per-kind \
+                 migration task once a real arena-aware Fir impl exists"
+            )
+        }
+    }
+}
+
+/// A [`FirPointer`] paired with a borrow of the [`FVMStorage`] to read it
+/// through. Captures storage once so a run of navigation calls on one node
+/// doesn't repeat `&storage` at every call. Read-only: cheap to construct and
+/// multiple calls through one (or several at once) compose freely, the same
+/// as any shared borrow.
+#[derive(Clone, Copy)]
+pub struct FirCursor<'s> {
+    ptr: FirPointer,
+    storage: &'s FVMStorage,
+}
+
+impl<'s> FirCursor<'s> {
+    /// Wraps `ptr` for reading through `storage`.
+    pub fn new(ptr: FirPointer, storage: &'s FVMStorage) -> Self {
+        Self { ptr, storage }
+    }
+
+    /// This node's [`FirSpec`].
+    pub fn node(&self) -> &'s FirSpec {
+        self.storage.get(self.ptr)
+    }
+
+    /// Mirrors `ProtoBrane::foolish_children`.
+    pub fn foolish_children(&self) -> &'s [FirPointer] {
+        self.storage.foolish_children(self.ptr)
+    }
+
+    /// Mirrors `ProtoBrane::ubc_children`.
+    pub fn ubc_children(&self) -> &'s [FirPointer] {
+        let index = self.storage.validate(self.ptr);
+        self.storage.slots[index].payload.ubc_children()
+    }
+
+    /// Mirrors `ProtoBrane::all_children`: ubc first (evaluator renders as
+    /// `result=`), then foolish — same render-order contract preserved
+    /// exactly.
+    pub fn all_children(&self) -> impl Iterator<Item = FirPointer> + 's {
+        self.ubc_children()
+            .iter()
+            .chain(self.foolish_children())
+            .copied()
+    }
+
+    /// Mirrors `ProtoBrane::parent` (`Weak::upgrade()`), simplified: `None`
+    /// remains only for the true structural root (see [`FirPointer::get_parent`]'s
+    /// doc comment for why the "only during teardown" case disappears under
+    /// the arena).
+    pub fn parent(&self) -> Option<FirPointer> {
+        self.ptr.get_parent(self.storage)
+    }
+
+    /// Mirrors `ProtoBrane::is_root`, simplified: no `self_rc` parameter
+    /// needed — `self.ptr` already carries self-identity (see
+    /// [`FirPointer::is_root`]'s doc comment).
+    pub fn is_root(&self) -> bool {
+        self.ptr.is_root(self.storage)
+    }
+
+    /// Mirrors `ProtoBrane::get_nyes`.
+    pub fn get_nyes(&self) -> Nyes {
+        self.storage.get_nyes(self.ptr)
+    }
+
+    /// Mirrors `ProtoBrane::front_task`.
+    pub fn front_task(&self) -> Option<FirPointer> {
+        let index = self.storage.validate(self.ptr);
+        self.storage.slots[index].payload.front_task()
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::_get_my_brane`].
+    pub fn home_brane(&self) -> Option<FirCursor<'s>> {
+        self.ptr
+            .home_brane(self.storage)
+            .map(|p| FirCursor::new(p, self.storage))
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::_get_my_statement`].
+    pub fn statement(&self) -> FirCursor<'s> {
+        FirCursor::new(self.ptr.get_my_statement(self.storage), self.storage)
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::settled_result`]'s CONTRACT verbatim:
+    /// applies the constanic gate itself.
+    pub fn settled_result(&self) -> Option<FirCursor<'s>> {
+        self.ptr
+            .settled_result(self.storage)
+            .map(|p| FirCursor::new(p, self.storage))
+    }
+}
+
+/// The mutating counterpart of [`FirCursor`]. Rust allows only one `&mut` at
+/// a time, so unlike `FirCursor` this does NOT support "wrap once, call five
+/// mutating methods" — each mutating call still needs its own `&mut`
+/// reborrow under the hood. Its value is bundling `ptr`+`storage` for ONE
+/// logical mutating operation, not batching several (see FOOP-16.md
+/// §Specification's resolution of the two-cursor-type design question: the
+/// real complaint `get_mut` already answers is "several writes with nothing
+/// storage-needing in between," not "I need `&mut` too often").
+///
+/// **Must never be held live across a call into [`FirPointer::step`]** — see
+/// FOOP-16.md §Specification "Borrow discipline under the arena." This is a
+/// discipline enforced by the type system for the SAME reason `RefCell`'s
+/// borrow panic enforces it today, just caught one build earlier (a compile
+/// error, not a runtime panic risk).
+pub struct FirCursorMut<'s> {
+    ptr: FirPointer,
+    storage: &'s mut FVMStorage,
+}
+
+impl<'s> FirCursorMut<'s> {
+    /// Wraps `ptr` for mutating through `storage`.
+    pub fn new(ptr: FirPointer, storage: &'s mut FVMStorage) -> Self {
+        Self { ptr, storage }
+    }
+
+    /// Mirrors `ProtoBrane::set_nyes`'s OWNERSHIP CONTRACT verbatim (FOOP-62
+    /// #10): a FIR owns its own nyes — nyes must NOT be changed from outside
+    /// the FIR. The ONLY sanctioned writers are (1) a FIR on ITSELF, inside
+    /// its own `fir_op_step`, and (2) construction. `pub(crate)` — not
+    /// `pub` — is the enforcement mechanism, exactly as it is on
+    /// `ProtoBrane::set_nyes` today.
+    ///
+    /// No caller through THIS wrapper yet (this task's own tests and
+    /// `clone_subtree` call `ArenaFir::set_nyes` directly via
+    /// `with_mut`/`get_mut`, since neither is "a FIR on itself inside its own
+    /// `fir_op_step`" — construction is the other sanctioned writer, which is
+    /// exactly what those two call sites are). `FirCursorMut::set_nyes`
+    /// becomes reachable once the first per-kind migration task gives a real
+    /// `fir_op_step` a `FirCursorMut` to call it through.
+    #[expect(
+        dead_code,
+        reason = "reachable once a real fir_op_step exists to call it"
+    )]
+    pub(crate) fn set_nyes(&mut self, n: Nyes) {
+        self.storage.get_mut(self.ptr).set_nyes(n);
+    }
+
+    /// Delegates to [`FirPointer::create_child`] — the live, in-arena
+    /// equivalent of `ProtoBrane::push_foolish_child` for a node that needs
+    /// to grow a new child post-construction. There is deliberately no
+    /// `FirCursorMut` equivalent of `push_foolish_child` itself: that method
+    /// is construction-time-only (`&mut self` on a not-yet-live
+    /// `ProtoBrane`), a case `create_child` already covers completely (see
+    /// FOOP-16.md §Specification's `FirCursorMut` method table).
+    pub fn create_child(&mut self, spec: FirSpec) -> FirPointer {
+        self.ptr.create_child(self.storage, spec)
+    }
+
+    /// Mirrors `ProtoBrane::push_foolish_child_sff_marked`: pushes a
+    /// parse-time child under an SF/SFF marker, panicking (unconditionally —
+    /// not a `debug_assert!`) if any search-kind descendant of `child` is not
+    /// exactly `ECONSTANIC`. `child` must already be a child of `self.ptr`
+    /// (i.e. already `create_child`-ed) — unlike today's `ProtoBrane` method,
+    /// the arena's `create_child` already wires parent/child atomically, so
+    /// this method's ONLY remaining job is the invariant CHECK, not the push.
+    pub fn check_sff_marked_child(&self, child: FirPointer) {
+        if let Some(offender) = sift_for_first_non_econstanic_descendent_search(self.storage, child)
+        {
+            let spec = self.storage.get(offender);
+            let nyes = self.storage.get_nyes(offender);
+            panic!(
+                "ubca INTERNAL CONSISTENCY error: SFF-marked child has a \
+                 descendant {spec:?} search at {nyes:?}, expected ECONSTANIC. \
+                 The `under_sff` construction rule (compiler::build_fir) did \
+                 not reach it. An SFF body must be constanic-unevaluated — \
+                 every descendant search kind must be built ECONSTANIC so it \
+                 never runs. Refusing to continue: stepping this body would \
+                 evaluate a search that must not run."
+            );
+        }
+    }
+
+    /// Mirrors `ProtoBrane::push_ubc_child`: pushes to `ubc_children` AND
+    /// enqueues as a task if the child is not already constanic.
+    pub fn push_ubc_child(&mut self, child: FirPointer) {
+        let child_nyes = self.storage.get_nyes(child);
+        self.storage
+            .get_mut(self.ptr)
+            .push_ubc_child(child, child_nyes);
+    }
+
+    /// Mirrors `ProtoBrane::push_search_result`'s SINGULAR-RESULT INVARIANT
+    /// (FOOP-62) `debug_assert!`.
+    pub fn push_search_result(&mut self, result: FirPointer) {
+        let result_nyes = self.storage.get_nyes(result);
+        self.storage
+            .get_mut(self.ptr)
+            .push_search_result(result, result_nyes);
+    }
+
+    /// Mirrors `ProtoBrane::clear_ubc_children`.
+    pub fn clear_ubc_children(&mut self) {
+        self.storage.get_mut(self.ptr).clear_ubc_children();
+    }
+
+    /// Mirrors `ProtoBrane::pop_front_task`.
+    pub fn pop_front_task(&mut self) {
+        self.storage.get_mut(self.ptr).pop_front_task();
+    }
+
+    /// Mirrors `ProtoBrane::push_task`.
+    pub fn push_task(&mut self, t: FirPointer) {
+        self.storage.get_mut(self.ptr).push_task(t);
+    }
+}
+
+/// The first descendant search kind (per `fir_kinds.rs`'s
+/// `ProtoBrane::sift_for_first_non_econstanic_descendent_search`, re-read
+/// directly before writing this) that is NOT exactly `Nyes::Econstanic`, or
+/// `None` if every one of them is. Arena-threaded translation, preserving the
+/// exact `== Econstanic` check (not `is_constanic()`) — see that method's own
+/// doc comment for why the distinction matters (an SFF-marked search sitting
+/// at CONSTANT or NK means it DID run, which is exactly what this guard
+/// catches).
+///
+/// Naming: `sift_*`, not `search_*` — an ordinary Rust-side tree walk with no
+/// Foolish search semantics (see AGENTS.md/CLAUDE.md's "Sift" terminology).
+///
+/// "Search kind" is judged directly on [`FirSpec`] (`Search`/`Index`) at this
+/// foundational stage, mirroring `Fir::is_search_kind`'s exact variant set
+/// (`FirKind::Search | FirKind::Index`, confirmed by reading `fir_trait.rs`
+/// directly) rather than through a `dyn Fir` call.
+fn sift_for_first_non_econstanic_descendent_search(
+    storage: &FVMStorage,
+    node: FirPointer,
+) -> Option<FirPointer> {
+    let is_search_kind = matches!(
+        storage.get(node),
+        FirSpec::Search { .. } | FirSpec::Index { .. }
+    );
+    if is_search_kind && storage.get_nyes(node) != Nyes::Econstanic {
+        return Some(node);
+    }
+    storage
+        .foolish_children(node)
+        .iter()
+        .find_map(|&child| sift_for_first_non_econstanic_descendent_search(storage, child))
+}
+
+/// Ends `$handle`'s borrow, evaluates `$reacquire` (which may itself need
+/// `&mut FVMStorage` — e.g. a nested `create_child` call), then re-acquires a
+/// fresh handle via the same accessor and binds it back to `$handle`. No
+/// `unsafe`, no magic: pure sugar over "drop the borrow, do the
+/// storage-needing thing, get the borrow back," which is otherwise legal
+/// Rust but visually noisy to write out by hand at every site that needs it.
+///
+/// `$handle` is a `&mut`-typed borrow (e.g. `&mut ArenaFir` from
+/// `FVMStorage::get_mut`), so ending its borrow is `let _ = $handle;`, not
+/// `drop($handle)` — `drop` on a `&mut T` reference is a no-op (it drops the
+/// reference value itself, a `Copy`-free but trivially-droppable pointer, not
+/// the pointee), which `clippy::drop_ref`/rustc's own `dropping_references`
+/// lint catches. `let _ = ...` genuinely ends the borrow's lifetime at that
+/// point under NLL, which is the actual effect this macro needs.
+///
+/// See FOOP-16.md §Specification: not exercised by `OperatorFir::combine`
+/// itself (that walkthrough is what motivated `FVMStorage::get_mut` instead);
+/// kept available here for whichever later per-kind or evaluator-migration
+/// function turns out to need the rarer interleaved-reacquisition shape.
+#[macro_export]
+macro_rules! temporary_release {
+    ($handle:ident, $reacquire:expr, $body:expr) => {{
+        let _ = $handle;
+        let __result = $body;
+        let $handle = $reacquire;
+        (__result, $handle)
+    }};
+}
+
+impl FVMStorage {
+    /// Direct arena-threaded translation of `ProtoBrane::constanic_clone_at`
+    /// (re-read in full from `fir_kinds.rs` immediately before writing this —
+    /// not from any earlier reconstructed notes). Recursive, per-node,
+    /// matching on the source's [`FirSpec`] — NOT a bulk subtree copy.
+    /// Preserves:
+    ///
+    /// 1. **Share-not-clone.** `Constant`/`Independent` non-`Brane` nodes
+    ///    return the SAME `FirPointer`, not a new slot. `FoolRef` and
+    ///    `Creation` kinds ALWAYS share, unconditionally, regardless of NYES
+    ///    state — this is what keeps the `FoolRefFir` two-child invariant's
+    ///    original-statement reference genuinely shared, and a named
+    ///    creation's identity intact.
+    /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — not yet
+    ///    representable: no `FirSpec` variant carries a foolish-children
+    ///    Vec/settled-result placeholder to unwrap through at this
+    ///    foundational stage in a way that would exercise real behavior (SF
+    ///    unwrapping's whole point is reading the WRAPPED kind's real state,
+    ///    which does not exist yet). Deferred explicitly to the
+    ///    `StayFoolishFir`/`StayFullyFoolishFir` per-kind migration tasks,
+    ///    which re-implement this arm against those kinds' real arena-aware
+    ///    `Fir` impls — noted here rather than faked with a placeholder that
+    ///    would look tested without exercising the real unwrap logic.
+    /// 3. **Recursive per-node rebuild** for every other kind: children come
+    ///    from cloning each `foolish_children`/`ubc_children` entry in turn
+    ///    (mirroring `clone_children_for_constanic_clone`), so the whole
+    ///    subtree is rebuilt top-down, one recursive call per surviving node.
+    ///
+    /// `index` becomes a cloned `Statement`'s new `line_number`, exactly as
+    /// `constanic_clone_at` does today (used directly as the position, not
+    /// carried over from the original). `sfm` and `skip_foolish_children` are
+    /// threaded through exactly as their names suggest, matching the source
+    /// method's own parameters one-for-one.
+    ///
+    /// A pointer into the original subtree remains exactly as valid after a
+    /// clone as it was before: this method only ADDS new slots for the
+    /// freshly-rebuilt nodes; the original subtree's slots are untouched —
+    /// the arena-era restatement of the correctness property `Rc` reference
+    /// counting gives "for free" today (see FOOP-16.md §Specification).
+    pub fn clone_subtree(
+        &mut self,
+        root: FirPointer,
+        new_parent: FirPointer,
+        index: usize,
+        sfm: bool,
+        skip_foolish_children: bool,
+    ) -> FirPointer {
+        let nyes = self.get_nyes(root);
+        let spec = self.get(root).clone();
+
+        // 1. Share-not-clone: Constant/Independent non-Brane always shares;
+        // FoolRef/Creation always share regardless of NYES.
+        let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
+        let is_constanic_non_brane = matches!(nyes, Nyes::Constant | Nyes::Independent)
+            && !matches!(spec, FirSpec::Brane { .. });
+        if is_share_kind || is_constanic_non_brane {
+            return root;
+        }
+
+        // 3. Recursive per-node rebuild. The new node's own spec is the
+        // source's spec, with a Statement's line_number renumbered to
+        // `index` (mirroring constanic_clone_at's FirKind::Statement arm
+        // exactly: `let line = index;`).
+        let new_spec = match spec {
+            FirSpec::Statement { identifier, .. } => FirSpec::Statement {
+                identifier,
+                line_number: index,
+            },
+            other => other,
+        };
+        let clone_nyes = nyes.transform_for_clone(sfm);
+        let new_ptr = new_parent.create_child(self, new_spec);
+        self.with_mut(new_ptr, |fir| fir.set_nyes(clone_nyes));
+
+        if !skip_foolish_children {
+            let children: Vec<FirPointer> = self.foolish_children(root).to_vec();
+            for (i, child) in children.into_iter().enumerate() {
+                self.clone_subtree(child, new_ptr, i, sfm, false);
+            }
+        }
+        let ubc_children: Vec<FirPointer> = {
+            let index_in_slots = self.validate(root);
+            self.slots[index_in_slots].payload.ubc_children().to_vec()
+        };
+        for ubc in ubc_children {
+            let cloned = self.clone_subtree(ubc, new_ptr, 0, sfm, false);
+            let cloned_nyes = self.get_nyes(cloned);
+            self.with_mut(new_ptr, |fir| fir.push_ubc_child(cloned, cloned_nyes));
+        }
+        new_ptr
     }
 }
 
@@ -434,9 +1086,9 @@ mod tests {
         assert_eq!(child.get_parent(&storage), Some(root));
         assert!(root.is_root(&storage));
         assert!(!child.is_root(&storage));
-        assert_eq!(storage.children(root), &[child]);
+        assert_eq!(storage.foolish_children(root), &[child]);
 
-        storage.with_mut(child, |nyes| *nyes = Nyes::Constant);
+        storage.with_mut(child, |fir| fir.set_nyes(Nyes::Constant));
         assert_eq!(storage.get_nyes(child), Nyes::Constant);
     }
 
@@ -478,7 +1130,7 @@ mod tests {
         let root = storage.make_root(brane_spec());
         let child = root.create_child(&mut storage, FirSpec::IndepInt { value: 7 });
 
-        *storage.get_mut(child) = Nyes::Constant;
+        storage.get_mut(child).set_nyes(Nyes::Constant);
         assert_eq!(storage.get_nyes(child), Nyes::Constant);
     }
 
@@ -503,5 +1155,263 @@ mod tests {
         let non_brane_root = storage.make_root(FirSpec::IndepInt { value: 1 });
         let grandchild = non_brane_root.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
         assert_eq!(grandchild.home_brane(&storage), None);
+    }
+
+    /// `test_leaf`/`test_root_brane` round-trip correctly, mirroring
+    /// `fir_trait.rs`'s `make_leaf`/`make_root_brane` shortcuts.
+    #[test]
+    fn test_helpers_build_expected_shapes() {
+        let (storage, leaf) = FVMStorage::test_leaf(Nyes::Constant);
+        assert_eq!(storage.get_nyes(leaf), Nyes::Constant);
+        assert!(leaf.is_root(&storage));
+
+        let (storage, root) =
+            FVMStorage::test_root_brane(&[FirSpec::IndepInt { value: 1 }, FirSpec::Creation]);
+        assert_eq!(storage.foolish_children(root).len(), 2);
+        assert_eq!(storage.get_nyes(root), Nyes::Prembrionic);
+    }
+
+    /// `FirCursor` reads match direct `FVMStorage` reads for the same
+    /// pointer — proving the wrapper is a pure convenience, not a divergent
+    /// second source of truth.
+    #[test]
+    fn fir_cursor_reads_match_direct_storage_reads() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[FirSpec::IndepInt { value: 10 }]);
+        let child = storage.foolish_children(root)[0];
+        storage.with_mut(child, |fir| fir.set_nyes(Nyes::Constant));
+
+        let cursor = FirCursor::new(child, &storage);
+        assert_eq!(cursor.node(), storage.get(child));
+        assert_eq!(cursor.get_nyes(), storage.get_nyes(child));
+        assert_eq!(cursor.parent(), Some(root));
+        assert_eq!(cursor.home_brane().map(|c| c.ptr), Some(root));
+        // `child` has no `Statement` ancestor, so `_get_my_statement`'s real
+        // logic (re-verified directly against `fir_trait.rs`) climbs all the
+        // way to the structural root and stops there — NOT back to `child`
+        // itself. `root` is where the climb terminates (its own parent is
+        // itself), matching the shape `get_my_statement_returns_self_if_statement`'s
+        // SIBLING test `get_my_statement_climbs_to_parent_statement` documents
+        // for the analogous real-Statement case.
+        assert_eq!(cursor.statement().ptr, root);
+        assert!(cursor.settled_result().is_none()); // IndepInt never has a settled_result body
+    }
+
+    /// `FirCursorMut::push_ubc_child` mirrors `ProtoBrane::push_ubc_child`
+    /// exactly: pushes to `ubc_children` AND enqueues as a task only when the
+    /// child is not already constanic.
+    #[test]
+    fn fir_cursor_mut_push_ubc_child_enqueues_only_non_constanic_children() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let settled = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(settled, |fir| fir.set_nyes(Nyes::Constant));
+        let unsettled = root.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        {
+            let mut cursor = FirCursorMut::new(root, &mut storage);
+            cursor.push_ubc_child(settled);
+            cursor.push_ubc_child(unsettled);
+        }
+
+        let cursor = FirCursor::new(root, &storage);
+        assert_eq!(cursor.ubc_children(), &[settled, unsettled]);
+        // Only the unsettled child should have been enqueued as a task.
+        assert_eq!(cursor.front_task(), Some(unsettled));
+    }
+
+    /// `FirCursorMut::push_search_result`'s SINGULAR-RESULT INVARIANT trips
+    /// its `debug_assert!` on a second push — mirrors
+    /// `ProtoBrane::push_search_result`'s own test coverage intent.
+    #[test]
+    #[should_panic(expected = "singular-result")]
+    fn push_search_result_rejects_a_second_result() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let a = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let b = root.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+        let mut cursor = FirCursorMut::new(root, &mut storage);
+        cursor.push_search_result(a);
+        cursor.push_search_result(b); // must panic: already has a result
+    }
+
+    /// `check_sff_marked_child` accepts a child whose descendant searches are
+    /// all `ECONSTANIC` and panics on one that is not — mirrors
+    /// `proto_brane.rs`'s `push_foolish_child_sff_marked_*` test trio.
+    #[test]
+    fn check_sff_marked_child_accepts_all_econstanic_descendants() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let search = root.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "x".to_string(),
+                anchored: true,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+        storage.with_mut(search, |fir| fir.set_nyes(Nyes::Econstanic));
+
+        let cursor = FirCursorMut::new(root, &mut storage);
+        cursor.check_sff_marked_child(search); // must not panic
+    }
+
+    #[test]
+    #[should_panic(expected = "INTERNAL CONSISTENCY error")]
+    fn check_sff_marked_child_rejects_a_non_econstanic_descendant() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let search = root.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "x".to_string(),
+                anchored: true,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+        // Left at Prembrionic (the default) — NOT Econstanic — exactly the
+        // mis-constructed shape the guard exists to catch.
+        let cursor = FirCursorMut::new(root, &mut storage);
+        cursor.check_sff_marked_child(search);
+    }
+
+    /// `clone_subtree`'s share-not-clone behavior: a `Creation` always shares
+    /// the SAME `FirPointer`, regardless of NYES — the FoolRef/Creation
+    /// unconditional-share rule from `constanic_clone_at`.
+    #[test]
+    fn clone_subtree_shares_creation_unconditionally() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let creation = root.create_child(&mut storage, FirSpec::Creation);
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(creation, other_root, 0, false, false);
+        assert_eq!(cloned, creation, "Creation must share, never clone");
+    }
+
+    /// `clone_subtree`'s share-not-clone behavior for a `Constant`
+    /// non-`Brane` node: returns the SAME pointer, not a new slot.
+    #[test]
+    fn clone_subtree_shares_constant_non_brane() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let settled = root.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
+        storage.with_mut(settled, |fir| fir.set_nyes(Nyes::Constant));
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(settled, other_root, 0, false, false);
+        assert_eq!(
+            cloned, settled,
+            "Constant non-Brane must share, never clone"
+        );
+    }
+
+    /// `clone_subtree`'s full-rebuild behavior: a pre-constanic node is
+    /// rebuilt as a genuinely new pointer under the new parent, with its
+    /// foolish children recursively cloned too, and a `Statement`'s
+    /// `line_number` renumbered to the passed `index` — exactly as
+    /// `constanic_clone_at`'s `FirKind::Statement` arm does today
+    /// (`let line = index;`).
+    #[test]
+    fn clone_subtree_rebuilds_pre_constanic_nodes_and_renumbers_statement_lines() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 99, // original position — must be overwritten by `index` below
+            },
+        );
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(stmt, other_root, 3, false, false);
+        assert_ne!(
+            cloned, stmt,
+            "a pre-constanic Statement must be rebuilt, not shared"
+        );
+        assert_eq!(cloned.get_parent(&storage), Some(other_root));
+        match storage.get(cloned) {
+            FirSpec::Statement { line_number, .. } => {
+                assert_eq!(*line_number, 3, "line_number must be renumbered to `index`")
+            }
+            other => panic!("expected FirSpec::Statement, got {other:?}"),
+        }
+        // The original subtree's pointer must remain exactly as valid as before.
+        assert_eq!(storage.get_nyes(stmt), Nyes::Prembrionic);
+    }
+
+    /// `clone_subtree` recursively clones foolish children, preserving count
+    /// and (for pre-constanic children) producing fresh pointers for each.
+    #[test]
+    fn clone_subtree_recursively_clones_foolish_children() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[
+            FirSpec::IndepInt { value: 1 },
+            FirSpec::IndepInt { value: 2 },
+        ]);
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(root, other_root, 0, false, false);
+        let cloned_children = storage.foolish_children(cloned);
+        assert_eq!(cloned_children.len(), 2);
+        let original_children = storage.foolish_children(root).to_vec();
+        for (c, orig) in cloned_children.iter().zip(original_children.iter()) {
+            assert_ne!(c, orig, "each pre-constanic child must be a fresh clone");
+        }
+    }
+
+    /// `skip_foolish_children: true` omits re-cloning parse-time children —
+    /// used at the top level of a clone when only the ubc/result side is
+    /// being recoordinated (per `constanic_clone_at`'s own parameter).
+    #[test]
+    fn clone_subtree_skip_foolish_children_omits_them() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[FirSpec::IndepInt { value: 1 }]);
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(root, other_root, 0, false, true);
+        assert!(storage.foolish_children(cloned).is_empty());
+    }
+
+    /// `temporary_release!` drops a handle, runs a storage-needing operation,
+    /// and re-acquires a fresh handle bound back to the same name — proven
+    /// against the interleaved shape FOOP-16.md's own illustrative example
+    /// describes: finish writing to one node, build a second node mid-
+    /// sequence, then resume writing to the first.
+    #[test]
+    fn temporary_release_reacquires_a_usable_handle() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let first_ptr = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        let first = storage.get_mut(first_ptr);
+        first.set_nyes(Nyes::Woconstanic);
+        let (second_ptr, first) = temporary_release!(
+            first,
+            storage.get_mut(first_ptr),
+            first_ptr.create_child(&mut storage, FirSpec::IndepInt { value: 2 })
+        );
+        first.set_nyes(Nyes::Constant);
+
+        assert_eq!(storage.get_nyes(first_ptr), Nyes::Constant);
+        assert_eq!(storage.get(second_ptr), &FirSpec::IndepInt { value: 2 });
+    }
+
+    /// `step_inner`'s pop-vs-recurse shape, exercised without ever reaching
+    /// the `fir_op_step` dispatch `todo!()`: a front task that is already
+    /// constanic gets popped, not recursed into.
+    #[test]
+    fn step_pops_a_front_task_that_is_already_constanic() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let done = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(done, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(root, |fir| fir.push_task(done));
+        assert_eq!(
+            FirCursor::new(root, &storage).front_task(),
+            Some(done),
+            "task queued before stepping"
+        );
+
+        root.step(&mut storage);
+
+        assert_eq!(
+            FirCursor::new(root, &storage).front_task(),
+            None,
+            "the already-constanic front task must be popped, not recursed into"
+        );
     }
 }

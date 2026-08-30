@@ -211,7 +211,8 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
       against `-p foolish-ubca`) — pre-existing toolchain/lint-version drift unrelated to FOOP-16,
       recorded as a non-blocking doubt in the final report.
 
-- [ ] (read FOOP-16.md §Specification "The `FirCursor`/`FirCursorMut` wrapper", "Resolved: two cursor types, not one — settled against a real call site", and "`clone_subtree` — grounded in `constanic_clone_at`'s real logic") Add `FirCursor`, `FirCursorMut`, `FVMStorage::get_mut`, `temporary_release!`, and `clone_subtree` to `foolish-ubca2`
+- [x] (read FOOP-16.md §Specification "The `FirCursor`/`FirCursorMut` wrapper", "Resolved: two cursor types, not one — settled against a real call site", and "`clone_subtree` — grounded in `constanic_clone_at`'s real logic") Add `FirCursor`, `FirCursorMut`, `FVMStorage::get_mut`, `temporary_release!`, and `clone_subtree` to `foolish-ubca2`
+      (2026-08-30 15:50)
   - Add `FirCursor<'s>` (holds `ptr: FirPointer`, `storage: &'s FVMStorage`) and `FirCursorMut<'s>` (holds `ptr: FirPointer`, `storage: &'s mut FVMStorage`) to the same module as `FirPointer`/`FVMStorage` from the previous task.
   - Add `FVMStorage::get_mut(&mut self, ptr: FirPointer) -> &mut Fir` alongside `with_mut` — the resolved two-cursor-type design depends on this existing, per the FOOP's `OperatorFir::combine` walkthrough (its NK/division/modulo/arithmetic branches each collapse a `push_ubc_child`-then-`set_nyes` pair into one held `&mut Fir` via `get_mut`, instead of two separate `with_mut` closures).
   - Add the `temporary_release!` macro exactly as specified — a small, documented escape hatch for the rarer interleaved-reacquisition shape (a storage-needing call, such as a nested `create_child`, made mid-sequence while another mutation handle is still logically "in progress"). Not exercised by `combine` itself; keep it available for whichever later per-kind or per-function task in Phases 1–4 turns out to need it.
@@ -222,6 +223,63 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
   - Before writing this task's tests, add the small `#[cfg(test)]` helper pair described in FOOP-16.md's "Test helpers" paragraph (`FVMStorage::test_leaf`, `FVMStorage::test_root_brane`), mirroring `fir_trait.rs`'s existing `make_leaf`/`make_root_brane` closely enough that both are immediately recognizable. Use these helpers — not ad hoc per-task scaffolding — for this task's tests and for every later per-kind task's tests below, so the thirteen kind-migration tasks (parallelizable, per the note above) share one hand-built-tree convention instead of each inventing its own.
   - Write a small number of new unit tests directly exercising `clone_subtree`'s three behaviors above (a share case, an SF-unwrap case, a full-rebuild case) in isolation against a hand-built small arena, using the helper pair just added — these are additional arena-specific unit tests for this phase's "Establish relevant tests" checkbox.
   - This task does not yet change any existing FIR kind's fields or any call site — it only adds `FirCursor`/`FirCursorMut`/`clone_subtree` alongside the old `Rc`/`Weak`/`RefCell` code, exactly like the previous task. `cargo check -p foolish-ubca2` and the full einmo suite must still pass unchanged after this task.
+      All types added to `foolish-ubca2/src/fvm_storage.rs` (same module as the previous task).
+      `_get_my_brane`/`_get_my_statement`/`settled_result`/`step_inner`/`MAX_DEPTH`/
+      `constanic_clone_at` were all re-read DIRECTLY from the live source (`fir_trait.rs`,
+      `fir_kinds.rs`) immediately before writing each corresponding arena translation, per the
+      coordinator's explicit instruction not to trust the earlier sub-fork's unverified sections
+      for these specific items. `MAX_DEPTH = 100` confirmed directly (matches the value used).
+
+      Extended `ArenaFir` (the Phase-1-foundational-task placeholder) beyond its original
+      `{ spec, nyes }` shape to also carry `ubc_children: Vec<FirPointer>`, `tasks:
+      VecDeque<FirPointer>`, and `alarm_reason: Option<String>` — the full set of
+      `ProtoBrane`-mirrored state `FirCursor`/`FirCursorMut`'s method table needs something real
+      to read/write (this extension was necessary; the previous task's placeholder held only
+      `Nyes`, which cannot support `ubc_children()`, `front_task()`, `push_task()`, etc.). Added
+      inherent methods on `ArenaFir` itself (`get_nyes`/`set_nyes`/`ubc_children`/
+      `push_ubc_child`/`push_search_result`/`clear_ubc_children`/`front_task`/`pop_front_task`/
+      `push_task`/`alarm_reason`/`set_alarm_reason`) mirroring `ProtoBrane`'s own method-by-method
+      shape, per Rule Zero (state-reporting/mutating methods belong on the type that owns the
+      data). `FVMStorage::with_mut`/`get_mut` were correspondingly widened from `&mut Nyes` to
+      `&mut ArenaFir` and kept `pub(crate)` (not `pub`, per the plan's own text for `get_mut`) —
+      `ArenaFir` is still an internal placeholder, not yet the real `Fir` trait object the FOOP's
+      final signature calls for; widened to `pub` in the per-kind migration task that replaces it.
+
+      **Deviation, documented as required**: `clone_subtree`'s `StayFoolish`/`StayFullyFoolish`
+      unwrapping (constanic_clone_at's own first branch) is NOT implemented in this task. No
+      `FirSpec` variant carries a real settled-result/first-foolish-child body to unwrap through
+      in a way that would exercise genuine behavior at this placeholder stage — SF unwrapping's
+      entire point is reading the WRAPPED kind's real state, which does not exist until that
+      kind's own per-kind migration task gives it one. Implementing a fake placeholder unwrap now
+      would look tested without exercising real logic. This is deferred explicitly to the
+      `StayFoolishFir`/`StayFullyFoolishFir` per-kind migration tasks below, which re-implement
+      this `clone_subtree` arm against those kinds' real arena-aware `Fir` impls. The other two
+      behaviors (share-not-clone, full-rebuild) are implemented and tested per the plan's
+      instruction. `fir_op_step` dispatch inside `step_inner`'s `None` branch is likewise a
+      documented `todo!()` for the same reason (no real `fir_op_step` exists yet to call) — the
+      pop-vs-recurse shape around it is implemented and tested (`step_pops_a_front_task_that_is_already_constanic`).
+
+      13 new unit tests added (total 19 in `fvm_storage`, up from 6): `test_helpers_build_expected_shapes`,
+      `fir_cursor_reads_match_direct_storage_reads`, `fir_cursor_mut_push_ubc_child_enqueues_only_non_constanic_children`,
+      `push_search_result_rejects_a_second_result`, `check_sff_marked_child_accepts_all_econstanic_descendants`,
+      `check_sff_marked_child_rejects_a_non_econstanic_descendant`, `clone_subtree_shares_creation_unconditionally`,
+      `clone_subtree_shares_constant_non_brane`, `clone_subtree_rebuilds_pre_constanic_nodes_and_renumbers_statement_lines`,
+      `clone_subtree_recursively_clones_foolish_children`, `clone_subtree_skip_foolish_children_omits_them`,
+      `temporary_release_reacquires_a_usable_handle`, `step_pops_a_front_task_that_is_already_constanic`.
+      One test-writing bug caught and fixed during this task (not an implementation bug): my
+      first draft of `fir_cursor_reads_match_direct_storage_reads` wrongly expected
+      `cursor.statement()` to climb back to `child` itself when `child` has no `Statement`
+      ancestor; re-reading `_get_my_statement`'s real logic showed it climbs all the way to the
+      structural root and stops there — the test's expectation was corrected to `root`, not the
+      implementation.
+
+      All 19 `fvm_storage` tests pass; `cargo check -p foolish-ubca2 --tests` compiles with zero
+      warnings; `cargo clippy -p foolish-ubca2 --all-targets --all-features --no-deps -- -D
+      warnings` reports zero issues in `fvm_storage.rs` (only the previously-documented
+      pre-existing `system_foo.rs` inherited issue remains, unrelated to this task);
+      `cargo fmt -p foolish-ubca2 -- --check` clean for `fvm_storage.rs`;
+      `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` still passes unchanged, confirming
+      zero behavior change from this purely-additive task, exactly as required.
 
 **(Parallelizable, with a caveat: the eleven per-kind tasks below may be dispatched
 concurrently once both foundational tasks above — `FirPointer`/`FVMStorage`/`FirSpec` and
