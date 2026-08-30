@@ -18,7 +18,8 @@ WORKTREE_BRANCH_NAME=foop-16-arena-storage
 WORKTREE_FULL_FS_PATH=/yolo/foolish/../foolish_worktrees/foop-16-arena-storage
 ```
 
-- [ ] Begin work: commit `FOOP-16.md` and `FOOP-16.plan.md` to origin, check `begun: [x]` in frontmatter
+- [x] Begin work: commit `FOOP-16.md` and `FOOP-16.plan.md` to origin, check `begun: [x]` in frontmatter
+      (2026-08-30 15:14)
 
 - [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-16-arena-storage` with branch `foop-16-arena-storage`
   ```bash

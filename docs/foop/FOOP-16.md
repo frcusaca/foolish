@@ -2,12 +2,12 @@
 foop: D61
 title: foolish-ubca2 — arena-backed FIR storage via copy-migration
 author: Claude Code <noreply@anthropic.com>
-status: Draft
+status: Implementing
 type: Standards
 created: 2026-08-30
 phase: phase-2
 supersedes: []
-begun: [ ] 
+begun: [x]
 ---
 
 # FOOP-16: foolish-ubca2 — arena-backed FIR storage via copy-migration
