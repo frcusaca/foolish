@@ -291,14 +291,74 @@ one file safely (e.g. via frequent small commits and rebases) before dispatching
 parallel; if not, sequence them with a commit after each task despite the logical
 independence.)**
 
-- [ ] Migrate `IndepIntFir` (fir_kinds.rs, struct at the location found by the Phase-1 kind-list grep above) to `FirPointer`
+**Scope clarification for the per-kind tasks below, worked out before starting `IndepIntFir`
+(recorded here since it governs all 14 remaining tasks in this phase and parts of Phases 2-4;
+non-blocking, but load-bearing enough to write down rather than silently pick a reading of):**
+`fir_kinds.rs` is 8562 lines; its `#[cfg(test)] mod tests` block alone is ~5400 of them (starts
+at line 3152, confirmed by direct grep), one shared module covering every kind together, not
+per-kind-separable. `trait Fir`/`FirRef`/`ProtoBrane` themselves are never migrated to the arena
+in ANY per-kind task in this plan — `ProtoBrane`'s only scheduled task (Phase 4, `proto_brane.rs`)
+touches its single `Rc::new_cyclic` construction site, not its struct shape; `trait Fir`/`FirRef`
+removal is explicitly Phase 5's job, after every kind has migrated. Read literally, "update `impl
+Fir for IndepIntFir`'s methods... to take `&FVMStorage`" is therefore NOT achievable per-kind
+without simultaneously migrating `ProtoBrane` and `trait Fir` (which every other, unmigrated kind
+and every caller in `evaluator.rs`/`compiler.rs` still depends on) — doing so would break the
+whole crate for the entire span of Phases 1-4, directly contradicting each task's own "the type
+compiles and passes the same tests it passed before this task" success criterion (stated
+explicitly on the `SearchFir` task) and this phase's own gate ("`cargo check`/full einmo suite
+must still pass unchanged"). **Resolution**: each per-kind task ADDS that kind's real arena
+construction/stepping capability as new, tested, additive code alongside the existing
+`Rc`/`RefCell`-based `impl Fir for XFir` (which keeps compiling and keeps passing its existing
+tests, completely untouched) — mirroring exactly how both Phase 1 foundational tasks already
+worked, and exactly how the `SearchFir` task's own wording already describes its scope ("do not
+attempt to validate search *correctness* here, only that the type compiles and passes the same
+tests it passed before this task" — SearchFir's phrasing is the clearest signal of the plan's own
+intended granularity, generalized here to every kind). The literal "cut the old impl over" phrasing
+throughout these tasks describes the FINAL destination state, fully realized at Phase 5's
+coordinated cutover — not a per-kind achievable milestone. Each per-kind task's "targeted einmo
+re-run" is, under this reading, a confirmation that nothing regressed (the old `Rc`-based
+evaluator path is what einmo actually exercises until Phase 3 migrates `evaluator.rs` itself),
+not a claim that the arena path is live in production yet.
+
+- [x] Migrate `IndepIntFir` (fir_kinds.rs, struct at the location found by the Phase-1 kind-list grep above) to `FirPointer`
+      (2026-08-30 15:58)
   - Replace its `ProtoBrane`-embedded `Rc<RefCell<dyn Fir>>`/`Weak` fields with `FirPointer`-based access through `FVMStorage`/`FirCursor`/`FirCursorMut` (read/write parent and children only via `storage.get`/`storage.with_mut`, or the equivalent `FirCursor { ptr, storage }`/`FirCursorMut { ptr, storage }` construction where a run of several navigation calls on one node makes the cursor worth building — no field on `IndepIntFir` itself should store a raw pointer or arena handle beyond its own `FirPointer` identity, if it needs to know its own identity at all).
   - Replace this kind's `Rc::new_cyclic` construction site(s) with `create_child(&mut storage, FirSpec::IndepInt { .. })`.
   - Update `impl Fir for IndepIntFir`'s methods that touch parent/children to take `&FVMStorage`/`&mut FVMStorage` as an explicit parameter instead of calling `.borrow()`/`.borrow_mut()`/`Weak::upgrade()`.
   - Targeted einmo re-run: any case whose input exercises an independent integer literal (search `foolish-ubca2/einmo_suite/input/` for `.foo` files using bare integer literals — likely a broad, common subset; running the full suite is also acceptable here given `IndepIntFir` is simple and low-risk).
+      Per the "Scope clarification" note just above this task: implemented as additive arena
+      capability, NOT an in-place rewrite of the existing `Rc`-based `impl Fir for IndepIntFir`
+      (which keeps compiling/passing its own tests, untouched — `IndepIntFir`'s own
+      `Rc::new_cyclic`/`Rc::new` construction sites in `fir_kinds.rs` and `compiler.rs` are
+      untouched; `compiler.rs`'s sites are Phase 4's job regardless). Added: a real `FirSpec::
+      IndepInt` arm in `fvm_storage.rs`'s new `fir_op_step` enum-dispatch function (RESOLVES the
+      `fir_op_step` `todo!()` placeholder for this ONE kind — `FirPointer::step` now genuinely
+      settles an `IndepInt` node, not a `todo!()` panic), direct translation of `impl Fir for
+      IndepIntFir`'s real `fir_op_step` (re-read immediately before writing: "if not already
+      constanic, set Constant" — no Braning phase, since IndepInt has no children/tasks) and
+      `as_i64` (`FirCursor::as_i64`, mirroring the override). 2 new unit tests
+      (`indep_int_prembrionic_to_constant_in_one_step`, mirroring
+      `fir_kinds.rs::tests::constant_int_prembrionic_to_constant_in_one_step` exactly;
+      `indep_int_stepping_already_settled_is_noop`). Targeted einmo re-run: full
+      `einmo_gate_checked` (broad/low-risk per the task's own note) — passes unchanged, as
+      expected, since the OLD `Rc`-based evaluator path is what einmo actually exercises until
+      Phase 3 migrates `evaluator.rs` itself; this is confirmation of no regression, not proof
+      the arena path is live in production.
 
-- [ ] Migrate `NkFir` to `FirPointer` (same shape of task as `IndepIntFir` above — parent/children fields, `Rc::new_cyclic` sites, `impl Fir for NkFir` methods)
+- [x] Migrate `NkFir` to `FirPointer` (same shape of task as `IndepIntFir` above — parent/children fields, `Rc::new_cyclic` sites, `impl Fir for NkFir` methods)
+      (2026-08-30 15:58)
   - Targeted einmo re-run: cases producing an NK result (search for `= NK` or `???` in `checked/` outputs).
+      Same additive shape as `IndepIntFir`. Added a real `FirSpec::Nk` arm in `fir_op_step`
+      (direct translation of `impl Fir for NkFir`'s real `fir_op_step`, re-read immediately
+      before writing — identical one-step-settles shape to IndepInt, settling to `Nk`) and
+      `as_nk_reason` (`FirCursor::as_nk_reason`, mirroring the override). 1 new unit test
+      (`nk_prembrionic_to_nk_in_one_step`, mirroring `fir_kinds.rs::tests::
+      nk_prembrionic_to_nk_in_one_step` exactly). Targeted einmo re-run: full
+      `einmo_gate_checked` — passes unchanged (same reasoning as `IndepIntFir` above).
+      Committed together with `IndepIntFir` as one logical unit (both simple leaf kinds, same
+      shape of change) — 22 `fvm_storage` unit tests total (up from 19), all passing; `cargo
+      clippy -p foolish-ubca2 --all-targets --all-features --no-deps -- -D warnings` clean for
+      `fvm_storage.rs`; `cargo fmt` clean.
 
 - [ ] Migrate `OperatorFir` to `FirPointer`
   - Note: `OperatorFir` is described in AGENTS.md as "brane-like" (FOOP-9) — confirm during this task whether it has any brane-search-boundary interaction that the generic per-kind migration steps above don't cover; if so, treat that interaction as part of this task, not deferred.

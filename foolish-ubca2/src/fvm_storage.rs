@@ -688,18 +688,47 @@ fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, depth: usize) -> FirPoi
             ptr
         }
         None => {
-            // fir_op_step dispatch has no real implementation to call yet —
-            // every kind is still the ArenaFir placeholder. Left as a
-            // deliberate todo!() rather than a silent no-op, per
-            // rust_instructions.md's "implement fully or don't add it": a
-            // function that silently did nothing here would look tested and
-            // working while actually never exercising the real per-kind
-            // logic once it exists.
-            todo!(
-                "fir_op_step dispatch: wired in by the first per-kind \
-                 migration task once a real arena-aware Fir impl exists"
-            )
+            fir_op_step(ptr, storage);
+            ptr
         }
+    }
+}
+
+/// Enum-dispatch `fir_op_step` equivalent (rust_instructions.md §7 "Enum
+/// dispatch": matching a known, finite variant set and calling concrete
+/// logic is preferred over `dyn` here, since `FirSpec`'s variant set is
+/// exactly the crate's FIR-kind set). Each per-kind migration task adds its
+/// kind's real combining logic here, translated from that kind's real
+/// `impl Fir for XFir`'s `fir_op_step` (re-read directly, not reconstructed).
+///
+/// Kinds not yet migrated panic with `todo!()` naming the kind — this must
+/// never silently no-op (`rust_instructions.md`'s "implement fully or don't
+/// add it"), and every kind's real dispatch is closed out by the end of
+/// Phase 1's per-kind sweep (tracked per-kind in this plan's checkboxes).
+fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
+    let spec = storage.get(ptr).clone();
+    match spec {
+        // Direct translation of `impl Fir for IndepIntFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this): "if not already constanic, set Constant." An
+        // IndepInt never has children/tasks, so there is no Braning phase —
+        // one step settles it, exactly as today's
+        // `constant_int_prembrionic_to_constant_in_one_step` test pins.
+        FirSpec::IndepInt { .. } => {
+            if !storage.get_nyes(ptr).is_constanic() {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
+            }
+        }
+        // Direct translation of `impl Fir for NkFir`'s real `fir_op_step`
+        // (re-read from `fir_kinds.rs` immediately before writing this):
+        // identical one-step-settles shape to IndepInt, settling to Nk
+        // instead of Constant.
+        FirSpec::Nk { .. } => {
+            if !storage.get_nyes(ptr).is_constanic() {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+            }
+        }
+        other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
 }
 
@@ -790,6 +819,31 @@ impl<'s> FirCursor<'s> {
         self.ptr
             .settled_result(self.storage)
             .map(|p| FirCursor::new(p, self.storage))
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_i64`]: `IndepInt` reports its own
+    /// value directly (its real `Fir` impl's override, re-read directly);
+    /// every other migrated kind falls through to `settled_result` first,
+    /// matching the trait's default body exactly. Kinds not yet migrated
+    /// answer `None` rather than panicking — `as_i64`'s default in
+    /// `fir_trait.rs` already tolerates "no settled result" as `None`, so an
+    /// unmigrated kind (which never settles under the arena yet) is exactly
+    /// that case, not a distinct failure mode needing its own `todo!()`.
+    pub fn as_i64(&self) -> Option<i64> {
+        match self.node() {
+            FirSpec::IndepInt { value } => Some(*value),
+            _ => self.settled_result().and_then(|c| c.as_i64()),
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_nk_reason`]: `Nk`'s own override
+    /// (re-read directly) returns its reason string; every other kind's
+    /// default is `None`.
+    pub fn as_nk_reason(&self) -> Option<&'s str> {
+        match self.node() {
+            FirSpec::Nk { reason } => Some(reason),
+            _ => None,
+        }
     }
 }
 
@@ -1412,6 +1466,55 @@ mod tests {
             FirCursor::new(root, &storage).front_task(),
             None,
             "the already-constanic front task must be popped, not recursed into"
+        );
+    }
+
+    /// `IndepIntFir`'s arena migration: mirrors the existing
+    /// `fir_kinds.rs::tests::constant_int_prembrionic_to_constant_in_one_step`
+    /// test exactly — Prembrionic → Constant in ONE step, no Braning phase
+    /// (an IndepInt has no children/tasks).
+    #[test]
+    fn indep_int_prembrionic_to_constant_in_one_step() {
+        let mut storage = FVMStorage::new();
+        let node = storage.make_root(FirSpec::IndepInt { value: 42 });
+        assert_eq!(storage.get_nyes(node), Nyes::Prembrionic);
+
+        node.step(&mut storage);
+
+        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+        assert_eq!(FirCursor::new(node, &storage).as_i64(), Some(42));
+    }
+
+    /// Stepping an already-constanic `IndepInt` again is a no-op — mirrors
+    /// `stepping_already_settled_is_noop`'s intent for this kind.
+    #[test]
+    fn indep_int_stepping_already_settled_is_noop() {
+        let mut storage = FVMStorage::new();
+        let node = storage.make_root(FirSpec::IndepInt { value: 1 });
+        node.step(&mut storage);
+        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+
+        node.step(&mut storage);
+        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+    }
+
+    /// `NkFir`'s arena migration: mirrors the existing
+    /// `fir_kinds.rs::tests::nk_prembrionic_to_nk_in_one_step` test exactly —
+    /// Prembrionic → Nk in ONE step.
+    #[test]
+    fn nk_prembrionic_to_nk_in_one_step() {
+        let mut storage = FVMStorage::new();
+        let node = storage.make_root(FirSpec::Nk {
+            reason: "unbound name".to_string(),
+        });
+        assert_eq!(storage.get_nyes(node), Nyes::Prembrionic);
+
+        node.step(&mut storage);
+
+        assert_eq!(storage.get_nyes(node), Nyes::Nk);
+        assert_eq!(
+            FirCursor::new(node, &storage).as_nk_reason(),
+            Some("unbound name")
         );
     }
 }
