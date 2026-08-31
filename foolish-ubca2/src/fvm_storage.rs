@@ -309,6 +309,28 @@ pub struct FVMStorage {
     slots: Vec<Slot>,
 }
 
+/// How a concatenation was spelled in source. Affects SEQUENCING ONLY — never
+/// evaluation (FOOP-65 §5.3). Relocated here at Phase 5's cutover (formerly
+/// `fir_kinds::ConcatProvenance`, deleted along with the rest of that file's
+/// `Rc`-based machinery) since `FirSpec::Concatenation` is this enum's only
+/// remaining user.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConcatProvenance {
+    /// Ordinary brane concatenation (juxtaposition): `{a}{b}{c}`.
+    Juxtaposition,
+    /// Tail concatenation (backtick chain): `` c`b`a `` — the elements are
+    /// already stored REVERSED relative to source (FOOP-65 §5.2).
+    TailConcatenation,
+}
+
+/// The name used for an anonymous statement (a bare expression with no LHS
+/// identifier). The sequencer renders a statement named `???` WITHOUT a
+/// `name=` prefix (FOOP-62 #19). Relocated here at Phase 5's cutover
+/// (formerly `compiler::ANON_STMT_NAME`, deleted along with the rest of that
+/// file's `Rc`-based machinery) since `arena_compiler`/`core_fir_conversion`
+/// are this constant's only remaining users.
+pub(crate) const ANON_STMT_NAME: &str = "???";
+
 /// One variant per FIR kind (per `fir_kinds.rs`'s 13 `impl Fir for` sites plus
 /// `system_foo.rs`'s `ComparisonFir` — 14 total, confirmed by direct grep
 /// against `foolish-ubca2/src/fir_kinds.rs` and `system_foo.rs` when this type
@@ -324,9 +346,9 @@ pub struct FVMStorage {
 /// §Specification "`FirPointer`'s handle-side methods").
 #[derive(Debug, Clone, PartialEq)]
 pub enum FirSpec {
-    /// Mirrors [`crate::fir_kinds::IndepIntFir`].
+    /// Mirrors what `IndepIntFir` was before Phase 5's cutover deleted it.
     IndepInt { value: i64 },
-    /// Mirrors [`crate::fir_kinds::NkFir`].
+    /// Mirrors what `NkFir` was before Phase 5's cutover deleted it.
     Nk { reason: String },
     /// Mirrors [`crate::fir_kinds::OperatorFir`].
     Operator { op: String },
@@ -369,9 +391,7 @@ pub enum FirSpec {
     /// Mirrors [`crate::fir_kinds::ConcatenationFir`]. `_helpers_populated` is
     /// not part of the spec — it is derived post-construction, matching
     /// `constanic_clone_at`'s own `FirKind::Concatenation` arm.
-    Concatenation {
-        provenance: crate::fir_kinds::ConcatProvenance,
-    },
+    Concatenation { provenance: ConcatProvenance },
     /// Mirrors [`crate::fir_kinds::CreationFir`]. No fields beyond `core`.
     Creation,
     /// Mirrors `system_foo::ComparisonFir` (not in `fir_kinds.rs` — see the
@@ -2126,10 +2146,10 @@ impl<'s> FirCursor<'s> {
     /// Mirrors [`crate::fir_trait::Fir::as_concat_provenance`]:
     /// `Concatenation`'s own override (re-read directly) returns its
     /// provenance; every other kind's default is `Juxtaposition`.
-    pub fn as_concat_provenance(&self) -> crate::fir_kinds::ConcatProvenance {
+    pub fn as_concat_provenance(&self) -> ConcatProvenance {
         match self.node() {
             FirSpec::Concatenation { provenance } => *provenance,
-            _ => crate::fir_kinds::ConcatProvenance::Juxtaposition,
+            _ => ConcatProvenance::Juxtaposition,
         }
     }
 
@@ -2551,6 +2571,26 @@ pub(crate) mod search_engine {
     use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};
 
     use foolish_core::fir::Nyes;
+    use regex::Regex;
+
+    /// Relocated here at Phase 5's cutover (formerly `SearchFir::
+    /// matches_pattern`, `fir_kinds.rs`, deleted along with the rest of that
+    /// file's `Rc`-based machinery) — a pure string/regex match with no FIR
+    /// dependency at all, so a straight relocation, not a translation.
+    pub(crate) fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
+        if stmt_name == pattern {
+            return true;
+        }
+        let re = if pattern.contains('^') || pattern.contains('$') {
+            Regex::new(pattern)
+        } else {
+            Regex::new(&format!("^{}$", pattern))
+        };
+        if let Ok(re) = re {
+            return re.is_match(stmt_name);
+        }
+        false
+    }
 
     /// Where the Navigator starts scanning from. Mirrors the real
     /// `CursorSource` verbatim (not yet wired to anything — the FOOP's
@@ -2682,7 +2722,7 @@ pub(crate) mod search_engine {
                         Some(id) => id.searchable_name().to_owned(),
                         None => return MatchOutcome::Reject,
                     };
-                    if !crate::fir_kinds::SearchFir::matches_pattern(&name, pattern) {
+                    if !matches_pattern(&name, pattern) {
                         return MatchOutcome::Reject;
                     }
                     check_body_nyes(storage, candidate)
@@ -2703,7 +2743,7 @@ pub(crate) mod search_engine {
                         Some(id) => id.searchable_name().to_owned(),
                         None => return MatchOutcome::Reject,
                     };
-                    if !crate::fir_kinds::SearchFir::matches_pattern(&stmt_name, name) {
+                    if !matches_pattern(&stmt_name, name) {
                         return MatchOutcome::Reject;
                     }
                     let body = match storage.foolish_children(candidate).first().copied() {
@@ -2766,7 +2806,7 @@ pub(crate) mod search_engine {
                         Some(id) => id.searchable_name().to_owned(),
                         None => return MatchOutcome::Reject,
                     };
-                    if !crate::fir_kinds::SearchFir::matches_pattern(&name, pattern) {
+                    if !matches_pattern(&name, pattern) {
                         return MatchOutcome::Reject;
                     }
                     MatchOutcome::Approve
@@ -3823,7 +3863,10 @@ mod search_fir_dispatch {
 /// (`pub(crate) use core_fir_conversion::{..}` below) for exactly that
 /// caller. No more `#[expect(dead_code)]` needed.
 mod core_fir_conversion {
-    use super::{FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH, search_fir_dispatch};
+    use super::{
+        ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH,
+        search_fir_dispatch,
+    };
 
     use foolish_core::fir as core_fir;
     use foolish_core::fir::{
@@ -3950,7 +3993,7 @@ mod core_fir_conversion {
     /// or any empty name) renders with no `name=` prefix.
     fn display_stmt_name(name: Option<&str>) -> Option<String> {
         match name {
-            Some(n) if n.is_empty() || n == crate::compiler::ANON_STMT_NAME => None,
+            Some(n) if n.is_empty() || n == ANON_STMT_NAME => None,
             Some(n) => Some(n.to_string()),
             None => None,
         }
@@ -4627,7 +4670,7 @@ mod core_fir_conversion {
                         )
                     })
                     .collect();
-                let is_tail = provenance == crate::fir_kinds::ConcatProvenance::TailConcatenation;
+                let is_tail = provenance == ConcatProvenance::TailConcatenation;
                 ConcatenationFirBuilder::new()
                     .elements(elem_firs)
                     .state(state)
@@ -4701,7 +4744,9 @@ mod core_fir_conversion {
 /// (`pub(crate) use arena_compiler::{..}` below) for exactly that caller.
 /// No more `#[expect(dead_code)]` needed.
 mod arena_compiler {
-    use super::{FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec};
+    use super::{
+        ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec,
+    };
 
     use foolish_core::fir::Nyes;
     use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
@@ -5089,7 +5134,7 @@ mod arena_compiler {
                 let node = child_parent!().create_child(
                     storage,
                     FirSpec::Concatenation {
-                        provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+                        provenance: ConcatProvenance::Juxtaposition,
                     },
                 );
                 for e in elements {
@@ -5101,7 +5146,7 @@ mod arena_compiler {
                 let node = child_parent!().create_child(
                     storage,
                     FirSpec::Concatenation {
-                        provenance: crate::fir_kinds::ConcatProvenance::TailConcatenation,
+                        provenance: ConcatProvenance::TailConcatenation,
                     },
                 );
                 for e in elements.into_iter().rev() {
@@ -5170,7 +5215,7 @@ mod arena_compiler {
             } => (characterizations, identifier, *expr, operator),
             other => (
                 vec![],
-                crate::compiler::ANON_STMT_NAME.to_string(),
+                ANON_STMT_NAME.to_string(),
                 other,
                 AssignmentOperator::Assign,
             ),
@@ -5334,7 +5379,7 @@ mod arena_compiler {
             } => (characterizations, identifier, *expr, operator),
             other => (
                 vec![],
-                crate::compiler::ANON_STMT_NAME.to_string(),
+                ANON_STMT_NAME.to_string(),
                 other,
                 AssignmentOperator::Assign,
             ),
@@ -6405,7 +6450,7 @@ mod tests {
     fn concatenation_of_settled_branes_is_join_ready() {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
-            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+            provenance: ConcatProvenance::Juxtaposition,
         });
         let brane1 = cat.create_child(
             &mut storage,
@@ -6439,7 +6484,7 @@ mod tests {
         );
         assert_eq!(
             FirCursor::new(cat, &storage).as_concat_provenance(),
-            crate::fir_kinds::ConcatProvenance::Juxtaposition
+            ConcatProvenance::Juxtaposition
         );
     }
 
@@ -6450,7 +6495,7 @@ mod tests {
     fn concatenation_with_a_non_brane_element_settles_nk() {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
-            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+            provenance: ConcatProvenance::Juxtaposition,
         });
         let brane = cat.create_child(
             &mut storage,
@@ -7619,7 +7664,7 @@ mod tests {
             FirCursor::new(stmt, &storage)
                 .as_stmt_identifier()
                 .map(|id| id.identifier_name()),
-            Some(crate::compiler::ANON_STMT_NAME)
+            Some(ANON_STMT_NAME)
         );
     }
 
@@ -8215,7 +8260,7 @@ mod tests {
     fn concatenation_of_two_branes_joins_their_statements() {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
-            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+            provenance: ConcatProvenance::Juxtaposition,
         });
         let brane1 = cat.create_child(
             &mut storage,
@@ -8289,7 +8334,7 @@ mod tests {
     fn concatenation_merge_applies_null_const_rule_to_conflicting_names() {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
-            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+            provenance: ConcatProvenance::Juxtaposition,
         });
         let brane1 = cat.create_child(
             &mut storage,
@@ -8598,6 +8643,212 @@ mod tests {
             vec![Nyes::Econstanic, Nyes::Econstanic],
             "the cloned Op+'s own operand searches must stay Econstanic verbatim, \
              not re-search and resolve in sf's new context"
+        );
+    }
+
+    // ── Ported from fir_trait.rs before its Phase 5 deletion ────────────
+
+    /// Ported from `fir_trait.rs`'s `ib_search_at_index_zero_does_not_find_self`
+    /// (FOOP-13 regression, re-read before porting): a statement that is the
+    /// FIRST statement in its brane (`line_number == 0`) must not find
+    /// itself via its own backward IB search. The real bug: computing the
+    /// backward-scan end as `line_number.saturating_sub(1)` SATURATES to `0`
+    /// at `line_number == 0` instead of representing "no preceding
+    /// statements", so the scan range `[0, 0]` wrongly includes the
+    /// statement's own slot — left unfixed, `{a = a + 1;}` recurses forever
+    /// (`handle_found` clones the found statement's still-unresolved
+    /// self-search, the clone re-searches, finds the SAME original
+    /// statement again, without bound). `ib_search_by_pattern`'s own
+    /// `checked_sub` (not `saturating_sub`) is the arena's fix for this
+    /// exact bug class, already in place — this test pins it directly.
+    #[test]
+    fn ib_search_at_index_zero_does_not_find_self() {
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let a_stmt = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"),
+                line_number: 0,
+            },
+        );
+        let op = a_stmt.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
+        op.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "^a$".to_string(),
+                anchored: false,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+        op.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        let result = search_fir_dispatch::ib_search_by_pattern(&storage, "a", Some(a_stmt));
+        assert!(
+            result.is_none(),
+            "BUG: a statement at index 0 of its brane must not find itself \
+             via backward IB search — got a hit instead of None"
+        );
+    }
+
+    /// Ported from `fir_trait.rs`'s `statement_at_index_zero_settles_
+    /// without_self_reference_hang` (FOOP-13 regression's end-to-end
+    /// companion, re-read before porting): the actual runtime path
+    /// (`UbcaEvaluator::evaluate`, not a direct `_ib_search`/
+    /// `ib_search_by_pattern` call) must not hang forever on a bare
+    /// self-referential search at brane-index 0. Before the fix this
+    /// program never settles (steps forever in BRANING); after the fix
+    /// `a`'s self-search is correctly absent from its own brane, falls
+    /// through, and the whole program settles within `evaluate`'s own step
+    /// budget.
+    #[test]
+    fn evaluate_settles_self_referential_statement_at_index_zero_without_hanging() {
+        use foolish_core::Evaluator;
+        let evaluator = crate::evaluator::UbcaEvaluator;
+        let result = evaluator.evaluate("{a = a + 1;}");
+        assert!(
+            result.is_ok(),
+            "BUG: {{a = a + 1;}} must settle within evaluate's step budget \
+             (a's self-search absent, falls through to unanchored-miss) — \
+             it must NOT hang forever due to a's own statement finding \
+             itself at index 0, got: {result:?}"
+        );
+    }
+
+    /// Ported from `fir_kinds.rs`'s `null_const_rule_does_not_fire_on_plain_
+    /// names` regression guard (re-read before porting): `k=1; k=2` (no
+    /// leading `'`) must NOT be refused — the null-const rule only fires on
+    /// null-characterized coordinate names, never on plain ones.
+    #[test]
+    fn null_const_rule_does_not_fire_on_plain_names() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compile(&mut storage, "{k=1; k=2;}").unwrap();
+        let root = roots[0];
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        let stmts = storage.foolish_children(root).to_vec();
+        assert!(
+            storage.nf_reason(stmts[0]).is_none(),
+            "plain k=1 must never be refused by the null-const rule"
+        );
+        assert!(
+            storage.nf_reason(stmts[1]).is_none(),
+            "plain k=2 must never be refused by the null-const rule"
+        );
+    }
+
+    /// Ported from `fir_kinds.rs`'s `null_const_concatenation_empty_and_
+    /// single_operand_merge_without_spurious_nf` regression guard (re-read
+    /// before porting): an empty concatenation operand, or a single-operand
+    /// concatenation, must merge without any spurious NF — the collision
+    /// check must not misfire when there's nothing (or only one thing) to
+    /// collide with.
+    #[test]
+    fn null_const_concatenation_empty_and_single_operand_merge_without_spurious_nf() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compile(&mut storage, "{A={}; B={'a=1;}; C = A B;}").unwrap();
+        let root = roots[0];
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        let stmts = storage.foolish_children(root).to_vec();
+        let c_body = storage.foolish_children(stmts[2])[0];
+        let c_value = c_body.value(&storage);
+        assert_eq!(FirCursor::new(c_value, &storage).stmt_count(), Some(1));
+        let merged_a = FirCursor::new(c_value, &storage).stmt_at(0).unwrap();
+        assert!(
+            storage.nf_reason(merged_a).is_none(),
+            "single 'a merged from a concatenation with an empty operand must not be NF"
+        );
+    }
+
+    /// Ported from `system_foo.rs`'s `each_comparison_operator_produces_
+    /// the_right_boolean` (re-read before porting): the whole comparison
+    /// feature, end to end, for all five operators and both outcomes.
+    /// `{a, b, 'op}$`: the brane literal's tail is `'op`, whose settled
+    /// value is the boolean it computed from its two preceding neighbours
+    /// (FOOP-33 §5.0). `compose_program_with_system_resolves_a_comparison`
+    /// (an earlier Phase 5 test) only exercises `'lt` — this ports the
+    /// real test's full 5-operator, both-outcome table, expressed as the
+    /// plain Rust comparison of 1 and 2 so each row states WHY it is what
+    /// it is, not merely what was observed.
+    #[test]
+    fn each_comparison_operator_produces_the_right_boolean() {
+        for (op, expected) in [
+            ("'lt", 1 < 2),
+            ("'gt", 1 > 2),
+            ("'le", 1 <= 2),
+            ("'ge", 1 >= 2),
+            ("'eq", 1 == 2),
+        ] {
+            let mut storage = FVMStorage::new();
+            let source = format!("{{r = {{1, 2, {op}}}$;}}");
+            let roots = arena_compiler::compose_program_with_system(&mut storage, &source).unwrap();
+            let composed_root = roots[0];
+            core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+            let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+            let stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
+            let body = storage.foolish_children(stmt)[0];
+            let got = body.value(&storage);
+
+            assert!(
+                matches!(storage.get(got), FirSpec::Creation),
+                "{op} must produce a creation ('True/'False), not {:?}",
+                storage.get(got)
+            );
+            let want_name = if expected { "'True" } else { "'False" };
+            let want_stmt = storage
+                .foolish_children(composed_root)
+                .iter()
+                .find(|&&s| {
+                    FirCursor::new(s, &storage)
+                        .as_stmt_identifier()
+                        .map(|id| id.searchable_name())
+                        == Some(want_name)
+                })
+                .copied()
+                .expect("system.foo declares 'True and 'False");
+            let want_body = storage.foolish_children(want_stmt)[0];
+            let want = want_body.value(&storage);
+            assert_eq!(
+                got, want,
+                "{{1, 2, {op}}}$ must be system.foo's own {want_name} creation \
+                 (referential identity, FOOP-33 §5), expected={expected}"
+            );
+        }
+    }
+
+    /// Ported from `evaluator.rs`'s `creation_display_name_conversion_tests::
+    /// creation_reached_through_search_converts_with_its_own_defining_name`
+    /// (re-read before porting): `b='a` resolves THROUGH a search to the
+    /// SAME creation `'a` defines (FOOP-33 Gotcha #2) — viewed from `b`'s
+    /// statement (a DIFFERENT statement than `'a`'s own), the rendered
+    /// output must report `'a`, not `b`, proving identity (not the
+    /// referencing statement's own name) drives the name, and that viewing
+    /// from elsewhere is what unlocks it. Uses the full-brane
+    /// `proto_to_core_fir` rendering (rather than calling the private
+    /// `proto_to_core_fir_inner` directly, as the real test does) since
+    /// `current_stmt` threading is naturally exercised by rendering the
+    /// whole root, matching how `evaluate` itself renders.
+    #[test]
+    fn creation_reached_through_search_renders_with_its_own_defining_name() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compile(&mut storage, "{'a=⬤; b='a;}").unwrap();
+        let root = roots[0];
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        let rendered_root = core_fir_conversion::proto_to_core_fir(&storage, root);
+        let rendered = format!("{rendered_root:?}");
+        assert!(
+            rendered.contains(r#"name: Some("'a")"#),
+            "a creation reached through a search ('a=⬤; b='a), viewed from the \
+             REFERENCING statement, must render with its OWN defining statement's \
+             name ('a), got: {rendered}"
         );
     }
 }
