@@ -589,19 +589,19 @@ impl FVMStorage {
     /// Appends an ALREADY-EXISTING pointer to `parent`'s `foolish_children`
     /// list WITHOUT allocating a new slot and WITHOUT reparenting `child`
     /// (its own `.parent` field, and therefore its home brane and line
-    /// number, are left exactly as they were). This is `clone_subtree`'s
+    /// number, are left exactly as they were). This is `revive_constanic`'s
     /// "share-not-clone" path's missing half: the real `constanic_clone_at`
     /// shares a `Constant`/`Independent` non-Brane (or a `FoolRef`/
     /// `Creation` regardless of NYES) by returning the SAME `Rc` unchanged —
     /// `Rc::clone(fir_ref)`, still pointing at its OLD parent — while the
     /// NEW parent's own `ProtoBrane::foolish_children` `Vec` still gets the
     /// shared pointer appended (an ordinary `Vec::push`, independent of the
-    /// child's own parent field). `clone_subtree`'s share branch previously
+    /// child's own parent field). `revive_constanic`'s share branch previously
     /// returned the shared pointer WITHOUT this append — a real, pre-
     /// existing gap (undetected until `populate_concat_helpers`'s cutover
     /// task exercised it end-to-end: a `ConcatHelper` merging an
     /// already-Constant statement ended up with an EMPTY `foolish_children`
-    /// list despite `clone_subtree` reporting a "successful" share, because
+    /// list despite `revive_constanic` reporting a "successful" share, because
     /// nothing had appended the shared pointer to the new parent).
     pub(crate) fn attach_shared_foolish_child(&mut self, parent: FirPointer, child: FirPointer) {
         self.validate(parent);
@@ -950,11 +950,11 @@ const MAX_DEPTH: usize = 100;
 ///
 /// `has_ancestral_sfm` was deliberately omitted through Phase 1-4 (no
 /// arena-migrated kind read it yet — SFF's own SFM threading was exercised
-/// only through `clone_subtree`'s `sfm` parameter, not through this scope)
+/// only through `revive_constanic`'s `sfm` parameter, not through this scope)
 /// and is added here at Phase 5's `IndexFir` cutover, its first real reader
 /// (the real `IndexFir::fir_op_step`'s contexted/anchored branches pass
 /// `scope.has_ancestral_sfm` straight through to `constanic_clone_at`, i.e.
-/// this arena's `clone_stmt_result`/`clone_subtree`).
+/// this arena's `clone_stmt_result`/`revive_constanic`).
 #[derive(Debug, Clone, Copy, Default)]
 struct ArenaScope {
     current_statement: Option<FirPointer>,
@@ -1454,7 +1454,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         op.searchable_name()
                     );
                 };
-                let clone = storage.clone_subtree(boolean, ptr, 0, scope.has_ancestral_sfm, false);
+                let clone =
+                    storage.revive_constanic(boolean, ptr, 0, scope.has_ancestral_sfm, false);
                 let mut cursor = FirCursorMut::new(ptr, storage);
                 cursor.push_ubc_child(clone);
                 cursor.set_nyes(Nyes::Constant);
@@ -1757,9 +1758,9 @@ fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) ->
 /// all under the arena.
 ///
 /// `scope.has_ancestral_sfm` (threaded into `constanic_clone_at` in the
-/// original) has no arena equivalent parameter here: `clone_subtree` isn't
+/// original) has no arena equivalent parameter here: `revive_constanic` isn't
 /// invoked at all in this translation, because `create_child` already
-/// produces an already-parented node — there is nothing to `clone_subtree`.
+/// produces an already-parented node — there is nothing to `revive_constanic`.
 /// This is the arena-era simplification the FOOP's Motivation section
 /// describes directly, not an omission.
 fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
@@ -2268,7 +2269,7 @@ impl<'s> FirCursorMut<'s> {
     /// `referent` is the ORIGINAL found statement (not the cloned result) —
     /// a genuinely shared `FirPointer`, exactly as `FoolRefFir::referent`
     /// today shares the original `Rc`, not a clone of it (confirmed by
-    /// `clone_subtree`'s own `FoolRef`-always-shares rule, which this
+    /// `revive_constanic`'s own `FoolRef`-always-shares rule, which this
     /// invariant depends on staying true).
     pub fn push_search_result_pair(&mut self, result: FirPointer, referent: FirPointer) {
         let fool_ref = self.create_child(FirSpec::FoolRef { referent });
@@ -2357,11 +2358,27 @@ macro_rules! temporary_release {
 }
 
 impl FVMStorage {
-    /// Direct arena-threaded translation of `ProtoBrane::constanic_clone_at`
-    /// (re-read in full from `fir_kinds.rs` immediately before writing this —
-    /// not from any earlier reconstructed notes). Recursive, per-node,
-    /// matching on the source's [`FirSpec`] — NOT a bulk subtree copy.
-    /// Preserves:
+    /// Also known as **"constanic clone"** — the name used in `foolish-ubca`'s
+    /// original `ProtoBrane::constanic_clone_at`, which this is a direct
+    /// arena-threaded translation of (re-read in full from `fir_kinds.rs`
+    /// immediately before writing this — not from any earlier reconstructed
+    /// notes). "Revival" is the right word for what this does: it makes a
+    /// copy of an already-constanic (settled) FIR for use in a new context
+    /// (AB/IB recoordination — a named brane referenced elsewhere and
+    /// detached/recloned into that new site), and the copy is given an
+    /// EARLIER `Nyes` than the original whenever the original's settledness
+    /// was *context-dependent* rather than self-contained: an `Econstanic`/
+    /// `Woconstanic` node (typically a settled search result) is regressed
+    /// back to `Embryonic` in the copy — brought back to an earlier point in
+    /// its own lifecycle — so it re-settles fresh against its new home
+    /// rather than carrying over an answer that was only ever valid in the
+    /// old one (see `Nyes::transform_for_clone`). A context-independent
+    /// constanic value (`Constant`/`Independent`/`Nk`) needs no such
+    /// revival — its answer doesn't depend on where it lives — and is
+    /// simply shared as-is (case 1 below), never rebuilt with a new `Nyes`.
+    ///
+    /// Recursive, per-node, matching on the source's [`FirSpec`] — NOT a
+    /// bulk subtree copy. Preserves:
     ///
     /// 1. **Share-not-clone.** `Constant`/`Independent` non-`Brane` nodes
     ///    return the SAME `FirPointer`, not a new slot. `FoolRef` and
@@ -2378,10 +2395,12 @@ impl FVMStorage {
     ///    settled `ubc_children[0]` first; either kind falls through to its
     ///    first `foolish_children` entry; if both are empty, an `eprintln!`
     ///    ALARM fires (matching the original) and the wrapper clones as-is.
-    /// 3. **Recursive per-node rebuild** for every other kind: children come
-    ///    from cloning each `foolish_children`/`ubc_children` entry in turn
-    ///    (mirroring `clone_children_for_constanic_clone`), so the whole
-    ///    subtree is rebuilt top-down, one recursive call per surviving node.
+    /// 3. **Recursive per-node rebuild** for every other kind (this is where
+    ///    the `Nyes`-regressing revival above actually happens, via
+    ///    `Nyes::transform_for_clone`): children come from cloning each
+    ///    `foolish_children`/`ubc_children` entry in turn (mirroring
+    ///    `clone_children_for_constanic_clone`), so the whole subtree is
+    ///    rebuilt top-down, one recursive call per surviving node.
     ///
     /// `index` becomes a cloned `Statement`'s new `line_number`, exactly as
     /// `constanic_clone_at` does today (used directly as the position, not
@@ -2394,7 +2413,7 @@ impl FVMStorage {
     /// freshly-rebuilt nodes; the original subtree's slots are untouched —
     /// the arena-era restatement of the correctness property `Rc` reference
     /// counting gives "for free" today (see FOOP-16.md §Specification).
-    pub fn clone_subtree(
+    pub fn revive_constanic(
         &mut self,
         root: FirPointer,
         new_parent: FirPointer,
@@ -2417,10 +2436,16 @@ impl FVMStorage {
             if matches!(spec, FirSpec::StayFoolish)
                 && let Some(result) = FirCursor::new(root, self).ubc_children().first().copied()
             {
-                return self.clone_subtree(result, new_parent, index, sfm, skip_foolish_children);
+                return self.revive_constanic(
+                    result,
+                    new_parent,
+                    index,
+                    sfm,
+                    skip_foolish_children,
+                );
             }
             if let Some(inner) = self.foolish_children(root).first().copied() {
-                return self.clone_subtree(inner, new_parent, index, sfm, skip_foolish_children);
+                return self.revive_constanic(inner, new_parent, index, sfm, skip_foolish_children);
             }
             eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
         }
@@ -2438,7 +2463,7 @@ impl FVMStorage {
         // merge-logic task: without this append, a caller like
         // `populate_concat_helpers` that walks `new_parent`'s
         // `foolish_children` afterward would silently see the shared child
-        // missing, even though `clone_subtree` reported success.
+        // missing, even though `revive_constanic` reported success.
         let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
         let is_constanic_non_brane = matches!(nyes, Nyes::Constant | Nyes::Independent)
             && !matches!(spec, FirSpec::Brane { .. });
@@ -2465,7 +2490,7 @@ impl FVMStorage {
         if !skip_foolish_children {
             let children: Vec<FirPointer> = self.foolish_children(root).to_vec();
             for (i, child) in children.into_iter().enumerate() {
-                self.clone_subtree(child, new_ptr, i, sfm, false);
+                self.revive_constanic(child, new_ptr, i, sfm, false);
             }
         }
         let ubc_children: Vec<FirPointer> = {
@@ -2473,7 +2498,7 @@ impl FVMStorage {
             self.slots[index_in_slots].payload.ubc_children().to_vec()
         };
         for ubc in ubc_children {
-            // `clone_subtree`'s own rebuild path always appends the new
+            // `revive_constanic`'s own rebuild path always appends the new
             // pointer to `new_parent`'s `foolish_children` (`create_child`'s
             // ALWAYS-append contract, correct for the topology-cloning case
             // this method exists for) — but a UBC-CHILD clone belongs ONLY
@@ -2484,7 +2509,7 @@ impl FVMStorage {
             // (`attach_shared_foolish_child`) has the identical problem for
             // an already-constanic UBC child. Pop the wrongly-appended
             // entry back off before recording it correctly below.
-            let cloned = self.clone_subtree(ubc, new_ptr, 0, sfm, false);
+            let cloned = self.revive_constanic(ubc, new_ptr, 0, sfm, false);
             let index_in_slots = self.validate(new_ptr);
             let fc = &mut self.slots[index_in_slots].foolish_children;
             if fc.last() == Some(&cloned) {
@@ -3085,7 +3110,7 @@ mod search_fir_dispatch {
         let index = FirCursor::new(stmt, storage)
             .as_stmt_line_number()
             .unwrap_or(0);
-        storage.clone_subtree(body, new_parent, index, sfm, false)
+        storage.revive_constanic(body, new_parent, index, sfm, false)
     }
 
     /// Direct translation of `SearchFir::handle_found` (re-read directly):
@@ -3231,7 +3256,7 @@ mod search_fir_dispatch {
     /// writing this): the null-characterized name constant rule, applied at
     /// concatenation merge time — `StatementFir`'s own `check_null_const_
     /// conflict` never fires for a merge-cloned statement (it was built
-    /// already-constanic via `clone_subtree`, which skips `Prembrionic`/
+    /// already-constanic via `revive_constanic`, which skips `Prembrionic`/
     /// `Embryonic`/`Braning` entirely), so `ConcatenationFir` enforces the
     /// SAME rule itself here, against statements already merged BEFORE
     /// `new_stmt`. `already_merged` is searched in REVERSE (nearest-first)
@@ -3324,7 +3349,7 @@ mod search_fir_dispatch {
                     continue;
                 };
                 let global_idx = cloned_stmts.len();
-                let clone = storage.clone_subtree(stmt, helper, global_idx, false, false);
+                let clone = storage.revive_constanic(stmt, helper, global_idx, false, false);
                 apply_null_const_rule_to_merged_stmt(storage, clone, &cloned_stmts);
                 cloned_stmts.push(clone);
             }
@@ -5774,43 +5799,43 @@ mod tests {
         cursor.check_sff_marked_child(search);
     }
 
-    /// `clone_subtree`'s share-not-clone behavior: a `Creation` always shares
+    /// `revive_constanic`'s share-not-clone behavior: a `Creation` always shares
     /// the SAME `FirPointer`, regardless of NYES — the FoolRef/Creation
     /// unconditional-share rule from `constanic_clone_at`.
     #[test]
-    fn clone_subtree_shares_creation_unconditionally() {
+    fn revive_constanic_shares_creation_unconditionally() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let creation = root.create_child(&mut storage, FirSpec::Creation);
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(creation, other_root, 0, false, false);
+        let cloned = storage.revive_constanic(creation, other_root, 0, false, false);
         assert_eq!(cloned, creation, "Creation must share, never clone");
     }
 
-    /// `clone_subtree`'s share-not-clone behavior for a `Constant`
+    /// `revive_constanic`'s share-not-clone behavior for a `Constant`
     /// non-`Brane` node: returns the SAME pointer, not a new slot.
     #[test]
-    fn clone_subtree_shares_constant_non_brane() {
+    fn revive_constanic_shares_constant_non_brane() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let settled = root.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
         storage.with_mut(settled, |fir| fir.set_nyes(Nyes::Constant));
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(settled, other_root, 0, false, false);
+        let cloned = storage.revive_constanic(settled, other_root, 0, false, false);
         assert_eq!(
             cloned, settled,
             "Constant non-Brane must share, never clone"
         );
     }
 
-    /// `clone_subtree`'s full-rebuild behavior: a pre-constanic node is
+    /// `revive_constanic`'s full-rebuild behavior: a pre-constanic node is
     /// rebuilt as a genuinely new pointer under the new parent, with its
     /// foolish children recursively cloned too, and a `Statement`'s
     /// `line_number` renumbered to the passed `index` — exactly as
     /// `constanic_clone_at`'s `FirKind::Statement` arm does today
     /// (`let line = index;`).
     #[test]
-    fn clone_subtree_rebuilds_pre_constanic_nodes_and_renumbers_statement_lines() {
+    fn revive_constanic_rebuilds_pre_constanic_nodes_and_renumbers_statement_lines() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let stmt = root.create_child(
             &mut storage,
@@ -5821,7 +5846,7 @@ mod tests {
         );
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(stmt, other_root, 3, false, false);
+        let cloned = storage.revive_constanic(stmt, other_root, 3, false, false);
         assert_ne!(
             cloned, stmt,
             "a pre-constanic Statement must be rebuilt, not shared"
@@ -5837,17 +5862,17 @@ mod tests {
         assert_eq!(storage.get_nyes(stmt), Nyes::Prembrionic);
     }
 
-    /// `clone_subtree` recursively clones foolish children, preserving count
+    /// `revive_constanic` recursively clones foolish children, preserving count
     /// and (for pre-constanic children) producing fresh pointers for each.
     #[test]
-    fn clone_subtree_recursively_clones_foolish_children() {
+    fn revive_constanic_recursively_clones_foolish_children() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[
             FirSpec::IndepInt { value: 1 },
             FirSpec::IndepInt { value: 2 },
         ]);
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(root, other_root, 0, false, false);
+        let cloned = storage.revive_constanic(root, other_root, 0, false, false);
         let cloned_children = storage.foolish_children(cloned);
         assert_eq!(cloned_children.len(), 2);
         let original_children = storage.foolish_children(root).to_vec();
@@ -5860,11 +5885,11 @@ mod tests {
     /// used at the top level of a clone when only the ubc/result side is
     /// being recoordinated (per `constanic_clone_at`'s own parameter).
     #[test]
-    fn clone_subtree_skip_foolish_children_omits_them() {
+    fn revive_constanic_skip_foolish_children_omits_them() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[FirSpec::IndepInt { value: 1 }]);
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(root, other_root, 0, false, true);
+        let cloned = storage.revive_constanic(root, other_root, 0, false, true);
         assert!(storage.foolish_children(cloned).is_empty());
     }
 
@@ -6350,12 +6375,12 @@ mod tests {
         );
     }
 
-    /// `clone_subtree`'s SF/SFF unwrap: a `StayFoolish` with a settled
-    /// result unwraps to that result (recursing through `clone_subtree`
+    /// `revive_constanic`'s SF/SFF unwrap: a `StayFoolish` with a settled
+    /// result unwraps to that result (recursing through `revive_constanic`
     /// again on it), never producing a cloned SF wrapper node — mirrors
     /// `constanic_clone_at`'s own first branch exactly.
     #[test]
-    fn clone_subtree_unwraps_stay_foolish_to_its_settled_result() {
+    fn revive_constanic_unwraps_stay_foolish_to_its_settled_result() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let sf = root.create_child(&mut storage, FirSpec::StayFoolish);
         let inner = sf.create_child(&mut storage, FirSpec::IndepInt { value: 7 });
@@ -6367,7 +6392,7 @@ mod tests {
         }
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(sf, other_root, 0, false, false);
+        let cloned = storage.revive_constanic(sf, other_root, 0, false, false);
 
         // `inner` is Constant non-Brane, so it's SHARED, not cloned — the
         // unwrap recurses into it and the share-rule then returns it as-is.
@@ -6382,18 +6407,18 @@ mod tests {
         );
     }
 
-    /// `clone_subtree`'s SF/SFF unwrap falls through to the first foolish
+    /// `revive_constanic`'s SF/SFF unwrap falls through to the first foolish
     /// child when there is no settled result yet (or for `StayFullyFoolish`,
     /// which never tries `ubc_children` first at all).
     #[test]
-    fn clone_subtree_unwraps_stay_fully_foolish_to_first_foolish_child() {
+    fn revive_constanic_unwraps_stay_fully_foolish_to_first_foolish_child() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let sff = root.create_child(&mut storage, FirSpec::StayFullyFoolish);
         let inner = sff.create_child(&mut storage, FirSpec::IndepInt { value: 9 });
         // inner stays Prembrionic — a full-rebuild case, not a share.
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
-        let cloned = storage.clone_subtree(sff, other_root, 0, false, false);
+        let cloned = storage.revive_constanic(sff, other_root, 0, false, false);
 
         assert_ne!(
             cloned, sff,
