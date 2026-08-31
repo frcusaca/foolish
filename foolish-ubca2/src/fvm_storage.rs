@@ -204,11 +204,10 @@ impl ArenaFir {
         self.tasks.push_back(t);
     }
 
-    /// Mirrors `ProtoBrane::set_alarm_reason`.
-    #[expect(
-        dead_code,
-        reason = "no caller yet — wired in by a later Phase 1 per-kind task"
-    )]
+    /// Mirrors `ProtoBrane::set_alarm_reason`. Called by
+    /// `search_fir_dispatch::check_value_pattern_ready` (Phase 2's final
+    /// task) — the `#[expect(dead_code)]` this had at the Phase 1
+    /// foundational task is removed now that it has a real caller.
     pub(crate) fn set_alarm_reason(&mut self, reason: String) {
         self.alarm_reason = Some(reason);
     }
@@ -633,7 +632,7 @@ impl FirPointer {
     /// `todo!()` until the first per-kind migration task gives it something
     /// real to call.
     pub fn step(self, storage: &mut FVMStorage) -> FirPointer {
-        step_inner(self, storage, 0)
+        step_inner(self, storage, ArenaScope::default(), 0)
     }
 
     /// Direct arena-threaded translation of `CreationFir::get_display_name`
@@ -676,6 +675,46 @@ impl FirPointer {
         }
         Some(name)
     }
+
+    /// Direct arena-threaded translation of `FirRefNavExt::find_stmt_index`
+    /// (re-read directly, `fir_kinds.rs`): the index of `stmt` among
+    /// `self`'s statements, by identity. `self` must be brane-like.
+    ///
+    /// Naming note: this is a `sift_*`-shaped operation (an ordinary
+    /// Rust-side walk, no Foolish search semantics) but keeps its original
+    /// name — `find_stmt_index` — for continuity with the method it
+    /// translates; a rename is not part of this task's scope.
+    pub fn find_stmt_index(self, storage: &FVMStorage, stmt: FirPointer) -> Option<usize> {
+        let cursor = FirCursor::new(self, storage);
+        let count = cursor.stmt_count()?;
+        (0..count).find(|&i| cursor.stmt_at(i) == Some(stmt))
+    }
+
+    /// Direct arena-threaded translation of `fir_kinds.rs`'s free function
+    /// `find_enclosing_stmt_and_brane` (re-read in full immediately before
+    /// writing this): climbs the parent chain from `self` until a
+    /// `Statement` kind is found, then returns that statement together with
+    /// its home brane. `None` if the climb reaches the structural root
+    /// without finding a `Statement` (mirroring the original's `while let
+    /// Some(node) = current` loop, which stops at `None`/self-parenting).
+    pub fn find_enclosing_stmt_and_brane(
+        self,
+        storage: &FVMStorage,
+    ) -> Option<(FirPointer, FirPointer)> {
+        let mut current = storage.parent(self);
+        let mut prev = self;
+        loop {
+            if current.is_statement(storage) {
+                let brane = current.home_brane(storage)?;
+                return Some((current, brane));
+            }
+            if current == prev {
+                return None;
+            }
+            prev = current;
+            current = storage.parent(current);
+        }
+    }
 }
 
 /// Guard against runaway recursion on pathologically deep trees. Same value
@@ -716,7 +755,28 @@ const MAX_DEPTH: usize = 100;
 /// Phase 3 for the evaluator loop itself) — this function proves the
 /// pop-vs-recurse shape is faithfully preserved under the arena now, before
 /// any kind depends on it.
-fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, depth: usize) -> FirPointer {
+/// Arena-threaded stand-in for `fir_trait.rs`'s `Scope`, carrying exactly
+/// the two fields `fir_op_step` dispatch needs today
+/// (`current_statement`/`current_brane` — the IB/AB search anchors). Not
+/// named `Scope` to avoid colliding with `crate::fir_trait::Scope`, the
+/// still-live real type every unmigrated kind's `Rc`-based `fir_op_step`
+/// keeps using; `has_ancestral_sfm` (the real `Scope`'s third field) is not
+/// yet threaded — no arena-migrated kind reads it yet (SFF's own SFM
+/// threading is exercised through `clone_subtree`'s `sfm` parameter, not
+/// through this scope), so it is deliberately omitted rather than added
+/// unused.
+#[derive(Debug, Clone, Copy, Default)]
+struct ArenaScope {
+    current_statement: Option<FirPointer>,
+    current_brane: Option<FirPointer>,
+}
+
+fn step_inner(
+    ptr: FirPointer,
+    storage: &mut FVMStorage,
+    scope: ArenaScope,
+    depth: usize,
+) -> FirPointer {
     if depth > MAX_DEPTH {
         return ptr;
     }
@@ -726,12 +786,25 @@ fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, depth: usize) -> FirPoi
             if storage.get_nyes(front_ptr).is_constanic() {
                 storage.with_mut(ptr, |fir| fir.pop_front_task());
             } else {
-                step_inner(front_ptr, storage, depth + 1);
+                // Direct translation of the real step_inner's Scope
+                // mutation, re-confirmed against fir_trait.rs: set
+                // current_statement when `this` (the node ABOUT TO RECURSE
+                // INTO ITS CHILD, i.e. `ptr` here) is a Statement; set
+                // current_brane when `this` is brane-like. Both are set on
+                // `ptr`'s own scope before recursing into `front_ptr`.
+                let mut child_scope = scope;
+                if matches!(storage.get(ptr), FirSpec::Statement { .. }) {
+                    child_scope.current_statement = Some(ptr);
+                }
+                if FirCursor::new(ptr, storage).is_brane_like() {
+                    child_scope.current_brane = Some(ptr);
+                }
+                step_inner(front_ptr, storage, child_scope, depth + 1);
             }
             ptr
         }
         None => {
-            fir_op_step(ptr, storage);
+            fir_op_step(ptr, storage, scope);
             ptr
         }
     }
@@ -748,7 +821,7 @@ fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, depth: usize) -> FirPoi
 /// never silently no-op (`rust_instructions.md`'s "implement fully or don't
 /// add it"), and every kind's real dispatch is closed out by the end of
 /// Phase 1's per-kind sweep (tracked per-kind in this plan's checkboxes).
-fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
+fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
     let spec = storage.get(ptr).clone();
     match spec {
         // Direct translation of `impl Fir for IndepIntFir`'s real
@@ -1091,6 +1164,24 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
             }
             _ => {}
         },
+        // `SearchFir`'s dispatch — RESOLVES the `fir_op_step` `todo!()` for
+        // this kind (Phase 2's final task). Direct translation of `impl Fir
+        // for SearchFir`'s real `fir_op_step`'s own first line: `if
+        // self.is_value_search { return self.value_search_step(scope); }`.
+        FirSpec::Search {
+            is_value_search, ..
+        } => {
+            if is_value_search {
+                search_fir_dispatch::value_search_step(storage, ptr);
+            } else {
+                search_fir_dispatch::name_search_step(
+                    storage,
+                    ptr,
+                    scope.current_statement,
+                    scope.current_brane,
+                );
+            }
+        }
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
 }
@@ -1582,17 +1673,10 @@ impl<'s> FirCursorMut<'s> {
     /// `pub` — is the enforcement mechanism, exactly as it is on
     /// `ProtoBrane::set_nyes` today.
     ///
-    /// No caller through THIS wrapper yet (this task's own tests and
-    /// `clone_subtree` call `ArenaFir::set_nyes` directly via
-    /// `with_mut`/`get_mut`, since neither is "a FIR on itself inside its own
-    /// `fir_op_step`" — construction is the other sanctioned writer, which is
-    /// exactly what those two call sites are). `FirCursorMut::set_nyes`
-    /// becomes reachable once the first per-kind migration task gives a real
-    /// `fir_op_step` a `FirCursorMut` to call it through.
-    #[expect(
-        dead_code,
-        reason = "reachable once a real fir_op_step exists to call it"
-    )]
+    /// Called by `search_fir_dispatch::handle_found` (Phase 2's final
+    /// task), the first real `fir_op_step`-adjacent code to hold a
+    /// `FirCursorMut` and call this — the `#[expect(dead_code)]` this had
+    /// at the foundational task is removed now that it has a real caller.
     pub(crate) fn set_nyes(&mut self, n: Nyes) {
         self.storage.get_mut(self.ptr).set_nyes(n);
     }
@@ -1873,18 +1957,6 @@ impl FVMStorage {
 /// Kind discrimination is done directly on [`FirSpec`] rather than through a
 /// `kind()`-style accessor — `FirSpec` already carries the same information
 /// `FirKind` would, so no duplicate enum is needed under the arena.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
-                  next Phase 2 task) wires search_engine::SearchPredicate::matches, this \
-                  type's own user, into the crate's live evaluation path. Already exercised by \
-                  this file's own #[cfg(test)] tests, hence cfg_attr(not(test), ...) rather \
-                  than a bare #[expect] — a bare one would be reported \"unfulfilled\" in test \
-                  builds, where this IS reachable."
-    )
-)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Equality {
     Equal,
@@ -1892,17 +1964,10 @@ pub(crate) enum Equality {
     Unknowable,
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
-                  next Phase 2 task) wires search_engine::SearchPredicate::matches, this \
-                  function's own caller, into the crate's live evaluation path. See \
-                  Equality's matching cfg_attr note just above for why cfg_attr, not a bare \
-                  #[expect]."
-    )
-)]
+/// Called by `search_engine::SearchPredicate::matches`'s `Value`/`NameValue`
+/// arms, which are in turn called by `search_fir_dispatch` (Phase 2's final
+/// task) — genuinely reachable from production code now, so the
+/// `cfg_attr(not(test), expect(dead_code))` this had is removed.
 pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) -> Equality {
     if storage.get_nyes(a) == Nyes::Nk || storage.get_nyes(b) == Nyes::Nk {
         return Equality::Unknowable;
@@ -1947,30 +2012,11 @@ pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) 
 /// risk in the entire FOOP; every type/function here is a literal,
 /// line-by-line translation of the real module, not a redesign).
 ///
-/// Nothing in this module has a PRODUCTION caller yet — every item here is
-/// exercised only by this file's own `#[cfg(test)]` tests (per this phase's
-/// "Establish relevant tests" checkbox), which is why `cargo clippy --lib`
-/// (no test code compiled in) sees the whole module as dead code, while
-/// `cargo clippy --all-targets`/`cargo test` (test cfg on) sees it as used.
-/// This matches every earlier per-kind task's shape exactly (additive code
-/// with no live caller until the next task wires it in) — the difference
-/// here is scale (12 items sharing one root cause) rather than kind, so one
-/// module-level `#[cfg_attr(not(test), expect(...))]` states the single
-/// shared reason once instead of repeating it at every item.
-/// `cfg_attr(not(test), ...)`, not a bare `#[expect]`: a bare one would be
-/// reported "unfulfilled" in test builds, where this module IS reachable.
-/// `SearchFir`'s own dispatch task — the next, and final, Phase 2 task — is
-/// what wires this module into `fir_op_step`'s live dispatch, at which
-/// point every item here becomes genuinely reachable from production code
-/// too and this `cfg_attr` is removed.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
-                  next Phase 2 task) wires this module into the crate's live evaluation path"
-    )
-)]
+/// `SearchFir`'s own dispatch task (Phase 2's final task, `mod
+/// search_fir_dispatch` below) wires this module into `fir_op_step`'s live
+/// dispatch, so every item here is now genuinely reachable from production
+/// code — the `cfg_attr(not(test), expect(dead_code))` this module had
+/// while unwired is removed.
 pub(crate) mod search_engine {
     use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};
 
@@ -2031,10 +2077,46 @@ pub(crate) mod search_engine {
         /// Atomic name+value: `?name=v` / `~name=v`. Both gates on the same candidate.
         NameValue { name: String, value: FirPointer },
         /// Positional index: `#N`. Reads the candidate's position in the scan.
+        ///
+        /// Not yet constructed by PRODUCTION code: `IndexFir` (`#N`, `^`/`$`
+        /// head/tail) was migrated STRUCTURAL-FIELDS-ONLY in Phase 1 (its
+        /// own `fir_op_step` is still the generic `todo!()` fallback) —
+        /// `SearchFir`'s dispatch task (this task) never builds an `Index`/
+        /// `Head`/`Tail` predicate, only `Name`/`Value`/`NameValue`. This is
+        /// a genuine, pre-existing plan gap worth flagging: no Phase 2+ task
+        /// anywhere in this plan gives `IndexFir` its real search dispatch —
+        /// kept as a variant regardless, per this task's own instruction not
+        /// to change `SearchPredicate`'s variant set. Already exercised by
+        /// this file's own tests (`search_predicate_index_negative_offset_...`,
+        /// `search_predicate_head_and_tail_...`), hence `cfg_attr(not(test),
+        /// ...)` rather than a bare `#[expect]`.
+        #[cfg_attr(
+            not(test),
+            expect(
+                dead_code,
+                reason = "IndexFir's own dispatch is unmigrated — no production caller builds this variant yet"
+            )
+        )]
         Index(i32),
-        /// First position: `^`. Matches when position == 0.
+        /// First position: `^`. Matches when position == 0. Same
+        /// not-yet-constructed-by-production status as `Index` above.
+        #[cfg_attr(
+            not(test),
+            expect(
+                dead_code,
+                reason = "IndexFir's own dispatch is unmigrated — no production caller builds this variant yet"
+            )
+        )]
         Head,
-        /// Last position: `$`. Matches when position == total - 1.
+        /// Last position: `$`. Matches when position == total - 1. Same
+        /// not-yet-constructed-by-production status as `Index` above.
+        #[cfg_attr(
+            not(test),
+            expect(
+                dead_code,
+                reason = "IndexFir's own dispatch is unmigrated — no production caller builds this variant yet"
+            )
+        )]
         Tail,
     }
 
@@ -2261,12 +2343,10 @@ pub(crate) mod search_engine {
         }
 
         /// Direct translation of the real `BraneNavigator::set_range`.
-        #[expect(
-            dead_code,
-            reason = "not yet called anywhere, including this file's own tests — used by \
-                      contexted search's bounded scan, wired in by SearchFir's dispatch task \
-                      (the next Phase 2 task)"
-        )]
+        /// Called by `search_fir_dispatch`'s contexted-search and
+        /// value-search bounded scans (Phase 2's final task) — the
+        /// `#[expect(dead_code)]` this had is removed now that it has real
+        /// callers.
         pub(crate) fn set_range(&mut self, start: usize, end: usize) {
             if start > end || start >= self.children.len() {
                 self.done = true;
@@ -2370,6 +2450,534 @@ pub(crate) mod search_engine {
             }
         }
         ScanOutcome::Miss
+    }
+}
+
+/// `SearchFir`'s own predicate-building and dispatch logic, arena-threaded.
+/// Direct translation of `impl SearchFir`'s and `impl Fir for SearchFir`'s
+/// real methods (`fir_kinds.rs`, re-read in full immediately before writing
+/// every function below — this is where Phase 1's deferred "search-execution
+/// logic" is migrated, wiring `search_engine` into the crate's live
+/// evaluation path for the first time). Kept as free functions taking
+/// `FirPointer` + `&mut FVMStorage` explicitly, matching this module's
+/// established `fir_op_step`/`combine` convention, rather than methods on
+/// `FirPointer` itself — these are `SearchFir`-specific, not generic
+/// arena operations every kind needs.
+mod search_fir_dispatch {
+    use super::search_engine::{
+        BraneNavigator, ScanOutcome, SearchPredicate, contextful_search_scan,
+        contextful_search_scan_no_body_check,
+    };
+    use super::{FVMStorage, FirCursor, FirPointer, FirSpec};
+
+    use foolish_core::fir::Nyes;
+
+    /// Direct translation of `SearchFir::nyes_from_found` (re-read
+    /// directly) — same mapping as the free `nyes_from_found` this module
+    /// already defines for `StayFullyFoolish` (both translate the SAME real
+    /// function; kept as one shared arena function rather than duplicated,
+    /// since the original crate ALSO has both call the same
+    /// `SearchFir::nyes_from_found`).
+    fn nyes_from_found(found: Nyes) -> Nyes {
+        super::nyes_from_found(found)
+    }
+
+    /// Direct translation of `SearchFir::clone_stmt_result` (re-read
+    /// directly): clones the found statement's presented value (preferring
+    /// `settled_result` over the raw written body — the NF-substitution
+    /// path, still deferred per `StatementFir`'s own Phase 1 task, so this
+    /// arena translation reads the raw body directly via
+    /// `foolish_children().first()`, which is exactly what
+    /// `statement_value_for_comparison` falls through to in the common case
+    /// this crate can currently exercise).
+    fn clone_stmt_result(
+        storage: &mut FVMStorage,
+        stmt: FirPointer,
+        new_parent: FirPointer,
+        sfm: bool,
+    ) -> FirPointer {
+        let body = storage
+            .foolish_children(stmt)
+            .first()
+            .copied()
+            .expect("statement must have a body");
+        let index = FirCursor::new(stmt, storage)
+            .as_stmt_line_number()
+            .unwrap_or(0);
+        storage.clone_subtree(body, new_parent, index, sfm, false)
+    }
+
+    /// Direct translation of `SearchFir::handle_found` (re-read directly):
+    /// clones the found statement's value under `self`, pairs it with a
+    /// `FoolRefFir` wrapping the ORIGINAL statement (the two-child
+    /// invariant, already verified in Phase 1's `FoolRefFir` task), and
+    /// moves to `Braning`.
+    fn handle_found(storage: &mut FVMStorage, ptr: FirPointer, stmt: FirPointer, sfm: bool) {
+        let clone = clone_stmt_result(storage, stmt, ptr, sfm);
+        let mut cursor = super::FirCursorMut::new(ptr, storage);
+        cursor.push_search_result_pair(clone, stmt);
+        cursor.set_nyes(Nyes::Braning);
+    }
+
+    /// Direct translation of `SearchFir::settle_from_ubc_result` (re-read
+    /// directly): once a result is pushed, adopt its (remapped) NYES.
+    fn settle_from_ubc_result(storage: &mut FVMStorage, ptr: FirPointer) {
+        let result_nyes = FirCursor::new(ptr, storage)
+            .ubc_children()
+            .first()
+            .map(|&r| storage.get_nyes(r))
+            .unwrap_or(Nyes::Nk);
+        if result_nyes.is_constanic() {
+            storage.with_mut(ptr, |fir| fir.set_nyes(nyes_from_found(result_nyes)));
+        }
+    }
+
+    /// The offset of `self`'s value operand among its foolish children —
+    /// direct translation of `SearchFir::value_child`'s indexing rule
+    /// (`1` if anchored — the anchor occupies `[0]` — else `0`).
+    fn value_child(storage: &FVMStorage, ptr: FirPointer) -> FirPointer {
+        let anchored = matches!(storage.get(ptr), FirSpec::Search { anchored: true, .. });
+        let idx = if anchored { 1 } else { 0 };
+        storage.foolish_children(ptr)[idx]
+    }
+
+    /// Direct translation of `SearchFir::ib_search_with_engine` (re-read
+    /// directly): an immediate-brane name search, scanning backward from
+    /// (but excluding) the current statement's own position. `checked_sub`
+    /// (not `saturating_sub`) preserves the index-0 self-hit guard exactly
+    /// — a statement at position 0 has no preceding range at all.
+    fn ib_search_with_engine(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        current_statement: Option<FirPointer>,
+    ) -> Option<(FirPointer, Nyes)> {
+        let stmt = current_statement?;
+        let brane = stmt.home_brane(storage)?;
+        let idx = brane.find_stmt_index(storage, stmt)?;
+        let search_end = idx.checked_sub(1)?;
+        let mut nav = BraneNavigator::new(storage, brane, false);
+        nav.set_range(0, search_end);
+        let pattern = match storage.get(ptr) {
+            FirSpec::Search { pattern, .. } => pattern.clone(),
+            _ => return None,
+        };
+        let predicate = SearchPredicate::Name { pattern };
+        match contextful_search_scan_no_body_check(storage, &mut nav, &predicate) {
+            ScanOutcome::Found(found) => Some((found, storage.get_nyes(found))),
+            _ => None,
+        }
+    }
+
+    /// Direct translation of `SearchFir::ab_search_with_engine` (re-read
+    /// directly): an ancestral-brane name search, climbing outward one
+    /// brane at a time, scanning each ancestor's statements strictly
+    /// BEFORE the position the climb entered it from.
+    fn ab_search_with_engine(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        current_brane: Option<FirPointer>,
+    ) -> Option<(FirPointer, Nyes)> {
+        let mut current_brane = current_brane?;
+        loop {
+            let stmt = current_brane.get_my_statement(storage);
+            if stmt == current_brane {
+                return None;
+            }
+            let parent_brane = stmt.home_brane(storage)?;
+            if let Some(idx) = parent_brane.find_stmt_index(storage, stmt)
+                && idx > 0
+            {
+                let mut nav = BraneNavigator::new(storage, parent_brane, false);
+                nav.set_range(0, idx - 1);
+                let pattern = match storage.get(ptr) {
+                    FirSpec::Search { pattern, .. } => pattern.clone(),
+                    _ => return None,
+                };
+                let predicate = SearchPredicate::Name { pattern };
+                if let ScanOutcome::Found(found) =
+                    contextful_search_scan_no_body_check(storage, &mut nav, &predicate)
+                {
+                    return Some((found, storage.get_nyes(found)));
+                }
+            }
+            if parent_brane == current_brane {
+                return None;
+            }
+            current_brane = parent_brane;
+        }
+    }
+
+    /// Direct translation of `SearchFir::contexted_search_from_anchor`
+    /// (re-read in full immediately before writing this): reads the
+    /// anchor's `FoolRefFir` bookkeeping entry (`ubc_children[1]`, per the
+    /// two-child invariant), resolves ITS referent's home brane and
+    /// position, then scans a range strictly AFTER (forward) or BEFORE
+    /// (backward) that position within the SAME home brane — never
+    /// crossing out of it (the contexted-search "never leaves the home
+    /// brane" rule, AGENTS.md §Searches).
+    fn contexted_search_from_anchor(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        forward: bool,
+    ) -> Option<(FirPointer, Nyes)> {
+        let anchor = storage.foolish_children(ptr)[0];
+        let fool_ref_fir = FirCursor::new(anchor, storage)
+            .ubc_children()
+            .get(1)
+            .copied()?;
+        let referent = FirCursor::new(fool_ref_fir, storage).as_fool_ref_referent()?;
+        let h_brane = referent.home_brane(storage)?;
+        let p = h_brane.find_stmt_index(storage, referent)?;
+        let brane_len = FirCursor::new(h_brane, storage).stmt_count().unwrap_or(0);
+        if brane_len == 0 {
+            return None;
+        }
+        let (scan_start, scan_end) = if forward {
+            if p + 1 >= brane_len {
+                return None;
+            }
+            (p + 1, brane_len - 1)
+        } else {
+            if p == 0 {
+                return None;
+            }
+            (0, p - 1)
+        };
+        let mut nav = BraneNavigator::new(storage, h_brane, forward);
+        nav.set_range(scan_start, scan_end);
+        let (is_value_search, pattern) = match storage.get(ptr) {
+            FirSpec::Search {
+                is_value_search,
+                pattern,
+                ..
+            } => (*is_value_search, pattern.clone()),
+            _ => return None,
+        };
+        let predicate = if is_value_search {
+            let value_fir = value_child(storage, ptr);
+            SearchPredicate::Value { pattern: value_fir }
+        } else if pattern.is_empty() {
+            return None;
+        } else {
+            SearchPredicate::Name { pattern }
+        };
+        match contextful_search_scan(storage, &mut nav, &predicate) {
+            ScanOutcome::Found(stmt) => {
+                let nyes = storage
+                    .foolish_children(stmt)
+                    .first()
+                    .map(|&b| storage.get_nyes(b))
+                    .unwrap_or(Nyes::Nk);
+                Some((stmt, nyes))
+            }
+            _ => None,
+        }
+    }
+
+    /// Direct translation of `impl Fir for SearchFir`'s real `fir_op_step`'s
+    /// NAME-SEARCH path (the `is_value_search` branch is
+    /// [`value_search_step`] below — dispatched the same way the real
+    /// `fir_op_step`'s very first line does: `if self.is_value_search {
+    /// return self.value_search_step(scope); }`).
+    pub(crate) fn name_search_step(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+        current_statement: Option<FirPointer>,
+        current_brane: Option<FirPointer>,
+    ) {
+        let (anchored, forward, contexted) = match storage.get(ptr) {
+            FirSpec::Search {
+                anchored,
+                forward,
+                contexted,
+                ..
+            } => (*anchored, *forward, *contexted),
+            other => unreachable!("name_search_step called on non-Search spec: {other:?}"),
+        };
+        match storage.get_nyes(ptr) {
+            Nyes::Prembrionic => {
+                if anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    storage.with_mut(ptr, |fir| fir.push_task(anchor));
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Embryonic));
+                }
+            }
+            Nyes::Embryonic => {
+                if anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    storage.with_mut(ptr, |fir| fir.push_task(anchor));
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                } else if !FirCursor::new(ptr, storage).ubc_children().is_empty() {
+                    settle_from_ubc_result(storage, ptr);
+                } else {
+                    match ib_search_with_engine(storage, ptr, current_statement) {
+                        Some((stmt, _nyes)) => {
+                            handle_found(storage, ptr, stmt, false);
+                            storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                        }
+                        None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning)),
+                    }
+                }
+            }
+            Nyes::Braning => {
+                if !FirCursor::new(ptr, storage).ubc_children().is_empty() {
+                    settle_from_ubc_result(storage, ptr);
+                } else if contexted && anchored {
+                    match contexted_search_from_anchor(storage, ptr, forward) {
+                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, false),
+                        // `anchored` is always true in this branch, so the
+                        // real fir_op_step's `if self.anchored { Nk } else
+                        // { Econstanic }` always takes the Nk arm here.
+                        None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
+                    }
+                } else if anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    let resolved = anchor.value(storage);
+                    if storage.get_nyes(resolved) == Nyes::Nk
+                        || !FirCursor::new(resolved, storage).is_brane_like()
+                    {
+                        storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                    } else {
+                        let mut nav = BraneNavigator::new(storage, resolved, forward);
+                        let pattern = match storage.get(ptr) {
+                            FirSpec::Search { pattern, .. } => pattern.clone(),
+                            _ => unreachable!(),
+                        };
+                        let predicate = SearchPredicate::Name { pattern };
+                        match contextful_search_scan_no_body_check(storage, &mut nav, &predicate) {
+                            ScanOutcome::Found(stmt) => {
+                                handle_found(storage, ptr, stmt, false);
+                            }
+                            _ => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
+                        }
+                    }
+                } else {
+                    match ab_search_with_engine(storage, ptr, current_brane) {
+                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, false),
+                        None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic)),
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Direct translation of `SearchFir::build_value_predicate` (re-read
+    /// directly): builds a `Value` predicate if the pattern is empty
+    /// (`?=`/`~=`), else a `NameValue` predicate (`?name=v`/`~name=v`).
+    /// `None` if the value operand is not yet constanic — the caller
+    /// ([`check_value_pattern_ready`]) is responsible for confirming
+    /// readiness first.
+    fn build_value_predicate(storage: &FVMStorage, ptr: FirPointer) -> Option<SearchPredicate> {
+        let value_fir = value_child(storage, ptr);
+        if !storage.get_nyes(value_fir).is_constanic() {
+            return None;
+        }
+        let pattern = match storage.get(ptr) {
+            FirSpec::Search { pattern, .. } => pattern.clone(),
+            _ => return None,
+        };
+        if pattern.is_empty() {
+            Some(SearchPredicate::Value { pattern: value_fir })
+        } else {
+            Some(SearchPredicate::NameValue {
+                name: pattern,
+                value: value_fir,
+            })
+        }
+    }
+
+    /// Direct translation of `SearchFir::check_value_pattern_ready` (re-read
+    /// directly): gates the value-search dispatch on the value operand's
+    /// own NYES, preserving the exact branch-by-branch NYES propagation
+    /// rules (FOOP-23 rendering appendix, quoted in the real source):
+    /// pre-constanic → push as task, not ready; NK → Nk; WOCONSTANIC →
+    /// inherit Woconstanic (waiting on constanics, not a miss); ECONSTANIC →
+    /// inherit Econstanic; else confirm the resolved value is either an
+    /// integer or a creation (the two comparable value kinds), else Nk with
+    /// the exact alarm-reason string.
+    fn check_value_pattern_ready(storage: &mut FVMStorage, ptr: FirPointer) -> bool {
+        let value_fir = value_child(storage, ptr);
+        let nyes = storage.get_nyes(value_fir);
+        if !nyes.is_constanic() {
+            storage.with_mut(ptr, |fir| fir.push_task(value_fir));
+            return false;
+        }
+        match nyes {
+            Nyes::Nk => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                return false;
+            }
+            Nyes::Woconstanic => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+                return false;
+            }
+            Nyes::Econstanic => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic));
+                return false;
+            }
+            _ => {}
+        }
+        let resolved = value_fir.value(storage);
+        let resolved_is_creation = matches!(storage.get(resolved), FirSpec::Creation);
+        if FirCursor::new(value_fir, storage).as_i64().is_none() && !resolved_is_creation {
+            storage.with_mut(ptr, |fir| {
+                fir.set_alarm_reason(
+                    "VALUE-SEARCH-UNSUPPORTED-PATTERN: pattern is neither integer nor creation"
+                        .to_string(),
+                )
+            });
+            storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+            return false;
+        }
+        true
+    }
+
+    /// Direct translation of `SearchFir::value_search_step` (re-read in
+    /// full immediately before writing this) — the value-search dispatch
+    /// (`?=`/`~=`/`?name=v`/`~name=v`), a distinct three-phase shape from
+    /// [`name_search_step`]'s two phases: `Prembrionic` pushes BOTH the
+    /// anchor (if anchored) and the value operand as tasks together (unlike
+    /// name-search, which pushes only the anchor); `Embryonic` (unanchored
+    /// only — anchored searches skip straight to `Braning`) does the
+    /// IB-equivalent backward scan bounded to the enclosing statement's own
+    /// position; `Braning` does the contexted/anchored/unanchored (AB-style)
+    /// dispatch, mirroring `name_search_step`'s `Braning` arm shape closely
+    /// but scanning with the value predicate instead of a name predicate.
+    pub(crate) fn value_search_step(storage: &mut FVMStorage, ptr: FirPointer) {
+        let (anchored, forward, contexted) = match storage.get(ptr) {
+            FirSpec::Search {
+                anchored,
+                forward,
+                contexted,
+                ..
+            } => (*anchored, *forward, *contexted),
+            other => unreachable!("value_search_step called on non-Search spec: {other:?}"),
+        };
+        match storage.get_nyes(ptr) {
+            Nyes::Prembrionic => {
+                if anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    storage.with_mut(ptr, |fir| fir.push_task(anchor));
+                }
+                let value_fir = value_child(storage, ptr);
+                storage.with_mut(ptr, |fir| fir.push_task(value_fir));
+                if anchored {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Embryonic));
+                }
+            }
+            Nyes::Embryonic => {
+                if !FirCursor::new(ptr, storage).ubc_children().is_empty() {
+                    settle_from_ubc_result(storage, ptr);
+                    return;
+                }
+                if !check_value_pattern_ready(storage, ptr) {
+                    return;
+                }
+                let predicate = build_value_predicate(storage, ptr).expect("checked ready");
+                if let Some((stmt_ref, brane_ref)) = ptr.find_enclosing_stmt_and_brane(storage)
+                    && let Some(idx) = brane_ref.find_stmt_index(storage, stmt_ref)
+                    && idx > 0
+                {
+                    let range_end = idx - 1;
+                    let mut nav = BraneNavigator::new(storage, brane_ref, false);
+                    nav.set_range(0, range_end);
+                    match contextful_search_scan(storage, &mut nav, &predicate) {
+                        ScanOutcome::Found(stmt) => {
+                            handle_found(storage, ptr, stmt, false);
+                        }
+                        ScanOutcome::NkStop => {
+                            storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                            return;
+                        }
+                        ScanOutcome::Miss => {
+                            if !anchored {
+                                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic));
+                                return;
+                            }
+                        }
+                    }
+                } else if !anchored {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic));
+                    return;
+                }
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+            }
+            Nyes::Braning => {
+                if !FirCursor::new(ptr, storage).ubc_children().is_empty() {
+                    settle_from_ubc_result(storage, ptr);
+                    return;
+                }
+                if !check_value_pattern_ready(storage, ptr) {
+                    return;
+                }
+                let predicate = build_value_predicate(storage, ptr).expect("checked ready");
+                let scan_outcome = if contexted && anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    let anchor_settled = storage.get_nyes(anchor).is_constanic();
+                    match contexted_search_from_anchor(storage, ptr, forward) {
+                        Some((stmt, _nyes)) => {
+                            handle_found(storage, ptr, stmt, false);
+                            return;
+                        }
+                        None => {
+                            if !anchor_settled {
+                                return;
+                            }
+                            ScanOutcome::Miss
+                        }
+                    }
+                } else if anchored {
+                    let anchor = storage.foolish_children(ptr)[0];
+                    let resolved = anchor.value(storage);
+                    if storage.get_nyes(resolved) == Nyes::Nk {
+                        storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                        return;
+                    }
+                    if !FirCursor::new(resolved, storage).is_brane_like() {
+                        ScanOutcome::Miss
+                    } else {
+                        let mut nav = BraneNavigator::new(storage, resolved, forward);
+                        contextful_search_scan(storage, &mut nav, &predicate)
+                    }
+                } else {
+                    match ptr.find_enclosing_stmt_and_brane(storage) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = brane_ref.find_stmt_index(storage, stmt_ref) {
+                                let len = storage.foolish_children(brane_ref).len();
+                                if idx + 1 < len {
+                                    let mut nav = BraneNavigator::new(storage, brane_ref, true);
+                                    nav.set_range(idx + 1, len - 1);
+                                    contextful_search_scan(storage, &mut nav, &predicate)
+                                } else {
+                                    ScanOutcome::Miss
+                                }
+                            } else {
+                                ScanOutcome::Miss
+                            }
+                        }
+                        None => ScanOutcome::Miss,
+                    }
+                };
+                match scan_outcome {
+                    ScanOutcome::Found(stmt) => {
+                        handle_found(storage, ptr, stmt, false);
+                    }
+                    ScanOutcome::NkStop => {
+                        storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                    }
+                    ScanOutcome::Miss => {
+                        let settle = if anchored { Nyes::Nk } else { Nyes::Econstanic };
+                        storage.with_mut(ptr, |fir| fir.set_nyes(settle));
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -3899,5 +4507,252 @@ mod tests {
             contextful_search_scan_no_body_check(&storage, &mut nav, &pred),
             ScanOutcome::Found(stmt)
         );
+    }
+
+    // ── Phase 2, final task: SearchFir end-to-end dispatch tests ────────
+    //
+    // These exercise the FULL fir_op_step dispatch through FirPointer::step
+    // (not the lower-level search_engine primitives directly), proving
+    // Scope threading (current_statement/current_brane) and the IB/AB/
+    // contexted dispatch paths work together end-to-end — the shape real
+    // Foolish source produces, even though this crate's compiler/evaluator
+    // aren't migrated yet (Phases 3-4), so these trees are hand-built.
+
+    /// An anchored search finding a statement via `contextful_search_scan`
+    /// (the anchored-Braning path in `name_search_step`) — `anchor_brane?x`
+    /// shape: an anchored search whose FIRST child (the anchor) IS the
+    /// brane to scan directly (`.value()` on an already-`Constant` `Brane`
+    /// is a no-op — `Brane` never populates its own `ubc_children`, so
+    /// `settled_result`/`.value()` return the brane itself unchanged).
+    #[test]
+    fn search_fir_anchored_finds_statement_in_resolved_brane() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let search = root.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "x".to_string(),
+                anchored: true,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+        // The anchor: search's own foolish_children[0].
+        let anchor_brane = search.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let _x = make_named_statement(&mut storage, anchor_brane, "x", 0, 42);
+
+        for _ in 0..30 {
+            if storage.get_nyes(search).is_constanic() {
+                break;
+            }
+            search.step(&mut storage);
+        }
+
+        assert_eq!(
+            storage.get_nyes(search),
+            Nyes::Constant,
+            "anchored search must resolve its anchor to a brane, scan it, and find 'x'"
+        );
+        assert_eq!(FirCursor::new(search, &storage).as_i64(), Some(42));
+    }
+
+    /// An anchored search that finds NOTHING settles `Nk` (anchored miss),
+    /// not `Econstanic` — confirming the anchored-vs-unanchored miss
+    /// distinction the OTHER direction from
+    /// `search_fir_unanchored_miss_settles_econstanic` below.
+    #[test]
+    fn search_fir_anchored_miss_settles_nk() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let search = root.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "nonexistent".to_string(),
+                anchored: true,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+        let anchor_brane = search.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let _x = make_named_statement(&mut storage, anchor_brane, "x", 0, 1);
+
+        for _ in 0..30 {
+            if storage.get_nyes(search).is_constanic() {
+                break;
+            }
+            search.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(search), Nyes::Nk);
+    }
+
+    /// IB search: `{x=1; y=?x;}` shape — `y`'s unanchored search finds `x`
+    /// earlier in the SAME brane via `name_search_step`'s Embryonic arm
+    /// (`ib_search_with_engine`), reading `Scope::current_statement`
+    /// (threaded by `step_inner`).
+    #[test]
+    fn search_fir_ib_search_finds_earlier_statement_in_same_brane() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let x = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        let x_body = x.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(x_body, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(x, |fir| fir.set_nyes(Nyes::Constant));
+
+        let y = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "y"),
+                line_number: 1,
+            },
+        );
+        let search = y.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "x".to_string(),
+                anchored: false,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+
+        for _ in 0..30 {
+            if storage.get_nyes(root).is_constanic() {
+                break;
+            }
+            root.step(&mut storage);
+        }
+
+        assert!(
+            storage.get_nyes(search).is_constanic(),
+            "search must settle (got {:?})",
+            storage.get_nyes(search)
+        );
+        assert_eq!(
+            storage.get_nyes(search),
+            Nyes::Constant,
+            "IB search for 'x' from 'y' must find it and settle Constant"
+        );
+        assert_eq!(FirCursor::new(search, &storage).as_i64(), Some(1));
+    }
+
+    /// An unanchored search with NOTHING preceding it in its brane settles
+    /// `Econstanic` (unanchored miss), not `Nk` — the anchored-vs-unanchored
+    /// miss distinction (AGENTS.md §Searches "NK vs ECONSTANIC miss
+    /// outcomes").
+    #[test]
+    fn search_fir_unanchored_miss_settles_econstanic() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let y = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "y"),
+                line_number: 0,
+            },
+        );
+        let search = y.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "nonexistent".to_string(),
+                anchored: false,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+
+        for _ in 0..30 {
+            if storage.get_nyes(root).is_constanic() {
+                break;
+            }
+            root.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(search), Nyes::Econstanic);
+    }
+
+    /// AB search: `{x=1; inner={y=?x;};}` shape — `y`'s unanchored search
+    /// finds `x` in the ANCESTOR brane via `name_search_step`'s Braning arm
+    /// (`ab_search_with_engine`), reading `Scope::current_brane`.
+    #[test]
+    fn search_fir_ab_search_finds_in_ancestor_brane() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let x = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        let x_body = x.create_child(&mut storage, FirSpec::IndepInt { value: 99 });
+        storage.with_mut(x_body, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(x, |fir| fir.set_nyes(Nyes::Constant));
+
+        let inner_stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "inner"),
+                line_number: 1,
+            },
+        );
+        let inner_brane = inner_stmt.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let y = inner_brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "y"),
+                line_number: 0,
+            },
+        );
+        let search = y.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "x".to_string(),
+                anchored: false,
+                forward: false,
+                is_value_search: false,
+                contexted: false,
+            },
+        );
+
+        for _ in 0..50 {
+            if storage.get_nyes(root).is_constanic() {
+                break;
+            }
+            root.step(&mut storage);
+        }
+
+        assert_eq!(
+            storage.get_nyes(search),
+            Nyes::Constant,
+            "AB search for 'x' from inner brane's 'y' must climb out and find it"
+        );
+        assert_eq!(FirCursor::new(search, &storage).as_i64(), Some(99));
     }
 }

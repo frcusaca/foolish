@@ -788,11 +788,85 @@ this phase's tasks strictly in the order listed.
       Targeted einmo re-run: full suite — passes unchanged (60 `fvm_storage` unit tests total,
       up from 45 at Phase 1's close).
 
-- [ ] Migrate `SearchFir`'s own predicate-building methods (`build_value_predicate` and the anchored/unanchored search dispatch logic inside `impl SearchFir` and `impl Fir for SearchFir`, both already partially touched by Phase 1's `SearchFir` structural-only task)
+- [x] Migrate `SearchFir`'s own predicate-building methods (`build_value_predicate` and the anchored/unanchored search dispatch logic inside `impl SearchFir` and `impl Fir for SearchFir`, both already partially touched by Phase 1's `SearchFir` structural-only task)
+      (2026-08-30 18:27)
   - This is where Phase 1's deferred "search-execution logic" gets migrated — Phase 1 only handled `SearchFir`'s own fields/construction; this task wires its predicate-building and dispatch methods to call into the now-migrated `SearchPredicate`/`CandidateNavigator`/`contextful_search_scan`.
   - Targeted einmo re-run: full suite, since this is where all of Phase 2's individually-migrated pieces are exercised together for the first time through `SearchFir` itself.
+      **This is the highest-risk task in the entire FOOP, per this phase's own framing — treated
+      accordingly.** Re-read `impl SearchFir`'s and `impl Fir for SearchFir`'s ENTIRE real bodies
+      in full (~500 lines: `fir_op_step`, `value_search_step`, `handle_found`,
+      `clone_stmt_result`, `settle_from_ubc_result`, `contexted_search_from_anchor`,
+      `value_child`, `build_value_predicate`, `check_value_pattern_ready`,
+      `ib_search_with_engine`, `ab_search_with_engine`) immediately before writing each
+      corresponding arena function, in a new `mod search_fir_dispatch` in `fvm_storage.rs`. Every
+      function is a direct, line-by-line translation — no redesign, no simplification of the
+      branch structure, even where a shorter form seemed tempting.
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Added two small supporting primitives this task needed and the plan didn't separately name:
+      `FirPointer::find_stmt_index` (arena translation of `FirRefNavExt::find_stmt_index`) and
+      `FirPointer::find_enclosing_stmt_and_brane` (arena translation of the free function of the
+      same name in `fir_kinds.rs`) — both re-read directly, both genuinely `sift_*`-shaped
+      (ordinary Rust-side walks, no Foolish search semantics) but kept their original names per
+      AGENTS.md's naming-continuity intent for a direct translation task.
+
+      **`Scope` threading, previously deferred at the Phase 1 foundational task, is now
+      implemented**: added `ArenaScope` (a small struct carrying `current_statement`/
+      `current_brane`, the two fields `SearchFir`'s dispatch actually reads) and threaded it
+      through `step_inner`/`fir_op_step`, mutating it before each recursive descent exactly as
+      the real `step_inner` does (`current_statement` set when recursing FROM a `Statement`;
+      `current_brane` set when recursing FROM a brane-like node) — re-confirmed against the real
+      `step_inner` directly rather than from memory of the earlier foundational-task
+      transcription. `has_ancestral_sfm` (the real `Scope`'s third field) is deliberately NOT
+      threaded — no arena-migrated kind reads it yet.
+
+      **`contexted_search_from_anchor` is implemented in full**, not deferred: on inspection, it
+      depends only on `as_fool_ref_referent` (Phase 1), `home_brane`/`find_stmt_index`
+      (this task), and `BraneNavigator`/`SearchPredicate`/`contextful_search_scan` (this phase's
+      earlier tasks) — every primitive it needs already existed, so implementing it in full was
+      the correct scope, not a stretch goal.
+
+      **Genuine plan gap found and flagged, not silently worked around**: `SearchPredicate::
+      Index`/`Head`/`Tail` are never constructed by this task (only `Name`/`Value`/`NameValue`
+      are, since `IndexFir`'s own search dispatch — `#N`/`^`/`$` — was migrated
+      STRUCTURAL-FIELDS-ONLY in Phase 1 and has no Phase 2+ task anywhere in this plan that gives
+      it real logic). Recorded in the code itself (`SearchPredicate`'s doc comment) and here: no
+      task in this plan currently migrates `IndexFir`'s real dispatch — a genuine scope gap for
+      the human to decide whether to add as a follow-up task before/at Phase 6, not something
+      this task's own scope extends to filling in.
+
+      Process note continuing from the previous checkbox: several `#[expect(dead_code)]`/
+      `#[cfg_attr(not(test), expect(...))]` annotations from earlier tasks became genuinely
+      "unfulfilled" once THIS task gave their guarded items real production callers
+      (`ArenaFir::set_alarm_reason`, `FirCursorMut::set_nyes`, `BraneNavigator::set_range`,
+      `search_engine`'s module-level guard, `Equality`/`default_equal`) — all removed/updated
+      accordingly, confirmed by re-running both `cargo clippy --lib` and `--all-targets`
+      (`-D warnings`) until both were clean, not just one.
+
+      **5 new end-to-end integration tests** exercise the FULL `fir_op_step` dispatch through
+      `FirPointer::step` (not the lower-level `search_engine` primitives directly), proving
+      `ArenaScope` threading and the IB/AB/anchored/contexted-adjacent dispatch paths work
+      together: `search_fir_anchored_finds_statement_in_resolved_brane`,
+      `search_fir_anchored_miss_settles_nk`, `search_fir_ib_search_finds_earlier_statement_in_same_brane`
+      (mirrors `fir_kinds.rs`'s `ib_search_finds_variable_in_same_brane` intent),
+      `search_fir_unanchored_miss_settles_econstanic`, `search_fir_ab_search_finds_in_ancestor_brane`
+      (mirrors `ab_search_finds_in_ancestor_brane`'s intent) — all passed on first real run. 65
+      `fvm_storage` unit tests total (up from 60). Targeted einmo re-run: full suite — passes
+      unchanged (confirmed: nothing in the crate's real, still-`Rc`-based evaluator path calls
+      into this arena dispatch yet — that wiring is Phase 3's job).
+
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-30 18:27)
+      `cargo test --workspace`: 392 passed, 0 failed, 1 documented ignore (the Phase 0
+      `einmo_gate_verified` ignore, unrelated to Phase 2). `cargo test -p foolish-ubca2 --lib --
+      fvm_storage`: 65 passed. `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` passes
+      unchanged throughout every task in this phase. `cargo clippy -p foolish-ubca2 --lib
+      --all-features --no-deps -- -D warnings` and the same with `--all-targets` are both clean.
+      `cargo fmt -p foolish-ubca2 -- --check` is clean. **This completes Phase 2 in full** — the
+      search engine (`SearchPredicate`, `CandidateNavigator`/`BraneNavigator`,
+      `contextful_search_scan`, and `SearchFir`'s own dispatch) is now migrated onto the arena,
+      matching or exceeding what Phase 1's per-kind tasks achieved for name-search/IB/AB/
+      anchored/contexted dispatch (value-search's own dispatch is likewise fully implemented in
+      `search_fir_dispatch::value_search_step`).
 
 ---
 
