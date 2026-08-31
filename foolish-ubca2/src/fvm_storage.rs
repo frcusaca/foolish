@@ -818,7 +818,102 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
         // construction (`push_search_result_pair`, translated below as
         // `push_search_result_pair`) and never needs stepping.
         FirSpec::FoolRef { .. } => {}
+        // Direct translation of `impl Fir for StayFoolishFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this): once its wrapped `expr` is constanic, expose
+        // EXPR'S OWN resolved value (its `ubc_children[0]`, or `expr` itself
+        // if it has none) as this node's own `ubc_children[0]`, adopting
+        // that resolved value's `Nyes` — SF unwraps to a shared VALUE, never
+        // producing its own genuinely-new node.
+        FirSpec::StayFoolish => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if children.is_empty() {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                    for child in children {
+                        storage.with_mut(ptr, |fir| fir.push_task(child));
+                    }
+                }
+            }
+            Nyes::Braning => {
+                if let Some(&expr) = storage.foolish_children(ptr).first() {
+                    let expr_nyes = storage.get_nyes(expr);
+                    if expr_nyes.is_constanic() {
+                        let (result, result_nyes) = match FirCursor::new(expr, storage)
+                            .ubc_children()
+                            .first()
+                            .copied()
+                        {
+                            Some(r) => (r, storage.get_nyes(r)),
+                            None => (expr, expr_nyes),
+                        };
+                        let me = storage.get_mut(ptr);
+                        me.push_ubc_child(result, result_nyes);
+                        me.set_nyes(result_nyes);
+                    }
+                }
+            }
+            _ => {}
+        },
+        // Direct translation of `impl Fir for StayFullyFoolishFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this). Same value-unwrap shape as `StayFoolish` above,
+        // with two differences preserved exactly: (1) SFF always moves to
+        // `Braning` and pushes tasks unconditionally — no empty-children
+        // short-circuit (matches the real code: no `if children.is_empty()`
+        // branch exists for SFF); (2) the settled `Nyes` is remapped through
+        // `SearchFir::nyes_from_found`-equivalent logic (an SFF wrapper
+        // "can't be ECONSTANIC" — an Econstanic result means SFF itself is
+        // WAITING on it, i.e. Woconstanic, while the pushed result keeps its
+        // own Econstanic unchanged).
+        FirSpec::StayFullyFoolish => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                for child in children {
+                    storage.with_mut(ptr, |fir| fir.push_task(child));
+                }
+            }
+            Nyes::Braning => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if decide_nyes_due_to_children(storage, &children).is_some()
+                    && let Some(&expr) = children.first()
+                {
+                    let expr_nyes = storage.get_nyes(expr);
+                    let (result, result_nyes) = match FirCursor::new(expr, storage)
+                        .ubc_children()
+                        .first()
+                        .copied()
+                    {
+                        Some(r) => (r, storage.get_nyes(r)),
+                        None => (expr, expr_nyes),
+                    };
+                    let settled_nyes = nyes_from_found(result_nyes);
+                    let me = storage.get_mut(ptr);
+                    me.push_ubc_child(result, result_nyes);
+                    me.set_nyes(settled_nyes);
+                }
+            }
+            _ => {}
+        },
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
+    }
+}
+
+/// Direct arena-threaded translation of `SearchFir::nyes_from_found`
+/// (re-read from `fir_kinds.rs` immediately before writing this — used by
+/// `StayFullyFoolish`'s settle-remapping and, once migrated, by real search
+/// dispatch). Preserves the exact mapping: Econstanic/Woconstanic →
+/// Woconstanic; Constant/Independent → Constant; Nk → Nk; anything else
+/// (pre-constanic) passes through unchanged.
+fn nyes_from_found(found: Nyes) -> Nyes {
+    match found {
+        Nyes::Econstanic | Nyes::Woconstanic => Nyes::Woconstanic,
+        Nyes::Constant | Nyes::Independent => Nyes::Constant,
+        Nyes::Nk => Nyes::Nk,
+        other => other,
     }
 }
 
@@ -1441,16 +1536,15 @@ impl FVMStorage {
     ///    state — this is what keeps the `FoolRefFir` two-child invariant's
     ///    original-statement reference genuinely shared, and a named
     ///    creation's identity intact.
-    /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — not yet
-    ///    representable: no `FirSpec` variant carries a foolish-children
-    ///    Vec/settled-result placeholder to unwrap through at this
-    ///    foundational stage in a way that would exercise real behavior (SF
-    ///    unwrapping's whole point is reading the WRAPPED kind's real state,
-    ///    which does not exist yet). Deferred explicitly to the
-    ///    `StayFoolishFir`/`StayFullyFoolishFir` per-kind migration tasks,
-    ///    which re-implement this arm against those kinds' real arena-aware
-    ///    `Fir` impls — noted here rather than faked with a placeholder that
-    ///    would look tested without exercising the real unwrap logic.
+    /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — RESOLVED as of
+    ///    the `StayFoolishFir`/`StayFullyFoolishFir` per-kind migration task
+    ///    (the placeholder this doc comment used to describe, deferred from
+    ///    the Phase 1 foundational task, is now closed out): checked FIRST,
+    ///    before the share-not-clone check, exactly matching
+    ///    `constanic_clone_at`'s own real order. `StayFoolish` tries its
+    ///    settled `ubc_children[0]` first; either kind falls through to its
+    ///    first `foolish_children` entry; if both are empty, an `eprintln!`
+    ///    ALARM fires (matching the original) and the wrapper clones as-is.
     /// 3. **Recursive per-node rebuild** for every other kind: children come
     ///    from cloning each `foolish_children`/`ubc_children` entry in turn
     ///    (mirroring `clone_children_for_constanic_clone`), so the whole
@@ -1475,6 +1569,29 @@ impl FVMStorage {
         sfm: bool,
         skip_foolish_children: bool,
     ) -> FirPointer {
+        // 2. StayFoolish/StayFullyFoolish unwrapping — checked FIRST, before
+        // the share-not-clone check below (re-confirmed by direct re-read:
+        // `constanic_clone_at`'s SF/SFF branch is the very first thing the
+        // real function does). Only `StayFoolish` (not `StayFullyFoolish`)
+        // tries its settled `ubc_children[0]` first; either kind falls
+        // through to its first `foolish_children` entry; if BOTH are empty,
+        // the real function logs an ALARM and falls through to clone the
+        // wrapper as-is via the normal share/rebuild logic below — this
+        // arena translation does the same (`eprintln!`, matching the
+        // original's own diagnostic, not a panic).
+        let spec = self.get(root).clone();
+        if matches!(spec, FirSpec::StayFoolish | FirSpec::StayFullyFoolish) {
+            if matches!(spec, FirSpec::StayFoolish)
+                && let Some(result) = FirCursor::new(root, self).ubc_children().first().copied()
+            {
+                return self.clone_subtree(result, new_parent, index, sfm, skip_foolish_children);
+            }
+            if let Some(inner) = self.foolish_children(root).first().copied() {
+                return self.clone_subtree(inner, new_parent, index, sfm, skip_foolish_children);
+            }
+            eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
+        }
+
         let nyes = self.get_nyes(root);
         let spec = self.get(root).clone();
 
@@ -2256,5 +2373,110 @@ mod tests {
                 .map(|c| c.ptr),
             Some(result)
         );
+    }
+
+    /// `StayFoolishFir`'s arena migration: mirrors
+    /// `fir_kinds.rs::tests::stay_foolish_nyes_transitions` exactly — SF
+    /// wrapping a constant int settles Constant, unwrapping to the inner
+    /// value.
+    #[test]
+    fn stay_foolish_settles_to_inner_expr_value() {
+        let mut storage = FVMStorage::new();
+        let sf = storage.make_root(FirSpec::StayFoolish);
+        let expr = sf.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
+        storage.with_mut(expr, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..10 {
+            if storage.get_nyes(sf).is_constanic() {
+                break;
+            }
+            sf.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(sf), Nyes::Constant);
+        assert_eq!(
+            FirCursor::new(sf, &storage).ubc_children().first(),
+            Some(&expr),
+            "SF unwraps to the inner expr itself, since it has no settled result of its own"
+        );
+    }
+
+    /// Mirrors `fir_kinds.rs::tests::stay_fully_foolish_nyes_transitions`
+    /// exactly — SFF wrapping a constant int settles Constant.
+    #[test]
+    fn stay_fully_foolish_settles_to_inner_expr_value() {
+        let mut storage = FVMStorage::new();
+        let sff = storage.make_root(FirSpec::StayFullyFoolish);
+        let expr = sff.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
+        storage.with_mut(expr, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..10 {
+            if storage.get_nyes(sff).is_constanic() {
+                break;
+            }
+            sff.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(sff), Nyes::Constant);
+        assert_eq!(
+            FirCursor::new(sff, &storage).ubc_children().first(),
+            Some(&expr)
+        );
+    }
+
+    /// `clone_subtree`'s SF/SFF unwrap: a `StayFoolish` with a settled
+    /// result unwraps to that result (recursing through `clone_subtree`
+    /// again on it), never producing a cloned SF wrapper node — mirrors
+    /// `constanic_clone_at`'s own first branch exactly.
+    #[test]
+    fn clone_subtree_unwraps_stay_foolish_to_its_settled_result() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let sf = root.create_child(&mut storage, FirSpec::StayFoolish);
+        let inner = sf.create_child(&mut storage, FirSpec::IndepInt { value: 7 });
+        storage.with_mut(inner, |fir| fir.set_nyes(Nyes::Constant));
+        // Simulate SF's own settle: push inner as its ubc_children[0].
+        {
+            let mut cursor = FirCursorMut::new(sf, &mut storage);
+            cursor.push_ubc_child(inner);
+        }
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(sf, other_root, 0, false, false);
+
+        // `inner` is Constant non-Brane, so it's SHARED, not cloned — the
+        // unwrap recurses into it and the share-rule then returns it as-is.
+        assert_eq!(
+            cloned, inner,
+            "SF unwraps through to its settled result, which then shares"
+        );
+        assert!(
+            storage.foolish_children(other_root).is_empty()
+                || storage.foolish_children(other_root) != [sf],
+            "no cloned SF wrapper node should ever be produced"
+        );
+    }
+
+    /// `clone_subtree`'s SF/SFF unwrap falls through to the first foolish
+    /// child when there is no settled result yet (or for `StayFullyFoolish`,
+    /// which never tries `ubc_children` first at all).
+    #[test]
+    fn clone_subtree_unwraps_stay_fully_foolish_to_first_foolish_child() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let sff = root.create_child(&mut storage, FirSpec::StayFullyFoolish);
+        let inner = sff.create_child(&mut storage, FirSpec::IndepInt { value: 9 });
+        // inner stays Prembrionic — a full-rebuild case, not a share.
+        let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
+
+        let cloned = storage.clone_subtree(sff, other_root, 0, false, false);
+
+        assert_ne!(
+            cloned, sff,
+            "no cloned SFF wrapper node should ever be produced"
+        );
+        assert_ne!(
+            cloned, inner,
+            "a pre-constanic inner must be rebuilt, not shared"
+        );
+        assert_eq!(storage.get(cloned), &FirSpec::IndepInt { value: 9 });
     }
 }

@@ -499,11 +499,48 @@ not a claim that the arena path is live in production yet.
       einmo re-run: full suite — passes unchanged. 32 `fvm_storage` unit tests total (up from
       31), all passing; `cargo clippy`/`cargo fmt` clean.
 
-- [ ] Migrate `StayFoolishFir` to `FirPointer`
+- [x] Migrate `StayFoolishFir` to `FirPointer`
+      (2026-08-30 17:38)
   - Targeted einmo re-run: cases exercising `StayFoolish`/SFF (Stay Fully Foolish body) constructs.
+      Added `FirSpec::StayFoolish`'s real `fir_op_step` arm — direct translation of `impl Fir for
+      StayFoolishFir` (re-read immediately before writing): once the wrapped `expr` settles,
+      unwrap to EXPR'S OWN resolved value (`expr`'s `ubc_children[0]`, or `expr` itself if none)
+      as this node's own `ubc_children[0]`, adopting that value's `Nyes`.
 
-- [ ] Migrate `StayFullyFoolishFir` to `FirPointer`
+      **Placeholder closed out, per the coordinator's explicit tracking request**: the
+      `clone_subtree` `StayFoolish`/`StayFullyFoolish`-unwrap `todo!()`, deferred at the
+      `FirCursor`/`clone_subtree` foundational task (Phase 1, second checkbox) because no
+      `FirSpec` variant then carried real unwrap material, is now RESOLVED — implemented exactly
+      matching `constanic_clone_at`'s real order (re-confirmed by direct re-read: the SF/SFF
+      check runs FIRST, before the share-not-clone check): `StayFoolish` tries its settled
+      `ubc_children[0]` first; either kind falls through to its first `foolish_children` entry;
+      if both are empty, an `eprintln!` ALARM fires (matching the original) and the wrapper
+      clones as-is via the normal path. Verified with 2 new `clone_subtree` unit tests
+      (`clone_subtree_unwraps_stay_foolish_to_its_settled_result`,
+      `clone_subtree_unwraps_stay_fully_foolish_to_first_foolish_child`) confirming no cloned
+      SF/SFF wrapper node is ever produced, matching the invariant the original method
+      guarantees. This closes the SECOND of the two placeholders the coordinator asked to be
+      tracked to closure (the first being `fir_op_step`'s dispatch `todo!()`, which is closed
+      per-kind as each kind's own task lands — 11 of 14 kinds' dispatch arms are now real).
+
+      1 new unit test for the kind itself (`stay_foolish_settles_to_inner_expr_value`, mirroring
+      `fir_kinds.rs::tests::stay_foolish_nyes_transitions` exactly). Targeted einmo re-run: full
+      suite — passes unchanged.
+
+- [x] Migrate `StayFullyFoolishFir` to `FirPointer`
+      (2026-08-30 17:38)
   - Targeted einmo re-run: same SFF-related subset as the previous task.
+      Added `FirSpec::StayFullyFoolish`'s real `fir_op_step` arm — direct translation of `impl
+      Fir for StayFullyFoolishFir` (re-read immediately before writing), preserving its two
+      differences from `StayFoolish` exactly: (1) always moves to `Braning` unconditionally, no
+      empty-children short-circuit; (2) the settled `Nyes` is remapped through a new
+      `nyes_from_found` free function — a direct translation of `SearchFir::nyes_from_found`
+      (re-read directly) — since an SFF wrapper "can't be ECONSTANIC" (an Econstanic result
+      means SFF is WAITING on it, i.e. Woconstanic; the pushed result keeps its own Econstanic
+      unchanged). 1 new unit test (`stay_fully_foolish_settles_to_inner_expr_value`, mirroring
+      `stay_fully_foolish_nyes_transitions` exactly). Targeted einmo re-run: full suite — passes
+      unchanged. 36 `fvm_storage` unit tests total (up from 32), all passing; `cargo
+      clippy`/`cargo fmt` clean.
 
 - [ ] Migrate `ConcatenationFir` and `ConcatHelper` together (tightly coupled per the verified kind list — `ConcatHelper` exists specifically to support `ConcatenationFir`)
   - Also update `ConcatProvenance` (an enum, not a `Fir` impl, but referenced by `ConcatenationFir`) if it holds any pointer-typed field.
