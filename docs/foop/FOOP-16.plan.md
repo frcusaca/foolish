@@ -1348,17 +1348,35 @@ skipped during the cutover.
     `has_simple`/fallthrough logic was re-verified line-by-line against the real
     `evaluator.rs::proto_to_core_fir_inner`'s `Search` arm and matches exactly; the divergence is
     upstream of rendering, in the actual settle/recoordination behavior itself, not the
-    serialization). **Not yet root-caused; do not promote anything until these are resolved and
-    every promoted case is individually justified per the Promotion Review Gate.** Resume by:
-    (1) reading `constanic_clone_at`'s (`clone_subtree`'s) real vs arena handling of an
-    operator's OWN children during SF-detach clone — specifically whether the real code's clone
-    of an `Operator` with `ECONSTANIC` search children is supposed to leave those children
-    `ECONSTANIC` post-clone (not re-run them) until a LATER step recoordinates them, and whether
-    the arena's `clone_subtree`+`fir_op_step` combination is instead letting the clone's `Braning`
-    step run immediately and resolve the searches too eagerly; (2) once understood, check whether
-    the SAME root cause explains the other 4 remaining cases (all SF/SFF-adjacent by name) before
-    fixing each independently; (3) proceed to the 13 `impl Fir` deletions only once
-    `einmo_gate_checked` is fully green.
+    serialization).
+
+    **Update (2026-08-31): traced `constanic_clone_at`'s real `Search`/`Operator` clone logic in
+    full (`fir_kinds.rs` lines 160-292, `foolish-core/src/fir.rs`'s `transform_for_clone`).**
+    Confirmed the real code's clone of an ECONSTANIC search child genuinely DOES transition it to
+    `Embryonic` on clone (`transform_for_clone`: "Everything else → EMBRYONIC (clone must
+    re-evaluate in new context)" — the doc comment states this outright), meaning re-resolution in
+    the new context is the INTENDED, correct behavior, not a bug to prevent — this rules out the
+    hypothesis that the clone should leave children inertly `ECONSTANIC`. The arena's own
+    `transform_for_clone` usage was NOT found to diverge from this in the time available. The
+    actual root cause remains unidentified: given re-resolution is legitimate in principle, the
+    real question is likely a much narrower ORDERING/POSITION issue specific to `sf`'s own IB
+    search position relative to `a`'s TWO definitions in the source (`a = 1; ...; sf = <sff>; a =
+    10;` — `sf` sits BETWEEN them), or a difference in exactly WHEN each statement's clone gets
+    stepped relative to its sibling statements during the whole-brane settle loop (task-queue
+    ordering), rather than a `transform_for_clone`/share-vs-rebuild logic bug. **Not yet
+    root-caused — do not promote anything until resolved and every promoted case is individually
+    justified per the Promotion Review Gate.** Resume by: (1) building a minimal, careful
+    step-by-step trace (using `step_until`/manual single-`.step()` calls, NOT `step_to_settled`,
+    so each step's effect on `sf`'s clone and its operand searches can be observed individually)
+    of `misc/sf_of_sff.foo`'s exact settle sequence in the arena, comparing against what a
+    hand-trace of the REAL `Rc`-based evaluator's equivalent sequence would produce (`foolish-ubca`
+    — the frozen oracle — can be run directly, uncommitted/read-only, via `cargo test -p
+    foolish-ubca ... -- --nocapture` on a temporary reproduction test, exactly as done for the
+    arena side, to get a real step-by-step ground truth rather than reasoning about it in the
+    abstract); (2) once the real ordering/position difference is found, check whether the SAME
+    root cause explains the other 4 remaining cases (all SF/SFF-adjacent by name) before fixing
+    each independently; (3) proceed to the 13 `impl Fir` deletions only once `einmo_gate_checked`
+    is fully green.
 
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
