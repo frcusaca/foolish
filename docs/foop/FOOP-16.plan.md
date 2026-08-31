@@ -1318,23 +1318,47 @@ skipped during the cutover.
     via its rebuild path's `create_child`, once correctly via the loop's own explicit
     `push_ubc_child`) — fixed by popping the wrongly-appended entry back off first.
 
-    **`einmo_gate_checked` progress**: 32 divergent cases before these fixes → 7 after (plus the
-    pre-existing, expected `foop/62/infinite_loop.foo` iteration-exceeded alarm, which matches its
-    own `checked/` baseline and is NOT a new failure — confirmed by direct comparison). The
-    remaining 7 (`foop/33/boolean/null_char_constant.foo`, `foop/33/chracterization_sequencing.foo`,
-    `foop/62/hfs_nyes_display_rules.foo`, `foop/62/sf_sff_nested_combined.foo`,
-    `misc/concat_sf_f_more.foo`, `misc/seek_in_nested_result_after_concatenation.foo`,
-    `misc/sf_of_sff.foo`) are still under investigation — SF/SFF and null-characterized-name-
-    constant-adjacent (traced `null_char_constant.foo` partway: the arena's NF-refusal rendering
-    is not firing correctly for a name declared in `system.foo` and redefined inside the composed
-    user `program` brane, a multi-hop IB-then-AB scenario the earlier `StatementFir`-NF-check
-    end-to-end test never actually exercised — its own test only checked a self-contained,
-    non-composed tree). **Not yet root-caused; do not promote anything until these are resolved
-    and every promoted case is individually justified per the Promotion Review Gate.** Resume by
-    continuing this same tracing (start from `null_char_constant.foo`, the most-isolated failing
-    case), fix the root cause(s), re-run the FULL suite after each fix (a single root cause may
-    explain multiple of the 7), then proceed to the 13 `impl Fir` deletions once
-    `einmo_gate_checked` is fully green again.
+    **`einmo_gate_checked` progress**: 32 divergent cases before these fixes → 7 → **5** (commit
+    `37cc1760`, after finding and fixing a real bug: `check_null_const_conflict`/`check_rename_of_
+    named_creation`/`apply_null_const_rule_to_merged_stmt` all correctly SET `nf_reason` on a
+    refused statement, but nothing surfaced that refusal through `FirPointer::settled_result`'s
+    generic `ubc_children().first()` read — the NF write path never pushed anything there. Fixed
+    via a new shared `refuse_statement` helper that also pushes a fresh, already-`Nk` node to
+    `ubc_children`. Also fixed a related, separate gap: `core_fir_conversion`'s `Statement`/`Brane`
+    output arms read the raw written body directly instead of going through `statement_value_for_
+    comparison` — a stale Phase-3 implementation never updated once `StatementFir`'s NF-check task
+    built the real primitives. This closed both `foop/33/boolean/null_char_constant.foo` and
+    `foop/33/chracterization_sequencing.foo`.) Plus the pre-existing, expected `foop/62/
+    infinite_loop.foo` iteration-exceeded alarm, which matches its own `checked/` baseline and is
+    NOT a new failure.
+
+    **Remaining 5, all SF/SFF-related** (`foop/62/hfs_nyes_display_rules.foo`, `foop/62/
+    sf_sff_nested_combined.foo`, `misc/concat_sf_f_more.foo`, `misc/
+    seek_in_nested_result_after_concatenation.foo`, `misc/sf_of_sff.foo`): traced `misc/
+    sf_of_sff.foo` (`{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}`) in detail.
+    Checked baseline expects `sf`'s rendered result to show `Op+(...)` STILL UNRESOLVED
+    (`Woconstanic`, operands `ECONSTANIC` — i.e. `sf`'s SF-detach-and-recoordinate of `sff` does
+    NOT fully resolve `a+b` to a number). The arena instead FULLY RESOLVES it to `3`
+    (`FirCursor` trace confirmed: the cloned `Operator{"+"}` under `sf`'s search result is already
+    `Constant`, with a nested `IndepInt{3}`) — meaning the arena's SF/SFF recoordination is
+    letting the cloned operator's operand searches (`a`, `b`) find real values in `sf`'s new
+    context, where the real evaluator apparently does not (or does so more conservatively/later).
+    This is a genuine, deeper SF/SFF recoordination-timing question — not yet understood well
+    enough to fix confidently (the `core_fir_conversion::Search` output arm's own `has_complex`/
+    `has_simple`/fallthrough logic was re-verified line-by-line against the real
+    `evaluator.rs::proto_to_core_fir_inner`'s `Search` arm and matches exactly; the divergence is
+    upstream of rendering, in the actual settle/recoordination behavior itself, not the
+    serialization). **Not yet root-caused; do not promote anything until these are resolved and
+    every promoted case is individually justified per the Promotion Review Gate.** Resume by:
+    (1) reading `constanic_clone_at`'s (`clone_subtree`'s) real vs arena handling of an
+    operator's OWN children during SF-detach clone — specifically whether the real code's clone
+    of an `Operator` with `ECONSTANIC` search children is supposed to leave those children
+    `ECONSTANIC` post-clone (not re-run them) until a LATER step recoordinates them, and whether
+    the arena's `clone_subtree`+`fir_op_step` combination is instead letting the clone's `Braning`
+    step run immediately and resolve the searches too eagerly; (2) once understood, check whether
+    the SAME root cause explains the other 4 remaining cases (all SF/SFF-adjacent by name) before
+    fixing each independently; (3) proceed to the 13 `impl Fir` deletions only once
+    `einmo_gate_checked` is fully green.
 
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
