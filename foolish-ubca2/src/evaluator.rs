@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use foolish_core::fir as core_fir;
 use foolish_core::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
@@ -104,6 +102,20 @@ const MAX_STEPS: usize = 10_000;
 /// (`compiler::ANON_STMT_NAME`), which the sequencer must render WITHOUT a `name=` prefix.
 /// Map `???` (and any empty name) to `None` so no prefix is emitted; a real LHS identifier
 /// passes through as `Some(name)`.
+///
+/// No production caller as of Phase 5's cutover: `UbcaEvaluator::evaluate`'s body now uses
+/// `crate::fvm_storage`'s arena-side equivalents exclusively. This function (and its sibling
+/// `Rc`-based output-serialization functions below) remain exercised by this file's own
+/// `#[cfg(test)]` tests until the Phase 5 test port/retire pass, hence
+/// `cfg_attr(not(test), expect(dead_code))` rather than a bare `#[expect]`.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "superseded by crate::fvm_storage's arena equivalents at Phase 5's evaluate \
+                  cutover; exercised only by this file's own tests until the test port/retire pass"
+    )
+)]
 fn display_stmt_name(name: Option<&str>) -> Option<String> {
     match name {
         Some(n) if n.is_empty() || n == crate::compiler::ANON_STMT_NAME => None,
@@ -115,27 +127,39 @@ fn display_stmt_name(name: Option<&str>) -> Option<String> {
 pub struct UbcaEvaluator;
 
 impl foolish_core::Evaluator for UbcaEvaluator {
+    /// Phase 5 cutover: this body now runs on the arena path
+    /// (`crate::fvm_storage`'s `FVMStorage`/`FirPointer`/`arena_compiler`/
+    /// `core_fir_conversion`), not the `Rc`/`RefCell`-based `Compiler`/
+    /// `Fir` machinery `compiler.rs`/`fir_kinds.rs`/`fir_trait.rs` still
+    /// define. This is the single point where the arena becomes the
+    /// crate's actual live evaluator — everything downstream of this
+    /// function (the einmo suite, via `ubca_snapshot_tester`) now exercises
+    /// the arena end to end. Structurally identical to the real, still-live
+    /// `Rc`-based implementation this replaces (re-read in full immediately
+    /// before writing this): same FOOP-33 §4 system.foo composition, same
+    /// per-composed-root settle-then-extract-`program`-member loop, same
+    /// dual alarm-marking on settle failure.
     fn evaluate(&self, source: &str) -> Result<Vec<CoreFirRef>, String> {
+        let mut storage = crate::fvm_storage::FVMStorage::new();
+
         // FOOP-33 §4: system.foo is implicitly composed as the root ancestor
         // of every program, not opt-in. The user's program becomes an
         // ordinary member of the composite root brane, named `program`; the
         // FVM steps the WHOLE composite to settlement, then extracts the
         // `program` member's result structurally (never via a Foolish
-        // search) — see `system_foo::compose_program_with_system` and
-        // `system_foo::program_result`.
-        let composed_roots = crate::system_foo::compose_program_with_system(source)
+        // search) — see the arena's `compose_program_with_system` and
+        // `program_result`.
+        let composed_roots = crate::fvm_storage::compose_program_with_system(&mut storage, source)
             .map_err(|e| format!("Compilation failed: {}", e))?;
 
-        let scope = crate::fir_trait::Scope::empty();
         let mut results = Vec::new();
 
-        for composed_root in &composed_roots {
-            let failure = step_to_settled(composed_root, &scope).err();
-            let program_fir = crate::system_foo::program_result(composed_root)
-                .unwrap_or_else(|| Rc::clone(composed_root));
+        for composed_root in composed_roots {
+            let failure = crate::fvm_storage::step_to_settled(&mut storage, composed_root).err();
+            let program_fir = crate::fvm_storage::program_result(&storage, composed_root)
+                .unwrap_or(composed_root);
 
-            if let Some(alarm) = failure {
-                let alarm_msg = alarm.to_string();
+            if let Some(alarm_msg) = failure {
                 // Record the failure on BOTH the composed root and the
                 // `program` member.
                 //
@@ -146,14 +170,16 @@ impl foolish_core::Evaluator for UbcaEvaluator {
                 // wrapper that is then discarded, and the output shows a
                 // pre-constanic brane (`{BRANING`) with no explanation of why
                 // evaluation stopped.
-                for target in [composed_root, &program_fir] {
-                    target.borrow().core().set_alarm_reason(alarm_msg.clone());
-                    target.borrow().core().set_nyes(Nyes::Nk);
+                for &target in &[composed_root, program_fir] {
+                    storage.with_mut(target, |fir| {
+                        fir.set_alarm_reason(alarm_msg.clone());
+                        fir.set_nyes(Nyes::Nk);
+                    });
                 }
                 eprintln!("ALARM: {alarm_msg}");
             }
 
-            let core_fir = proto_to_core_fir(&program_fir);
+            let core_fir = crate::fvm_storage::proto_to_core_fir(&storage, program_fir);
             results.push(core_fir::fir_to_ref(core_fir));
         }
 
@@ -161,6 +187,15 @@ impl foolish_core::Evaluator for UbcaEvaluator {
     }
 }
 
+/// No production caller as of Phase 5's cutover — see `display_stmt_name`'s doc comment.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "superseded by crate::fvm_storage's core_fir_conversion::step_to_settled at \
+                  Phase 5's evaluate cutover; exercised only by this file's own tests"
+    )
+)]
 fn step_to_settled(
     fir_ref: &FirRef,
     scope: &crate::fir_trait::Scope,
@@ -184,6 +219,19 @@ fn step_to_settled(
     Ok(())
 }
 
+/// No production caller as of Phase 5's cutover — see `display_stmt_name`'s doc comment.
+/// This function and its mutually-recursive siblings below
+/// (`proto_to_core_fir_sff_body`/`_sff_operand`/`anchor_to_core_fir`/`_inner`) are each
+/// annotated individually since a single module-level guard cannot express "these five
+/// specific functions, not the whole file."
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "superseded by crate::fvm_storage's core_fir_conversion::proto_to_core_fir \
+                  at Phase 5's evaluate cutover; exercised only by this file's own tests"
+    )
+)]
 fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
     proto_to_core_fir_inner(ubca_ref, false, None)
 }
@@ -204,6 +252,10 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
 /// brane/concatenation/concat-helper statement loop) — every other call
 /// site threads its caller's `current_stmt` through unchanged, since no new
 /// statement is being entered.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "see proto_to_core_fir's doc comment")
+)]
 fn proto_to_core_fir_sff_body(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
@@ -246,6 +298,10 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) 
 
 /// Convert an SFF operator operand. Searches get CONSTANT state (no state shown).
 /// See `proto_to_core_fir_sff_body` for `current_stmt`.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "see proto_to_core_fir's doc comment")
+)]
 fn proto_to_core_fir_sff_operand(
     ubca_ref: &FirRef,
     current_stmt: Option<&FirRef>,
@@ -268,6 +324,10 @@ fn proto_to_core_fir_sff_operand(
 }
 
 /// See `proto_to_core_fir_sff_body` for `current_stmt`.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "see proto_to_core_fir's doc comment")
+)]
 fn anchor_to_core_fir(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
@@ -284,6 +344,10 @@ fn anchor_to_core_fir(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) -> core_
 }
 
 /// See `proto_to_core_fir_sff_body` for `current_stmt`.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "see proto_to_core_fir's doc comment")
+)]
 fn proto_to_core_fir_inner(
     ubca_ref: &FirRef,
     preserve_search: bool,

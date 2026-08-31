@@ -533,6 +533,39 @@ impl FVMStorage {
         ptr
     }
 
+    /// Allocates a fresh node with `parent` as its `.parent` field, WITHOUT
+    /// appending it to `parent`'s `foolish_children` list. For nodes that
+    /// are a computed RESULT, not part of the parse-derived topology — the
+    /// arena's structural counterpart to the real `Rc::new(RefCell::new(..))`
+    /// pattern used throughout `fir_kinds.rs`/`system_foo.rs` for exactly
+    /// this case (a fresh `NkFir` built and pushed only to `ubc_children`,
+    /// e.g. `OperatorFir::combine`'s NK-on-child-NK/division-by-zero
+    /// branches, `ConcatenationFir`'s type-error branch, `IndexFir`'s
+    /// named-non-brane-anchor diagnostic): the real `Rc::new` there
+    /// deliberately does NOT touch the parent's `foolish_children` `Vec` at
+    /// all, unlike `Rc::new_cyclic`-based construction (which always wires
+    /// into the parse tree).
+    ///
+    /// **Real, load-bearing bug this fixes** (found via `einmo_gate_checked`
+    /// diverging for the first time once `UbcaEvaluator::evaluate` was
+    /// rewired onto the arena path, Phase 5's cutover): every call site
+    /// that used `ptr.create_child(storage, FirSpec::Nk { .. })` for a
+    /// RESULT node was — via `create_child`/`make_my_child`'s ALWAYS-append
+    /// contract — silently corrupting `foolish_children` with the result,
+    /// which then fed straight back into anything iterating `foolish_children`
+    /// afterward (the `Operator`/`Concatenation`/`Index` output-serialization
+    /// arms' own operand-rendering loops, and `combine`'s own `any_nk`
+    /// re-check on a later step). Confirmed directly: `{a = 10 / 0 * 5;}`'s
+    /// outer `*` operator had exactly 2 `foolish_children` (`/`-node, `5`)
+    /// before settling and 3 AFTER (`/`-node, `5`, a phantom fresh
+    /// `Nk{reason:"operator nk"}`) — the phantom is `combine`'s own NK
+    /// result, wrongly self-appended to the very list `combine` itself
+    /// reads on next entry.
+    pub(crate) fn make_orphan_child(&mut self, parent: FirPointer, spec: FirSpec) -> FirPointer {
+        self.validate(parent);
+        self.allocate(spec, parent)
+    }
+
     /// Appends an ALREADY-EXISTING pointer to `parent`'s `foolish_children`
     /// list WITHOUT allocating a new slot and WITHOUT reparenting `child`
     /// (its own `.parent` field, and therefore its home brane and line
@@ -1264,8 +1297,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         .map(usize::to_string)
                         .collect::<Vec<_>>()
                         .join(",");
-                    let nk_ptr = ptr.create_child(
-                        storage,
+                    let nk_ptr = storage.make_orphan_child(
+                        ptr,
                         FirSpec::Nk {
                             reason: format!(
                                 "concatenation constituent indexes where it's not a brane: {list}"
@@ -1361,8 +1394,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     // The operands DID evaluate here, and at least one is
                     // not an integer. Only integers are comparable (FOOP-33
                     // §5, same principle `default_equal` follows).
-                    let nk_ptr = ptr.create_child(
-                        storage,
+                    let nk_ptr = storage.make_orphan_child(
+                        ptr,
                         FirSpec::Nk {
                             reason: "comparison: non-integer operand".to_string(),
                         },
@@ -1577,8 +1610,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                                 .map(|v| v.to_string());
                             if let Some(shown) = named {
                                 let reason = format!("{shown} is not a brane");
-                                let nk_ptr = ptr.create_child(
-                                    storage,
+                                let nk_ptr = storage.make_orphan_child(
+                                    ptr,
                                     FirSpec::Nk {
                                         reason: reason.clone(),
                                     },
@@ -1728,7 +1761,7 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
                 }
             })
             .unwrap_or_else(|| "operator nk".to_string());
-        let nk_ptr = ptr.create_child(storage, FirSpec::Nk { reason });
+        let nk_ptr = storage.make_orphan_child(ptr, FirSpec::Nk { reason });
         let me = storage.get_mut(ptr);
         me.push_ubc_child(nk_ptr, Nyes::Nk);
         me.set_nyes(Nyes::Nk);
@@ -1751,8 +1784,8 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
         "*" if values.len() == 2 => values[0] * values[1],
         "/" if values.len() == 2 => {
             if values[1] == 0 {
-                let nk_ptr = ptr.create_child(
-                    storage,
+                let nk_ptr = storage.make_orphan_child(
+                    ptr,
                     FirSpec::Nk {
                         reason: "division by zero".to_string(),
                     },
@@ -1766,8 +1799,8 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
         }
         "%" if values.len() == 2 => {
             if values[1] == 0 {
-                let nk_ptr = ptr.create_child(
-                    storage,
+                let nk_ptr = storage.make_orphan_child(
+                    ptr,
                     FirSpec::Nk {
                         reason: "division by zero".to_string(),
                     },
@@ -1802,7 +1835,7 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
         }
     };
 
-    let result_ptr = ptr.create_child(storage, FirSpec::IndepInt { value: result });
+    let result_ptr = storage.make_orphan_child(ptr, FirSpec::IndepInt { value: result });
     storage.with_mut(result_ptr, |fir| fir.set_nyes(Nyes::Constant));
     let me = storage.get_mut(ptr);
     me.push_ubc_child(result_ptr, Nyes::Constant);
@@ -1959,23 +1992,55 @@ impl<'s> FirCursor<'s> {
     /// "transparent: inherits all defaults, BraneFir-shaped stepping," per
     /// its own doc comment, and its `stmt_count`/`stmt_at` overrides are
     /// byte-for-byte identical to `BraneFir`'s) report the foolish-children
-    /// count; `Concatenation`'s own real override is more involved (helper
-    /// population) and NOT yet migrated (see that kind's `fir_op_step` arm);
-    /// every other kind's default is `None` (not brane-like).
+    /// count. `Concatenation`'s own real override (re-read directly,
+    /// `ConcatenationFir::stmt_count`) is more involved: `Some(0)` while
+    /// no helper is populated AND there are no elements at all (the
+    /// genuinely-empty concatenation case); otherwise the SUM of every
+    /// `ubc_children` helper's own `stmt_count` (there is at most one
+    /// helper under this FOOP's Phase A scope — `populate_concat_helpers`
+    /// builds a single flat helper — but this sums generally, matching the
+    /// real code's own `.map(..).sum()` shape rather than assuming exactly
+    /// one). Every other kind's default is `None` (not brane-like).
     pub fn stmt_count(&self) -> Option<usize> {
         match self.node() {
             FirSpec::Brane { .. } | FirSpec::ConcatHelper => Some(self.foolish_children().len()),
+            FirSpec::Concatenation { .. } => {
+                if self.ubc_children().is_empty() && self.foolish_children().is_empty() {
+                    return Some(0);
+                }
+                Some(
+                    self.ubc_children()
+                        .iter()
+                        .map(|&h| FirCursor::new(h, self.storage).stmt_count().unwrap_or(0))
+                        .sum(),
+                )
+            }
             _ => None,
         }
     }
 
     /// Mirrors [`crate::fir_trait::Fir::stmt_at`]: `Brane`'s AND
     /// `ConcatHelper`'s own overrides (re-read directly, identical shape)
-    /// index their foolish children directly.
+    /// index their foolish children directly. `Concatenation`'s own real
+    /// override (re-read directly) walks `ubc_children` helpers in order,
+    /// subtracting each helper's own `stmt_count` from `idx` until it lands
+    /// inside one, then delegates to that helper's `stmt_at`.
     pub fn stmt_at(&self, idx: usize) -> Option<FirPointer> {
         match self.node() {
             FirSpec::Brane { .. } | FirSpec::ConcatHelper => {
                 self.foolish_children().get(idx).copied()
+            }
+            FirSpec::Concatenation { .. } => {
+                let mut remaining = idx;
+                for &helper in self.ubc_children() {
+                    let helper_cursor = FirCursor::new(helper, self.storage);
+                    let count = helper_cursor.stmt_count().unwrap_or(0);
+                    if remaining < count {
+                        return helper_cursor.stmt_at(remaining);
+                    }
+                    remaining -= count;
+                }
+                None
             }
             _ => None,
         }
@@ -2387,7 +2452,23 @@ impl FVMStorage {
             self.slots[index_in_slots].payload.ubc_children().to_vec()
         };
         for ubc in ubc_children {
+            // `clone_subtree`'s own rebuild path always appends the new
+            // pointer to `new_parent`'s `foolish_children` (`create_child`'s
+            // ALWAYS-append contract, correct for the topology-cloning case
+            // this method exists for) — but a UBC-CHILD clone belongs ONLY
+            // in `ubc_children`, never `foolish_children` (same bug class
+            // `make_orphan_child` fixes elsewhere; found here while auditing
+            // every `create_child`/`push_ubc_child` pairing after the
+            // `combine`/`populate_concat_helpers` fixes). The share path
+            // (`attach_shared_foolish_child`) has the identical problem for
+            // an already-constanic UBC child. Pop the wrongly-appended
+            // entry back off before recording it correctly below.
             let cloned = self.clone_subtree(ubc, new_ptr, 0, sfm, false);
+            let index_in_slots = self.validate(new_ptr);
+            let fc = &mut self.slots[index_in_slots].foolish_children;
+            if fc.last() == Some(&cloned) {
+                fc.pop();
+            }
             let cloned_nyes = self.get_nyes(cloned);
             self.with_mut(new_ptr, |fir| fir.push_ubc_child(cloned, cloned_nyes));
         }
@@ -2951,7 +3032,7 @@ mod search_fir_dispatch {
     ) -> FirPointer {
         if let Some(reason) = storage.nf_reason(stmt) {
             let reason = reason.to_owned();
-            let nk = new_parent.create_child(storage, FirSpec::Nk { reason });
+            let nk = storage.make_orphan_child(new_parent, FirSpec::Nk { reason });
             storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
             return nk;
         }
@@ -3163,8 +3244,13 @@ mod search_fir_dispatch {
         // Build the (empty) helper first so its pointer becomes the parent
         // of every cloned line — cross-element search resolution walks to
         // it, matching the real code's "build the helper first so its Weak
-        // becomes the parent" ordering exactly.
-        let helper = ptr.create_child(storage, FirSpec::ConcatHelper);
+        // becomes the parent" ordering exactly. `make_orphan_child`, not
+        // `create_child`: the real `ConcatHelper` is pushed ONLY to
+        // `ubc_children` (`self.core.push_ubc_child(helper_fir)`), never to
+        // `foolish_children` — the same bug class as `combine`'s result
+        // nodes (see `make_orphan_child`'s own doc comment), found and
+        // fixed alongside them.
+        let helper = storage.make_orphan_child(ptr, FirSpec::ConcatHelper);
 
         let mut cloned_stmts: Vec<FirPointer> = Vec::with_capacity(total_lines);
         for &elem in &elements {
@@ -3703,21 +3789,11 @@ mod search_fir_dispatch {
 /// convention, not an oversight, and this module's own use of the SAME shape
 /// for the SAME reason is the concrete answer to the embedded question.
 ///
-/// No production caller yet — `UbcaEvaluator::evaluate` (the crate's real
-/// entry point) is not rewired to call into this module; that requires
-/// `system_foo`/`compiler.rs` to be arena-aware first (Phase 4's job).
-/// Exercised only by this file's own `#[cfg(test)]` tests, hence
-/// `cfg_attr(not(test), expect(dead_code))` rather than a bare `#[expect]` —
-/// same pattern as `search_engine`'s own module-level guard at the
-/// equivalent point in Phase 2.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no production caller yet — UbcaEvaluator::evaluate is rewired once Phase 4 \
-                  makes system_foo/compiler.rs arena-aware"
-    )
-)]
+/// `UbcaEvaluator::evaluate` (the crate's real entry point) is rewired to
+/// call into this module as of Phase 5's cutover — `step_to_settled` and
+/// `proto_to_core_fir` are re-exported at this file's top level
+/// (`pub(crate) use core_fir_conversion::{..}` below) for exactly that
+/// caller. No more `#[expect(dead_code)]` needed.
 mod core_fir_conversion {
     use super::{FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH};
 
@@ -3776,6 +3852,18 @@ mod core_fir_conversion {
     /// (`FnMut(&FVMStorage, Option<FirPointer>) -> bool`) — the same
     /// necessary adaptation `SearchPredicate::matches` already made for the
     /// identical reason in Phase 2.
+    /// No production caller: this is developer-facing debugger tooling
+    /// (mirroring the real `evaluator.rs::step_until`'s own scope — also
+    /// `pub` there but never called by `UbcaEvaluator::evaluate`), not part
+    /// of `evaluate`'s own cutover. Exercised by this file's own tests.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "developer-facing debugger tooling, not part of evaluate's own path; \
+                      exercised only by this file's own tests"
+        )
+    )]
     pub(crate) fn step_until(
         storage: &mut FVMStorage,
         ptr: FirPointer,
@@ -3800,6 +3888,8 @@ mod core_fir_conversion {
     }
 
     /// Direct translation of `evaluator.rs`'s real `step_until_line_number`.
+    /// No production caller — see `step_until`'s doc comment.
+    #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
     pub(crate) fn step_until_line_number(
         storage: &mut FVMStorage,
         ptr: FirPointer,
@@ -3813,6 +3903,8 @@ mod core_fir_conversion {
     }
 
     /// Direct translation of `evaluator.rs`'s real `step_until_statement_name`.
+    /// No production caller — see `step_until`'s doc comment.
+    #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
     pub(crate) fn step_until_statement_name(
         storage: &mut FVMStorage,
         ptr: FirPointer,
@@ -4475,14 +4567,11 @@ mod core_fir_conversion {
 /// exercised by its own tests, proven correct in isolation — exactly
 /// mirroring how `core_fir_conversion`/`search_fir_dispatch` were each
 /// additive and un-wired until their own cutover point.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no production caller yet — Compiler::compile itself is rewired only at \
-                  Phase 5's coordinated cutover, once the whole crate consumes FirPointer trees"
-    )
-)]
+/// `UbcaEvaluator::evaluate` (the crate's real entry point) is rewired to
+/// call into this module as of Phase 5's cutover — `compose_program_with_
+/// system` and `program_result` are re-exported at this file's top level
+/// (`pub(crate) use arena_compiler::{..}` below) for exactly that caller.
+/// No more `#[expect(dead_code)]` needed.
 mod arena_compiler {
     use super::{FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec};
 
@@ -5000,6 +5089,24 @@ mod arena_compiler {
     /// combined here into one function since the arena has no analogous
     /// `impl AstnCompilerExt for Astn` — free functions taking `Astn` by
     /// value already match this module's own established shape.
+    ///
+    /// No production caller as of Phase 5's `evaluate` cutover:
+    /// `UbcaEvaluator::evaluate`'s real body goes through
+    /// `compose_program_with_system`/`compose_one`/`compile_root_with_body_
+    /// override` (system.foo composition is not opt-in — see FOOP-33 §4),
+    /// never this plain `Compiler::compile`-equivalent path. Kept and
+    /// exercised by this file's own tests as the direct counterpart to the
+    /// real (still-`pub`, still `Compiler::compile`-based) `compiler.rs`,
+    /// which this crate's ~150+ legacy tests still call directly and will
+    /// until the Phase 5 test port/retire pass.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "no production caller — evaluate goes through compose_program_with_system, \
+                      not this plain compile path; exercised only by this file's own tests"
+        )
+    )]
     pub(crate) fn compile_standalone(
         storage: &mut FVMStorage,
         ast: Astn,
@@ -5012,6 +5119,11 @@ mod arena_compiler {
     }
 
     /// Direct translation of `compiler.rs`'s real `Compiler::compile`.
+    /// No production caller — see `compile_standalone`'s doc comment.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "see compile_standalone's doc comment")
+    )]
     pub(crate) fn compile(
         storage: &mut FVMStorage,
         source: &str,
@@ -5270,6 +5382,14 @@ mod arena_compiler {
         Some(body.value(storage))
     }
 }
+
+/// Minimal re-export surface for `evaluator.rs`'s `UbcaEvaluator::evaluate`
+/// (Phase 5's cutover) — `arena_compiler`/`core_fir_conversion` themselves
+/// stay private modules (Rule Zero: private defensively, public by design);
+/// only the exact four functions `evaluate`'s body needs are re-exported,
+/// not the modules' full surface.
+pub(crate) use arena_compiler::{compose_program_with_system, program_result};
+pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_settled};
 
 #[cfg(test)]
 mod tests {
@@ -8152,5 +8272,41 @@ mod tests {
         // CreationFir's real fir_op_step: "born Independent at
         // construction and never needs stepping").
         assert_eq!(storage.get_nyes(r_value), Nyes::Independent);
+    }
+
+    /// Regression for a real, load-bearing bug found while wiring
+    /// `UbcaEvaluator::evaluate` onto the arena path (Phase 5 cutover): a
+    /// result-only node built via `ptr.create_child(storage, ..)` was
+    /// silently appended to `ptr`'s `foolish_children` (the ALWAYS-append
+    /// contract every `create_child` call has) even though it should live
+    /// ONLY in `ubc_children` — corrupting the very list `combine`'s own
+    /// `any_nk` re-check (and every output-serialization operand loop)
+    /// reads. `{a = 10 / 0 * 5;}`'s outer `*` operator must have EXACTLY
+    /// its 2 parse-derived operands in `foolish_children` even after
+    /// settling to Nk (its own division-by-zero-propagated result must
+    /// live only in `ubc_children`, via `make_orphan_child`).
+    #[test]
+    fn combine_nk_result_does_not_pollute_foolish_children() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compile(&mut storage, "{a = 10 / 0 * 5;}").unwrap();
+        let root = roots[0];
+        let stmt = storage.foolish_children(root)[0];
+        let outer = storage.foolish_children(stmt)[0];
+        assert_eq!(storage.foolish_children(outer).len(), 2);
+
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+
+        assert_eq!(storage.get_nyes(outer), Nyes::Nk);
+        assert_eq!(
+            storage.foolish_children(outer).len(),
+            2,
+            "settling must not append the result NK to foolish_children -- it belongs only \
+             in ubc_children (make_orphan_child, not create_child)"
+        );
+        assert_eq!(
+            FirCursor::new(outer, &storage).ubc_children().len(),
+            1,
+            "the result NK must be recorded in ubc_children"
+        );
     }
 }
