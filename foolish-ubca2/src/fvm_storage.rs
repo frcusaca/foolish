@@ -812,6 +812,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
             }
             _ => {}
         },
+        // Direct translation of `impl Fir for FoolRefFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this): a no-op — `FoolRefFir` is born `Constant` at
+        // construction (`push_search_result_pair`, translated below as
+        // `push_search_result_pair`) and never needs stepping.
+        FirSpec::FoolRef { .. } => {}
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
 }
@@ -1212,6 +1218,16 @@ impl<'s> FirCursor<'s> {
     pub fn as_index_anchored(&self) -> bool {
         matches!(self.node(), FirSpec::Index { anchored: true, .. })
     }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_fool_ref_referent`]: `FoolRef`'s
+    /// own override (re-read directly) returns the original found statement
+    /// this reference wraps.
+    pub fn as_fool_ref_referent(&self) -> Option<FirPointer> {
+        match self.node() {
+            FirSpec::FoolRef { referent } => Some(*referent),
+            _ => None,
+        }
+    }
 }
 
 /// The mutating counterpart of [`FirCursor`]. Rust allows only one `&mut` at
@@ -1312,6 +1328,26 @@ impl<'s> FirCursorMut<'s> {
         self.storage
             .get_mut(self.ptr)
             .push_search_result(result, result_nyes);
+    }
+
+    /// Direct arena-threaded translation of the free function
+    /// `push_search_result_pair` (re-read from `fir_kinds.rs` immediately
+    /// before writing this): pushes a search RESULT and its `FoolRef`
+    /// bookkeeping entry to `ubc_children`, in that order. Preserves the
+    /// FoolRefFir TWO-CHILD INVARIANT exactly — after this call,
+    /// `ubc_children` holds `[result, fool_ref]`; `[0]` is the value every
+    /// existing reader accesses via `.first()`, `[1]` is invisible to them.
+    /// `referent` is the ORIGINAL found statement (not the cloned result) —
+    /// a genuinely shared `FirPointer`, exactly as `FoolRefFir::referent`
+    /// today shares the original `Rc`, not a clone of it (confirmed by
+    /// `clone_subtree`'s own `FoolRef`-always-shares rule, which this
+    /// invariant depends on staying true).
+    pub fn push_search_result_pair(&mut self, result: FirPointer, referent: FirPointer) {
+        let fool_ref = self.create_child(FirSpec::FoolRef { referent });
+        self.storage
+            .with_mut(fool_ref, |fir| fir.set_nyes(Nyes::Constant));
+        self.push_search_result(result);
+        self.push_ubc_child(fool_ref);
     }
 
     /// Mirrors `ProtoBrane::clear_ubc_children`.
@@ -2161,5 +2197,64 @@ mod tests {
         assert!(cursor.as_index_anchored());
         assert!(!cursor.as_search_contexted());
         assert_eq!(storage.get_nyes(index), Nyes::Prembrionic);
+    }
+
+    /// `FoolRefFir`'s arena migration, and — correctness-critical, per this
+    /// plan's own note — the FoolRefFir TWO-CHILD INVARIANT: a resolved
+    /// search result has exactly two `ubc_children`, `[0]` the result value,
+    /// `[1]` a `FoolRefFir` wrapping the ORIGINAL found statement. Confirms
+    /// the two children are distinguishable by position exactly as
+    /// `ubc_children[0]`/`[1]` are today, and that `FoolRefFir` reports its
+    /// referent and is born `Constant`.
+    #[test]
+    fn push_search_result_pair_preserves_the_two_child_invariant() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let result = root.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
+        let referent = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: crate::identifier::Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+
+        let mut cursor = FirCursorMut::new(root, &mut storage);
+        cursor.push_search_result_pair(result, referent);
+
+        let read = FirCursor::new(root, &storage);
+        let children = read.ubc_children();
+        assert_eq!(
+            children.len(),
+            2,
+            "exactly two ubc_children, per the invariant"
+        );
+        assert_eq!(children[0], result, "[0] is the result value");
+        assert_eq!(
+            FirCursor::new(children[1], &storage).node(),
+            &FirSpec::FoolRef { referent }
+        );
+        assert_eq!(
+            storage.get_nyes(children[1]),
+            Nyes::Constant,
+            "FoolRef is born Constant"
+        );
+        assert_eq!(
+            FirCursor::new(children[1], &storage).as_fool_ref_referent(),
+            Some(referent),
+            "the FoolRef's referent is the ORIGINAL found statement, genuinely shared"
+        );
+        // `settled_result` (used by `.value()`) reads [0] only — [1] stays
+        // invisible. Its contract applies the constanic gate itself, so
+        // `root` must be constanic first (a real search FIR would already
+        // be constanic by the time it pushes a result; this test sets it
+        // directly rather than stepping a real search, which is Phase 2's
+        // scope).
+        storage.with_mut(root, |fir| fir.set_nyes(Nyes::Constant));
+        assert_eq!(
+            FirCursor::new(root, &storage)
+                .settled_result()
+                .map(|c| c.ptr),
+            Some(result)
+        );
     }
 }

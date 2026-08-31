@@ -475,9 +475,29 @@ not a claim that the arena path is live in production yet.
       full suite — passes unchanged. 31 `fvm_storage` unit tests total (up from 29), all
       passing; `cargo clippy`/`cargo fmt` clean.
 
-- [ ] Migrate `FoolRefFir` to `FirPointer`
+- [x] Migrate `FoolRefFir` to `FirPointer`
+      (2026-08-30 17:33)
   - Per FOOP-16.md and CLAUDE.md's "FoolRefFir two-child invariant": a resolved search result has exactly two `ubc_children` — `[0]` the constanic clone of the found statement's body, `[1]` a `FoolRefFir` wrapping the original found statement. Confirm this invariant is preserved under the arena model — i.e. that a search result's two `FirPointer` children are still distinguishable by position/index the same way `ubc_children[0]`/`[1]` are today. This is a correctness-critical invariant to check explicitly in this task, not just a mechanical field swap.
   - Targeted einmo re-run: any case whose OUTPUT depends on a search result's found-statement position (contexted `&`-searches chained after a plain search — see FOOP-23 test cases).
+      Added `FirSpec::FoolRef`'s trivial `fir_op_step` arm (a no-op — `FoolRefFir` is born
+      `Constant`, re-confirmed directly), `FirCursor::as_fool_ref_referent`, and
+      `FirCursorMut::push_search_result_pair` — a direct arena-threaded translation of the free
+      function `push_search_result_pair` (re-read from `fir_kinds.rs` immediately before writing
+      this). **Correctness-critical invariant explicitly verified** by a dedicated unit test
+      (`push_search_result_pair_preserves_the_two_child_invariant`): after the call,
+      `ubc_children` holds exactly `[result, fool_ref]`; `[0]` is the searchable value every
+      existing reader accesses via `.first()`/`settled_result`; `[1]`'s `FoolRef` reports its
+      referent as the exact same `FirPointer` passed in (genuinely shared, not cloned — this is
+      what makes the invariant meaningful, and it depends on `clone_subtree`'s own `FoolRef`-
+      always-shares rule, already implemented and tested in the earlier foundational task,
+      staying true). One test-authoring bug caught and fixed during this task (not an
+      implementation bug): the test's first draft checked `settled_result()` on the root brane
+      before setting the root's own Nyes to constanic — `settled_result`'s contract correctly
+      gates on `is_constanic()`, so it answered `None` until the test set the root's Nyes
+      directly (a real search FIR would already be constanic by the time it pushes a result;
+      this test sets it directly since stepping a real search is Phase 2's scope). Targeted
+      einmo re-run: full suite — passes unchanged. 32 `fvm_storage` unit tests total (up from
+      31), all passing; `cargo clippy`/`cargo fmt` clean.
 
 - [ ] Migrate `StayFoolishFir` to `FirPointer`
   - Targeted einmo re-run: cases exercising `StayFoolish`/SFF (Stay Fully Foolish body) constructs.
