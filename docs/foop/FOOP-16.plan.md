@@ -1299,6 +1299,43 @@ skipped during the cutover.
     the doomed old `Rc`-based code — which the ~150+ tests now target for their own sake — will
     reference them), then `ProtoBrane` deletion, then the test port/retire pass.
 
+    **Update (2026-08-31, `2ffb3aee`, `dd5a0994`): both steps above are now DONE.** The arena-side
+    `compose_program_with_system`/`compile_root_with_body_override`/`ComparisonFir`-construction/
+    `program_result` chain is built and proven end-to-end (2 dedicated tests, `2ffb3aee`).
+    `UbcaEvaluator::evaluate`'s body is rewired onto the arena path for real (`dd5a0994`) — this
+    is THE production cutover; the arena path now produces every einmo case's actual OUTPUT, not
+    a targeted subset. This surfaced (and this same commit fixed) three real, load-bearing,
+    pre-existing bugs invisible until a genuine end-to-end run finally exercised them: (1)
+    `FirCursor::stmt_count`/`stmt_at` had no `FirSpec::Concatenation` arm, so every settled
+    concatenation rendered EMPTY; (2) every `ptr.create_child(storage, FirSpec::Nk/IndepInt/
+    ConcatHelper {..})` building a COMPUTED RESULT (not a parse-tree child) was silently also
+    polluting `foolish_children` — `create_child`'s ALWAYS-append contract is correct for parse
+    topology but wrong for a compute-time result, unlike the real `Rc::new(RefCell::new(..))`
+    pattern these sites translate, which never touches the parent's structural list at all; fixed
+    via a new `FVMStorage::make_orphan_child` primitive (allocates with a parent but does NOT
+    append to that parent's `foolish_children`) and switched every result-only site to it; (3)
+    `clone_subtree`'s own `ubc_children`-cloning loop double-registered each clone (once wrongly
+    via its rebuild path's `create_child`, once correctly via the loop's own explicit
+    `push_ubc_child`) — fixed by popping the wrongly-appended entry back off first.
+
+    **`einmo_gate_checked` progress**: 32 divergent cases before these fixes → 7 after (plus the
+    pre-existing, expected `foop/62/infinite_loop.foo` iteration-exceeded alarm, which matches its
+    own `checked/` baseline and is NOT a new failure — confirmed by direct comparison). The
+    remaining 7 (`foop/33/boolean/null_char_constant.foo`, `foop/33/chracterization_sequencing.foo`,
+    `foop/62/hfs_nyes_display_rules.foo`, `foop/62/sf_sff_nested_combined.foo`,
+    `misc/concat_sf_f_more.foo`, `misc/seek_in_nested_result_after_concatenation.foo`,
+    `misc/sf_of_sff.foo`) are still under investigation — SF/SFF and null-characterized-name-
+    constant-adjacent (traced `null_char_constant.foo` partway: the arena's NF-refusal rendering
+    is not firing correctly for a name declared in `system.foo` and redefined inside the composed
+    user `program` brane, a multi-hop IB-then-AB scenario the earlier `StatementFir`-NF-check
+    end-to-end test never actually exercised — its own test only checked a self-contained,
+    non-composed tree). **Not yet root-caused; do not promote anything until these are resolved
+    and every promoted case is individually justified per the Promotion Review Gate.** Resume by
+    continuing this same tracing (start from `null_char_constant.foo`, the most-isolated failing
+    case), fix the root cause(s), re-run the FULL suite after each fix (a single root cause may
+    explain multiple of the 7), then proceed to the 13 `impl Fir` deletions once
+    `einmo_gate_checked` is fully green again.
+
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
     (Phase 4); replace `AstnCompilerExt`'s trait/impl and the free functions `build_fir`,
