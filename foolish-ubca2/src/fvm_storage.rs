@@ -409,7 +409,7 @@ impl FirSpec {
     /// every other kind's constructor directly.
     fn initial_nyes(&self) -> Nyes {
         match self {
-            FirSpec::Creation => Nyes::Independent,
+            FirSpec::Creation | FirSpec::IndepInt{..} => Nyes::Independent,
             _ => Nyes::Prembrionic,
         }
     }
