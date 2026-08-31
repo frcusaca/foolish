@@ -116,8 +116,10 @@ impl ComparisonOp {
 /// operands would have to re-implement that rule and could drift from it.
 /// The brane-and-statement wrapper is only there because an SFF marker is not
 /// valid at top level; `compile_stmt_body_under` discards it and keeps the
-/// `<<…>>` body.
-const OPERAND_SRC: [&str; 2] = ["{o = <<#-2>>;}", "{o = <<#-1>>;}"];
+/// `<<…>>` body. `pub(crate)`, not private: also read directly by
+/// `fvm_storage`'s arena-side `ComparisonFir` construction (Phase 5 cutover),
+/// a sibling module.
+pub(crate) const OPERAND_SRC: [&str; 2] = ["{o = <<#-2>>;}", "{o = <<#-1>>;}"];
 
 /// A comparison operator installed into `system.foo` (FOOP-33 §5.0).
 ///

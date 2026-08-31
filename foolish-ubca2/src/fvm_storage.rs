@@ -4484,7 +4484,7 @@ mod core_fir_conversion {
     )
 )]
 mod arena_compiler {
-    use super::{FVMStorage, FirCursorMut, FirPointer, FirSpec};
+    use super::{FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec};
 
     use foolish_core::fir::Nyes;
     use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
@@ -5020,6 +5020,254 @@ mod arena_compiler {
         asts.into_iter()
             .map(|ast| compile_standalone(storage, ast))
             .collect()
+    }
+
+    /// Direct translation of `compiler.rs`'s real `compile_stmt_body_under`
+    /// (re-read in full immediately before writing this): parse `source`,
+    /// require it to be exactly one top-level brane with exactly one
+    /// (assignment) statement, then build ONLY that statement's body under
+    /// `parent` via `build_expr_with_operator` — never wrapping it in a
+    /// `Statement`/`Brane` of its own. Used by `system_foo`'s comparison-
+    /// operator installer to compile each fixed `OPERAND_SRC` fragment
+    /// (`"{o = <<#-2>>;}"`) directly beneath the `ComparisonFir` node.
+    pub(crate) fn compile_stmt_body_under(
+        storage: &mut FVMStorage,
+        source: &str,
+        parent: FirPointer,
+    ) -> anyhow::Result<FirPointer> {
+        let asts = foolish_parser::parse(source)?;
+        let [ast] = <[Astn; 1]>::try_from(asts).map_err(|v| {
+            anyhow::anyhow!("expected exactly one top-level brane, found {}", v.len())
+        })?;
+        validate_astn(&ast)?;
+        let Astn::Brane { mut statements, .. } = ast else {
+            anyhow::bail!("expected a brane");
+        };
+        if statements.len() != 1 {
+            anyhow::bail!("expected exactly one statement, found {}", statements.len());
+        }
+        let Astn::Assignment { expr, operator, .. } = statements.remove(0) else {
+            anyhow::bail!("expected an assignment");
+        };
+        Ok(build_expr_with_operator(
+            storage, *expr, operator, parent, false,
+        ))
+    }
+
+    /// A body-override hook, mirroring `compiler.rs`'s real `BodyOverride`
+    /// type alias (`&dyn Fn(&Identifier, &Weak<RefCell<dyn Fir>>) ->
+    /// Option<FirRef>`) but arena-shaped: takes `&mut FVMStorage` (needed to
+    /// actually construct a replacement body) and the STATEMENT's own
+    /// `FirPointer` (the arena's parent handle, standing in for the real
+    /// hook's `stmt_weak`) rather than a `Weak` self-reference. Returns
+    /// `Some(body)` to supply that body INSTEAD of the ordinary compiled
+    /// one, or `None` to fall through to normal construction — identical
+    /// contract to the real `BodyOverride`.
+    pub(crate) type ArenaBodyOverride<'a> =
+        &'a dyn Fn(&Identifier, &mut FVMStorage, FirPointer) -> Option<FirPointer>;
+
+    /// Arena counterpart to `compiler.rs`'s real `AstnCompilerExt::
+    /// build_as_statement_overridden`/`build_as_statement_inner`'s override
+    /// path: builds ONE statement, consulting `override_body` first (by the
+    /// statement's OWN identifier) before falling through to the ordinary
+    /// `build_expr_with_operator` path this module's plain `build_as_
+    /// statement` already uses. Kept as its own function (not folded into
+    /// `build_as_statement`) since `override_body` is threaded ONLY at the
+    /// top level of `compile_root_with_body_override`'s own statement loop
+    /// — the real hook's own doc comment states it runs "ONLY over
+    /// system.foo's own top-level statements", so no OTHER call site in
+    /// this module (nested branes, concatenation elements, etc.) needs this
+    /// parameter at all, matching the real code's own scope exactly.
+    fn build_as_statement_overridden(
+        storage: &mut FVMStorage,
+        ast: Astn,
+        parent: FirPointer,
+        line: usize,
+        override_body: ArenaBodyOverride<'_>,
+    ) -> FirPointer {
+        let (characterizations, name, expr, operator) = match ast {
+            Astn::Assignment {
+                characterizations,
+                identifier,
+                operator,
+                expr,
+            } => (characterizations, identifier, *expr, operator),
+            other => (
+                vec![],
+                crate::compiler::ANON_STMT_NAME.to_string(),
+                other,
+                AssignmentOperator::Assign,
+            ),
+        };
+        let identifier = Identifier::from_parts(characterizations, &name);
+        let stmt = parent.create_child(
+            storage,
+            FirSpec::Statement {
+                identifier: identifier.clone(),
+                line_number: line,
+            },
+        );
+        match override_body(&identifier, storage, stmt) {
+            Some(_body) => {
+                // The override already built its replacement body AS a
+                // child of `stmt` (matching this arena's strictly-top-down
+                // construction discipline — see `compile_stmt_body_under`'s
+                // own `parent` parameter). Nothing more to do here.
+            }
+            None => {
+                build_expr_with_operator(storage, expr, operator, stmt, false);
+            }
+        }
+        stmt
+    }
+
+    /// Arena counterpart to `compiler.rs`'s real `compile_root_with_body_
+    /// override` (re-read in full immediately before writing this):
+    /// compile a top-level brane AST as a self-rooting root, letting
+    /// `override_body` replace individual statements' bodies. Identical to
+    /// `compile_standalone` except for the per-statement hook.
+    pub(crate) fn compile_root_with_body_override(
+        storage: &mut FVMStorage,
+        ast: Astn,
+        override_body: ArenaBodyOverride<'_>,
+    ) -> anyhow::Result<FirPointer> {
+        validate_astn(&ast)?;
+        let Astn::Brane {
+            characterizations,
+            statements,
+        } = ast
+        else {
+            anyhow::bail!("only a Brane can be a top-level (root) node");
+        };
+        let root = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::from_brane_parts(characterizations),
+        });
+        for (i, stmt_ast) in statements.into_iter().enumerate() {
+            build_as_statement_overridden(storage, stmt_ast, root, i, override_body);
+        }
+        Ok(root)
+    }
+
+    /// Arena counterpart to `system_foo::ComparisonFir::comparison` (re-read
+    /// in full immediately before writing this): build a `FirSpec::
+    /// Comparison` node with its two SFF-marked operand lookups, compiled
+    /// from `system_foo::OPERAND_SRC`'s fixed Foolish source via
+    /// `compile_stmt_body_under`. `system_foo::OPERAND_SRC`'s own doc
+    /// comment explains why the operands are compiled from source (so
+    /// `build_fir`'s `under_sff` rule applies exactly, matching this
+    /// arena's own `build_expr_with_operator`'s `AssignmentOperator::SFF`
+    /// handling) rather than hand-built — no separate panic-guard
+    /// equivalent to the real `push_foolish_child_sff_marked` is needed:
+    /// the arena's `under_sff` propagation through `build_fir`/
+    /// `build_expr_with_operator` IS the same mechanism, already exercised
+    /// end-to-end by `arena_compiler_sff_marks_descendant_searches_
+    /// econstanic` (Phase 4).
+    pub(crate) fn build_comparison(
+        storage: &mut FVMStorage,
+        op: crate::system_foo::ComparisonOp,
+        parent: FirPointer,
+    ) -> FirPointer {
+        let cmp = parent.create_child(storage, FirSpec::Comparison { op });
+        for src in crate::system_foo::OPERAND_SRC {
+            compile_stmt_body_under(storage, src, cmp)
+                .expect("OPERAND_SRC is a fixed, valid Foolish expression");
+        }
+        cmp
+    }
+
+    /// Arena counterpart to `system_foo::comparison_body` (re-read in full
+    /// immediately before writing this): supply a `ComparisonFir`-shaped
+    /// body for each comparison operator's `system.foo` statement, matched
+    /// by the statement's OWN null-characterized searchable name against
+    /// `ComparisonOp::ALL`. Returns `None` (fall through to ordinary
+    /// construction) for every other statement — this hook runs ONLY over
+    /// `system.foo`'s own top-level statements, never over user source,
+    /// exactly as the real hook's doc comment states.
+    pub(crate) fn comparison_body(
+        identifier: &Identifier,
+        storage: &mut FVMStorage,
+        stmt: FirPointer,
+    ) -> Option<FirPointer> {
+        let name = identifier.searchable_name();
+        let op = crate::system_foo::ComparisonOp::from_searchable_name(name)?;
+        Some(build_comparison(storage, op, stmt))
+    }
+
+    /// Arena counterpart to `system_foo::compose_one` (re-read in full
+    /// immediately before writing this): compose `system.foo` with a single
+    /// user program's AST, appended as a statement named `program` (last),
+    /// and compile the combined AST as one self-rooting brane via
+    /// `compile_root_with_body_override` with `comparison_body` as the hook.
+    pub(crate) fn compose_one(
+        storage: &mut FVMStorage,
+        system_ast: Astn,
+        program_ast: Astn,
+    ) -> anyhow::Result<FirPointer> {
+        let Astn::Brane {
+            characterizations,
+            mut statements,
+        } = system_ast
+        else {
+            anyhow::bail!("system.foo must parse to exactly one top-level brane, found 0");
+        };
+        statements.push(Astn::Assignment {
+            characterizations: vec![],
+            identifier: "program".to_string(),
+            operator: AssignmentOperator::Assign,
+            expr: Box::new(program_ast),
+        });
+        let composed = Astn::Brane {
+            characterizations,
+            statements,
+        };
+        compile_root_with_body_override(storage, composed, &comparison_body)
+    }
+
+    /// Arena counterpart to `system_foo::compose_program_with_system`
+    /// (re-read in full immediately before writing this): parse
+    /// `system.foo` and the user's source, and compose ONE user top-level
+    /// item with `system.foo` per [`compose_one`], per top-level item.
+    pub(crate) fn compose_program_with_system(
+        storage: &mut FVMStorage,
+        user_source: &str,
+    ) -> anyhow::Result<Vec<FirPointer>> {
+        let program_asts = foolish_parser::parse(user_source)?;
+        program_asts
+            .into_iter()
+            .map(|program_ast| {
+                let system_asts = foolish_parser::parse(crate::system_foo::SYSTEM_FOO_SRC)?;
+                let [system_ast] = <[Astn; 1]>::try_from(system_asts).map_err(|v| {
+                    anyhow::anyhow!(
+                        "system.foo must parse to exactly one top-level brane, found {}",
+                        v.len()
+                    )
+                })?;
+                compose_one(storage, system_ast, program_ast)
+            })
+            .collect()
+    }
+
+    /// Arena counterpart to `system_foo::program_result` (re-read in full
+    /// immediately before writing this): extract the `program` member's
+    /// VALUE from a composed root — the LAST statement of the composite
+    /// brane (FOOP-33 §4). Structural access (`stmt_count`/`stmt_at`),
+    /// never a Foolish search. `.value()` on the STATEMENT itself would
+    /// just return the statement (a plain `Statement` has no settled
+    /// result in the common case), so this resolves through
+    /// `foolish_children().first()` (the written body) first, THEN
+    /// `.value()` — exactly mirroring the real function's own two-step
+    /// resolution and its own explanatory comment.
+    pub(crate) fn program_result(
+        storage: &FVMStorage,
+        composed_root: FirPointer,
+    ) -> Option<FirPointer> {
+        let count = FirCursor::new(composed_root, storage).stmt_count()?;
+        if count == 0 {
+            return None;
+        }
+        let last_stmt = FirCursor::new(composed_root, storage).stmt_at(count - 1)?;
+        let body = storage.foolish_children(last_stmt).first().copied()?;
+        Some(body.value(storage))
     }
 }
 
@@ -7838,5 +8086,71 @@ mod tests {
             "merging a conflicting null-characterized redefinition must be refused, \
              exactly as StatementFir's own same-brane check refuses one"
         );
+    }
+
+    // ── compose_program_with_system / evaluate cutover (Phase 5) ────────
+
+    /// End-to-end: composing a trivial user program `{x = 1;}` with the real
+    /// embedded `system.foo` source settles, and `program_result` correctly
+    /// extracts the user's own root brane (not the composite wrapper).
+    #[test]
+    fn compose_program_with_system_settles_a_trivial_program() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compose_program_with_system(&mut storage, "{x = 1;}").unwrap();
+        assert_eq!(roots.len(), 1);
+        let composed_root = roots[0];
+
+        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+
+        let program = arena_compiler::program_result(&storage, composed_root)
+            .expect("program_result must find the user's program member");
+        assert!(
+            FirCursor::new(program, &storage).is_brane_like(),
+            "program_result must resolve to the user's own root brane"
+        );
+        let x_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
+        assert_eq!(
+            FirCursor::new(x_stmt, &storage)
+                .as_stmt_identifier()
+                .map(|id| id.identifier_name()),
+            Some("x")
+        );
+    }
+
+    /// End-to-end: a user program that USES a comparison operator (`'lt`)
+    /// resolves through the full system.foo composition -- proves
+    /// build_comparison/comparison_body/ComparisonFir's real verdict
+    /// resolution all work together through the real embedded system.foo
+    /// source, not just the hand-built trees this file's other Comparison
+    /// tests use.
+    #[test]
+    fn compose_program_with_system_resolves_a_comparison() {
+        let mut storage = FVMStorage::new();
+        let roots =
+            arena_compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}")
+                .unwrap();
+        let composed_root = roots[0];
+
+        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+
+        let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+        let r_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
+        let r_body = storage.foolish_children(r_stmt).first().copied().unwrap();
+        let r_value = r_body.value(&storage);
+        assert!(
+            storage.get_nyes(r_value).is_constanic(),
+            "1 <̲ 2 must resolve through the real system.foo composition, got {:?}",
+            storage.get_nyes(r_value)
+        );
+        assert!(
+            matches!(storage.get(r_value), FirSpec::Creation),
+            "the result of a resolved comparison read via $ must be the 'True creation itself"
+        );
+        // A Creation is born Independent (self-contained, no context
+        // dependency) -- that's the SPECIFIC constanic state expected here,
+        // not merely "some constanic state" (re-confirmed directly:
+        // CreationFir's real fir_op_step: "born Independent at
+        // construction and never needs stepping").
+        assert_eq!(storage.get_nyes(r_value), Nyes::Independent);
     }
 }
