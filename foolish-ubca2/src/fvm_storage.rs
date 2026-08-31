@@ -1863,6 +1863,516 @@ impl FVMStorage {
     }
 }
 
+/// Direct arena-threaded translation of `fir_kinds.rs`'s real
+/// `default_equal` (re-read in full immediately before writing this).
+/// Preserves the exact branch order: NK-on-either-side → Unknowable;
+/// both-integers → compare; else resolve `.value()` and compare kind
+/// (`Creation`-vs-`Creation` → pointer identity; `Brane`-vs-`Brane` →
+/// Unknowable; anything else → NotEqual).
+///
+/// Kind discrimination is done directly on [`FirSpec`] rather than through a
+/// `kind()`-style accessor — `FirSpec` already carries the same information
+/// `FirKind` would, so no duplicate enum is needed under the arena.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
+                  next Phase 2 task) wires search_engine::SearchPredicate::matches, this \
+                  type's own user, into the crate's live evaluation path. Already exercised by \
+                  this file's own #[cfg(test)] tests, hence cfg_attr(not(test), ...) rather \
+                  than a bare #[expect] — a bare one would be reported \"unfulfilled\" in test \
+                  builds, where this IS reachable."
+    )
+)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Equality {
+    Equal,
+    NotEqual,
+    Unknowable,
+}
+
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
+                  next Phase 2 task) wires search_engine::SearchPredicate::matches, this \
+                  function's own caller, into the crate's live evaluation path. See \
+                  Equality's matching cfg_attr note just above for why cfg_attr, not a bare \
+                  #[expect]."
+    )
+)]
+pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) -> Equality {
+    if storage.get_nyes(a) == Nyes::Nk || storage.get_nyes(b) == Nyes::Nk {
+        return Equality::Unknowable;
+    }
+    if let (Some(av), Some(bv)) = (
+        FirCursor::new(a, storage).as_i64(),
+        FirCursor::new(b, storage).as_i64(),
+    ) {
+        return if av == bv {
+            Equality::Equal
+        } else {
+            Equality::NotEqual
+        };
+    }
+    // Resolve through to the settled value (e.g. a search reference to a
+    // creation resolves to the CreationFir it found) before comparing kinds.
+    // `.value()` is a no-op for FIRs that are already their own value.
+    let a_resolved = a.value(storage);
+    let b_resolved = b.value(storage);
+    let a_spec = storage.get(a_resolved);
+    let b_spec = storage.get(b_resolved);
+    if matches!(a_spec, FirSpec::Creation) && matches!(b_spec, FirSpec::Creation) {
+        return if a_resolved == b_resolved {
+            Equality::Equal
+        } else {
+            Equality::NotEqual
+        };
+    }
+    // Two branes: brane-vs-brane equivalence is unspecified (FOOP-23) → genuinely unknowable.
+    if matches!(a_spec, FirSpec::Brane { .. }) && matches!(b_spec, FirSpec::Brane { .. }) {
+        return Equality::Unknowable;
+    }
+    // Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation, etc.)
+    // are provably not equal — a brane is never an integer (different FIR kinds, decidable).
+    // The matcher should Reject (skip) and continue scanning, not NkStop (abort).
+    Equality::NotEqual
+}
+
+/// Direct arena-threaded translation of `fir_kinds.rs`'s `mod
+/// contextful_search` (re-read in full immediately before writing every
+/// item below — this is Phase 2 of FOOP-16, the highest silent-regression
+/// risk in the entire FOOP; every type/function here is a literal,
+/// line-by-line translation of the real module, not a redesign).
+///
+/// Nothing in this module has a PRODUCTION caller yet — every item here is
+/// exercised only by this file's own `#[cfg(test)]` tests (per this phase's
+/// "Establish relevant tests" checkbox), which is why `cargo clippy --lib`
+/// (no test code compiled in) sees the whole module as dead code, while
+/// `cargo clippy --all-targets`/`cargo test` (test cfg on) sees it as used.
+/// This matches every earlier per-kind task's shape exactly (additive code
+/// with no live caller until the next task wires it in) — the difference
+/// here is scale (12 items sharing one root cause) rather than kind, so one
+/// module-level `#[cfg_attr(not(test), expect(...))]` states the single
+/// shared reason once instead of repeating it at every item.
+/// `cfg_attr(not(test), ...)`, not a bare `#[expect]`: a bare one would be
+/// reported "unfulfilled" in test builds, where this module IS reachable.
+/// `SearchFir`'s own dispatch task — the next, and final, Phase 2 task — is
+/// what wires this module into `fir_op_step`'s live dispatch, at which
+/// point every item here becomes genuinely reachable from production code
+/// too and this `cfg_attr` is removed.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no production caller yet — reachable once SearchFir's dispatch task (the \
+                  next Phase 2 task) wires this module into the crate's live evaluation path"
+    )
+)]
+pub(crate) mod search_engine {
+    use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};
+
+    use foolish_core::fir::Nyes;
+
+    /// Where the Navigator starts scanning from. Mirrors the real
+    /// `CursorSource` verbatim (not yet wired to anything — the FOOP's
+    /// `CursorSource::Contextless`/`Contexted` distinction governs how a
+    /// `Navigator` is CONSTRUCTED, which is `SearchFir`'s own dispatch
+    /// logic's job, migrated in the next Phase 2 task).
+    #[expect(
+        dead_code,
+        reason = "not yet constructed anywhere, including this file's own tests — SearchFir's \
+                  dispatch task (the next Phase 2 task) is what decides Contextless vs. \
+                  Contexted and constructs a Navigator accordingly"
+    )]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum CursorSource {
+        Contextless,
+        Contexted,
+    }
+
+    /// The result of applying a predicate to a single candidate statement.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum MatchOutcome {
+        Approve,
+        Reject,
+        NkStop,
+    }
+
+    /// Result of the core scan loop. `Found` carries a genuinely comparable
+    /// `FirPointer` (already `Eq`), so unlike the original's hand-written
+    /// `Rc::ptr_eq`-based `PartialEq`, this can `#[derive]` directly.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) enum ScanOutcome {
+        Found(FirPointer),
+        NkStop,
+        Miss,
+    }
+
+    /// Match predicates for the ContextfulSearch engine.
+    ///
+    /// Each variant reads a different facet of the candidate statement FIR.
+    /// The candidate is the *full* statement — name, body/value, line
+    /// number, parent, NYES — everything reachable from the statement
+    /// `FirPointer` via `&FVMStorage`.
+    ///
+    /// Variant set UNCHANGED from the real `SearchPredicate` (per this
+    /// plan's own instruction: "this task is a signature/access-pattern
+    /// migration only, not a semantic change"): `Name`, `Value`,
+    /// `NameValue`, `Index`, `Head`, `Tail`.
+    #[derive(Debug)]
+    pub(crate) enum SearchPredicate {
+        /// Name-match: `?name` / `~name` / `.name`. Reads the candidate's name.
+        Name { pattern: String },
+        /// Value-match: `?=v` / `~=v`. Reads the candidate's body integer value.
+        Value { pattern: FirPointer },
+        /// Atomic name+value: `?name=v` / `~name=v`. Both gates on the same candidate.
+        NameValue { name: String, value: FirPointer },
+        /// Positional index: `#N`. Reads the candidate's position in the scan.
+        Index(i32),
+        /// First position: `^`. Matches when position == 0.
+        Head,
+        /// Last position: `$`. Matches when position == total - 1.
+        Tail,
+    }
+
+    /// Context passed to the predicate during a scan.
+    #[derive(Debug, Clone)]
+    pub(crate) struct ScanCtx {
+        /// 0-based position of the current candidate within its home brane.
+        pub(crate) position: usize,
+        /// Total number of candidates in the home brane.
+        pub(crate) total: usize,
+    }
+
+    impl SearchPredicate {
+        /// Apply this predicate to a candidate statement. Direct
+        /// arena-threaded translation of the real `SearchPredicate::matches`
+        /// — same match arms, same order, `&FVMStorage` reads standing in
+        /// for `.borrow()`.
+        pub(crate) fn matches(
+            &self,
+            storage: &FVMStorage,
+            candidate: FirPointer,
+            ctx: &ScanCtx,
+        ) -> MatchOutcome {
+            match self {
+                Self::Name { pattern } => {
+                    // Matches against searchable_name (the full characterized LHS as
+                    // one string) — a plain pattern naturally won't match a
+                    // characterized name, and a '-bearing pattern matches only the
+                    // identically-characterized name. See Identifier::searchable_name.
+                    let name = match FirCursor::new(candidate, storage).as_stmt_identifier() {
+                        Some(id) => id.searchable_name().to_owned(),
+                        None => return MatchOutcome::Reject,
+                    };
+                    if !crate::fir_kinds::SearchFir::matches_pattern(&name, pattern) {
+                        return MatchOutcome::Reject;
+                    }
+                    check_body_nyes(storage, candidate)
+                }
+                Self::Value { pattern } => {
+                    let body = match storage.foolish_children(candidate).first().copied() {
+                        Some(b) => b,
+                        None => return MatchOutcome::Reject,
+                    };
+                    match default_equal(storage, body, *pattern) {
+                        Equality::Equal => MatchOutcome::Approve,
+                        Equality::NotEqual => MatchOutcome::Reject,
+                        Equality::Unknowable => MatchOutcome::NkStop,
+                    }
+                }
+                Self::NameValue { name, value } => {
+                    let stmt_name = match FirCursor::new(candidate, storage).as_stmt_identifier() {
+                        Some(id) => id.searchable_name().to_owned(),
+                        None => return MatchOutcome::Reject,
+                    };
+                    if !crate::fir_kinds::SearchFir::matches_pattern(&stmt_name, name) {
+                        return MatchOutcome::Reject;
+                    }
+                    let body = match storage.foolish_children(candidate).first().copied() {
+                        Some(b) => b,
+                        None => return MatchOutcome::Reject,
+                    };
+                    match default_equal(storage, body, *value) {
+                        Equality::Equal => MatchOutcome::Approve,
+                        Equality::NotEqual => MatchOutcome::Reject,
+                        Equality::Unknowable => MatchOutcome::NkStop,
+                    }
+                }
+                Self::Index(offset) => {
+                    let target = if *offset >= 0 {
+                        *offset as usize
+                    } else if ctx.total == 0 {
+                        return MatchOutcome::Reject;
+                    } else {
+                        (ctx.total as i32 + offset) as usize
+                    };
+                    if ctx.position == target {
+                        check_body_nyes(storage, candidate)
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+                Self::Head => {
+                    if ctx.position == 0 {
+                        check_body_nyes(storage, candidate)
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+                Self::Tail => {
+                    if ctx.total > 0 && ctx.position == ctx.total - 1 {
+                        check_body_nyes(storage, candidate)
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+            }
+        }
+
+        /// Like [`Self::matches`] but skips the body-NYES gate. Direct
+        /// translation of the real `matches_no_body_check`.
+        ///
+        /// For positional/name-only predicates (Index, Head, Tail, Name) the
+        /// candidate's body settling state is irrelevant — the caller decides
+        /// what to do. Value/NameValue predicates delegate to [`Self::matches`]
+        /// because they need the body settled to compare values.
+        pub(crate) fn matches_no_body_check(
+            &self,
+            storage: &FVMStorage,
+            candidate: FirPointer,
+            ctx: &ScanCtx,
+        ) -> MatchOutcome {
+            match self {
+                Self::Name { pattern } => {
+                    let name = match FirCursor::new(candidate, storage).as_stmt_identifier() {
+                        Some(id) => id.searchable_name().to_owned(),
+                        None => return MatchOutcome::Reject,
+                    };
+                    if !crate::fir_kinds::SearchFir::matches_pattern(&name, pattern) {
+                        return MatchOutcome::Reject;
+                    }
+                    MatchOutcome::Approve
+                }
+                Self::Index(offset) => {
+                    let target = if *offset >= 0 {
+                        *offset as usize
+                    } else if ctx.total == 0 {
+                        return MatchOutcome::Reject;
+                    } else {
+                        (ctx.total as i32 + offset) as usize
+                    };
+                    if ctx.position == target {
+                        MatchOutcome::Approve
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+                Self::Head => {
+                    if ctx.position == 0 {
+                        MatchOutcome::Approve
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+                Self::Tail => {
+                    if ctx.total > 0 && ctx.position == ctx.total - 1 {
+                        MatchOutcome::Approve
+                    } else {
+                        MatchOutcome::Reject
+                    }
+                }
+                // Value/NameValue need body settled for comparison.
+                _ => self.matches(storage, candidate, ctx),
+            }
+        }
+    }
+
+    /// Check a candidate's body NYES after it passes positional/name gates.
+    /// Direct translation of the real `check_body_nyes`: pre-constanic →
+    /// unreachable (the real function's own `unreachable!`, preserved
+    /// verbatim — a pre-constanic body reaching this point is an internal
+    /// consistency violation, not a legitimate outcome). NK → NkStop.
+    /// Otherwise → Approve.
+    fn check_body_nyes(storage: &FVMStorage, candidate: FirPointer) -> MatchOutcome {
+        let nyes = storage
+            .foolish_children(candidate)
+            .first()
+            .map(|&b| storage.get_nyes(b));
+        match nyes {
+            Some(n) if !n.is_constanic() => unreachable!("pre-constanic body in search candidate"),
+            Some(Nyes::Nk) => MatchOutcome::NkStop,
+            _ => MatchOutcome::Approve,
+        }
+    }
+
+    /// Navigator contract: yields candidate statements as (`FirPointer`,
+    /// brane_position). Direct translation of the real `CandidateNavigator`
+    /// trait — same two methods, same correctness contract:
+    ///
+    /// 1. **Correctly ordered** — the one mandated order.
+    /// 2. **Complete** — every reachable candidate, exactly once, then stops.
+    pub(crate) trait CandidateNavigator {
+        /// Yield the next candidate as (statement `FirPointer`, 0-based brane position).
+        fn next_candidate(&mut self) -> Option<(FirPointer, usize)>;
+        /// Total number of candidates in the source.
+        fn total(&self) -> usize;
+    }
+
+    /// Iterates a brane's statements in order (forward or backward). Direct
+    /// arena-threaded translation of the real `BraneNavigator`: the
+    /// **ordering contract is preserved exactly** — the arena's
+    /// `Vec`-backed `foolish_children` is walked in the identical order
+    /// today's `Vec<FirRef>` iteration produces, forward or backward, since
+    /// both read the SAME underlying construction-order `Vec` (arena
+    /// `foolish_children` IS the ordered child list, same as
+    /// `ProtoBrane::foolish_children` was).
+    #[derive(Debug)]
+    pub(crate) struct BraneNavigator {
+        children: Vec<FirPointer>,
+        pos: usize,
+        forward: bool,
+        done: bool,
+    }
+
+    impl BraneNavigator {
+        /// Direct translation of the real `BraneNavigator::new`: reads
+        /// `stmt_count()`/`stmt_at()` (the brane-like capability accessors,
+        /// already migrated onto `FirCursor` for `Brane`/`ConcatHelper` —
+        /// `Concatenation`'s own `stmt_count`/`stmt_at` overrides remain
+        /// unmigrated per Phase 1's documented deferral, so a
+        /// `BraneNavigator` built over an unmerged `Concatenation` sees 0
+        /// candidates, matching that kind's current honest-incomplete
+        /// state rather than panicking).
+        pub(crate) fn new(storage: &FVMStorage, brane: FirPointer, forward: bool) -> Self {
+            let cursor = FirCursor::new(brane, storage);
+            let len = cursor.stmt_count().unwrap_or(0);
+            let children: Vec<FirPointer> = (0..len).filter_map(|i| cursor.stmt_at(i)).collect();
+            let start = if forward || len == 0 { 0 } else { len - 1 };
+            Self {
+                children,
+                pos: start,
+                forward,
+                done: len == 0,
+            }
+        }
+
+        /// Direct translation of the real `BraneNavigator::set_range`.
+        #[expect(
+            dead_code,
+            reason = "not yet called anywhere, including this file's own tests — used by \
+                      contexted search's bounded scan, wired in by SearchFir's dispatch task \
+                      (the next Phase 2 task)"
+        )]
+        pub(crate) fn set_range(&mut self, start: usize, end: usize) {
+            if start > end || start >= self.children.len() {
+                self.done = true;
+                return;
+            }
+            let end = end.min(self.children.len() - 1);
+            if self.forward {
+                self.pos = start;
+                self.done = false;
+            } else {
+                self.pos = end;
+                self.done = false;
+            }
+        }
+    }
+
+    impl CandidateNavigator for BraneNavigator {
+        /// Direct translation of the real `next_candidate` — identical
+        /// cursor-advance logic (forward: increment, done at end; backward:
+        /// decrement, done at zero).
+        fn next_candidate(&mut self) -> Option<(FirPointer, usize)> {
+            if self.done || self.pos >= self.children.len() {
+                return None;
+            }
+            let brane_pos = self.pos;
+            let candidate = self.children[brane_pos];
+            // Advance cursor.
+            if self.forward {
+                self.pos += 1;
+                if self.pos >= self.children.len() {
+                    self.done = true;
+                }
+            } else if self.pos == 0 {
+                self.done = true;
+            } else {
+                self.pos -= 1;
+            }
+            Some((candidate, brane_pos))
+        }
+
+        fn total(&self) -> usize {
+            self.children.len()
+        }
+    }
+
+    /// The core scan loop of the ContextfulSearch engine. Direct translation
+    /// of the real `contextful_search_scan` — same two shared rules, same
+    /// order, same `Miss`/`Found`/`NkStop` outcomes:
+    ///
+    /// - **Wait-on-nye**: not applicable here (arena candidates cannot be
+    ///   pre-constanic per `check_body_nyes`'s own `unreachable!`, matching
+    ///   the original exactly).
+    /// - **NK-stop**: if a candidate's predicate returns `NkStop`, the scan
+    ///   halts (the search itself becomes NK).
+    ///
+    /// Returns `Miss` when all candidates are exhausted with no match. The
+    /// caller decides the settlement: anchored → NK, unanchored → ECONSTANIC.
+    pub(crate) fn contextful_search_scan(
+        storage: &FVMStorage,
+        nav: &mut dyn CandidateNavigator,
+        predicate: &SearchPredicate,
+    ) -> ScanOutcome {
+        let total = nav.total();
+        while let Some((candidate, position)) = nav.next_candidate() {
+            let ctx = ScanCtx { position, total };
+            match predicate.matches(storage, candidate, &ctx) {
+                MatchOutcome::Approve => return ScanOutcome::Found(candidate),
+                MatchOutcome::Reject => {}
+                MatchOutcome::NkStop => return ScanOutcome::NkStop,
+            }
+        }
+        ScanOutcome::Miss
+    }
+
+    /// Like [`contextful_search_scan`] but uses
+    /// [`SearchPredicate::matches_no_body_check`]. Direct translation of the
+    /// real `contextful_search_scan_no_body_check` — for contextless
+    /// searches (`IndexFir`, `SearchFir` name search) where body settling is
+    /// the caller's responsibility.
+    ///
+    /// This task's own re-verification (per the plan: "confirm after the
+    /// previous two tasks that this loop needs no further change beyond
+    /// what flows through from `CandidateNavigator`'s and `SearchPredicate`'s
+    /// own migrations") confirms exactly that: both scan functions needed
+    /// ONLY signature changes (`&FVMStorage` threaded through, `FirPointer`
+    /// replacing `FirRef`) — no logic in either loop itself changed at all,
+    /// matching the plan's own prediction that this could turn out to be a
+    /// re-verification task rather than a code-change task.
+    pub(crate) fn contextful_search_scan_no_body_check(
+        storage: &FVMStorage,
+        nav: &mut dyn CandidateNavigator,
+        predicate: &SearchPredicate,
+    ) -> ScanOutcome {
+        let total = nav.total();
+        while let Some((candidate, position)) = nav.next_candidate() {
+            let ctx = ScanCtx { position, total };
+            match predicate.matches_no_body_check(storage, candidate, &ctx) {
+                MatchOutcome::Approve => return ScanOutcome::Found(candidate),
+                MatchOutcome::Reject => {}
+                MatchOutcome::NkStop => return ScanOutcome::NkStop,
+            }
+        }
+        ScanOutcome::Miss
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3007,6 +3517,387 @@ mod tests {
             storage.get_nyes(cmp),
             Nyes::Woconstanic,
             "real verdict resolution is deferred to Phase 2 (needs _ab_search)"
+        );
+    }
+
+    // ── Phase 2: search engine arena migration tests ────────────────────
+    //
+    // Mirror the spirit (not every single case) of `fir_kinds.rs`'s real
+    // `ContextfulSearch engine tests` module: Navigator ordering contract,
+    // predicate matching per variant, and the scan loop's Found/Miss/NkStop
+    // outcomes. The authoritative correctness check for this phase is the
+    // targeted einmo re-run (per FOOP-16.plan.md's own instruction that this
+    // phase carries the highest silent-regression risk) — these unit tests
+    // pin the internal engine state the black-box einmo comparison does not
+    // directly exercise.
+
+    use search_engine::{
+        BraneNavigator, CandidateNavigator, MatchOutcome, ScanCtx, ScanOutcome, SearchPredicate,
+        contextful_search_scan, contextful_search_scan_no_body_check,
+    };
+
+    fn make_named_statement(
+        storage: &mut FVMStorage,
+        brane: FirPointer,
+        name: &str,
+        line: usize,
+        value: i64,
+    ) -> FirPointer {
+        use crate::identifier::Identifier;
+        let stmt = brane.create_child(
+            storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], name),
+                line_number: line,
+            },
+        );
+        let body = stmt.create_child(storage, FirSpec::IndepInt { value });
+        storage.with_mut(body, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(stmt, |fir| fir.set_nyes(Nyes::Constant));
+        stmt
+    }
+
+    /// `BraneNavigator` forward direction yields every candidate, in
+    /// construction order, exactly once, then stops — mirrors
+    /// `brane_nav_forward_yields_in_order_exactly_once` exactly.
+    #[test]
+    fn brane_navigator_forward_yields_in_order_exactly_once() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let s0 = make_named_statement(&mut storage, brane, "a", 0, 1);
+        let s1 = make_named_statement(&mut storage, brane, "b", 1, 2);
+        let s2 = make_named_statement(&mut storage, brane, "c", 2, 3);
+
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        assert_eq!(nav.total(), 3);
+
+        let yielded: Vec<(FirPointer, usize)> =
+            std::iter::from_fn(|| nav.next_candidate()).collect();
+        assert_eq!(yielded, vec![(s0, 0), (s1, 1), (s2, 2)]);
+        assert!(
+            nav.next_candidate().is_none(),
+            "must stop after all yielded"
+        );
+    }
+
+    /// Backward direction yields in reverse order, exactly once — mirrors
+    /// `brane_nav_backward_yields_reverse_order_exactly_once` exactly.
+    #[test]
+    fn brane_navigator_backward_yields_reverse_order_exactly_once() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let s0 = make_named_statement(&mut storage, brane, "a", 0, 10);
+        let s1 = make_named_statement(&mut storage, brane, "b", 1, 20);
+        let s2 = make_named_statement(&mut storage, brane, "c", 2, 30);
+
+        let mut nav = BraneNavigator::new(&storage, brane, false);
+        let yielded: Vec<(FirPointer, usize)> =
+            std::iter::from_fn(|| nav.next_candidate()).collect();
+        assert_eq!(yielded, vec![(s2, 2), (s1, 1), (s0, 0)]);
+        assert!(nav.next_candidate().is_none());
+    }
+
+    /// An empty brane's navigator yields nothing — mirrors
+    /// `brane_nav_empty_brane_yields_nothing` exactly.
+    #[test]
+    fn brane_navigator_empty_brane_yields_nothing() {
+        let (storage, brane) = FVMStorage::test_root_brane(&[]);
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        assert_eq!(nav.total(), 0);
+        assert!(nav.next_candidate().is_none());
+    }
+
+    /// `SearchPredicate::Name` approves an exact match on a settled
+    /// candidate, mirroring `matcher_name_approve_on_exact_match`'s intent.
+    #[test]
+    fn search_predicate_name_approves_exact_match() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = make_named_statement(&mut storage, brane, "x", 0, 5);
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        let pred = SearchPredicate::Name {
+            pattern: "x".to_string(),
+        };
+        assert_eq!(pred.matches(&storage, stmt, &ctx), MatchOutcome::Approve);
+    }
+
+    /// `SearchPredicate::Name` rejects a non-matching name.
+    #[test]
+    fn search_predicate_name_rejects_non_match() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = make_named_statement(&mut storage, brane, "x", 0, 5);
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        let pred = SearchPredicate::Name {
+            pattern: "y".to_string(),
+        };
+        assert_eq!(pred.matches(&storage, stmt, &ctx), MatchOutcome::Reject);
+    }
+
+    /// `SearchPredicate::Name` NkStops when the candidate's body is NK —
+    /// `check_body_nyes`'s NK branch.
+    #[test]
+    fn search_predicate_name_nkstops_on_nk_body() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        use crate::identifier::Identifier;
+        let stmt = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "bad"),
+                line_number: 0,
+            },
+        );
+        let body = stmt.create_child(
+            &mut storage,
+            FirSpec::Nk {
+                reason: "boom".to_string(),
+            },
+        );
+        storage.with_mut(body, |fir| fir.set_nyes(Nyes::Nk));
+        storage.with_mut(stmt, |fir| fir.set_nyes(Nyes::Nk));
+
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        let pred = SearchPredicate::Name {
+            pattern: "bad".to_string(),
+        };
+        assert_eq!(pred.matches(&storage, stmt, &ctx), MatchOutcome::NkStop);
+    }
+
+    /// `SearchPredicate::Value` approves when the candidate's body equals
+    /// the pattern's value, via `default_equal`.
+    #[test]
+    fn search_predicate_value_approves_on_equal_body() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = make_named_statement(&mut storage, brane, "x", 0, 5);
+        let pattern = brane.create_child(&mut storage, FirSpec::IndepInt { value: 5 });
+        storage.with_mut(pattern, |fir| fir.set_nyes(Nyes::Constant));
+
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        let pred = SearchPredicate::Value { pattern };
+        assert_eq!(pred.matches(&storage, stmt, &ctx), MatchOutcome::Approve);
+    }
+
+    /// `SearchPredicate::NameValue` is atomic: both name and value must
+    /// match on the SAME candidate in one scan.
+    #[test]
+    fn search_predicate_name_value_is_atomic_conjunction() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = make_named_statement(&mut storage, brane, "x", 0, 5);
+        let pattern = brane.create_child(&mut storage, FirSpec::IndepInt { value: 5 });
+        storage.with_mut(pattern, |fir| fir.set_nyes(Nyes::Constant));
+
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        // Name matches, value matches -> Approve.
+        let both_match = SearchPredicate::NameValue {
+            name: "x".to_string(),
+            value: pattern,
+        };
+        assert_eq!(
+            both_match.matches(&storage, stmt, &ctx),
+            MatchOutcome::Approve
+        );
+
+        // Name matches, value does NOT -> Reject (not NkStop: NotEqual, not Unknowable).
+        let other_pattern = brane.create_child(&mut storage, FirSpec::IndepInt { value: 999 });
+        storage.with_mut(other_pattern, |fir| fir.set_nyes(Nyes::Constant));
+        let name_only = SearchPredicate::NameValue {
+            name: "x".to_string(),
+            value: other_pattern,
+        };
+        assert_eq!(
+            name_only.matches(&storage, stmt, &ctx),
+            MatchOutcome::Reject
+        );
+    }
+
+    /// `SearchPredicate::Index` with a negative offset resolves relative to
+    /// `ctx.total` — `#-1` addresses the last candidate.
+    #[test]
+    fn search_predicate_index_negative_offset_addresses_from_the_end() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let _s0 = make_named_statement(&mut storage, brane, "a", 0, 1);
+        let s1 = make_named_statement(&mut storage, brane, "b", 1, 2);
+
+        let ctx = ScanCtx {
+            position: 1,
+            total: 2,
+        };
+        let pred = SearchPredicate::Index(-1);
+        assert_eq!(pred.matches(&storage, s1, &ctx), MatchOutcome::Approve);
+    }
+
+    /// `SearchPredicate::Head`/`Tail` match only position 0 / the last
+    /// position respectively.
+    #[test]
+    fn search_predicate_head_and_tail_match_the_right_position() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let s0 = make_named_statement(&mut storage, brane, "a", 0, 1);
+        let s1 = make_named_statement(&mut storage, brane, "b", 1, 2);
+
+        let ctx0 = ScanCtx {
+            position: 0,
+            total: 2,
+        };
+        let ctx1 = ScanCtx {
+            position: 1,
+            total: 2,
+        };
+        assert_eq!(
+            SearchPredicate::Head.matches(&storage, s0, &ctx0),
+            MatchOutcome::Approve
+        );
+        assert_eq!(
+            SearchPredicate::Head.matches(&storage, s1, &ctx1),
+            MatchOutcome::Reject
+        );
+        assert_eq!(
+            SearchPredicate::Tail.matches(&storage, s1, &ctx1),
+            MatchOutcome::Approve
+        );
+        assert_eq!(
+            SearchPredicate::Tail.matches(&storage, s0, &ctx0),
+            MatchOutcome::Reject
+        );
+    }
+
+    /// `matches_no_body_check` skips the body-NYES gate for
+    /// positional/name predicates — approves even with a pre-constanic
+    /// body, which `matches` would treat as an internal-consistency
+    /// violation (`unreachable!`).
+    #[test]
+    fn matches_no_body_check_skips_the_body_nyes_gate() {
+        use crate::identifier::Identifier;
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        let _body = stmt.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        // body stays Prembrionic (pre-constanic) — matches() would hit the
+        // check_body_nyes unreachable!(); matches_no_body_check must not.
+
+        let ctx = ScanCtx {
+            position: 0,
+            total: 1,
+        };
+        let pred = SearchPredicate::Name {
+            pattern: "x".to_string(),
+        };
+        assert_eq!(
+            pred.matches_no_body_check(&storage, stmt, &ctx),
+            MatchOutcome::Approve
+        );
+    }
+
+    /// `contextful_search_scan` finds the first approving candidate and
+    /// stops — the scan loop's `Found` outcome.
+    #[test]
+    fn contextful_search_scan_finds_first_match() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let _s0 = make_named_statement(&mut storage, brane, "a", 0, 1);
+        let s1 = make_named_statement(&mut storage, brane, "target", 1, 2);
+        let _s2 = make_named_statement(&mut storage, brane, "target", 2, 3);
+
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        let pred = SearchPredicate::Name {
+            pattern: "target".to_string(),
+        };
+        let outcome = contextful_search_scan(&storage, &mut nav, &pred);
+        assert_eq!(
+            outcome,
+            ScanOutcome::Found(s1),
+            "forward scan finds the FIRST matching candidate, not a later duplicate"
+        );
+    }
+
+    /// `contextful_search_scan` exhausts with `Miss` when nothing matches.
+    #[test]
+    fn contextful_search_scan_misses_when_nothing_matches() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let _s0 = make_named_statement(&mut storage, brane, "a", 0, 1);
+
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        let pred = SearchPredicate::Name {
+            pattern: "nonexistent".to_string(),
+        };
+        assert_eq!(
+            contextful_search_scan(&storage, &mut nav, &pred),
+            ScanOutcome::Miss
+        );
+    }
+
+    /// `contextful_search_scan` halts immediately with `NkStop` on an
+    /// Unknowable candidate — never masks it by continuing to scan further
+    /// candidates that might otherwise match.
+    #[test]
+    fn contextful_search_scan_halts_on_nkstop() {
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        use crate::identifier::Identifier;
+        let bad = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "bad"),
+                line_number: 0,
+            },
+        );
+        let bad_body = bad.create_child(
+            &mut storage,
+            FirSpec::Nk {
+                reason: "x".to_string(),
+            },
+        );
+        storage.with_mut(bad_body, |fir| fir.set_nyes(Nyes::Nk));
+        storage.with_mut(bad, |fir| fir.set_nyes(Nyes::Nk));
+        let _after = make_named_statement(&mut storage, brane, "bad", 1, 1); // would match if scan continued
+
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        let pred = SearchPredicate::Name {
+            pattern: "bad".to_string(),
+        };
+        assert_eq!(
+            contextful_search_scan(&storage, &mut nav, &pred),
+            ScanOutcome::NkStop
+        );
+    }
+
+    /// `contextful_search_scan_no_body_check`'s own re-verification (per
+    /// this phase's own task instruction): confirms the scan loop needed NO
+    /// further logic change beyond what already flows through from
+    /// `CandidateNavigator`'s and `SearchPredicate`'s migrations.
+    #[test]
+    fn contextful_search_scan_no_body_check_finds_pre_constanic_candidates() {
+        use crate::identifier::Identifier;
+        let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
+        let stmt = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        let _body = stmt.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        let mut nav = BraneNavigator::new(&storage, brane, true);
+        let pred = SearchPredicate::Name {
+            pattern: "x".to_string(),
+        };
+        assert_eq!(
+            contextful_search_scan_no_body_check(&storage, &mut nav, &pred),
+            ScanOutcome::Found(stmt)
         );
     }
 }

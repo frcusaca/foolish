@@ -701,21 +701,92 @@ dependency chain, each building on the previous: `contextful_search_scan` takes 
 until both of those are done; `SearchFir`'s own dispatch logic then wires into all three. Execute
 this phase's tasks strictly in the order listed.
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the full `foolish-ubca2` suite (`einmo_gate_checked`) — search-engine correctness has crate-wide blast radius, so the phase-level subset is the full suite, re-run after every task below, not a narrowed slice; run unit tests: `foolish-ubca2::fir_kinds` substring match (covers the `ContextfulSearch engine tests` module directly, per the FOOP-16.md Test Plan reference to these tests pinning internal FVM state that einmo's black-box comparison doesn't).
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the full `foolish-ubca2` suite (`einmo_gate_checked`) — search-engine correctness has crate-wide blast radius, so the phase-level subset is the full suite, re-run after every task below, not a narrowed slice; run unit tests: `foolish-ubca2::fir_kinds` substring match (covers the `ContextfulSearch engine tests` module directly, per the FOOP-16.md Test Plan reference to these tests pinning internal FVM state that einmo's black-box comparison doesn't).
+      (2026-08-30 18:13)
 
-- [ ] Migrate `SearchPredicate` (fir_kinds.rs, the `pub(crate) enum SearchPredicate` and its `impl SearchPredicate` block, near "ContextfulSearch engine skeleton (FOOP-23 Phase A0)")
+- [x] Migrate `SearchPredicate` (fir_kinds.rs, the `pub(crate) enum SearchPredicate` and its `impl SearchPredicate` block, near "ContextfulSearch engine skeleton (FOOP-23 Phase A0)")
+      (2026-08-30 18:13)
   - `SearchPredicate::matches`/`matches_no_body_check` receive "the full statement FIR (name, body/value, line number, parent, NYES)" per CLAUDE.md's "Statement Matcher" description — update these methods' signatures to take `&FVMStorage` alongside the candidate `FirPointer`, reading whatever fields they need through it, rather than through a `FirRef`'s `.borrow()`.
   - Do not change `SearchPredicate`'s variant set (`Name`, `Value`, `NameValue`, `Index`, `Head`, `Tail`) — this task is a signature/access-pattern migration only, not a semantic change.
   - Targeted einmo re-run: cases using each predicate variant at least once — `?name`, `~name`, value search (`?=`/`~=`), combined `?name=value`, `#N` index, `^`/`$` head/tail. (The existing `ContextfulSearch engine tests` module in `fir_kinds.rs`, already covered by this phase's unit-test subset, directly exercises each variant — lean on it.)
+      Implemented in `foolish-ubca2/src/fvm_storage.rs`, in a new `pub(crate) mod search_engine`
+      (mirroring `fir_kinds.rs`'s `mod contextful_search` 1:1) — re-read the ENTIRE real module
+      (370 lines) in full immediately before writing this, not from any earlier notes. Variant
+      set UNCHANGED (`Name`/`Value`/`NameValue`/`Index`/`Head`/`Tail`), confirmed a
+      signature/access-pattern migration only. `matches`/`matches_no_body_check` take
+      `&FVMStorage` + `FirPointer` in place of `.borrow()`; every match arm is a line-by-line
+      translation preserving exact order and outcomes, including `check_body_nyes`'s
+      `unreachable!` on a pre-constanic body (preserved verbatim, not softened). Also migrated
+      `default_equal`/`Equality` (the free function `SearchPredicate::Value`/`NameValue` depend
+      on, re-read in full and translated the same way — `Creation`-vs-`Creation` pointer
+      identity now reads as `FirPointer` equality, `Brane`-vs-`Brane` Unknowable, kind
+      discrimination directly on `FirSpec` rather than a separate `kind()` accessor). 8 new unit
+      tests exercise every predicate variant at least once (Name approve/reject/NkStop, Value,
+      NameValue's atomic conjunction, Index negative-offset, Head/Tail, matches_no_body_check's
+      gate-skip). Targeted einmo re-run: full suite (this phase's own instruction — no narrower
+      slice) — passes unchanged, since nothing in the crate's live evaluation path calls into
+      this module yet (that's the 4th task, `SearchFir`'s dispatch wiring).
 
-- [ ] Migrate `CandidateNavigator` trait and `BraneNavigator` impl
+- [x] Migrate `CandidateNavigator` trait and `BraneNavigator` impl
+      (2026-08-30 18:13)
   - Per CLAUDE.md: "Candidate Navigator — traverses the FIR tree, yields candidates in the mandated deterministic order. Correctness contract: correctly ordered and complete (every reachable candidate, exactly once, then stops)." This ordering contract is the single most important thing to preserve exactly in this task — the arena's `Vec`-backed child storage must be walked in the same order today's `Vec<FirRef>` iteration produces, forward or backward per `CursorSource`.
   - Update `BraneNavigator`'s internal cursor/position state to hold `FirPointer` values and advance via `FVMStorage` lookups instead of walking `Rc`/`Weak` links directly.
   - Targeted einmo re-run: cases with multiple same-named statements in one brane (where traversal order determines which one an anchored search finds first) — search `foolish-ubca2/einmo_suite/input/` for `.foo` files with repeated statement names, plus any case exercising forward (`~`) vs backward (`?`) direction on the same brane to confirm both directions still traverse correctly.
+      Implemented alongside `SearchPredicate` in the same `search_engine` module (both were
+      written as one coherent, cross-referencing pass — `SearchPredicate`'s `Value` variant and
+      `BraneNavigator`'s ordering both needed to exist together to write meaningful tests for
+      either; documenting both here rather than artificially splitting one editing session's
+      work into two dishonestly-separate checkbox timestamps). The ordering contract is
+      preserved EXACTLY: `BraneNavigator::new`'s child list comes from `stmt_count()`/`stmt_at()`
+      (the same accessors `FirCursor` already exposes, reading the arena's `foolish_children`
+      `Vec` — the identical backing order `ProtoBrane::foolish_children` produced), and
+      `next_candidate`'s forward/backward cursor-advance logic is copied verbatim (increment/
+      done-at-end forward; decrement/done-at-zero backward). `CursorSource` is migrated as a
+      type (unused until `SearchFir`'s dispatch task decides which cursor source to use).
+      Targeted einmo re-run: full suite — passes unchanged. 4 new navigator-ordering unit tests
+      (forward-in-order, backward-reverse-order, empty-brane, plus exercised implicitly by the
+      scan-loop tests below) mirror `brane_nav_forward_yields_in_order_exactly_once`/
+      `brane_nav_backward_yields_reverse_order_exactly_once`/`brane_nav_empty_brane_yields_nothing`
+      exactly.
 
-- [ ] Migrate `contextful_search_scan` and `contextful_search_scan_no_body_check` (the core scan loop)
+- [x] Migrate `contextful_search_scan` and `contextful_search_scan_no_body_check` (the core scan loop)
+      (2026-08-30 18:13)
   - These take `nav: &mut dyn CandidateNavigator` and `predicate: &SearchPredicate` already, per the existing signature — confirm after the previous two tasks that this loop needs no further change beyond what flows through from `CandidateNavigator`'s and `SearchPredicate`'s own migrations (i.e. this task may turn out to be a re-verification task rather than a code-change task; if so, say so explicitly when checking it off, do not pad it with unnecessary changes).
   - Targeted einmo re-run: full suite.
+      **Confirmed exactly as the plan predicted: this needed ONLY the signature/type threading
+      already flowing through from `CandidateNavigator`'s and `SearchPredicate`'s own
+      migrations — no additional logic change.** Both scan functions' bodies are unchanged
+      line-for-line from the real `contextful_search_scan`/`_no_body_check` (re-confirmed by
+      direct re-read), with `&FVMStorage` threaded through to the `predicate.matches(...)` call
+      and `FirPointer` replacing `FirRef` throughout. 5 new unit tests exercise the scan loop's
+      three outcomes directly: `contextful_search_scan_finds_first_match` (confirms forward scan
+      returns the FIRST matching candidate among duplicates, not a later one — the ordering
+      contract's actual payoff), `contextful_search_scan_misses_when_nothing_matches`,
+      `contextful_search_scan_halts_on_nkstop` (confirms the scan does NOT continue past an
+      Unknowable candidate to find a later match — matching the real "NK-stop" rule exactly),
+      `matches_no_body_check_skips_the_body_nyes_gate`, and
+      `contextful_search_scan_no_body_check_finds_pre_constanic_candidates`.
+
+      **A genuine clippy gap was found and fixed during this task, worth recording**: `cargo
+      clippy -p foolish-ubca2 --lib` (production build, no test code compiled in) flagged the
+      entire `search_engine` module plus `default_equal`/`Equality` as dead code — genuinely
+      true from that build's perspective, since nothing in non-test code calls into this module
+      yet (unlike every earlier per-kind task, where each kind's `fir_op_step` arm WAS already
+      reachable via the public `step`/`step_inner` path). Resolved with `#[cfg_attr(not(test),
+      expect(dead_code, reason = "..."))]` on the module and on `default_equal`/`Equality` (both
+      ARE exercised by this file's own tests, so a bare `#[expect]` would be reported
+      "unfulfilled" in test builds — confirmed by trying it first and observing the error) and a
+      plain `#[expect(dead_code, ...)]` on the two items that are genuinely unused even by
+      tests yet (`CursorSource`, `set_range` — both await `SearchFir`'s dispatch task to
+      construct/call them). Both `cargo clippy --lib --no-deps` and `cargo clippy --all-targets
+      --no-deps` (both `-D warnings`) are now clean for every line this phase has added.
+      Recorded as a non-blocking process note, not a doubt about correctness: it is a reminder
+      that `--lib`-only clippy is a DIFFERENT, narrower check than `--all-targets`, and both
+      should be run at task boundaries where a task's own code is genuinely unwired until a
+      later task, not only at phase-end.
+
+      Targeted einmo re-run: full suite — passes unchanged (60 `fvm_storage` unit tests total,
+      up from 45 at Phase 1's close).
 
 - [ ] Migrate `SearchFir`'s own predicate-building methods (`build_value_predicate` and the anchored/unanchored search dispatch logic inside `impl SearchFir` and `impl Fir for SearchFir`, both already partially touched by Phase 1's `SearchFir` structural-only task)
   - This is where Phase 1's deferred "search-execution logic" gets migrated — Phase 1 only handled `SearchFir`'s own fields/construction; this task wires its predicate-building and dispatch methods to call into the now-migrated `SearchPredicate`/`CandidateNavigator`/`contextful_search_scan`.
