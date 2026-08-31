@@ -635,6 +635,47 @@ impl FirPointer {
     pub fn step(self, storage: &mut FVMStorage) -> FirPointer {
         step_inner(self, storage, 0)
     }
+
+    /// Direct arena-threaded translation of `CreationFir::get_display_name`
+    /// (re-read in full immediately before writing this). `self` must be a
+    /// `FirSpec::Creation` pointer; `viewed_from` is the statement currently
+    /// being rendered. The arena's `FirPointer` equality replaces every
+    /// `Rc::ptr_eq` in the original one-for-one — a genuinely cleaner
+    /// translation than the original's identity-comparison ceremony, since
+    /// `FirPointer` is already `PartialEq`.
+    ///
+    /// Two conditions, both required (FOOP-33, quoted from the original):
+    /// (1) reached somewhere OTHER than its own defining statement — a
+    /// creation's parent statement is where it was born, and reporting that
+    /// same name back there reads as self-referential; (2) the defining
+    /// statement's name is null-characterized — only a protected constant
+    /// like `'True` qualifies.
+    #[must_use]
+    pub fn get_display_name(self, storage: &FVMStorage, viewed_from: FirPointer) -> Option<String> {
+        let parent = storage.parent(self);
+        // A self-parenting node is the root; it has no defining statement.
+        if parent == self {
+            return None;
+        }
+        let identifier = FirCursor::new(parent, storage).as_stmt_identifier()?;
+        let body = storage.foolish_children(parent).first().copied()?;
+        if body != self {
+            return None;
+        }
+        // Condition 2: only a null-characterized (protected-constant) name
+        // qualifies at all.
+        if !identifier.is_nully_characterizing_coordinate_name() {
+            return None;
+        }
+        let name = identifier.searchable_name().to_owned();
+        // Condition 1: never report the name when viewed from the
+        // creation's own defining statement -- only from a different
+        // statement (a reference reached elsewhere).
+        if parent == viewed_from {
+            return None;
+        }
+        Some(name)
+    }
 }
 
 /// Guard against runaway recursion on pathologically deep trees. Same value
@@ -1002,6 +1043,14 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
             }
             _ => {}
         },
+        // Direct translation of `impl Fir for CreationFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this): a no-op — a creation is born `Independent` at
+        // construction and never needs stepping.
+        FirSpec::Creation => {}
+        // `impl Fir for ComparisonFir`'s real `fir_op_step` (`system_foo.rs`)
+        // is migrated by the `ComparisonFir` per-kind task, which follows
+        // this one in the plan.
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
 }
@@ -1444,6 +1493,17 @@ impl<'s> FirCursor<'s> {
             FirSpec::Concatenation { provenance } => *provenance,
             _ => crate::fir_kinds::ConcatProvenance::Juxtaposition,
         }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_creation_display_name`]:
+    /// `Creation`'s own override (re-read directly) delegates to
+    /// [`FirPointer::get_display_name`]; every other kind's default is
+    /// `None`.
+    pub fn as_creation_display_name(&self, viewed_from: Option<FirPointer>) -> Option<String> {
+        if !matches!(self.node(), FirSpec::Creation) {
+            return None;
+        }
+        self.ptr.get_display_name(self.storage, viewed_from?)
     }
 }
 
@@ -2718,5 +2778,117 @@ mod tests {
             reason,
             Some("concatenation constituent indexes where it's not a brane: 1".to_string())
         );
+    }
+
+    /// `CreationFir`'s arena migration: born `Independent` and never steps —
+    /// mirrors `fir_kinds.rs::tests::creation_nyes_transitions` exactly.
+    #[test]
+    fn creation_is_born_independent_and_never_steps() {
+        let mut storage = FVMStorage::new();
+        let root = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let creation = root.create_child(&mut storage, FirSpec::Creation);
+        assert_eq!(storage.get_nyes(creation), Nyes::Independent);
+
+        creation.step(&mut storage);
+        assert_eq!(storage.get_nyes(creation), Nyes::Independent);
+    }
+
+    /// `get_display_name`'s two-condition rule (FOOP-33), condition 1: a
+    /// creation viewed from its OWN defining statement never reports a
+    /// name, even though it is null-characterized and the whole RHS —
+    /// mirrors `fir_kinds.rs::tests::
+    /// creation_viewed_from_its_own_defining_statement_reports_no_name`
+    /// exactly, using `Identifier::from_parts(vec![String::new()], "a")` to
+    /// construct a null-characterized identifier directly (per that
+    /// constructor's own doc comment: a single empty-string characterization
+    /// component means null-characterization) rather than through the
+    /// (not-yet-arena-migrated) parser/compiler.
+    #[test]
+    fn creation_viewed_from_its_own_defining_statement_reports_no_name() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "a"),
+                line_number: 0,
+            },
+        );
+        assert!(
+            FirCursor::new(stmt, &storage)
+                .as_stmt_identifier()
+                .unwrap()
+                .is_nully_characterizing_coordinate_name(),
+            "sanity: the constructed identifier must actually be null-characterized"
+        );
+        let creation = stmt.create_child(&mut storage, FirSpec::Creation);
+
+        let name = creation.get_display_name(&storage, stmt);
+        assert_eq!(
+            name, None,
+            "a creation viewed from its OWN defining statement never reports a name"
+        );
+    }
+
+    /// Condition 1's positive case: viewed from a DIFFERENT statement, a
+    /// null-characterized creation DOES report its defining statement's
+    /// name.
+    #[test]
+    fn creation_viewed_from_elsewhere_reports_its_name() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "a"),
+                line_number: 0,
+            },
+        );
+        let creation = stmt.create_child(&mut storage, FirSpec::Creation);
+        let elsewhere = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "b"),
+                line_number: 1,
+            },
+        );
+
+        let name = creation.get_display_name(&storage, elsewhere);
+        // `get_display_name` reports `identifier.searchable_name()`
+        // (`fully_characterized_name`), not the bare `identifier_name()` —
+        // for a null-characterized name the searchable form is `"'a"`
+        // (`Identifier::from_parts`'s doc comment: an empty-string
+        // characterization component renders as a bare `'` prefix).
+        assert_eq!(name, Some("'a".to_string()));
+    }
+
+    /// Condition 2: a creation defined under a PLAIN (non-null-characterized)
+    /// name never reports a name, even when viewed from elsewhere.
+    #[test]
+    fn creation_under_a_plain_name_never_reports_a_name() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"), // plain, not null-characterized
+                line_number: 0,
+            },
+        );
+        let creation = stmt.create_child(&mut storage, FirSpec::Creation);
+        let elsewhere = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "b"),
+                line_number: 1,
+            },
+        );
+
+        assert_eq!(creation.get_display_name(&storage, elsewhere), None);
     }
 }

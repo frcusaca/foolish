@@ -581,9 +581,36 @@ not a claim that the arena path is live in production yet.
       classification logic runs) — fixed with loop-until-settled patterns matching the rest of
       this test suite's convention. Targeted einmo re-run: full suite — passes unchanged.
 
-- [ ] Migrate `CreationFir` to `FirPointer`
+- [x] Migrate `CreationFir` to `FirPointer`
+      (2026-08-30 17:51)
   - Per CLAUDE.md's "Named creation" terminology: confirm `CreationFir::get_display_name` and any rename-refusal logic (`StatementFir::check_rename_of_named_creation`) still function correctly against `FirPointer`-based parent/children access — these methods currently walk pointers to determine a creation's original name/rename eligibility.
   - Targeted einmo re-run: cases exercising named creations (`'Name = ⬤`) and rename-refusal (NF) cases.
+      `fir_op_step` is a trivial no-op (born `Independent`, re-confirmed directly). Unlike
+      `StatementFir`'s NF checks, `CreationFir::get_display_name` (re-read in full immediately
+      before writing) is entirely self-contained — no `_ib_search`/`_ab_search`/`.value()`
+      dependency, only `.parent()`/`as_stmt_identifier`/`foolish_children` — so it migrates fully
+      in this task as `FirPointer::get_display_name`, with every `Rc::ptr_eq` in the original
+      replaced one-for-one by `FirPointer` equality (a genuinely cleaner translation, since
+      `FirPointer` is already `PartialEq`). `StatementFir::check_rename_of_named_creation`
+      itself (the OTHER method this checkbox names) remains deferred — it depends on `.value()`
+      to resolve a statement's body through to the creation it references, which is the same
+      NF-mechanism/search-adjacent dependency already deferred at the `StatementFir` task; it is
+      NOT re-deferred here as a NEW gap, just not yet reachable until Phase 2 lands.
+
+      4 new unit tests mirror `creation_nyes_transitions` and the FOOP-33 two-condition rule's
+      both corners (own-defining-statement → no name; elsewhere + null-characterized → reports
+      name; elsewhere + PLAIN name → no name) using `Identifier::from_parts(vec![String::new()],
+      name)` to construct a null-characterized identifier directly (per that constructor's own
+      documented behavior — a single empty-string characterization component means
+      null-characterization) rather than through the not-yet-arena-migrated parser/compiler,
+      which the existing `fir_kinds.rs` tests use (`Compiler::compile("{'a=⬤; ...}")`) and this
+      task cannot yet reach. One test-authoring bug (not implementation) caught and fixed: the
+      first draft expected the reported name to be the bare `"a"` (`identifier_name()`), but
+      `get_display_name` actually reports `searchable_name()` (`fully_characterized_name`),
+      which for a null-characterized name is `"'a"` — confirmed directly from
+      `Identifier::from_parts`'s own construction logic, not assumed. 43 `fvm_storage` unit
+      tests total (up from 39), all passing; `cargo clippy`/`cargo fmt` clean. Targeted einmo
+      re-run: full suite — passes unchanged.
 
 - [ ] Migrate `ComparisonFir` (`foolish-ubca2/src/system_foo.rs`, NOT `fir_kinds.rs`) to `FirPointer`
       **Plan adjustment, added during execution**: `ComparisonFir` is a 14th `impl Fir for` site
