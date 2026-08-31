@@ -265,14 +265,10 @@ impl ArenaFir {
     /// this (Gotcha #5a: no re-alarm once resolved); this setter itself does
     /// not re-check, matching `ProtoBrane::set_alarm_reason`'s equally
     /// unconditional real counterpart — the caller owns the "already set"
-    /// guard, exactly as it does today.
-    #[expect(
-        dead_code,
-        reason = "no caller yet — StatementFir's check_null_const_conflict/ \
-                  check_rename_of_named_creation and ConcatenationFir's \
-                  apply_null_const_rule_to_merged_stmt are ported later in \
-                  this same cutover sub-task"
-    )]
+    /// guard, exactly as it does today. Called through
+    /// `FVMStorage::set_nf_reason`, which has a real caller as of Phase 5's
+    /// `StatementFir` NF-check port (`search_fir_dispatch::
+    /// check_null_const_conflict`).
     pub(crate) fn set_nf_reason(&mut self, reason: String) {
         self.nf_reason = Some(reason);
     }
@@ -443,6 +439,15 @@ impl FVMStorage {
     pub fn nf_reason(&self, ptr: FirPointer) -> Option<&str> {
         let index = self.validate(ptr);
         self.slots[index].payload.nf_reason()
+    }
+
+    /// Sets this pointer's NF reason (FOOP-33 §4). Mirrors
+    /// `StatementFir::check_null_const_conflict`/`check_rename_of_named_
+    /// creation`'s write path — terminal, but the caller owns the
+    /// "already set" guard (see `ArenaFir::set_nf_reason`'s doc comment).
+    pub(crate) fn set_nf_reason(&mut self, ptr: FirPointer, reason: String) {
+        let index = self.validate(ptr);
+        self.slots[index].payload.set_nf_reason(reason);
     }
 
     /// Retrieve, modify, and return in one call — the "retrieve a payload, be
@@ -676,8 +681,10 @@ impl FirPointer {
     /// The settled result this pointer resolves to, if any, mirroring
     /// [`crate::fir_trait::Fir::settled_result`]'s CONTRACT verbatim:
     /// "applies the constanic gate ITSELF — pre-constanic always answers
-    /// None."
-    fn settled_result(self, storage: &FVMStorage) -> Option<FirPointer> {
+    /// None." `pub(crate)` (not private): also called directly by
+    /// `search_fir_dispatch::statement_value_for_comparison`, a nested
+    /// module.
+    pub(crate) fn settled_result(self, storage: &FVMStorage) -> Option<FirPointer> {
         if !storage.get_nyes(self).is_constanic() {
             return None;
         }
@@ -972,12 +979,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
         // `_ib_search`/`_ab_search`/`.value()`, which are themselves
         // search-engine operations Phase 2 owns exclusively (this module's
         // own `SearchFir`/`IndexFir` tasks already carve out the identical
-        // exception for the same reason). Implementing a fake NF check
-        // against nothing real would be worse than not implementing it;
-        // deferred explicitly to a follow-up once Phase 2's search engine
-        // migration gives `_ib_search`/`_ab_search`/`.value()` arena
-        // equivalents to call. `nf_reason`/`settled_result`'s override are
-        // likewise deferred — `ArenaFir` carries no `nf_reason` slot yet.
+        // exception for the same reason). The two NF-refusal checks
+        // (FOOP-33 §4) are now implemented (Phase 5 cutover prerequisite,
+        // `search_fir_dispatch::check_null_const_conflict`/
+        // `check_rename_of_named_creation`), now that Phase 2's search
+        // engine gives `_ib_search`/`_ab_search`/`.value()` arena
+        // equivalents to call and the `nf_reason` slot exists.
         FirSpec::Statement { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
@@ -990,6 +997,40 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 if let Some(&body) = storage.foolish_children(ptr).first() {
                     let body_nyes = storage.get_nyes(body);
                     if body_nyes.is_constanic() {
+                        let is_nully = match storage.get(ptr) {
+                            FirSpec::Statement { identifier, .. } => {
+                                identifier.is_nully_characterizing_coordinate_name()
+                            }
+                            _ => false,
+                        };
+                        if is_nully {
+                            // NOTE: the real `check_null_const_conflict` does NOT use
+                            // `Scope` at all — it reaches itself via `self_weak` and
+                            // calls `_ib_search(&self_rc, pattern)`/`_ab_search(&self_rc,
+                            // pattern)` with `self_ref = ptr` (THIS statement). Its
+                            // `ib_search_by_pattern` counterpart wants the SEARCHING
+                            // STATEMENT (`Some(ptr)` is correct there — it derives the
+                            // home brane and index from it). But `ab_search_by_pattern`
+                            // wants the STARTING BRANE (mirroring `_ab_search`'s own
+                            // `self._get_my_brane(self_ref)` — computed BEFORE the
+                            // climb, not the statement itself): passing `Some(ptr)`
+                            // there made `current_brane.get_my_statement() ==
+                            // current_brane` trivially true (a statement's own
+                            // "get_my_statement" is itself), short-circuiting to `None`
+                            // immediately — caught by
+                            // `statement_null_const_conflict_is_refused` still failing
+                            // after the first fix attempt. Fixed by passing `ptr`'s own
+                            // home brane instead.
+                            let home_brane = ptr.home_brane(storage);
+                            search_fir_dispatch::check_null_const_conflict(
+                                storage,
+                                ptr,
+                                body,
+                                Some(ptr),
+                                home_brane,
+                            );
+                            search_fir_dispatch::check_rename_of_named_creation(storage, ptr, body);
+                        }
                         storage.with_mut(ptr, |fir| fir.set_nyes(body_nyes));
                     }
                 }
@@ -2818,6 +2859,108 @@ mod search_fir_dispatch {
 
     /// Direct translation of `SearchFir::settle_from_ubc_result` (re-read
     /// directly): once a result is pushed, adopt its (remapped) NYES.
+    /// Direct arena translation of `fir_kinds.rs`'s free function
+    /// `statement_value_for_comparison` (re-read directly): the value a
+    /// statement PRESENTS — its `settled_result()` (the NF-refusal NK, if
+    /// already refused) if set, else the raw written body. Used by the two
+    /// NF-refusal checks below, which must compare against what a PRIOR
+    /// statement already presents, not its raw RHS (poisoning must be
+    /// transitive per FOOP-33 §4).
+    pub(super) fn statement_value_for_comparison(
+        storage: &FVMStorage,
+        stmt: FirPointer,
+    ) -> Option<FirPointer> {
+        stmt.settled_result(storage)
+            .or_else(|| storage.foolish_children(stmt).first().copied())
+    }
+
+    /// Direct arena translation of `StatementFir::check_null_const_conflict`
+    /// (FOOP-33 §4, re-read in full immediately before writing this): a
+    /// null-characterized statement checks ITSELF, once its body is
+    /// constanic, against any EARLIER same-name null-characterized statement
+    /// (IB, then AB) — refusing (`set_nf_reason`) if the two values are not
+    /// `Equal`. Terminal: does nothing if `nf_reason` is already set
+    /// (Gotcha #5a, no re-alarm).
+    pub(super) fn check_null_const_conflict(
+        storage: &mut FVMStorage,
+        stmt: FirPointer,
+        body: FirPointer,
+        current_statement: Option<FirPointer>,
+        current_brane: Option<FirPointer>,
+    ) {
+        if storage.nf_reason(stmt).is_some() {
+            return;
+        }
+        let pattern = match storage.get(stmt) {
+            FirSpec::Statement { identifier, .. } => identifier.searchable_name().to_string(),
+            _ => return,
+        };
+        let prior = ib_search_by_pattern(storage, &pattern, current_statement)
+            .or_else(|| ab_search_by_pattern(storage, &pattern, current_brane));
+        let Some((prior_stmt, _)) = prior else {
+            return; // no earlier definition -- this statement establishes the constant.
+        };
+        let Some(prior_body) = statement_value_for_comparison(storage, prior_stmt) else {
+            return;
+        };
+        if !storage.get_nyes(prior_body).is_constanic() {
+            return; // prior definition not yet settled -- nothing to compare yet.
+        }
+        if super::default_equal(storage, body, prior_body) != super::Equality::Equal {
+            let name = match storage.get(stmt) {
+                FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
+                _ => return,
+            };
+            storage.set_nf_reason(stmt, format!("'{name} not-foolish"));
+        }
+    }
+
+    /// Direct arena translation of `StatementFir::check_rename_of_named_
+    /// creation` (FOOP-33, re-read in full immediately before writing this):
+    /// a null-characterized statement whose constanic value resolves to a
+    /// creation with a DIFFERENT original name is refused — "named creations
+    /// cannot be renamed." Terminal, same guard as
+    /// `check_null_const_conflict`.
+    pub(super) fn check_rename_of_named_creation(
+        storage: &mut FVMStorage,
+        stmt: FirPointer,
+        body: FirPointer,
+    ) {
+        if storage.nf_reason(stmt).is_some() {
+            return;
+        }
+        let is_nully = match storage.get(stmt) {
+            FirSpec::Statement { identifier, .. } => {
+                identifier.is_nully_characterizing_coordinate_name()
+            }
+            _ => return,
+        };
+        if !is_nully {
+            return;
+        }
+        let resolved = body.value(storage);
+        if !matches!(storage.get(resolved), FirSpec::Creation) {
+            return; // not a creation reference at all -- nothing to forbid.
+        }
+        let Some(original_name) = resolved.get_display_name(storage, stmt) else {
+            return; // the creation has no original name at all -- nothing to protect.
+        };
+        let pattern = match storage.get(stmt) {
+            FirSpec::Statement { identifier, .. } => identifier.searchable_name().to_string(),
+            _ => return,
+        };
+        if original_name != pattern {
+            let name = match storage.get(stmt) {
+                FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
+                _ => return,
+            };
+            storage.set_nf_reason(
+                stmt,
+                format!("'{name} not-foolish (Named creations cannot be renamed)"),
+            );
+        }
+    }
+
     pub(super) fn settle_from_ubc_result(storage: &mut FVMStorage, ptr: FirPointer) {
         let result_nyes = FirCursor::new(ptr, storage)
             .ubc_children()
@@ -2848,17 +2991,35 @@ mod search_fir_dispatch {
         ptr: FirPointer,
         current_statement: Option<FirPointer>,
     ) -> Option<(FirPointer, Nyes)> {
+        let pattern = match storage.get(ptr) {
+            FirSpec::Search { pattern, .. } => pattern.clone(),
+            _ => return None,
+        };
+        ib_search_by_pattern(storage, &pattern, current_statement)
+    }
+
+    /// Generalization of [`ib_search_with_engine`] taking the search pattern
+    /// directly rather than reading it off a `FirSpec::Search` node — needed
+    /// by `StatementFir`'s NF-refusal checks (FOOP-33 §4,
+    /// `check_null_const_conflict`), which search by the STATEMENT's own
+    /// `searchable_name()`, not by a `Search` node's pattern (the statement
+    /// itself is not a `Search`). `ib_search_with_engine` above is now a
+    /// thin wrapper over this, preserving its exact original behavior for
+    /// its existing callers.
+    pub(super) fn ib_search_by_pattern(
+        storage: &FVMStorage,
+        pattern: &str,
+        current_statement: Option<FirPointer>,
+    ) -> Option<(FirPointer, Nyes)> {
         let stmt = current_statement?;
         let brane = stmt.home_brane(storage)?;
         let idx = brane.find_stmt_index(storage, stmt)?;
         let search_end = idx.checked_sub(1)?;
         let mut nav = BraneNavigator::new(storage, brane, false);
         nav.set_range(0, search_end);
-        let pattern = match storage.get(ptr) {
-            FirSpec::Search { pattern, .. } => pattern.clone(),
-            _ => return None,
+        let predicate = SearchPredicate::Name {
+            pattern: pattern.to_string(),
         };
-        let predicate = SearchPredicate::Name { pattern };
         match contextful_search_scan_no_body_check(storage, &mut nav, &predicate) {
             ScanOutcome::Found(found) => Some((found, storage.get_nyes(found))),
             _ => None,
@@ -2874,6 +3035,21 @@ mod search_fir_dispatch {
         ptr: FirPointer,
         current_brane: Option<FirPointer>,
     ) -> Option<(FirPointer, Nyes)> {
+        let pattern = match storage.get(ptr) {
+            FirSpec::Search { pattern, .. } => pattern.clone(),
+            _ => return None,
+        };
+        ab_search_by_pattern(storage, &pattern, current_brane)
+    }
+
+    /// Generalization of [`ab_search_with_engine`] taking the search pattern
+    /// directly — see [`ib_search_by_pattern`]'s doc comment for why
+    /// `StatementFir`'s NF-refusal checks need this shape.
+    pub(super) fn ab_search_by_pattern(
+        storage: &FVMStorage,
+        pattern: &str,
+        current_brane: Option<FirPointer>,
+    ) -> Option<(FirPointer, Nyes)> {
         let mut current_brane = current_brane?;
         loop {
             let stmt = current_brane.get_my_statement(storage);
@@ -2886,11 +3062,9 @@ mod search_fir_dispatch {
             {
                 let mut nav = BraneNavigator::new(storage, parent_brane, false);
                 nav.set_range(0, idx - 1);
-                let pattern = match storage.get(ptr) {
-                    FirSpec::Search { pattern, .. } => pattern.clone(),
-                    _ => return None,
+                let predicate = SearchPredicate::Name {
+                    pattern: pattern.to_string(),
                 };
-                let predicate = SearchPredicate::Name { pattern };
                 if let ScanOutcome::Found(found) =
                     contextful_search_scan_no_body_check(storage, &mut nav, &predicate)
                 {
@@ -7170,5 +7344,79 @@ mod tests {
 
         core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
+    }
+
+    // ── StatementFir NF-refusal checks (FOOP-33 §4, Phase 5 cutover) ────
+
+    /// A null-characterized statement redefining an existing same-name
+    /// null-characterized constant with a DIFFERENT value is refused: its
+    /// presented value (`nf_reason`, read via `settled_result` in the real
+    /// code — here checked directly) becomes a fresh NK, not its written
+    /// RHS.
+    #[test]
+    fn statement_null_const_conflict_is_refused() {
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let first = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 0,
+            },
+        );
+        first.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let second = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 1,
+            },
+        );
+        second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        assert!(
+            storage.nf_reason(second).is_some(),
+            "redefining a null-characterized constant with a DIFFERENT value must be refused"
+        );
+        assert!(
+            storage.nf_reason(first).is_none(),
+            "the FIRST definition establishes the constant -- it is never itself refused"
+        );
+    }
+
+    /// Re-stating a null-characterized constant's OWN existing value (the
+    /// same value, not a conflicting one) is PERMITTED — not a rename, not
+    /// a conflict.
+    #[test]
+    fn statement_null_const_same_value_restatement_is_permitted() {
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let first = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 0,
+            },
+        );
+        first.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let second = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 1,
+            },
+        );
+        second.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        assert!(
+            storage.nf_reason(second).is_none(),
+            "restating the SAME value must be permitted, not refused"
+        );
     }
 }
