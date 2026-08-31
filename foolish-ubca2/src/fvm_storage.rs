@@ -3113,8 +3113,29 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            storage.set_nf_reason(stmt, format!("'{name} not-foolish"));
+            refuse_statement(storage, stmt, format!("'{name} not-foolish"));
         }
+    }
+
+    /// Shared write path for both NF-refusal rules below: sets `nf_reason`
+    /// AND materializes the refusal as a fresh, already-`Nk` node pushed to
+    /// `stmt`'s `ubc_children` — this is what makes `FirPointer::
+    /// settled_result`'s GENERIC `ubc_children().first()` read (used
+    /// pervasively, including by read-only output serialization, which
+    /// cannot itself allocate a fresh node the way the real `Rc::new`-per-
+    /// call `StatementFir::settled_result` override does) correctly answer
+    /// `Some(nk)` for a refused statement instead of `None` (which silently
+    /// falls through to the raw written body — a real bug found via
+    /// `einmo_gate_checked`: the NF mechanism set `nf_reason` correctly but
+    /// nothing ever surfaced it through `settled_result`'s read path, so
+    /// `'True = 3` rendered as unrefused `3` even though `nf_reason` was
+    /// genuinely `Some("'True not-foolish")` on the very same pointer).
+    fn refuse_statement(storage: &mut FVMStorage, stmt: FirPointer, reason: String) {
+        storage.set_nf_reason(stmt, reason.clone());
+        let nk = storage.make_orphan_child(stmt, FirSpec::Nk { reason });
+        storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
+        let me = storage.get_mut(stmt);
+        me.push_ubc_child(nk, Nyes::Nk);
     }
 
     /// Direct arena translation of `StatementFir::check_rename_of_named_
@@ -3156,7 +3177,8 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            storage.set_nf_reason(
+            refuse_statement(
+                storage,
                 stmt,
                 format!("'{name} not-foolish (Named creations cannot be renamed)"),
             );
@@ -3212,7 +3234,7 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            storage.set_nf_reason(new_stmt, format!("'{name} not-foolish"));
+            refuse_statement(storage, new_stmt, format!("'{name} not-foolish"));
         }
     }
 
@@ -3795,7 +3817,7 @@ mod search_fir_dispatch {
 /// (`pub(crate) use core_fir_conversion::{..}` below) for exactly that
 /// caller. No more `#[expect(dead_code)]` needed.
 mod core_fir_conversion {
-    use super::{FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH};
+    use super::{FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH, search_fir_dispatch};
 
     use foolish_core::fir as core_fir;
     use foolish_core::fir::{
@@ -4164,15 +4186,18 @@ mod core_fir_conversion {
             FirSpec::Statement { .. } => {
                 let name =
                     display_stmt_name(cursor.as_stmt_identifier().map(|id| id.searchable_name()));
-                // Deferred NF-substitution: `statement_value_for_comparison`'s
-                // settled_result-first preference is not yet arena-portable
-                // (StatementFir's Phase 1 task deferred it) — this arena
-                // translation reads the raw written body directly, matching
-                // that method's own fallback path for the common case.
-                let body_fir = cursor
-                    .foolish_children()
-                    .first()
-                    .map(|&c| {
+                // Prefer settled_result() (the NF-refusal NK, if this
+                // statement was refused) over the raw written body — FOOP-33
+                // §4, `search_fir_dispatch::statement_value_for_comparison`.
+                // Without this, the null-const rule's refusal is enforced
+                // internally but never actually rendered: `'True = 3` would
+                // still SHOW `3` instead of the NF NK (a real bug found and
+                // fixed at Phase 5's `evaluate` cutover — this arm was
+                // written at Phase 3, before `nf_reason`/`statement_value_
+                // for_comparison` existed in arena form, and never updated
+                // once `StatementFir`'s NF-check task built them).
+                let body_fir = search_fir_dispatch::statement_value_for_comparison(storage, ptr)
+                    .map(|c| {
                         proto_to_core_fir_inner(storage, c, preserve_search, Some(ptr), depth + 1)
                     })
                     .unwrap_or_else(|| NkFirBuilder::new("empty statement").build());
@@ -4190,19 +4215,21 @@ mod core_fir_conversion {
                         let name = display_stmt_name(
                             c_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
                         );
-                        let body_fir = c_cursor
-                            .foolish_children()
-                            .first()
-                            .map(|&b| {
-                                proto_to_core_fir_inner(
-                                    storage,
-                                    b,
-                                    preserve_search,
-                                    Some(c),
-                                    depth + 1,
-                                )
-                            })
-                            .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                        // Prefer settled_result() over the raw written body —
+                        // see the `Statement` arm's doc comment above (same
+                        // real bug, same fix, same NF-substitution rule).
+                        let body_fir =
+                            search_fir_dispatch::statement_value_for_comparison(storage, c)
+                                .map(|b| {
+                                    proto_to_core_fir_inner(
+                                        storage,
+                                        b,
+                                        preserve_search,
+                                        Some(c),
+                                        depth + 1,
+                                    )
+                                })
+                                .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                         (name, body_fir)
                     })
                     .collect();
@@ -8307,6 +8334,103 @@ mod tests {
             FirCursor::new(outer, &storage).ubc_children().len(),
             1,
             "the result NK must be recorded in ubc_children"
+        );
+    }
+
+    /// Minimal reproduction of `einmo_suite/input/foop/33/boolean/
+    /// null_char_constant.foo`'s divergence: a user program that redefines
+    /// `'True` (declared in `system.foo`) with a CONFLICTING value must
+    /// refuse (NF), matching `program_redefining_true_to_a_conflicting_
+    /// value_is_refused` in `system_foo.rs`'s OWN test suite (which passes
+    /// today via the hand-built tree in that file, NOT through the real
+    /// `compose_program_with_system` composition this test uses instead).
+    #[test]
+    fn compose_program_with_system_refuses_conflicting_true_redefinition() {
+        let mut storage = FVMStorage::new();
+        let roots =
+            arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
+        let composed_root = roots[0];
+
+        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+
+        let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+        let true_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
+        assert!(
+            storage.nf_reason(true_stmt).is_some(),
+            "redefining system.foo's 'True with a conflicting value (3) inside the composed \
+             user program must be refused -- nf_reason is None, meaning the NF check never fired"
+        );
+    }
+
+    /// Exact reproduction of `null_char_constant.foo`'s full statement
+    /// sequence (restate, same-value re-assert, a reference, THEN the
+    /// conflicting redefinition) -- the simpler 1-statement repro above
+    /// passes; this one exercises the same multi-statement IB-search-finds-
+    /// nearest-prior scan the real case does.
+    #[test]
+    fn compose_program_with_system_refuses_conflicting_true_redefinition_full_sequence() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compose_program_with_system(
+            &mut storage,
+            "{restate = 'True; 'True = 'True; conflict = 'True; 'True = 3;}",
+        )
+        .unwrap();
+        let composed_root = roots[0];
+
+        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+
+        let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+        let second_true_stmt = FirCursor::new(program, &storage).stmt_at(3).unwrap();
+        assert_eq!(
+            FirCursor::new(second_true_stmt, &storage)
+                .as_stmt_identifier()
+                .map(|id| id.searchable_name()),
+            Some("'True")
+        );
+        assert!(
+            storage.nf_reason(second_true_stmt).is_some(),
+            "the FOURTH statement ('True = 3, conflicting) must be refused"
+        );
+    }
+
+    /// Regression for a real, load-bearing bug found while tracing
+    /// `einmo_gate_checked`'s `foop/33/boolean/null_char_constant.foo`
+    /// divergence: `check_null_const_conflict`/`check_rename_of_named_
+    /// creation`/`apply_null_const_rule_to_merged_stmt` all correctly SET
+    /// `nf_reason` on a refused statement, but nothing ever surfaced that
+    /// refusal through `FirPointer::settled_result`'s READ path (used by
+    /// `statement_value_for_comparison`, which output serialization and
+    /// `default_equal` both depend on) -- `settled_result` is generic
+    /// across all kinds and reads `ubc_children().first()`, but the NF
+    /// write path never pushed anything there, so a refused statement's
+    /// `settled_result()` answered `None` and every reader silently fell
+    /// through to the raw (unrefused) written body. `'True = 3` rendered as
+    /// plain `3` even though `nf_reason` was genuinely `Some("'True
+    /// not-foolish")` on the very same pointer. Fixed by having the NF
+    /// write path (`refuse_statement`, the new shared helper both call
+    /// sites now use) also push a fresh, already-`Nk` node to
+    /// `ubc_children` -- exactly what `settled_result`'s generic read
+    /// already expects to find there.
+    ///
+    /// This test uses `UbcaEvaluator::evaluate` itself (not a hand-called
+    /// `compose_program_with_system`), since the bug was invisible through
+    /// direct `nf_reason` inspection (which is `Some` correctly) and only
+    /// showed up in the RENDERED output -- exactly what `evaluate`
+    /// produces and what einmo compares.
+    #[test]
+    fn evaluate_refuses_and_renders_conflicting_true_redefinition() {
+        use foolish_core::Evaluator;
+        let source = "{restate = 'True; 'True = 'True; conflict = 'True; 'True = 3;}";
+        let evaluator = crate::evaluator::UbcaEvaluator;
+        let results = evaluator.evaluate(source).unwrap();
+        let rendered = format!("{:?}", results[0]);
+        assert!(
+            rendered.contains(r#"reason: "'True not-foolish""#),
+            "the conflicting redefinition must render as an NF-reason NK, got: {rendered}"
+        );
+        assert!(
+            rendered.contains("state: Nk"),
+            "the whole composed brane must settle Nk once the refusal propagates, got: {rendered}"
         );
     }
 }
