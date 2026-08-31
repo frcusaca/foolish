@@ -1258,14 +1258,46 @@ skipped during the cutover.
     work, rather than resuming past this note as if the original leaf-kinds-first order still
     stands.
 
-    **Not yet started at all:** deleting any of the 13 `impl Fir` blocks, deleting `ProtoBrane`,
-    the ~260-test port/retire decision pass, and the `compiler.rs`/`evaluator.rs`/`system_foo.rs`
-    cutover sub-tasks themselves (their own checkboxes, further down this Phase 5 section, are
-    still unchecked). Resume by resolving the resequencing question above, then executing
-    accordingly — likely: `compiler.rs` cutover, `evaluator.rs` cutover, `system_foo.rs` cutover
-    (all three together or in quick succession, each gated by the full test+einmo suite), THEN
-    the 13 `impl Fir` deletions (now safe, since nothing outside the doomed old code references
-    them), THEN `ProtoBrane` deletion, THEN the test port/retire pass.
+    **Update (2026-08-31, `843e5241`): the resequencing question above is now resolved by direct
+    investigation, and a fifth prerequisite was found and closed.** A research fork confirmed
+    `foolish-ubca2` has ZERO real external callers in the workspace (`foolish-cli` depends only on
+    `foolish-ubca`, the original crate) — every `Compiler::compile` call site is this crate's OWN
+    test code, and the crate's one genuinely production-facing entry point is `UbcaEvaluator::
+    evaluate(&str) -> anyhow::Result<Vec<foolish_core::fir::FirRef>>` (`impl foolish_core::
+    Evaluator for UbcaEvaluator`), whose signature never mentions `FirRef`(ubca2)/`FirPointer` at
+    all — confirmed by direct re-read of `evaluator.rs` in full. This means the cutover does NOT
+    require changing `Compiler::compile`'s signature or touching its ~150+ test call sites in this
+    step — only `evaluate`'s BODY needs to construct an `FVMStorage` and use the arena path
+    internally. **However**, direct re-read of `evaluate`'s real body found it does not call
+    `Compiler::compile` at all — it calls `system_foo::compose_program_with_system(source)`, which
+    parses `system.foo` + the user's program and calls `compiler::compile_root_with_body_override`
+    (the `BodyOverride`-hook function explicitly deferred as out-of-scope at Phase 4, since it
+    needs `ComparisonFir` construction). This confirms `system_foo.rs`'s cutover is NOT a separate,
+    later step — it is tightly interlocked with `evaluate`'s own cutover, not sequenceable after it.
+    While tracing this, found and closed a FIFTH prerequisite: `ComparisonFir`'s real verdict
+    resolution (`resolve_boolean`'s ancestral `'True`/`'False` search) was still deferred
+    (Woconstanic placeholder) — now implemented and tested (commit `843e5241`), using the same
+    `ab_search_by_pattern`/`statement_value_for_comparison` primitives built for `StatementFir`'s
+    NF checks.
+
+    **Not yet started at all:** the actual `evaluate`/`compose_program_with_system`/
+    `compile_root_with_body_override` rewrite itself (building an arena-side equivalent of
+    `compose_program_with_system` — parse `system.foo` + user source, compose via
+    `arena_compiler`, supply `ComparisonFir` bodies via an arena-side `BodyOverride`-equivalent
+    hook — then rewiring `evaluate`'s body to construct `FVMStorage`, call it, step via
+    `core_fir_conversion::step_to_settled`, extract `program_result` structurally, and serialize
+    via `core_fir_conversion`'s output functions), the 13 `impl Fir` block deletions, `ProtoBrane`
+    deletion, and the ~260-test port/retire pass. This `evaluate` rewrite is THE single highest-
+    risk step in the whole FOOP (per the coordinator's own framing) — it is the point where the
+    arena path first becomes the crate's actual live evaluator for the whole einmo suite at once,
+    not a targeted subset. Resume by building the arena-side `compose_program_with_system`/
+    `BodyOverride` equivalents (in `arena_compiler`, mirroring `compile_root_with_body_override`'s
+    real logic and `system_foo.rs`'s `comparison_body` hook), THEN rewiring `evaluate`'s body,
+    verified by the FULL einmo suite (every case, not a subset — construction-order/timing changes
+    here can shift results crate-wide) before considering this done. Only after `evaluate` is
+    genuinely live on the arena path do the 13 `impl Fir` deletions become safe (nothing outside
+    the doomed old `Rc`-based code — which the ~150+ tests now target for their own sake — will
+    reference them), then `ProtoBrane` deletion, then the test port/retire pass.
 
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
