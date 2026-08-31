@@ -1486,26 +1486,62 @@ skipped during the cutover.
 
 ## Phase 6 — Promote `foolish-ubca2`'s own `checked/`; comprehensive test; decide next steps
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run: full `foolish-ubca2` suite (`einmo_gate_checked`), full `foolish-ubca` suite (`einmo_gate_checked`, as the untouched-oracle sanity check referenced in FOOP-16.md §Test Plan).
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run: full `foolish-ubca2` suite (`einmo_gate_checked`), full `foolish-ubca` suite (`einmo_gate_checked`, as the untouched-oracle sanity check referenced in FOOP-16.md §Test Plan).
+      (2026-08-31) `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked`: green. `cargo test
+      -p foolish-ubca --lib -- einmo_gate_checked`: green (328 tests, untouched oracle sanity
+      check).
 
-- [ ] Confirm `foolish-ubca2`'s `output/` matches its `checked/` (copied from `foolish-ubca` in Phase 0) for every case, by construction of the prior phases
+- [x] Confirm `foolish-ubca2`'s `output/` matches its `checked/` (copied from `foolish-ubca` in Phase 0) for every case, by construction of the prior phases
   - If any case diverges at this point, that is a real regression introduced somewhere in Phases 1–5 — do not promote past it; bisect which phase's task introduced the divergence (the per-task targeted einmo re-runs above should make this narrow, but if a targeted subset missed the case, the full-suite phase-end gates should have caught it — if neither did, treat that as a gap in this plan's targeted-subset choices worth noting).
+      (2026-08-31) Already true by construction: `einmo_gate_checked` uses
+      `.require_correspondence(Stage::Output, Stage::Checked)` — literally this check — and it
+      passed green throughout Phase 5's own closing verification (no divergence to bisect).
 
-- [ ] Write and verify `foolish-ubca2/einmo_suite/input/foop/16/comprehensive.foo`
+- [x] Write and verify `foolish-ubca2/einmo_suite/input/foop/16/comprehensive.foo`
   - Per FOOP-16.md §Test Plan: since this FOOP is an internal representation change, this test exercises a wide, representative cross-section of *existing* feature combinations (nested branes, contexted operators, value search, combined name+value forms, head/tail, AB/IB recoordination via a named-brane reference) rather than any new language surface.
   - Run it through `foolish-ubca2`'s einmo suite and through `foolish-ubca`'s suite (add the same input file there too, purely as a comparison run — do NOT promote or commit it into `foolish-ubca`'s own suite as a permanent addition, since `foolish-ubca` stays untouched; this is a throwaway comparison run only, to obtain the expected OUTPUT to compare against).
+      (2026-08-31, `5d35ef6f`) Written covering every listed feature (nested branes, head/tail,
+      forward/backward value search, combined name+value search, contexted `&` search, AB/IB
+      recoordination via a null-characterized named brane, the five comparison operators,
+      concatenation, a null-characterized name constant with same-value restatement). Verified via
+      the real `foolish-ubca` oracle as a throwaway comparison (copied in, run, byte-diffed, then
+      fully removed — `git diff jia -- foolish-ubca/` confirmed empty afterward). Full details in
+      the commit message.
 
-- [ ] Review and promote `output` → `checked` for FOOP-16's einmo cases in `foolish-ubca2/einmo_suite`
-  - [ ] Confirm the rest of the `foolish-ubca2` suite is green — no case other than the ones being promoted diverges from its already-copied `checked/` baseline
-  - [ ] Confirm none of the cases being promoted has a `verified/` twin in `foolish-ubca2/einmo_suite/verified/` (should be empty per Phase 0 — if not, STOP, ask the human)
-  - [ ] Re-read FOOP-16.md §Specification and §Test Plan for what each promoted case is meant to demonstrate
-  - [ ] Review `foop/16/comprehensive` — every OUTPUT statement compared line-by-line against `foolish-ubca`'s output for the same input (obtained in the previous task's throwaway comparison run), and justified as matching for the reason it should: the arena migration changed storage mechanism only, so every OUTPUT line is expected to be byte-identical to `foolish-ubca`'s; any line that is NOT identical is a regression to fix, not a difference to explain away
-  - [ ] Write the justification summary into this plan or the commit message: what `foop/16/comprehensive` demonstrates and why its result matches `foolish-ubca` byte-for-byte
-  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts". Blocking doubts stop here; non-blocking ones are reported alongside.
-  - [ ] Run `einmo promote output to checked foolish-ubca2/einmo_suite`
-  - [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — must exit 0
+- [x] Review and promote `output` → `checked` for FOOP-16's einmo cases in `foolish-ubca2/einmo_suite`
+  - [x] Confirm the rest of the `foolish-ubca2` suite is green — no case other than the ones being promoted diverges from its already-copied `checked/` baseline
+  - [x] Confirm none of the cases being promoted has a `verified/` twin in `foolish-ubca2/einmo_suite/verified/` (should be empty per Phase 0 — if not, STOP, ask the human)
+        (2026-08-31) Confirmed empty via direct `find`.
+  - [x] Re-read FOOP-16.md §Specification and §Test Plan for what each promoted case is meant to demonstrate
+  - [x] Review `foop/16/comprehensive` — every OUTPUT statement compared line-by-line against `foolish-ubca`'s output for the same input (obtained in the previous task's throwaway comparison run), and justified as matching for the reason it should: the arena migration changed storage mechanism only, so every OUTPUT line is expected to be byte-identical to `foolish-ubca`'s; any line that is NOT identical is a regression to fix, not a difference to explain away
+        (2026-08-31) Compared via `diff` on the two OUTPUT sections directly (not eyeballing) —
+        exit code 0, zero differences. Byte-for-byte identical, confirming the arena migration
+        changed storage mechanism only.
+  - [x] Write the justification summary into this plan or the commit message: what `foop/16/comprehensive` demonstrates and why its result matches `foolish-ubca` byte-for-byte
+        (2026-08-31, `5d35ef6f`) Full justification in the commit message.
+  - [x] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts". Blocking doubts stop here; non-blocking ones are reported alongside.
+        (2026-08-31) See this session's final report at the STOP line for the full consolidated
+        doubts list — includes one process-lesson doubt from this exact task (see next bullet).
+  - [x] Run `einmo promote output to checked foolish-ubca2/einmo_suite`
+        (2026-08-31, `5d35ef6f`) Done, but with a mistake caught and corrected before committing,
+        recorded honestly rather than silently absorbed: the first `--filter "*comprehensive*"`
+        attempt matched 5 OTHER pre-existing comprehensive.foo-named cases across different FOOPs
+        (foop/13, foop/23, foop/33, foop/62's sequencer_comprehensive, foop/65) in addition to the
+        intended foop/16 one — an unintended, un-reviewed bulk action violating the Promotion
+        Review Gate's "never bulk" discipline, even though `git diff` confirmed their actual
+        OUTPUT CONTENT was completely unchanged (only producer/timestamp/signature metadata
+        refreshed). Reverted all 5 via `git checkout` back to their exact committed state
+        immediately upon discovering the over-broad match, re-ran `einmo_gate_checked` to confirm
+        the revert was safe, and the actual commit stages ONLY the 3 new `foop/16` files.
+        Process lesson for future promotions: check a `--filter` glob's actual match list (or
+        scope to the exact file path) before running, not just assume it from the glob's apparent
+        specificity.
+  - [x] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — must exit 0
+        (2026-08-31) Green, including the newly-promoted `foop/16/comprehensive.foo`.
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-31) `cargo test -p foolish-ubca2 --lib`: green. `foolish-ubca` confirmed
+      byte-identical to `jia` (empty diff).
 
 - [ ] Present the open questions from FOOP-16.md §Open Questions to the human for decision (do not decide unilaterally): `foolish-ubca`'s eventual fate (kept indefinitely as frozen reference, formally deprecated, or removed), whether "`foolish-ubca2`" is the permanent crate name, and whether the `zweimomo` workspace-membership gap should be fixed as follow-up cleanup.
 
