@@ -1161,6 +1161,57 @@ impl<'s> FirCursor<'s> {
     pub fn is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
     }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_search_pattern`]: `Search`'s own
+    /// override (re-read directly). Pure data accessor — NOT search
+    /// execution, so unlike `fir_op_step` this is safe to implement in
+    /// Phase 1 without touching Phase 2's search-engine scope.
+    pub fn as_search_pattern(&self) -> Option<&'s str> {
+        match self.node() {
+            FirSpec::Search { pattern, .. } => Some(pattern),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_search_anchored`].
+    pub fn as_search_anchored(&self) -> bool {
+        matches!(self.node(), FirSpec::Search { anchored: true, .. })
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_search_is_value`].
+    pub fn as_search_is_value(&self) -> bool {
+        matches!(
+            self.node(),
+            FirSpec::Search {
+                is_value_search: true,
+                ..
+            }
+        )
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_search_contexted`]: `Search` and
+    /// `Index` both carry a `contexted` flag (re-read directly — both real
+    /// `impl Fir` override this method with their own field).
+    pub fn as_search_contexted(&self) -> bool {
+        match self.node() {
+            FirSpec::Search { contexted, .. } | FirSpec::Index { contexted, .. } => *contexted,
+            _ => false,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_index_offset`]: `Index`'s own
+    /// override (re-read directly).
+    pub fn as_index_offset(&self) -> i32 {
+        match self.node() {
+            FirSpec::Index { offset, .. } => *offset,
+            _ => 0,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_index_anchored`].
+    pub fn as_index_anchored(&self) -> bool {
+        matches!(self.node(), FirSpec::Index { anchored: true, .. })
+    }
 }
 
 /// The mutating counterpart of [`FirCursor`]. Rust allows only one `&mut` at
@@ -2048,5 +2099,67 @@ mod tests {
         brane.step(&mut storage);
         assert_eq!(storage.get_nyes(brane), Nyes::Constant);
         assert_eq!(FirCursor::new(brane, &storage).stmt_count(), Some(0));
+    }
+
+    /// `SearchFir`'s arena migration is STRUCTURAL FIELDS AND CONSTRUCTION
+    /// ONLY, per this plan's explicit carve-out (search-execution logic —
+    /// `SearchPredicate`/`CandidateNavigator`/`contextful_search_scan` — is
+    /// Phase 2's job). This test proves construction and the pure data
+    /// accessors round-trip correctly; it does NOT attempt to validate
+    /// search correctness, which `fir_op_step`'s own `todo!()` for
+    /// `FirSpec::Search` still correctly reflects.
+    #[test]
+    fn search_fir_structural_construction_and_accessors_round_trip() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let search = root.create_child(
+            &mut storage,
+            FirSpec::Search {
+                pattern: "^x$".to_string(),
+                anchored: true,
+                forward: false,
+                is_value_search: false,
+                contexted: true,
+            },
+        );
+
+        let cursor = FirCursor::new(search, &storage);
+        assert_eq!(cursor.as_search_pattern(), Some("^x$"));
+        assert!(cursor.as_search_anchored());
+        assert!(!cursor.as_search_is_value());
+        assert!(cursor.as_search_contexted());
+        assert_eq!(storage.get_nyes(search), Nyes::Prembrionic);
+    }
+
+    /// `IndexFir`'s arena migration is likewise STRUCTURAL FIELDS AND
+    /// CONSTRUCTION ONLY — its real `fir_op_step` resolves `#N`/`^`/`$`
+    /// through `BraneNavigator`/`SearchPredicate`/
+    /// `contextful_search_scan_no_body_check` (re-read directly,
+    /// `fir_kinds.rs`), exactly the machinery this plan's `SearchFir` task
+    /// already carves out as Phase 2's job — extended here to `IndexFir` for
+    /// the identical reason (a genuine plan gap: the original per-kind list
+    /// did not give `IndexFir` the same explicit carve-out `SearchFir` got,
+    /// even though its real logic is equally search-engine-dependent).
+    /// Index resolution (both branches, re-confirmed by direct re-read)
+    /// resolves against the ANCHOR (`foolish_children()[0]`, for the
+    /// anchored+contexted case) or the enclosing STATEMENT/BRANE found by
+    /// walking the PARENT chain (`find_enclosing_stmt_and_brane`, for the
+    /// unanchored case) — never against a sibling directly.
+    #[test]
+    fn index_fir_structural_construction_and_accessors_round_trip() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let index = root.create_child(
+            &mut storage,
+            FirSpec::Index {
+                offset: -1,
+                anchored: true,
+                contexted: false,
+            },
+        );
+
+        let cursor = FirCursor::new(index, &storage);
+        assert_eq!(cursor.as_index_offset(), -1);
+        assert!(cursor.as_index_anchored());
+        assert!(!cursor.as_search_contexted());
+        assert_eq!(storage.get_nyes(index), Nyes::Prembrionic);
     }
 }

@@ -435,13 +435,45 @@ not a claim that the arena path is live in production yet.
       suite — passes unchanged. 29 `fvm_storage` unit tests total (up from 26), all passing;
       `cargo clippy`/`cargo fmt` clean.
 
-- [ ] Migrate `SearchFir` to `FirPointer` — structural fields and construction only, NOT its search-execution logic
+- [x] Migrate `SearchFir` to `FirPointer` — structural fields and construction only, NOT its search-execution logic
+      (2026-08-30 17:28)
   - This task covers `SearchFir`'s own `ProtoBrane`-embedded fields and its `Rc::new_cyclic` construction sites (in `fir_kinds.rs` and the corresponding sites in `compiler.rs`, though the `compiler.rs` side is covered by Phase 4 — this task touches only `fir_kinds.rs`).
   - Do NOT migrate `SearchPredicate`, `CandidateNavigator`, `BraneNavigator`, or `contextful_search_scan`/`_no_body_check` in this task — those are Phase 2's job specifically, because they are the highest-risk, most-scrutinized part of this whole FOOP and get their own dedicated phase with per-component tasks and heavier verification.
   - Targeted einmo re-run: cases exercising simple, already-passing search forms (to confirm `SearchFir`'s own structural migration didn't break anything) — do not attempt to validate search *correctness* here, only that the type compiles and passes the same tests it passed before this task, which is a weaker claim intentionally deferred to Phase 2.
+      `FirSpec::Search`'s fields already fully mirror `SearchFir`'s own struct (added in the
+      Phase 1 foundational task) — nothing further needed there. Added `FirCursor::
+      as_search_pattern`/`as_search_anchored`/`as_search_is_value`/`as_search_contexted` — pure
+      DATA accessors (re-read directly from `impl Fir for SearchFir`), not search execution, so
+      safe to add without touching Phase 2's scope. `fir_op_step`'s `FirSpec::Search` arm remains
+      the `todo!()` fallback, correctly reflecting that search execution is not yet migrated.
+      1 new unit test (`search_fir_structural_construction_and_accessors_round_trip`) proves
+      construction + accessors round-trip; does not attempt to validate search correctness, per
+      this task's own instruction. Targeted einmo re-run: full suite — passes unchanged.
 
-- [ ] Migrate `IndexFir` to `FirPointer`
+- [x] Migrate `IndexFir` to `FirPointer`
+      (2026-08-30 17:28)
   - Targeted einmo re-run: cases exercising `#N` positional index, `^`/`$` head/tail.
+      **Plan adjustment, added during execution**: re-read `impl Fir for IndexFir`'s real
+      `fir_op_step` in full (`fir_kinds.rs`) and confirmed it depends directly on
+      `BraneNavigator`/`SearchPredicate`/`contextful_search_scan_no_body_check` — exactly the
+      machinery this plan's `SearchFir` task explicitly carves out as Phase 2's job. The
+      original per-kind list did not give `IndexFir` the same explicit carve-out, even though
+      its real logic is equally search-engine-dependent — a genuine plan gap, resolved the same
+      way the `ComparisonFir` gap was: extend the existing carve-out rather than either skip the
+      kind or fake its search logic against the placeholder. `FirSpec::Index`'s fields already
+      fully mirror `IndexFir`'s own struct. Added `FirCursor::as_index_offset`/
+      `as_index_anchored`/`as_search_contexted` (shared with `Search`, both real kinds override
+      this method with their own `contexted` field, confirmed by direct re-read of both `impl
+      Fir` blocks) — pure data accessors. `fir_op_step`'s `FirSpec::Index` arm remains the
+      `todo!()` fallback. Per the human's mid-task clarification: index resolution (both
+      branches, re-confirmed directly) resolves against the ANCHOR (`foolish_children()[0]`, for
+      the anchored+contexted branch) or the enclosing STATEMENT/BRANE found by walking the
+      PARENT chain (`find_enclosing_stmt_and_brane`, for the unanchored branch) — never against
+      a sibling relationship; recorded precisely in the code's own doc comment for when Phase 2
+      implements this kind's real dispatch. 1 new unit test
+      (`index_fir_structural_construction_and_accessors_round_trip`). Targeted einmo re-run:
+      full suite — passes unchanged. 31 `fvm_storage` unit tests total (up from 29), all
+      passing; `cargo clippy`/`cargo fmt` clean.
 
 - [ ] Migrate `FoolRefFir` to `FirPointer`
   - Per FOOP-16.md and CLAUDE.md's "FoolRefFir two-child invariant": a resolved search result has exactly two `ubc_children` — `[0]` the constanic clone of the found statement's body, `[1]` a `FoolRefFir` wrapping the original found statement. Confirm this invariant is preserved under the arena model — i.e. that a search result's two `FirPointer` children are still distinguishable by position/index the same way `ubc_children[0]`/`[1]` are today. This is a correctness-critical invariant to check explicitly in this task, not just a mechanical field swap.
