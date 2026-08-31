@@ -1,0 +1,184 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/23/comprehensive.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
+producer: d95ef48e
+producer-diff: sha256:fa2c47718e92311abf776a7eef4f7702e8fcf04b58f77f21a9158ee121eaae94
+generated: 2026-08-09T20:02:09.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! === FOOP-23 Comprehensive Test ===
+	!! Exercises value search, expression patterns, and contexted (&) search
+	!! interacting with existing features: dot access, name search, nested
+	!! branes, head/tail, index, and arithmetic.
+
+	!! --- Data: integer-valued branes for value search ---
+	nums = {
+		alpha = 42;
+		beta = 15;
+		gamma = 42;
+		delta = 99;
+	};
+
+	records = {
+		alice = 100;
+		bob = 200;
+		carol = 150;
+		alice_2= 251;
+		dave_2 = 249;
+		dave = 102;
+		weeee = -2;
+	};
+
+	!! --- Data: nested branes for dot access / contexted search ---
+	recipe = {
+		steps = {
+			prep = 7;
+			bake = 40;
+			cool = 9;
+		};
+		yield = 12;
+	};
+
+	!! --- Part A: Value search ---
+
+	!! Forward value search: finds FIRST 42 (alpha)
+	fwd = nums~=42;
+
+	!! Backward value search: finds LAST 42 (gamma)
+	bwd = nums?=42;
+
+	!! Value search with expression pattern: 40+2=42, finds alpha
+	expr = nums~=40+2;
+
+	!! Value search referencing outer scope name
+	base = 100;
+	outer = records~=base;
+
+	!! Combined name+value forward: .*e.* with value 100 → alice
+	nv_fwd = records~.*e.*=100;
+
+	!! Combined name+value backward: .*e.* with value 100 → dave
+	nv_bwd = records?.*e.*=100;
+
+	!! --- Part C: Contexted (&) search ---
+
+	!! Contexted index: ~=42 finds alpha, &#1 → beta
+	after = nums~=42&#1;
+
+	!! Contexted index backward: ?=42 finds gamma, &#-1 → beta
+	before = nums?=42&#-1;
+
+	!! Contexted name search from bake's position
+	back_step = recipe.steps~bake&?prep;
+
+	!! Contexted forward from bake
+	fwd_step = recipe.steps~bake&~cool;
+
+	!! Contexted value search: from alpha, find next 42 (gamma)
+	ctx_val = nums~=42&#1;
+
+	!! Dot access deepens
+	deep = recipe.steps.bake;
+
+	!! Mixed: dot then contexted
+	mix = recipe.steps~bake&#1;
+
+	!! Arithmetic using search result
+	inc = (nums~=42) + 1;
+
+	!! --- Edge cases ---
+
+	!! Non-integer candidate skipped, integer found
+	mixed = {
+		inner = {x = 1;};
+		n = 7;
+	};
+	skip = mixed~=7;
+
+	!! Name+value atomic with duplicates
+	settings = {
+		setting = 11;
+		mid = 0;
+		setting = 10;
+	};
+	atomic = settings~setting=10;
+	rel = settings~setting=10&#-1;
+
+	!! Expression pattern: c-d resolves in search context
+	c = 12;
+	d = 9;
+	store = {
+		u = 3;
+		v = 5;
+	};
+	ep = store~=c-d;
+}
+!!
+{
+  nums={
+      alpha=42;
+      beta=15;
+      gamma=42;
+      delta=99
+  };
+  records={
+      alice=100;
+      bob=200;
+      carol=150;
+      aliceˍ2=251;
+      daveˍ2=249;
+      dave=102;
+      weeee=-2
+  };
+  recipe={
+      steps={
+          prep=7;
+          bake=40;
+          cool=9
+      };
+      yield=12
+  };
+  fwd=42;
+  bwd=42;
+  expr=42;
+  base=100;
+  outer=100;
+  nvˍfwd=100;
+  nvˍbwd=100;
+  after=15;
+  before=15;
+  backˍstep=7;
+  fwdˍstep=9;
+  ctxˍval=15;
+  deep=40;
+  mix=9;
+  inc=43;
+  mixed={
+      inner={
+          x=1
+      };
+      n=7
+  };
+  skip=7;
+  settings={
+      setting=11;
+      mid=0;
+      setting=10
+  };
+  atomic=10;
+  rel=0;
+  c=12;
+  d=9;
+  store={
+      u=3;
+      v=5
+  };
+  ep=3
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:10.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:10.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"suvQ5b17Hif6M5dYpSaOYv8qL1dwJg3vFIg24s77C/IOOAFvOLbX52OpraxO/oRciqmHSuQCl3zw+XVjGEmgBA==","produced_by":"einmo 0.1.0 sha256:5bf851dcd60e5e1c69dcadc238904935a1e61a9a0fe7a59cfdc24882883428b8","timestamp":"2026-08-09T20:02:10.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Zch2894efMawzIjy4+t0E2NBSxrbcGIRVd8Ty24oVw9ISu+XJrWuZWvZhF27NdclR8vQqxu14YF/1UkqSFjGBA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T21:59:36.000000000Z"}

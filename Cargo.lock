@@ -460,6 +460,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "foolish-ubca2"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "einmo",
+ "foolish-core",
+ "foolish-parser",
+ "num_cpus",
+ "regex",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
