@@ -1168,9 +1168,12 @@ doubts are folded in as explicit call-outs below (the `IndexFir` search-dispatch
 `compile_root_with_body_override`'s deferred root-construction path) so neither gets silently
 skipped during the cutover.
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run: full `foolish-ubca2` build (`cargo build -p foolish-ubca2`) and full einmo suite (`einmo_gate_checked`).
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run: full `foolish-ubca2` build (`cargo build -p foolish-ubca2`) and full einmo suite (`einmo_gate_checked`).
+      (2026-08-31) Used throughout this phase's sub-tasks: `cargo build -p foolish-ubca2`
+      (and `--release`) plus `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` run at
+      every meaningful sub-step, per the standing discipline.
 
-- [ ] Cut `fir_kinds.rs`'s 13 `impl Fir for XFir` blocks over to `FirPointer`/`FVMStorage`, and migrate `proto_brane.rs` alongside them
+- [x] Cut `fir_kinds.rs`'s 13 `impl Fir for XFir` blocks over to `FirPointer`/`FVMStorage`, and migrate `proto_brane.rs` alongside them
       **(Foundation group — done first, since every other file's cutover calls into these types.)**
   - For each of the 13 kinds already migrated additively in Phase 1 (`IndepIntFir`, `NkFir`,
     `OperatorFir`, `StatementFir`, `BraneFir`, `SearchFir`, `IndexFir`, `FoolRefFir`,
@@ -1394,6 +1397,18 @@ skipped during the cutover.
     written), then the ~260-test port/retire pass, then Phase 5's closing verification, then
     Phase 6 up to the STOP line.
 
+    **Update (2026-08-31, `956503f1`): DONE.** Deleted `fir_kinds.rs` (8562 lines, all 13
+    `impl Fir` blocks + structs + 231 tests), `fir_trait.rs` (1324 lines, `FirRef`/`FirRefExt`/
+    `FirRefNavExt`/`trait Fir`/`Scope`/`UbcError`/`StepReport`/`step_inner`/`MAX_DEPTH` + 32
+    tests), and `proto_brane.rs` (476 lines, `ProtoBrane` + 9 tests) entirely — confirmed nothing
+    outside their own now-retired tests referenced anything not already relocated. Relocated the
+    3 small items the live arena code still needed directly into `fvm_storage.rs`:
+    `ConcatProvenance` (was `fir_kinds::ConcatProvenance`), `matches_pattern` (was `SearchFir::
+    matches_pattern`, a pure string/regex match with no FIR dependency — a straight relocation,
+    not a translation). `compiler.rs`'s `ANON_STMT_NAME` was relocated in the same pass (see the
+    `compiler.rs`/`evaluator.rs`/`system_foo.rs` checkbox below). Full test port/retire pass and
+    verification details in the commit message and the checkbox below.
+
 - [x] Cut `compiler.rs`/`evaluator.rs`/`system_foo.rs` over to the arena path
       (2026-08-31, commits `2ffb3aee`, `dd5a0994`, `37cc1760`, `828a4dee`, `f2303936`, `e856a206`)
       **Executed differently than these three checkboxes originally described — recorded here so
@@ -1426,15 +1441,46 @@ skipped during the cutover.
       — it is no longer the crate's live evaluation path for anything `UbcaEvaluator::evaluate`
       reaches.
 
-- [ ] Grep `foolish-ubca2/src/` for remaining references to `FirRef`, `FirRefExt`, `FirRefNavExt`, `Rc<RefCell`, `Weak<RefCell` and confirm the count is zero outside of comments/docs explaining the old design for historical clarity (if any such explanatory comment remains, that's fine — this task removes *code*, not necessarily every mention in prose)
+      **Update (2026-08-31, `956503f1`): the deferred literal cutover now ALSO done, superseding
+      the "executed differently" note above.** `compiler.rs` is deleted entirely (`ANON_STMT_NAME`
+      relocated into `fvm_storage.rs`, the only remaining user). `evaluator.rs` is gutted to keep
+      only `UbcaEvaluator`/`evaluate` (already live on the arena path) — its parallel `Rc`-based
+      stepping/output-serialization implementation and developer-facing `step_until*` breakpoint
+      helpers (never used by production even before this cutover) are deleted along with their 9
+      tests. `system_foo.rs` is gutted to keep only `ComparisonOp`/`OPERAND_SRC`/`SYSTEM_FOO_SRC`
+      — `ComparisonFir`'s `impl Fir` block, `ComposeError`, `compose_program_with_system`/
+      `compose_one`/`program_result`/`comparison_body`/`build_operand` are all deleted (superseded
+      by their `arena_compiler` equivalents, already live). See the checkbox below for the full
+      test port/retire accounting.
+
+- [x] Grep `foolish-ubca2/src/` for remaining references to `FirRef`, `FirRefExt`, `FirRefNavExt`, `Rc<RefCell`, `Weak<RefCell` and confirm the count is zero outside of comments/docs explaining the old design for historical clarity (if any such explanatory comment remains, that's fine — this task removes *code*, not necessarily every mention in prose)
   - If any live code reference remains, it means an earlier phase's task was incomplete — go back and finish that migration rather than leaving a mixed old/new pointer scheme in place.
+      (2026-08-31) Confirmed via direct grep after the deletion commit (`956503f1`): the only
+      remaining hits are (1) `foolish_core::fir::FirRef` — a DIFFERENT type from a sibling crate,
+      required by the `Evaluator` trait's own signature, not this crate's now-deleted type of the
+      same name; and (2) historical-explanation doc comments referencing the original
+      `foolish-ubca` crate's design by name (e.g. "mirrors `crate::fir_trait::Fir::settled_result`'s
+      CONTRACT" — explaining what real-crate concept this arena code translates) — exactly what
+      this checkbox's own text permits. Zero live code references to this crate's own deleted
+      `FirRef`/`FirRefExt`/`FirRefNavExt`/`Rc<RefCell`/`Weak<RefCell` remain.
 
-- [ ] Delete the `FirRef` type alias, `FirRefExt`, `FirRefNavExt` trait definitions and their `impl` blocks from `foolish-ubca2/src/fir_trait.rs` (or wherever they're defined — confirm location via grep)
+- [x] Delete the `FirRef` type alias, `FirRefExt`, `FirRefNavExt` trait definitions and their `impl` blocks from `foolish-ubca2/src/fir_trait.rs` (or wherever they're defined — confirm location via grep)
   - `NyesExt` is NOT removed — it's an extension trait for NYES-state logic, not for pointer/tree-structure access, and stays regardless of the pointer-scheme migration.
+      (2026-08-31) Done via `fir_trait.rs`'s full deletion (`956503f1`) — the file defining all
+      three no longer exists. `NyesExt` (`nyes_ext.rs`, a separate file) is untouched, as required.
 
-- [ ] Run `cargo build -p foolish-ubca2 --release` and confirm no `unused import`/`dead_code` warnings remain related to the removed types (clean up any leftover `use` statements this removal orphaned).
+- [x] Run `cargo build -p foolish-ubca2 --release` and confirm no `unused import`/`dead_code` warnings remain related to the removed types (clean up any leftover `use` statements this removal orphaned).
+      (2026-08-31) `cargo build -p foolish-ubca2 --release`: clean, zero warnings. Also confirmed
+      both `cargo clippy -p foolish-ubca2 --lib` and `--all-targets` (`--all-features --no-deps
+      -- -D warnings`) are completely clean — the previously-documented pre-existing
+      `system_foo.rs:624` `let_and_return` issue no longer exists (that code was deleted).
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-31) `cargo test -p foolish-ubca2 --lib`: 133 passed, 0 failed, 1 ignored (the
+      intentional `einmo_gate_verified` placeholder), `einmo_gate_checked` green. Full
+      `cargo test --workspace`: green across every crate — `foolish-ubca`'s 328 tests unmodified
+      (confirming it remains fully intact and untouched throughout this whole deletion), plus all
+      doctests. `git diff jia -- foolish-ubca/`: empty.
 
 ---
 
