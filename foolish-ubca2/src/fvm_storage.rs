@@ -728,8 +728,153 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
             }
         }
+        // Direct translation of `impl Fir for OperatorFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this, including its `combine` helper). NOTE: `OperatorFir`
+        // is NOT brane-like under the arena either — re-checked directly:
+        // it has no `stmt_count`/`is_brane_like` override in the real `impl
+        // Fir for OperatorFir`, and no such note exists anywhere in the
+        // current `AGENTS.md`/`CLAUDE.md` (grepped, zero matches) — the
+        // plan's own "AGENTS.md describes it as brane-like (FOOP-9)" note is
+        // stale/incorrect, recorded as a non-blocking doubt in this
+        // checkbox's completion note, not acted on (the real source is the
+        // authority, not the plan's paraphrase of it).
+        FirSpec::Operator { .. } => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                let all_settled = children
+                    .iter()
+                    .all(|&c| matches!(storage.get_nyes(c), Nyes::Constant | Nyes::Independent));
+                if !all_settled {
+                    for child in children {
+                        storage.with_mut(ptr, |fir| fir.push_task(child));
+                    }
+                }
+            }
+            Nyes::Braning => combine(ptr, storage),
+            _ => {}
+        },
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
+}
+
+/// Direct arena-threaded translation of `impl OperatorFir { fn combine }`
+/// (re-read from `fir_kinds.rs` immediately before writing this — the exact
+/// function FOOP-16.md's own specification walks through as the motivating
+/// example for `create_child`/`FVMStorage::get_mut`). Each of the four
+/// "build standalone, then `constanic_clone_at`-to-reparent" triplets in the
+/// original (NK-from-child, division-by-zero, modulo-by-zero, arithmetic
+/// result) collapses to ONE `create_child` call here, exactly as the FOOP's
+/// Motivation section predicts — `create_child` builds the node already
+/// parented under `ptr`, so there is no separate "clone to reparent" step at
+/// all under the arena.
+///
+/// `scope.has_ancestral_sfm` (threaded into `constanic_clone_at` in the
+/// original) has no arena equivalent parameter here: `clone_subtree` isn't
+/// invoked at all in this translation, because `create_child` already
+/// produces an already-parented node — there is nothing to `clone_subtree`.
+/// This is the arena-era simplification the FOOP's Motivation section
+/// describes directly, not an omission.
+fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
+    let op = match storage.get(ptr) {
+        FirSpec::Operator { op } => op.clone(),
+        other => unreachable!("combine called on non-Operator spec: {other:?}"),
+    };
+    let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+
+    let any_nk = children.iter().any(|&c| storage.get_nyes(c) == Nyes::Nk);
+    if any_nk {
+        let reason = children
+            .iter()
+            .find_map(|&c| {
+                if storage.get_nyes(c) == Nyes::Nk {
+                    let cursor = FirCursor::new(c, storage);
+                    cursor.as_nk_reason().map(str::to_string)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "operator nk".to_string());
+        let nk_ptr = ptr.create_child(storage, FirSpec::Nk { reason });
+        let me = storage.get_mut(ptr);
+        me.push_ubc_child(nk_ptr, Nyes::Nk);
+        me.set_nyes(Nyes::Nk);
+        return;
+    }
+
+    let values: Vec<i64> = children
+        .iter()
+        .filter_map(|&c| FirCursor::new(c, storage).as_i64())
+        .collect();
+
+    if values.len() != children.len() {
+        storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+        return;
+    }
+
+    let result = match op.as_str() {
+        "+" if values.len() == 2 => values[0] + values[1],
+        "-" if values.len() == 2 => values[0] - values[1],
+        "*" if values.len() == 2 => values[0] * values[1],
+        "/" if values.len() == 2 => {
+            if values[1] == 0 {
+                let nk_ptr = ptr.create_child(
+                    storage,
+                    FirSpec::Nk {
+                        reason: "division by zero".to_string(),
+                    },
+                );
+                let me = storage.get_mut(ptr);
+                me.push_ubc_child(nk_ptr, Nyes::Nk);
+                me.set_nyes(Nyes::Nk);
+                return;
+            }
+            values[0] / values[1]
+        }
+        "%" if values.len() == 2 => {
+            if values[1] == 0 {
+                let nk_ptr = ptr.create_child(
+                    storage,
+                    FirSpec::Nk {
+                        reason: "division by zero".to_string(),
+                    },
+                );
+                let me = storage.get_mut(ptr);
+                me.push_ubc_child(nk_ptr, Nyes::Nk);
+                me.set_nyes(Nyes::Nk);
+                return;
+            }
+            values[0] % values[1]
+        }
+        "-" if values.len() == 1 => -values[0],
+        // FOOP-75 §7's deleted "$" arm stays deleted here too — the real
+        // `combine` no longer has it (confirmed by direct re-read), so there
+        // is nothing to translate.
+        _ => {
+            // The real `combine` returns `Err(UbcError::Eval(...))` here.
+            // This arena translation has no `Result` return (matching
+            // `fir_op_step`'s own signature in this module, which is
+            // infallible at this stage — error propagation through the
+            // arena's `fir_op_step` dispatch is deferred to Phase 3's
+            // evaluator migration, which gives `step`/`fir_op_step` their
+            // real `Result<_, UbcError>` signatures). An unknown operator is
+            // an internal-consistency condition (the compiler is the only
+            // producer of `Operator` specs and only ever uses known
+            // operators), so `unreachable!` here is a faithful placeholder,
+            // not a swallowed error class.
+            unreachable!(
+                "combine: unknown operator {op:?} ({} operands)",
+                values.len()
+            )
+        }
+    };
+
+    let result_ptr = ptr.create_child(storage, FirSpec::IndepInt { value: result });
+    storage.with_mut(result_ptr, |fir| fir.set_nyes(Nyes::Constant));
+    let me = storage.get_mut(ptr);
+    me.push_ubc_child(result_ptr, Nyes::Constant);
+    me.set_nyes(Nyes::Constant);
 }
 
 /// A [`FirPointer`] paired with a borrow of the [`FVMStorage`] to read it
@@ -842,6 +987,16 @@ impl<'s> FirCursor<'s> {
     pub fn as_nk_reason(&self) -> Option<&'s str> {
         match self.node() {
             FirSpec::Nk { reason } => Some(reason),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_op_name`]: `Operator`'s own
+    /// override (re-read directly) returns its op string; every other
+    /// kind's default is `None`.
+    pub fn as_op_name(&self) -> Option<&'s str> {
+        match self.node() {
+            FirSpec::Operator { op } => Some(op),
             _ => None,
         }
     }
@@ -1515,6 +1670,90 @@ mod tests {
         assert_eq!(
             FirCursor::new(node, &storage).as_nk_reason(),
             Some("unbound name")
+        );
+    }
+
+    /// `OperatorFir`'s arena migration: mirrors
+    /// `fir_kinds.rs::tests::operator_nyes_transitions` exactly — `2 + 3`
+    /// settles Constant with value `5`. Both operands start pre-settled
+    /// (`Constant`), so `combine` fires without a genuine Braning-phase
+    /// child-stepping round-trip — this test's own `step` loop drains the
+    /// (already-constanic) operand tasks first, then settles via `combine`,
+    /// exactly mirroring the two-step shape `step_to_settled` exercises in
+    /// the original test.
+    #[test]
+    fn operator_addition_settles_constant() {
+        let mut storage = FVMStorage::new();
+        let op = storage.make_root(FirSpec::Operator {
+            op: "+".to_string(),
+        });
+        let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+        let b = op.create_child(&mut storage, FirSpec::IndepInt { value: 3 });
+        storage.with_mut(a, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(b, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..10 {
+            if storage.get_nyes(op).is_constanic() {
+                break;
+            }
+            op.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(op), Nyes::Constant);
+        assert_eq!(FirCursor::new(op, &storage).as_i64(), Some(5));
+        assert_eq!(FirCursor::new(op, &storage).as_op_name(), Some("+"));
+    }
+
+    /// Mirrors `fir_kinds.rs::tests::operator_div_by_zero_nyes_transitions`
+    /// exactly — `1 / 0` settles NK.
+    #[test]
+    fn operator_division_by_zero_settles_nk() {
+        let mut storage = FVMStorage::new();
+        let op = storage.make_root(FirSpec::Operator {
+            op: "/".to_string(),
+        });
+        let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let b = op.create_child(&mut storage, FirSpec::IndepInt { value: 0 });
+        storage.with_mut(a, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(b, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..10 {
+            if storage.get_nyes(op).is_constanic() {
+                break;
+            }
+            op.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(op), Nyes::Nk);
+        assert_eq!(
+            FirCursor::new(op, &storage)
+                .settled_result()
+                .and_then(|c| c.as_nk_reason().map(str::to_string)),
+            Some("division by zero".to_string())
+        );
+    }
+
+    /// An `Operator` with a pre-constanic (not-yet-settled) operand pushes
+    /// tasks for its unsettled operands and moves to `Braning` — mirrors
+    /// `impl Fir for OperatorFir`'s `Prembrionic`/`Embryonic` branch exactly
+    /// (`if !self.operands_all_settled() { push tasks }`).
+    #[test]
+    fn operator_pushes_tasks_for_unsettled_operands() {
+        let mut storage = FVMStorage::new();
+        let op = storage.make_root(FirSpec::Operator {
+            op: "+".to_string(),
+        });
+        let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+        let _b = op.create_child(&mut storage, FirSpec::IndepInt { value: 3 });
+        // `a`/`b` both start Prembrionic (unsettled) — the default.
+
+        op.step(&mut storage);
+
+        assert_eq!(storage.get_nyes(op), Nyes::Braning);
+        assert_eq!(
+            FirCursor::new(op, &storage).front_task(),
+            Some(a),
+            "unsettled operands must be queued as tasks"
         );
     }
 }

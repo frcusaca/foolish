@@ -360,9 +360,43 @@ not a claim that the arena path is live in production yet.
       clippy -p foolish-ubca2 --all-targets --all-features --no-deps -- -D warnings` clean for
       `fvm_storage.rs`; `cargo fmt` clean.
 
-- [ ] Migrate `OperatorFir` to `FirPointer`
+- [x] Migrate `OperatorFir` to `FirPointer`
+      (2026-08-30 17:17)
   - Note: `OperatorFir` is described in AGENTS.md as "brane-like" (FOOP-9) — confirm during this task whether it has any brane-search-boundary interaction that the generic per-kind migration steps above don't cover; if so, treat that interaction as part of this task, not deferred.
   - Targeted einmo re-run: cases exercising binary/unary operators.
+      **Non-blocking doubt**: grepped `AGENTS.md`/`CLAUDE.md` directly for "brane-like" — zero
+      matches. The real `impl Fir for OperatorFir` (re-read directly, `fir_kinds.rs`) has no
+      `stmt_count`/`is_brane_like` override, so it is NOT brane-like in the actual source. This
+      plan note appears stale/inaccurate (possibly referring to an earlier FOOP-9 draft not
+      reflected in the current docs). Treated the real source as authoritative per AGENTS.md's
+      own "adherence to specification... read the spec that governs the feature... do not infer
+      the spec from the implementation's behavior" — here the reverse direction: don't infer a
+      real behavior from a stale doc note either. No brane-search-boundary interaction exists to
+      migrate.
+
+      Per the additive-then-cutover design (confirmed by the human): added a real `FirSpec::
+      Operator` arm to `fir_op_step`, and a `combine` free function that is a direct
+      arena-threaded translation of `OperatorFir::combine` (re-read in full immediately before
+      writing — the exact function FOOP-16.md's own Motivation/Specification walks through).
+      Each of `combine`'s four "build standalone, then `constanic_clone_at`-to-reparent" triplets
+      collapses to ONE `create_child` call, exactly as predicted — confirmed directly by writing
+      it, not merely asserted. Added `FirCursor::as_op_name` mirroring the trait override.
+
+      One deliberate, documented simplification: the arena `combine`'s unknown-operator arm uses
+      `unreachable!` instead of the real `combine`'s `Err(UbcError::Eval(...))`, since this
+      module's `fir_op_step`/`step` are infallible at this stage (`Result` propagation through
+      the arena awaits Phase 3's evaluator migration, which gives these functions their final
+      signatures) — noted in the code as a documented deviation, not a silent behavior change,
+      since the compiler is the only producer of `Operator` specs and only ever uses known
+      operators, making this branch truly unreachable today either way.
+
+      3 new unit tests (25 total in `fvm_storage`): `operator_addition_settles_constant` (mirrors
+      `fir_kinds.rs::tests::operator_nyes_transitions`'s `2+3=5` exactly),
+      `operator_division_by_zero_settles_nk` (mirrors `operator_div_by_zero_nyes_transitions`'s
+      `1/0=NK` exactly), `operator_pushes_tasks_for_unsettled_operands` (the Braning-phase
+      task-queueing branch). Targeted einmo re-run: full suite (broader than "binary/unary
+      operator cases" specifically, since the suite runs quickly and this confirms no regression
+      crate-wide) — passes unchanged.
 
 - [ ] Migrate `StatementFir` to `FirPointer`
   - `StatementFir` is likely the most-referenced kind (every brane is a sequence of statements) — expect this task to touch the largest number of call sites of any single-kind task in this phase. If it proves larger than expected, split into indented sub-tasks per this plan's sub-task convention (e.g. one sub-task for its own fields/construction, one for its `Fir` impl's parent/children-touching methods, one for any statement-chain-building helper functions specific to it).
