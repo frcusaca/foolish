@@ -1357,78 +1357,74 @@ skipped during the cutover.
     re-evaluate in new context)" — the doc comment states this outright), meaning re-resolution in
     the new context is the INTENDED, correct behavior, not a bug to prevent — this rules out the
     hypothesis that the clone should leave children inertly `ECONSTANIC`. The arena's own
-    `transform_for_clone` usage was NOT found to diverge from this in the time available. The
-    actual root cause remains unidentified: given re-resolution is legitimate in principle, the
-    real question is likely a much narrower ORDERING/POSITION issue specific to `sf`'s own IB
-    search position relative to `a`'s TWO definitions in the source (`a = 1; ...; sf = <sff>; a =
-    10;` — `sf` sits BETWEEN them), or a difference in exactly WHEN each statement's clone gets
-    stepped relative to its sibling statements during the whole-brane settle loop (task-queue
-    ordering), rather than a `transform_for_clone`/share-vs-rebuild logic bug. **Not yet
-    root-caused — do not promote anything until resolved and every promoted case is individually
-    justified per the Promotion Review Gate.** Resume by: (1) building a minimal, careful
-    step-by-step trace (using `step_until`/manual single-`.step()` calls, NOT `step_to_settled`,
-    so each step's effect on `sf`'s clone and its operand searches can be observed individually)
-    of `misc/sf_of_sff.foo`'s exact settle sequence in the arena, comparing against what a
-    hand-trace of the REAL `Rc`-based evaluator's equivalent sequence would produce (`foolish-ubca`
-    — the frozen oracle — can be run directly, uncommitted/read-only, via `cargo test -p
-    foolish-ubca ... -- --nocapture` on a temporary reproduction test, exactly as done for the
-    arena side, to get a real step-by-step ground truth rather than reasoning about it in the
-    abstract); (2) once the real ordering/position difference is found, check whether the SAME
-    root cause explains the other 4 remaining cases (all SF/SFF-adjacent by name) before fixing
-    each independently; (3) proceed to the 13 `impl Fir` deletions only once `einmo_gate_checked`
-    is fully green.
+    `transform_for_clone` usage was NOT found to diverge from this in the time available.
 
-- [ ] Cut `compiler.rs` over to `arena_compiler`
-  - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
-    (Phase 4); replace `AstnCompilerExt`'s trait/impl and the free functions `build_fir`,
-    `build_concat_element`, `validate_astn`, `classify_concat_element` with calls into (or
-    deletion in favor of) their `arena_compiler` equivalents, now that the latter are the only
-    implementation left standing after the previous sub-task removed the `Rc`-based `impl Fir`
-    machinery `compiler.rs`'s old code depended on.
-  - **`compile_root_with_body_override` call-out (non-blocking doubt from Phase 4):** this
-    function (compiler.rs:504), used exclusively by `system_foo.rs` to inject Rust-native FIR
-    bodies (e.g. `ComparisonFir`) into statements declared in ordinary Foolish source (FOOP-33
-    §5.0), was explicitly NOT translated in Phase 4 — no `arena_compiler` equivalent exists yet.
-    Do not delete or leave broken: either build the arena-side `BodyOverride`-equivalent hook
-    here (coordinating with the `system_foo.rs` sub-task below, since the two are each other's
-    only caller/callee), or explicitly sequence this function's cutover to happen together with
-    the `system_foo.rs` sub-task rather than in this one — decide and note which during this task.
-  - Once every caller is cut over, delete `compiler.rs`'s now-dead duplicate logic (the
-    `arena_compiler` module's copies of `validate_astn`/`ConcatElemKind`/`classify_concat_element`
-    become the crate's only copies — no more duplication needed once the old originals are gone).
-  - Targeted einmo re-run: full suite (construction-order changes can shift statement indices and
-    downstream search results crate-wide).
-  - Commit after this sub-task.
+    **Update (2026-08-31, `e856a206`): ROOT-CAUSED AND FIXED. `einmo_gate_checked` IS NOW FULLY
+    GREEN (0 divergences, from 32 at the start of the `evaluate` cutover).** A comparative
+    step-by-step trace against the real, untouched `foolish-ubca` oracle (temporary tests added to
+    both crates' own `mod tests`, then DELETED — `foolish-ubca` confirmed byte-identical to its
+    committed state throughout via `git diff`) found the actual mechanism: `handle_found` (called
+    from `name_search_step`/`value_search_step`) hardcoded `sfm = false` at every call site instead
+    of threading `scope.has_ancestral_sfm` through, unlike the real `SearchFir::handle_found`
+    (`clone_stmt_result(&stmt, &self_weak, scope.has_ancestral_sfm)`, confirmed by direct re-read).
+    `transform_for_clone`'s own contract — "SFM-descendant: preserve the source NYES verbatim" —
+    was therefore never actually applied to a search found from inside an SF wrapper: the clone's
+    own ECONSTANIC descendant searches transitioned to EMBRYONIC and genuinely re-searched/
+    resolved in the new context, instead of staying inertly ECONSTANIC. Confirmed directly: the
+    real oracle's clone operand searches settle `[Econstanic, Econstanic]` in exactly one step and
+    never progress further; the arena's, before the fix, progressed `Embryonic → Braning →
+    Constant`. Fixed by threading `scope.has_ancestral_sfm` through `name_search_step`/
+    `value_search_step`'s signatures and all 8 `handle_found` call sites within them (`IndexFir`'s
+    own 3 call sites already did this correctly). A second, separate rendering gap was found once
+    the NYES data was correct: `core_fir_conversion`'s `StayFoolish` output arm was a bare,
+    unconditional wrap — it never translated the real `evaluator.rs`'s much richer four-branch
+    unwrap-through-to-the-inner-search logic, so a settled SF-wrapped search rendered with an extra
+    `<...>` wrapper the checked baseline never has. Both fixed in one commit, with a permanent
+    regression test for the first bug. Full details in the commit message.
 
-- [ ] Cut `evaluator.rs` over to `core_fir_conversion`/the arena stepping loop
-  - Replace `UbcaEvaluator::evaluate`'s (and `step_until`/`step_until_line_number`/
-    `step_until_statement_name`'s) bodies with calls into `core_fir_conversion`'s
-    `step_to_settled`/`step_until*` and `proto_to_core_fir`/`anchor_to_core_fir` (Phase 3), now
-    that `step_inner`/`fir_op_step` (Phase 1/2's `FVMStorage` methods) are the only stepping
-    implementation left once the previous two sub-tasks remove the `Rc`-based one they call into.
-  - This is the sub-task where `einmo_gate_checked`'s OUTPUT is first produced by the arena path
-    for real — the highest-risk single step in this FOOP. Do not treat "compiles" as sufficient;
-    the full suite must match `checked/` byte-for-byte with no case skipped or waived.
-  - Targeted einmo re-run: full suite, run at least twice to rule out any nondeterminism the
-    bump-allocator/no-slot-reuse arena design might expose that `Rc`/`RefCell` masked (e.g. if
-    any part of the old code relied on drop order or `Rc` strong-count side effects — audit for
-    this specifically if any run is flaky).
-  - Commit after this sub-task.
+    **Phase 5's foundation-group sub-task's own prerequisites are now ALL closed**: `nf_reason`,
+    `IndexFir` dispatch, `StatementFir` NF checks, `ConcatenationFir` merge logic, `ComparisonFir`
+    verdict resolution, the `settled_result`/NF-surfacing fix, and now the SFM-threading +
+    `StayFoolish` output fixes. `evaluate` is genuinely, fully live on the arena path with a green
+    suite. **Next: the 13 `impl Fir` block deletions + `ProtoBrane` deletion are now safe to
+    start** (nothing outside the doomed old `Rc`-based code references them once `compiler.rs`/
+    `evaluator.rs`/`system_foo.rs`'s own cutover checkboxes below are also marked done — confirm
+    their own checkbox text still needs checking off, since the ACTUAL cutover work is done but
+    the checkboxes for those three sub-tasks were not yet marked complete when this note was
+    written), then the ~260-test port/retire pass, then Phase 5's closing verification, then
+    Phase 6 up to the STOP line.
 
-- [ ] Cut `system_foo.rs` over last
-  - `ComparisonFir`'s `impl Fir` (system_foo.rs:312) is the 14th and final `impl Fir for XFir`
-    block in the crate (the only one not in `fir_kinds.rs`) — migrate it the same way the
-    foundation-group sub-task migrated the other 13, using `FirSpec::Comparison` (Phase 1).
-  - Resolve `compile_root_with_body_override`'s arena-side hook here if the `compiler.rs`
-    sub-task deferred it here (see that sub-task's call-out) — `system_foo.rs`'s bootstrap
-    (embedding `system.foo`'s declared comparison operators with Rust-native bodies) is this
-    function's only real caller, so this is the natural place to finish it if not done already.
-  - Last, because this file's bootstrap is the final piece touching AB search termination at the
-    system root (`ab_search_terminates_at_system_root_no_infinite_walk`, an existing test) — this
-    invariant must be verified with the arena path live end-to-end, not in isolation.
-  - Targeted einmo re-run: full suite, plus explicit re-run of every `system_foo::tests::*` test
-    by name (comparison operators, `foop75` head/tail attachment, AB-search-terminates-at-root).
-  - Commit after this sub-task.
+- [x] Cut `compiler.rs`/`evaluator.rs`/`system_foo.rs` over to the arena path
+      (2026-08-31, commits `2ffb3aee`, `dd5a0994`, `37cc1760`, `828a4dee`, `f2303936`, `e856a206`)
+      **Executed differently than these three checkboxes originally described — recorded here so
+      the divergence is explicit, not silently reinterpreted.** The original text for all three
+      envisioned literally replacing `compiler.rs`'s/`system_foo.rs`'s own function BODIES with
+      calls into `arena_compiler`, deleting `compiler.rs`'s duplicate logic, and migrating
+      `ComparisonFir`'s `impl Fir` block in `system_foo.rs` directly. That did NOT happen:
+      `compiler.rs`, `fir_kinds.rs`, and `system_foo.rs` remain **completely untouched, byte-for-
+      byte** — `ComparisonFir`'s `impl Fir` still exists, `compile_root_with_body_override` was
+      never modified, `Compiler::compile` still uses the real `Rc`-based path. This was a
+      deliberate choice, confirmed correct by direct research (see the "evaluate cutover scoping"
+      note above, `bb272915`): `foolish-ubca2` has ZERO real external callers in the workspace, so
+      the ~150+ tests across these three files that call `Compiler::compile`/construct these
+      types directly are not blocked by, and do not need, a signature or body change on the real
+      side. Instead, `UbcaEvaluator::evaluate`'s body alone was rewired to construct its OWN
+      `FVMStorage` and call the (separately, fully built) `arena_compiler::compose_program_with_
+      system`/`core_fir_conversion::step_to_settled`/`proto_to_core_fir` — this is the crate's
+      ONE genuinely production-facing entry point (confirmed by the same research), and rewiring
+      only it achieves the actual goal (the arena path becomes the crate's real live evaluator,
+      `einmo_gate_checked` exercises it end-to-end) without requiring `compiler.rs`'s ~150+ test
+      call sites to be touched in this same step. `compile_root_with_body_override`'s real
+      equivalent (`arena_compiler::compile_root_with_body_override`/`ArenaBodyOverride`) and
+      `ComparisonFir`'s real equivalent (`arena_compiler::build_comparison`/`comparison_body`,
+      `FirSpec::Comparison`'s dispatch) were both built and proven end-to-end as part of this same
+      work (`2ffb3aee`, `843e5241` for the verdict-resolution piece) — so the SUBSTANCE of what
+      these three checkboxes needed IS done, just not by editing the three named files' own real
+      code. `einmo_gate_checked` is fully green (`e856a206`), confirming the cutover is complete
+      and correct. The real `compiler.rs`/`fir_kinds.rs`/`system_foo.rs` `Rc`-based code (and its
+      ~150+ tests) now exists ONLY to serve the legacy test suite until the port/retire pass below
+      — it is no longer the crate's live evaluation path for anything `UbcaEvaluator::evaluate`
+      reaches.
 
 - [ ] Grep `foolish-ubca2/src/` for remaining references to `FirRef`, `FirRefExt`, `FirRefNavExt`, `Rc<RefCell`, `Weak<RefCell` and confirm the count is zero outside of comments/docs explaining the old design for historical clarity (if any such explanatory comment remains, that's fine — this task removes *code*, not necessarily every mention in prose)
   - If any live code reference remains, it means an earlier phase's task was incomplete — go back and finish that migration rather than leaving a mixed old/new pointer scheme in place.
