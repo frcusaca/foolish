@@ -136,6 +136,15 @@ pub(crate) struct ArenaFir {
     /// rule (`check_rename_of_named_creation`), both ported to this cutover's
     /// `StatementFir` migration task.
     nf_reason: Option<String>,
+    /// Mirrors `ConcatenationFir::_helpers_populated`. Applies ONLY to
+    /// `FirSpec::Concatenation` nodes. A monotonic one-way gate distinct
+    /// from "`ubc_children` is non-empty": the real field must flip `true`
+    /// even on the ZERO-LINES-TO-MERGE path (`populate_concat_helpers`
+    /// pushes no helper at all when every element resolves to an empty
+    /// brane), so the SECOND `Braning` re-entry can settle from the
+    /// (empty) helper set rather than re-attempting the merge forever.
+    /// `false` for every other kind, always.
+    helpers_populated: bool,
 }
 
 impl ArenaFir {
@@ -271,6 +280,20 @@ impl ArenaFir {
     /// check_null_const_conflict`).
     pub(crate) fn set_nf_reason(&mut self, reason: String) {
         self.nf_reason = Some(reason);
+    }
+
+    /// Mirrors `ConcatenationFir::_helpers_populated`'s reader. See this
+    /// struct's `helpers_populated` field doc comment for why this cannot
+    /// be inferred from `ubc_children`'s emptiness.
+    pub(crate) fn helpers_populated(&self) -> bool {
+        self.helpers_populated
+    }
+
+    /// Mirrors `ConcatenationFir::_helpers_populated`'s ONLY write path:
+    /// `self._helpers_populated.set(true)`. One-way — never called with
+    /// `false` (the real `Cell<bool>` is likewise never reset).
+    pub(crate) fn set_helpers_populated(&mut self) {
+        self.helpers_populated = true;
     }
 }
 
@@ -510,6 +533,31 @@ impl FVMStorage {
         ptr
     }
 
+    /// Appends an ALREADY-EXISTING pointer to `parent`'s `foolish_children`
+    /// list WITHOUT allocating a new slot and WITHOUT reparenting `child`
+    /// (its own `.parent` field, and therefore its home brane and line
+    /// number, are left exactly as they were). This is `clone_subtree`'s
+    /// "share-not-clone" path's missing half: the real `constanic_clone_at`
+    /// shares a `Constant`/`Independent` non-Brane (or a `FoolRef`/
+    /// `Creation` regardless of NYES) by returning the SAME `Rc` unchanged —
+    /// `Rc::clone(fir_ref)`, still pointing at its OLD parent — while the
+    /// NEW parent's own `ProtoBrane::foolish_children` `Vec` still gets the
+    /// shared pointer appended (an ordinary `Vec::push`, independent of the
+    /// child's own parent field). `clone_subtree`'s share branch previously
+    /// returned the shared pointer WITHOUT this append — a real, pre-
+    /// existing gap (undetected until `populate_concat_helpers`'s cutover
+    /// task exercised it end-to-end: a `ConcatHelper` merging an
+    /// already-Constant statement ended up with an EMPTY `foolish_children`
+    /// list despite `clone_subtree` reporting a "successful" share, because
+    /// nothing had appended the shared pointer to the new parent).
+    pub(crate) fn attach_shared_foolish_child(&mut self, parent: FirPointer, child: FirPointer) {
+        self.validate(parent);
+        self.validate(child);
+        self.slots[parent.index as usize]
+            .foolish_children
+            .push(child);
+    }
+
     /// Inserts the very first node of a fresh arena, self-parented (its own
     /// `FirPointer` as its parent — mirroring today's `Rc::new_cyclic`
     /// self-`Weak` root convention, confirmed by `proto_brane_parent_link`'s
@@ -551,6 +599,7 @@ impl FVMStorage {
                 tasks: VecDeque::new(),
                 alarm_reason: None,
                 nf_reason: None,
+                helpers_populated: false,
             },
             parent,
             foolish_children: Vec::new(),
@@ -1177,21 +1226,13 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
         // Direct translation of `impl Fir for ConcatenationFir`'s real
         // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
         // writing this) — the TYPE-CHECK and JOIN-READINESS logic (Braning's
-        // "one pass over the elements" block) is implemented in full, since
-        // it depends only on generic arena primitives already available
-        // (`FirPointer::value`, `FirCursor::is_brane_like`). **Deliberately
-        // deferred**: `populate_concat_helpers`'s actual line-merging body —
-        // specifically `apply_null_const_rule_to_merged_stmt`, which depends
-        // on `default_equal`/`set_nf_reason`/`statement_value_for_comparison`,
-        // none of which exist in arena form yet (the same NF-mechanism
-        // dependency already deferred at `StatementFir`'s task). Once join
-        // readiness is confirmed (`all_brane_like` with no type errors),
-        // this arena translation settles `Woconstanic` rather than actually
-        // building helpers and joining — a narrower, honestly-incomplete
-        // claim, not a silent wrong answer: `_helpers_populated` never
-        // becomes `true` under this arena path, so `stmt_count`/`stmt_at`
-        // (also not yet migrated here) are never called against a
-        // half-built helper state.
+        // "one pass over the elements" block) AND `populate_concat_helpers`'s
+        // real line-merging body (Phase 5 cutover prerequisite,
+        // `search_fir_dispatch::populate_concat_helpers`/
+        // `apply_null_const_rule_to_merged_stmt`) are both now implemented in
+        // full, now that `default_equal`/`set_nf_reason`/
+        // `statement_value_for_comparison` exist in arena form
+        // (`StatementFir`'s NF-check task).
         FirSpec::Concatenation { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1241,11 +1282,31 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     return;
                 }
 
-                // JOIN-READY but not yet migrated (see this arm's doc
-                // comment above): settle Woconstanic rather than build
-                // helpers, an honestly-incomplete claim rather than a wrong
-                // Constant/NK answer.
-                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+                // JOIN-READY: two-pass, exactly mirroring the real
+                // `_helpers_populated` gate. First pass builds the helper(s)
+                // and pushes them as tasks, staying pre-constanic so the
+                // driver drains the helper's own stepping before re-entry;
+                // second pass settles from the DRAINED helper results (the
+                // joined/recoordinated copies), not the raw elements.
+                let already_populated = storage.get_mut(ptr).helpers_populated();
+                if !already_populated {
+                    storage.get_mut(ptr).set_helpers_populated();
+                    search_fir_dispatch::populate_concat_helpers(storage, ptr);
+                    let helpers: Vec<FirPointer> =
+                        FirCursor::new(ptr, storage).ubc_children().to_vec();
+                    for helper in helpers {
+                        storage.with_mut(ptr, |fir| fir.push_task(helper));
+                    }
+                } else {
+                    let helpers: Vec<FirPointer> =
+                        FirCursor::new(ptr, storage).ubc_children().to_vec();
+                    let settled = if helpers.is_empty() {
+                        Nyes::Constant
+                    } else {
+                        decide_nyes_due_to_children(storage, &helpers).unwrap_or(Nyes::Constant)
+                    };
+                    storage.with_mut(ptr, |fir| fir.set_nyes(settled));
+                }
             }
             _ => {}
         },
@@ -2232,11 +2293,21 @@ impl FVMStorage {
         let spec = self.get(root).clone();
 
         // 1. Share-not-clone: Constant/Independent non-Brane always shares;
-        // FoolRef/Creation always share regardless of NYES.
+        // FoolRef/Creation always share regardless of NYES. The shared
+        // pointer is NOT reparented (its own `.parent` stays exactly as it
+        // was — mirroring the real `Rc::clone(fir_ref)`'s untouched
+        // `ProtoBrane`), but it IS appended to `new_parent`'s
+        // `foolish_children` list (`attach_shared_foolish_child`) — a real
+        // bug fix found and fixed during this cutover's `ConcatHelper`
+        // merge-logic task: without this append, a caller like
+        // `populate_concat_helpers` that walks `new_parent`'s
+        // `foolish_children` afterward would silently see the shared child
+        // missing, even though `clone_subtree` reported success.
         let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
         let is_constanic_non_brane = matches!(nyes, Nyes::Constant | Nyes::Independent)
             && !matches!(spec, FirSpec::Brane { .. });
         if is_share_kind || is_constanic_non_brane {
+            self.attach_shared_foolish_child(new_parent, root);
             return root;
         }
 
@@ -2959,6 +3030,112 @@ mod search_fir_dispatch {
                 format!("'{name} not-foolish (Named creations cannot be renamed)"),
             );
         }
+    }
+
+    /// Direct arena translation of `ConcatenationFir::apply_null_const_rule_
+    /// to_merged_stmt` (FOOP-33 §4, re-read in full immediately before
+    /// writing this): the null-characterized name constant rule, applied at
+    /// concatenation merge time — `StatementFir`'s own `check_null_const_
+    /// conflict` never fires for a merge-cloned statement (it was built
+    /// already-constanic via `clone_subtree`, which skips `Prembrionic`/
+    /// `Embryonic`/`Braning` entirely), so `ConcatenationFir` enforces the
+    /// SAME rule itself here, against statements already merged BEFORE
+    /// `new_stmt`. `already_merged` is searched in REVERSE (nearest-first)
+    /// so a same-name chain compares each new one against the NEAREST
+    /// prior, transitively carrying any earlier refusal forward via
+    /// `statement_value_for_comparison`'s settled-result-first read.
+    pub(super) fn apply_null_const_rule_to_merged_stmt(
+        storage: &mut FVMStorage,
+        new_stmt: FirPointer,
+        already_merged: &[FirPointer],
+    ) {
+        let (is_nully, pattern) = match storage.get(new_stmt) {
+            FirSpec::Statement { identifier, .. } => (
+                identifier.is_nully_characterizing_coordinate_name(),
+                identifier.searchable_name().to_string(),
+            ),
+            _ => return,
+        };
+        if !is_nully {
+            return;
+        }
+        let Some(&prior_stmt) = already_merged.iter().rev().find(|&&s| {
+            matches!(storage.get(s), FirSpec::Statement { identifier, .. }
+                if identifier.searchable_name() == pattern)
+        }) else {
+            return; // first occurrence of this null-const name in the merge -- permitted.
+        };
+        let Some(new_body) = statement_value_for_comparison(storage, new_stmt) else {
+            return;
+        };
+        let Some(prior_body) = statement_value_for_comparison(storage, prior_stmt) else {
+            return;
+        };
+        if !storage.get_nyes(new_body).is_constanic()
+            || !storage.get_nyes(prior_body).is_constanic()
+        {
+            return; // one side not yet settled -- nothing to compare yet.
+        }
+        if super::default_equal(storage, new_body, prior_body) != super::Equality::Equal {
+            let name = match storage.get(new_stmt) {
+                FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
+                _ => return,
+            };
+            storage.set_nf_reason(new_stmt, format!("'{name} not-foolish"));
+        }
+    }
+
+    /// Direct arena translation of `ConcatenationFir::populate_concat_
+    /// helpers` (re-read in full immediately before writing this): Phase A
+    /// — a single `ConcatHelper` with ALL merged lines (no `MAX_BRANE_SIZE`
+    /// limit yet). Constanic-clones every element's statements (in order,
+    /// via each element's OWN resolved `.value()`) into one flat
+    /// `ConcatHelper`, applying the null-const merge rule to each clone as
+    /// it is added, then pushes the helper as `ptr`'s sole `ubc_children`
+    /// entry. Structural only — the CALLER decides `ptr`'s own NYES (this
+    /// mirrors the real function's own contract exactly: "Structural only —
+    /// the caller decides NYES"). Empty (no lines at all) is a no-op, same
+    /// as the real function.
+    pub(super) fn populate_concat_helpers(storage: &mut FVMStorage, ptr: FirPointer) {
+        let elements: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+
+        let total_lines: usize = elements
+            .iter()
+            .map(|&e| {
+                let resolved = e.value(storage);
+                FirCursor::new(resolved, storage).stmt_count().unwrap_or(0)
+            })
+            .sum();
+        if total_lines == 0 {
+            return;
+        }
+
+        // Build the (empty) helper first so its pointer becomes the parent
+        // of every cloned line — cross-element search resolution walks to
+        // it, matching the real code's "build the helper first so its Weak
+        // becomes the parent" ordering exactly.
+        let helper = ptr.create_child(storage, FirSpec::ConcatHelper);
+
+        let mut cloned_stmts: Vec<FirPointer> = Vec::with_capacity(total_lines);
+        for &elem in &elements {
+            let resolved = elem.value(storage);
+            let count = FirCursor::new(resolved, storage).stmt_count().unwrap_or(0);
+            for i in 0..count {
+                let Some(stmt) = FirCursor::new(resolved, storage).stmt_at(i) else {
+                    continue;
+                };
+                let global_idx = cloned_stmts.len();
+                let clone = storage.clone_subtree(stmt, helper, global_idx, false, false);
+                apply_null_const_rule_to_merged_stmt(storage, clone, &cloned_stmts);
+                cloned_stmts.push(clone);
+            }
+        }
+
+        if cloned_stmts.is_empty() {
+            return;
+        }
+        let mut cursor = super::FirCursorMut::new(ptr, storage);
+        cursor.push_ubc_child(helper);
     }
 
     pub(super) fn settle_from_ubc_result(storage: &mut FVMStorage, ptr: FirPointer) {
@@ -5699,20 +5876,20 @@ mod tests {
         );
         storage.with_mut(brane2, |fir| fir.set_nyes(Nyes::Constant));
 
-        // Drain: Prembrionic->Braning (push both elements as tasks), then
-        // one step per queued task to pop it (both already Constant), then
-        // one more step for the Braning arm's actual type-check pass.
-        for _ in 0..5 {
-            if storage.get_nyes(cat) == Nyes::Woconstanic {
-                break;
-            }
-            cat.step(&mut storage);
-        }
+        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
 
+        // Both elements are EMPTY branes -- zero lines to merge, so the
+        // real `populate_concat_helpers` pushes no helper at all, and the
+        // "empty helper set -> Constant" convention applies (updated from
+        // this test's earlier Woconstanic expectation, which pinned the
+        // deliberately-incomplete pre-merge-logic placeholder — now that
+        // populate_concat_helpers is real, join-ready empty branes settle
+        // Constant, matching the real ConcatenationFir's own documented
+        // "Empty (no lines joined) -> Constant" rule).
         assert_eq!(
             storage.get_nyes(cat),
-            Nyes::Woconstanic,
-            "join-ready elements settle Woconstanic under this deferred-merge implementation"
+            Nyes::Constant,
+            "join-ready elements with zero total lines settle Constant (empty-brane convention)"
         );
         assert_eq!(
             FirCursor::new(cat, &storage).as_concat_provenance(),
@@ -7417,6 +7594,137 @@ mod tests {
         assert!(
             storage.nf_reason(second).is_none(),
             "restating the SAME value must be permitted, not refused"
+        );
+    }
+
+    // ── ConcatenationFir real merge (populate_concat_helpers, Phase 5) ──
+
+    /// Concatenating two non-empty branes actually JOINS their statements
+    /// into one flat, constant `ConcatHelper` (not the old Woconstanic
+    /// placeholder) — the real end-to-end behavior `populate_concat_
+    /// helpers`'s translation exists to produce.
+    #[test]
+    fn concatenation_of_two_branes_joins_their_statements() {
+        let mut storage = FVMStorage::new();
+        let cat = storage.make_root(FirSpec::Concatenation {
+            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+        });
+        let brane1 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let a = brane1.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"),
+                line_number: 0,
+            },
+        );
+        a.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        let brane2 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let b = brane2.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "b"),
+                line_number: 0,
+            },
+        );
+        b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
+        assert_eq!(storage.get_nyes(cat), Nyes::Constant);
+
+        let helpers = FirCursor::new(cat, &storage).ubc_children().to_vec();
+        assert_eq!(
+            helpers.len(),
+            1,
+            "one flat ConcatHelper for both merged branes"
+        );
+        let helper = helpers[0];
+        assert!(matches!(storage.get(helper), FirSpec::ConcatHelper));
+        let joined_count = FirCursor::new(helper, &storage).stmt_count();
+        assert_eq!(
+            joined_count,
+            Some(2),
+            "both statements a and b must be joined into the helper"
+        );
+
+        let joined_a = FirCursor::new(helper, &storage).stmt_at(0).unwrap();
+        let joined_b = FirCursor::new(helper, &storage).stmt_at(1).unwrap();
+        assert_eq!(
+            FirCursor::new(joined_a, &storage)
+                .as_stmt_identifier()
+                .map(|id| id.identifier_name()),
+            Some("a")
+        );
+        assert_eq!(
+            FirCursor::new(joined_b, &storage)
+                .as_stmt_identifier()
+                .map(|id| id.identifier_name()),
+            Some("b")
+        );
+    }
+
+    /// The null-const merge rule fires during a concatenation join: merging
+    /// two branes that each null-characterize the SAME name with DIFFERENT
+    /// values refuses the second occurrence, exactly as `StatementFir`'s
+    /// own same-brane check does for an ordinary redefinition.
+    #[test]
+    fn concatenation_merge_applies_null_const_rule_to_conflicting_names() {
+        let mut storage = FVMStorage::new();
+        let cat = storage.make_root(FirSpec::Concatenation {
+            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+        });
+        let brane1 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let first = brane1.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 0,
+            },
+        );
+        first.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        let brane2 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let second = brane2.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 0,
+            },
+        );
+        second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
+
+        let helper = FirCursor::new(cat, &storage)
+            .ubc_children()
+            .first()
+            .copied()
+            .unwrap();
+        let joined_second = FirCursor::new(helper, &storage).stmt_at(1).unwrap();
+        assert!(
+            storage.nf_reason(joined_second).is_some(),
+            "merging a conflicting null-characterized redefinition must be refused, \
+             exactly as StatementFir's own same-brane check refuses one"
         );
     }
 }
