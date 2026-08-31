@@ -1048,9 +1048,49 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
         // writing this): a no-op — a creation is born `Independent` at
         // construction and never needs stepping.
         FirSpec::Creation => {}
-        // `impl Fir for ComparisonFir`'s real `fir_op_step` (`system_foo.rs`)
-        // is migrated by the `ComparisonFir` per-kind task, which follows
-        // this one in the plan.
+        // Direct translation of `impl Fir for ComparisonFir`'s real
+        // `fir_op_step`/`combine` (`system_foo.rs`, re-read in full
+        // immediately before writing this) — SAME two-phase shape as
+        // `OperatorFir`: push operands, then combine once Braning.
+        // **Deliberately deferred, not implemented**: `combine`'s actual
+        // verdict-resolution tail (`resolve_boolean`, which calls
+        // `_ab_search` to find `'True`/`'False` in an ancestor brane) —
+        // exactly the search-engine dependency Phase 2 owns exclusively,
+        // same carve-out as `BraneFir`'s `_ab_search` and `StatementFir`'s
+        // NF checks. This arm implements what IS arena-portable now: the
+        // two-phase push/combine shape and the ECONSTANIC-if-unevaluated
+        // gate (`operand_is_unevaluated_here`, entirely self-contained — no
+        // search dependency, only reads a child's own `foolish_children`/
+        // `Nyes`). The integer-vs-non-integer type check and the final
+        // boolean settle are NOT implemented — once both operands are
+        // genuinely evaluated (not the ECONSTANIC-in-system.foo case), this
+        // arena translation settles `Woconstanic` rather than resolving a
+        // real verdict, an honestly-incomplete result pending Phase 2.
+        FirSpec::Comparison { .. } => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                for child in children {
+                    storage.with_mut(ptr, |fir| fir.push_task(child));
+                }
+            }
+            Nyes::Braning => {
+                let operands: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                let any_unevaluated_here = operands.iter().any(|&o| {
+                    storage
+                        .foolish_children(o)
+                        .first()
+                        .is_some_and(|&inner| storage.get_nyes(inner) == Nyes::Econstanic)
+                });
+                if any_unevaluated_here {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic));
+                } else {
+                    // Real verdict resolution needs `_ab_search` — deferred.
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+                }
+            }
+            _ => {}
+        },
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
     }
 }
@@ -1354,12 +1394,15 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_op_name`]: `Operator`'s own
-    /// override (re-read directly) returns its op string; every other
-    /// kind's default is `None`.
+    /// Mirrors [`crate::fir_trait::Fir::as_op_name`]: `Operator`'s AND
+    /// `Comparison`'s own overrides (re-read directly — `Comparison`
+    /// returns `self.op.searchable_name()`, a `&'static str`, trivially
+    /// compatible with the `'s` lifetime bound here); every other kind's
+    /// default is `None`.
     pub fn as_op_name(&self) -> Option<&'s str> {
         match self.node() {
             FirSpec::Operator { op } => Some(op),
+            FirSpec::Comparison { op } => Some(op.searchable_name()),
             _ => None,
         }
     }
@@ -2890,5 +2933,80 @@ mod tests {
         );
 
         assert_eq!(creation.get_display_name(&storage, elsewhere), None);
+    }
+
+    /// `ComparisonFir`'s arena migration is the two-phase push/combine shape
+    /// PLUS the entirely self-contained ECONSTANIC-if-unevaluated-here gate
+    /// (see this kind's `fir_op_step` arm doc comment — the real verdict
+    /// resolution needs `_ab_search`, deferred to Phase 2). This test proves
+    /// the ECONSTANIC gate: an operand whose own first foolish child is
+    /// itself `Econstanic` (mirroring `<<#-1>>`'s SFF-wrapped-search shape
+    /// inside `system.foo`, per `operand_is_unevaluated_here`'s real logic,
+    /// re-read directly) makes the whole comparison settle `Econstanic`.
+    #[test]
+    fn comparison_settles_econstanic_when_an_operand_is_unevaluated_here() {
+        use crate::system_foo::ComparisonOp;
+
+        let mut storage = FVMStorage::new();
+        let cmp = storage.make_root(FirSpec::Comparison {
+            op: ComparisonOp::Lt,
+        });
+        // Operand shaped like `<<#-1>>`: an SFF-wrapped index search whose
+        // own inner search sits Econstanic (searched nothing in this
+        // context yet).
+        let operand = cmp.create_child(&mut storage, FirSpec::StayFullyFoolish);
+        let inner_search = operand.create_child(
+            &mut storage,
+            FirSpec::Index {
+                offset: -1,
+                anchored: true,
+                contexted: false,
+            },
+        );
+        storage.with_mut(inner_search, |fir| fir.set_nyes(Nyes::Econstanic));
+        storage.with_mut(operand, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..5 {
+            if storage.get_nyes(cmp).is_constanic() {
+                break;
+            }
+            cmp.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(cmp), Nyes::Econstanic);
+        assert_eq!(FirCursor::new(cmp, &storage).as_op_name(), Some("'lt"));
+    }
+
+    /// When both operands ARE genuinely evaluated (not the
+    /// unevaluated-in-system.foo case), this arena translation settles
+    /// `Woconstanic` — an honestly-incomplete result, since the real verdict
+    /// resolution (`resolve_boolean`, via `_ab_search`) is deferred to
+    /// Phase 2. Documented explicitly here rather than silently claiming a
+    /// `Constant`/`Nk` verdict this task does not actually compute.
+    #[test]
+    fn comparison_with_evaluated_operands_defers_the_real_verdict() {
+        use crate::system_foo::ComparisonOp;
+
+        let mut storage = FVMStorage::new();
+        let cmp = storage.make_root(FirSpec::Comparison {
+            op: ComparisonOp::Eq,
+        });
+        let left = cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(left, |fir| fir.set_nyes(Nyes::Constant));
+        let right = cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(right, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..5 {
+            if storage.get_nyes(cmp).is_constanic() {
+                break;
+            }
+            cmp.step(&mut storage);
+        }
+
+        assert_eq!(
+            storage.get_nyes(cmp),
+            Nyes::Woconstanic,
+            "real verdict resolution is deferred to Phase 2 (needs _ab_search)"
+        );
     }
 }

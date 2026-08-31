@@ -612,7 +612,8 @@ not a claim that the arena path is live in production yet.
       tests total (up from 39), all passing; `cargo clippy`/`cargo fmt` clean. Targeted einmo
       re-run: full suite — passes unchanged.
 
-- [ ] Migrate `ComparisonFir` (`foolish-ubca2/src/system_foo.rs`, NOT `fir_kinds.rs`) to `FirPointer`
+- [x] Migrate `ComparisonFir` (`foolish-ubca2/src/system_foo.rs`, NOT `fir_kinds.rs`) to `FirPointer`
+      (2026-08-30 17:55)
       **Plan adjustment, added during execution**: `ComparisonFir` is a 14th `impl Fir for` site
       that this plan's original per-kind task list omitted, because that list was built only from
       `grep "^impl Fir for" fir_kinds.rs` — `ComparisonFir` lives in `system_foo.rs` instead (3 of
@@ -639,8 +640,54 @@ not a claim that the arena path is live in production yet.
     search `foolish-ubca2/einmo_suite/input/` for `.foo` files using these, likely under
     `foop/33/boolean/` given the `comparison_operators.foo.einmo`/`comparison_non_integer.foo.einmo`
     checked cases already seen in this crate's suite).
+      Re-read `impl Fir for ComparisonFir`/`combine` in full (`system_foo.rs`) immediately before
+      writing. `combine`'s verdict resolution (`resolve_boolean`, via `_ab_search` to find
+      `'True`/`'False` in an ancestor brane) is the SAME search-engine dependency already
+      carved out for `BraneFir`'s `_ab_search`/`StatementFir`'s NF checks — deferred to Phase 2
+      for the identical reason. Implemented what IS arena-portable: the two-phase push/combine
+      shape (identical to `OperatorFir`'s) and `operand_is_unevaluated_here`'s ECONSTANIC gate in
+      full (entirely self-contained — reads only a child's own `foolish_children`/`Nyes`, no
+      search dependency). Once operands are genuinely evaluated, this arena translation settles
+      `Woconstanic` rather than resolving a real verdict — an honestly-incomplete result, not a
+      fabricated `Constant`/`Nk` answer.
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      `self_weak`'s fate (the task's own open question): confirmed it is genuinely superseded
+      under the arena — `FirPointer`'s own identity already gives `fir_op_step` everything
+      `self_weak` existed to provide (a `self_ref` to call `_ab_search` from). It is NOT present
+      in `FirSpec::Comparison` (never was — `FirSpec` variants never carry tree-structural
+      identity fields, per the foundational task's design), so there is nothing to "drop" per se;
+      this confirms the field disappears naturally rather than needing an explicit removal step.
+      Added `FirCursor::as_op_name` coverage for `Comparison` (`self.op.searchable_name()`,
+      alongside the existing `Operator` arm).
+
+      2 new unit tests (45 total in `fvm_storage`): `comparison_settles_econstanic_when_an_operand_is_unevaluated_here`
+      (proves the ECONSTANIC gate using an SFF-wrapped-search shape mirroring `<<#-1>>`, per
+      `operand_is_unevaluated_here`'s real logic) and
+      `comparison_with_evaluated_operands_defers_the_real_verdict` (documents the honest
+      `Woconstanic` gap explicitly, rather than silently diverging from what a reader would
+      expect). Targeted einmo re-run: full suite — passes unchanged (the real evaluator path,
+      which einmo exercises, is entirely untouched by this Phase 1 work).
+
+      **This completes ALL 14 of Phase 1's per-kind migration tasks** (13 from `fir_kinds.rs` +
+      `ComparisonFir` from `system_foo.rs`, the plan adjustment added during Phase 1). Every kind
+      now has real arena construction (`FirSpec`) and, where arena-portable without Phase 2's
+      search engine, a real `fir_op_step` dispatch arm; search-dependent logic (searches
+      themselves, `_ib_search`/`_ab_search`, the NF mechanism, concatenation's helper-merging) is
+      consistently and explicitly deferred to Phase 2, never faked.
+
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-30 17:58)
+      `cargo test --workspace`: 372 passed, 0 failed, 1 documented ignore (the `foolish-ubca2`
+      `einmo_gate_verified` ignore from Phase 0, still blocked on human `verified/` promotion —
+      unrelated to Phase 1). `cargo test -p foolish-ubca`: 328 passed, 0 failed — the untouched
+      oracle, re-confirmed unmodified. `foolish-ubca2 --lib -- einmo_gate_checked` passes
+      unchanged throughout every task in this phase, confirming Phase 1's entirely-additive
+      per-kind work introduced zero behavior change to the crate's real (still-`Rc`-based)
+      evaluation path — exactly the invariant the additive-then-cutover design promises.
+      `cargo clippy -p foolish-ubca2 --all-targets --all-features --no-deps -- -D warnings` and
+      `cargo fmt -p foolish-ubca2 -- --check` are clean for every line this phase added
+      (`fvm_storage.rs`); the one remaining clippy/fmt drift in the crate is entirely inherited,
+      pre-existing, unmodified code (documented at the Phase 0 gate).
 
 ---
 
