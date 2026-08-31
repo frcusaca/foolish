@@ -813,13 +813,19 @@ later, separate cleanup — see Open Questions.
   implementation, get formally deprecated with a pointer to `foolish-ubca2`, or get removed
   entirely? Each has real tradeoffs (keeping both means double-maintaining two evaluators if new
   language features land during or after the migration; removing `foolish-ubca` early loses the
-  oracle before it can be leaned on for a regression bisect). Not decided by this FOOP.
+  oracle before it can be leaned on for a regression bisect).
+  **RESOLVED (2026-08-31, human's explicit decision):** `foolish-ubca` stays indefinitely as a
+  permanent frozen reference implementation — no deprecation, no removal.
 - **Is "`foolish-ubca2`" the permanent crate name, or a placeholder?** Renaming after Phase 0
   means a second Cargo.toml/import churn pass across the new crate — a naming decision before
   Phase 0 starts is cheaper than one after.
+  **RESOLVED (2026-08-31, human's explicit decision):** `foolish-ubca2` is the permanent crate
+  name — no rename.
 - **The `zweimomo` workspace-membership gap** — fixed as part of this FOOP (Rejected Alternative
   C) or tracked as separate, unrelated cleanup? Defaults to "separate" (see Specification) but is
   not finally decided here.
+  **RESOLVED (2026-08-31, human's explicit decision):** left as separate, unrelated future
+  cleanup — not part of this FOOP.
 
 ## References
 
