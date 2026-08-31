@@ -1199,6 +1199,42 @@ skipped during the cutover.
     Phase 1/3, if not already present — add it there first if this cutover finds it missing).
   - Targeted einmo re-run: full suite (every kind is touched).
   - Commit after this sub-task.
+  - **Progress note (2026-08-30 21:38, mid-sub-task, three prerequisite commits landed —
+    `8961f650` nf_reason slot, `4f485361` IndexFir real dispatch, `77c4c811` StatementFir NF
+    checks — before context ran low):** Verified directly that `BraneFir`'s `_ab_search`/
+    `_search_brane` overrides (fir_kinds.rs:1120-1163) and `ConcatHelper`'s `_search_brane`
+    override have NO callers anywhere in the arena path once `StatementFir`'s NF checks and
+    `SearchFir`/`IndexFir`'s dispatch are ported — `search_engine`'s `BraneNavigator`/
+    `contextful_search_scan_no_body_check` (Phase 2) plus `search_fir_dispatch::
+    ib_search_by_pattern`/`ab_search_by_pattern` (this sub-task) already fully replace what
+    `_search_brane` does; nothing in ported arena code calls a `BraneFir`- or `ConcatHelper`-
+    specific trait method for this. **Conclusion: `BraneFir`'s and `ConcatHelper`'s
+    `_ab_search`/`_search_brane` overrides do NOT need individual arena translations before
+    their `impl Fir` blocks are deleted** — confirm this reasoning once more at deletion time
+    (re-grep for any caller this note missed) rather than re-deriving it from scratch, but
+    treat it as verified, not speculative.
+    **Still generally unported and blocking full `ConcatHelper`/`ConcatenationFir` deletion:**
+    `populate_concat_helpers`'s real line-merging body (the actual join/merge logic, INCLUDING
+    `apply_null_const_rule_to_merged_stmt`'s call into the NF mechanism — now portable using
+    this sub-task's `check_null_const_conflict`-equivalent primitives, but not yet wired) is
+    still only structurally present in the arena (settles `Woconstanic` rather than performing
+    the real merge, per this file's own existing doc comment at the `ConcatHelper`/
+    `ConcatenationFir` `Braning` arms). This must be completed (or explicitly, freshly
+    re-justified as a deferral, the same way `IndexFir`'s gap was resolved rather than silently
+    carried) before `ConcatHelper`'s and `ConcatenationFir`'s old `impl Fir` blocks can be
+    deleted — this is the next concrete blocking item for this sub-task, sized similarly to
+    `IndexFir`'s dispatch work (i.e., substantial, not a quick fill-in).
+    **Not yet started at all:** deleting any of the 13 `impl Fir` blocks themselves, deleting
+    `ProtoBrane`, and the ~260-test port/retire decision pass. Resume by: (1) completing
+    `populate_concat_helpers`'s real merge logic, (2) then working through the 13 kinds in a
+    safe deletion order (leaf kinds with no remaining gaps first — `IndepIntFir`, `NkFir`,
+    `CreationFir`, `FoolRefFir`, `StayFoolishFir`, `StayFullyFoolishFir`, `OperatorFir` are
+    fully arena-portable today per the earlier survey fork's report; `StatementFir`, `SearchFir`,
+    `IndexFir`, `BraneFir` now also have everything they need; `ConcatHelper`/`ConcatenationFir`
+    wait on the merge-logic completion above; `ComparisonFir` is `system_foo.rs`'s own later
+    sub-task, not this one), deleting each kind's struct/impl and re-running the full gate after
+    each (or in small batches) rather than all 13 in one uncheckable edit, (3) delete
+    `ProtoBrane` once no kind embeds it, (4) then the documented per-test port/retire pass.
 
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
