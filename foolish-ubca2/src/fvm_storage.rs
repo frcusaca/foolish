@@ -32,6 +32,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use foolish_core::fir::Nyes;
 
+use crate::nyes_ext::NyesExt;
+
 use crate::identifier::{Characterizations, Identifier};
 
 /// Randomized per-[`FVMStorage`] instance stamp.
@@ -564,13 +566,13 @@ impl FirPointer {
     }
 
     /// Whether this pointer is brane-like (has statements to iterate).
-    /// Placeholder-stage judgment, same caveat as [`Self::home_brane`]'s doc
-    /// comment: superseded by each per-kind migration's own `is_brane_like`.
+    /// Delegates to [`FirCursor::is_brane_like`] — now that `Brane`'s AND
+    /// `ConcatHelper`'s real `stmt_count` overrides are both migrated, this
+    /// is the same real judgment, not a separate placeholder (the earlier
+    /// duplication between this method and `FirCursor::is_brane_like` is
+    /// resolved by unifying on one implementation).
     fn is_brane_like(self, storage: &FVMStorage) -> bool {
-        matches!(
-            storage.get(self),
-            FirSpec::Brane { .. } | FirSpec::ConcatHelper
-        )
+        FirCursor::new(self, storage).is_brane_like()
     }
 
     /// Whether this pointer is a `Statement`.
@@ -895,6 +897,108 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
                     me.push_ubc_child(result, result_nyes);
                     me.set_nyes(settled_nyes);
                 }
+            }
+            _ => {}
+        },
+        // Direct translation of `impl Fir for ConcatHelper`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this) — IDENTICAL shape to `BraneFir`'s arm above
+        // (ConcatHelper is "transparent: inherits all defaults,
+        // BraneFir-shaped stepping," per its own doc comment, confirmed by
+        // direct re-read). `_search_brane` override is DEFERRED — Phase 2's
+        // job, same carve-out as `BraneFir`'s `_ab_search`/`_search_brane`.
+        FirSpec::ConcatHelper => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if children.is_empty() {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                    for child in children {
+                        storage.with_mut(ptr, |fir| fir.push_task(child));
+                    }
+                }
+            }
+            Nyes::Braning => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if let Some(nyes) = decide_nyes_due_to_children(storage, &children) {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
+                }
+            }
+            _ => {}
+        },
+        // Direct translation of `impl Fir for ConcatenationFir`'s real
+        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
+        // writing this) — the TYPE-CHECK and JOIN-READINESS logic (Braning's
+        // "one pass over the elements" block) is implemented in full, since
+        // it depends only on generic arena primitives already available
+        // (`FirPointer::value`, `FirCursor::is_brane_like`). **Deliberately
+        // deferred**: `populate_concat_helpers`'s actual line-merging body —
+        // specifically `apply_null_const_rule_to_merged_stmt`, which depends
+        // on `default_equal`/`set_nf_reason`/`statement_value_for_comparison`,
+        // none of which exist in arena form yet (the same NF-mechanism
+        // dependency already deferred at `StatementFir`'s task). Once join
+        // readiness is confirmed (`all_brane_like` with no type errors),
+        // this arena translation settles `Woconstanic` rather than actually
+        // building helpers and joining — a narrower, honestly-incomplete
+        // claim, not a silent wrong answer: `_helpers_populated` never
+        // becomes `true` under this arena path, so `stmt_count`/`stmt_at`
+        // (also not yet migrated here) are never called against a
+        // half-built helper state.
+        FirSpec::Concatenation { .. } => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if children.is_empty() {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                    for child in children {
+                        storage.with_mut(ptr, |fir| fir.push_task(child));
+                    }
+                }
+            }
+            Nyes::Braning => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                let mut all_brane_like = true;
+                let mut type_errors: Vec<usize> = Vec::new();
+                for (idx, &elem) in children.iter().enumerate() {
+                    let resolved = elem.value(storage);
+                    let brane_like = FirCursor::new(resolved, storage).is_brane_like();
+                    all_brane_like &= brane_like;
+                    if !brane_like && storage.get_nyes(elem).is_constantew() {
+                        type_errors.push(idx);
+                    }
+                }
+
+                if !type_errors.is_empty() {
+                    let list = type_errors
+                        .iter()
+                        .map(usize::to_string)
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    let nk_ptr = ptr.create_child(
+                        storage,
+                        FirSpec::Nk {
+                            reason: format!(
+                                "concatenation constituent indexes where it's not a brane: {list}"
+                            ),
+                        },
+                    );
+                    let me = storage.get_mut(ptr);
+                    me.push_ubc_child(nk_ptr, Nyes::Nk);
+                    me.set_nyes(Nyes::Nk);
+                    return;
+                }
+                if !all_brane_like {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+                    return;
+                }
+
+                // JOIN-READY but not yet migrated (see this arm's doc
+                // comment above): settle Woconstanic rather than build
+                // helpers, an honestly-incomplete claim rather than a wrong
+                // Constant/NK answer.
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
             }
             _ => {}
         },
@@ -1229,21 +1333,29 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::stmt_count`]: `Brane`'s own override
-    /// (re-read directly) reports its foolish-children count; every other
-    /// kind's default is `None` (not brane-like).
+    /// Mirrors [`crate::fir_trait::Fir::stmt_count`]: `Brane`'s AND
+    /// `ConcatHelper`'s own overrides (re-read directly — `ConcatHelper` is
+    /// "transparent: inherits all defaults, BraneFir-shaped stepping," per
+    /// its own doc comment, and its `stmt_count`/`stmt_at` overrides are
+    /// byte-for-byte identical to `BraneFir`'s) report the foolish-children
+    /// count; `Concatenation`'s own real override is more involved (helper
+    /// population) and NOT yet migrated (see that kind's `fir_op_step` arm);
+    /// every other kind's default is `None` (not brane-like).
     pub fn stmt_count(&self) -> Option<usize> {
         match self.node() {
-            FirSpec::Brane { .. } => Some(self.foolish_children().len()),
+            FirSpec::Brane { .. } | FirSpec::ConcatHelper => Some(self.foolish_children().len()),
             _ => None,
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::stmt_at`]: `Brane`'s own override
-    /// (re-read directly) indexes its foolish children directly.
+    /// Mirrors [`crate::fir_trait::Fir::stmt_at`]: `Brane`'s AND
+    /// `ConcatHelper`'s own overrides (re-read directly, identical shape)
+    /// index their foolish children directly.
     pub fn stmt_at(&self, idx: usize) -> Option<FirPointer> {
         match self.node() {
-            FirSpec::Brane { .. } => self.foolish_children().get(idx).copied(),
+            FirSpec::Brane { .. } | FirSpec::ConcatHelper => {
+                self.foolish_children().get(idx).copied()
+            }
             _ => None,
         }
     }
@@ -1321,6 +1433,16 @@ impl<'s> FirCursor<'s> {
         match self.node() {
             FirSpec::FoolRef { referent } => Some(*referent),
             _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_concat_provenance`]:
+    /// `Concatenation`'s own override (re-read directly) returns its
+    /// provenance; every other kind's default is `Juxtaposition`.
+    pub fn as_concat_provenance(&self) -> crate::fir_kinds::ConcatProvenance {
+        match self.node() {
+            FirSpec::Concatenation { provenance } => *provenance,
+            _ => crate::fir_kinds::ConcatProvenance::Juxtaposition,
         }
     }
 }
@@ -2478,5 +2600,123 @@ mod tests {
             "a pre-constanic inner must be rebuilt, not shared"
         );
         assert_eq!(storage.get(cloned), &FirSpec::IndepInt { value: 9 });
+    }
+
+    /// `ConcatHelper`'s arena migration: identical `BraneFir`-shaped
+    /// stepping ("transparent: inherits all defaults," confirmed by direct
+    /// re-read of the real `impl Fir for ConcatHelper`). Mirrors
+    /// `fir_kinds.rs::tests::concat_helper_nyes_transitions` exactly.
+    #[test]
+    fn concat_helper_settles_like_a_brane() {
+        use crate::identifier::Identifier;
+
+        let mut storage = FVMStorage::new();
+        let helper = storage.make_root(FirSpec::ConcatHelper);
+        let stmt = helper.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        stmt.create_child(&mut storage, FirSpec::IndepInt { value: 42 });
+
+        for _ in 0..10 {
+            if storage.get_nyes(helper).is_constanic() {
+                break;
+            }
+            helper.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(helper), Nyes::Constant);
+        assert_eq!(FirCursor::new(helper, &storage).stmt_count(), Some(1));
+    }
+
+    /// `ConcatenationFir`'s arena migration is TYPE-CHECK AND JOIN-READINESS
+    /// ONLY (see this kind's `fir_op_step` arm doc comment — helper
+    /// population/merging is deferred, same NF-mechanism dependency already
+    /// deferred at `StatementFir`). This test proves the type-check path: a
+    /// concatenation of two settled, brane-like elements is join-ready and
+    /// settles `Woconstanic` (an HONEST incomplete-implementation result,
+    /// NOT `Constant` — `concatenation_nyes_transitions` in `fir_kinds.rs`
+    /// expects `Constant` from the REAL, fully-merging implementation; this
+    /// arena test intentionally does NOT mirror that terminal state, since
+    /// doing so would misrepresent what this task actually implemented).
+    #[test]
+    fn concatenation_of_settled_branes_is_join_ready() {
+        let mut storage = FVMStorage::new();
+        let cat = storage.make_root(FirSpec::Concatenation {
+            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+        });
+        let brane1 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        storage.with_mut(brane1, |fir| fir.set_nyes(Nyes::Constant));
+        let brane2 = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        storage.with_mut(brane2, |fir| fir.set_nyes(Nyes::Constant));
+
+        // Drain: Prembrionic->Braning (push both elements as tasks), then
+        // one step per queued task to pop it (both already Constant), then
+        // one more step for the Braning arm's actual type-check pass.
+        for _ in 0..5 {
+            if storage.get_nyes(cat) == Nyes::Woconstanic {
+                break;
+            }
+            cat.step(&mut storage);
+        }
+
+        assert_eq!(
+            storage.get_nyes(cat),
+            Nyes::Woconstanic,
+            "join-ready elements settle Woconstanic under this deferred-merge implementation"
+        );
+        assert_eq!(
+            FirCursor::new(cat, &storage).as_concat_provenance(),
+            crate::fir_kinds::ConcatProvenance::Juxtaposition
+        );
+    }
+
+    /// A concatenation with a genuinely non-brane, settled element (an
+    /// `IndepInt`) settles `Nk` with the exact reason format the real
+    /// `fir_op_step` produces — mirrors the type-error branch exactly.
+    #[test]
+    fn concatenation_with_a_non_brane_element_settles_nk() {
+        let mut storage = FVMStorage::new();
+        let cat = storage.make_root(FirSpec::Concatenation {
+            provenance: crate::fir_kinds::ConcatProvenance::Juxtaposition,
+        });
+        let brane = cat.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        storage.with_mut(brane, |fir| fir.set_nyes(Nyes::Constant));
+        let not_a_brane = cat.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        storage.with_mut(not_a_brane, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..5 {
+            if storage.get_nyes(cat).is_constanic() {
+                break;
+            }
+            cat.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(cat), Nyes::Nk);
+        let reason = FirCursor::new(cat, &storage)
+            .settled_result()
+            .and_then(|c| c.as_nk_reason().map(str::to_string));
+        assert_eq!(
+            reason,
+            Some("concatenation constituent indexes where it's not a brane: 1".to_string())
+        );
     }
 }

@@ -542,9 +542,44 @@ not a claim that the arena path is live in production yet.
       unchanged. 36 `fvm_storage` unit tests total (up from 32), all passing; `cargo
       clippy`/`cargo fmt` clean.
 
-- [ ] Migrate `ConcatenationFir` and `ConcatHelper` together (tightly coupled per the verified kind list — `ConcatHelper` exists specifically to support `ConcatenationFir`)
+- [x] Migrate `ConcatenationFir` and `ConcatHelper` together (tightly coupled per the verified kind list — `ConcatHelper` exists specifically to support `ConcatenationFir`)
+      (2026-08-30 17:45)
   - Also update `ConcatProvenance` (an enum, not a `Fir` impl, but referenced by `ConcatenationFir`) if it holds any pointer-typed field.
   - Targeted einmo re-run: cases exercising `+`/concatenation, especially any producing a `constanicCloned` merged brane (FOOP-3's semantics) — concatenation's clone-and-merge behavior is exactly the kind of operation `clone_subtree` is meant to support, so this task is a good early smoke test of `clone_subtree` before Phase 1 fully closes.
+      `ConcatProvenance` re-confirmed as a plain `Copy` enum with no pointer-typed field (already
+      noted at the Phase 1 foundational task). `ConcatHelper`: added its `fir_op_step` arm —
+      confirmed IDENTICAL to `BraneFir`'s shape by direct re-read ("transparent: inherits all
+      defaults, BraneFir-shaped stepping," per its own doc comment) — and extended `FirCursor::
+      stmt_count`/`stmt_at` to also cover `FirSpec::ConcatHelper` (previously `Brane`-only),
+      which incidentally let `FirPointer::is_brane_like`/`home_brane` be unified onto
+      `FirCursor::is_brane_like` instead of duplicating the `matches!` set — resolving the small
+      duplication flagged as a non-blocking doubt during the `BraneFir` task.
+
+      `ConcatenationFir`: implemented the TYPE-CHECK AND JOIN-READINESS pass in full (direct
+      translation of the real `fir_op_step`'s "one pass over the elements" block, re-read
+      immediately before writing) — this depends only on generic arena primitives already
+      available (`FirPointer::value`, `FirCursor::is_brane_like`, `NyesExt::is_constantew`).
+      **Deliberately deferred**: `populate_concat_helpers`'s actual line-merging body, since
+      `apply_null_const_rule_to_merged_stmt` depends on `default_equal`/`set_nf_reason`/
+      `statement_value_for_comparison` — the same NF-mechanism dependency already deferred at
+      `StatementFir`'s task. Once join-readiness is confirmed, this arena translation settles
+      `Woconstanic` (an honestly-incomplete result) rather than building helpers and joining to
+      `Constant` — `_helpers_populated` never becomes `true` under this path, so the not-yet-
+      migrated `stmt_count`/`stmt_at`/`settled_result` overrides are never called against a
+      half-built helper state. Added `FirCursor::as_concat_provenance`.
+
+      3 new unit tests (39 total in `fvm_storage`): `concat_helper_settles_like_a_brane` (mirrors
+      `concat_helper_nyes_transitions` exactly), `concatenation_of_settled_branes_is_join_ready`
+      (proves the type-check path settles `Woconstanic`, honestly NOT mirroring
+      `concatenation_nyes_transitions`'s `Constant` terminal state, since that test exercises the
+      full merge this task does not implement — documented explicitly in the test itself rather
+      than silently diverging), `concatenation_with_a_non_brane_element_settles_nk` (mirrors the
+      type-error branch's exact reason-string format). Two test-authoring bugs (not
+      implementation bugs) caught and fixed: both concatenation tests initially assumed a fixed,
+      too-small step count, not accounting for `step_inner`'s task-queue-draining shape (each
+      queued element task pops on its own `step()` call before the `Braning` arm's own
+      classification logic runs) — fixed with loop-until-settled patterns matching the rest of
+      this test suite's convention. Targeted einmo re-run: full suite — passes unchanged.
 
 - [ ] Migrate `CreationFir` to `FirPointer`
   - Per CLAUDE.md's "Named creation" terminology: confirm `CreationFir::get_display_name` and any rename-refusal logic (`StatementFir::check_rename_of_named_creation`) still function correctly against `FirPointer`-based parent/children access — these methods currently walk pointers to determine a creation's original name/rename eligibility.
