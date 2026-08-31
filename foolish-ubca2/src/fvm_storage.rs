@@ -98,7 +98,7 @@ struct Slot {
 ///
 /// Deliberately NOT `trait Fir` — see this module's top-level doc comment for
 /// why. Holds exactly the data every kind needs generically, mirroring every
-/// field [`crate::proto_brane::ProtoBrane`] carries today EXCEPT
+/// field `crate::proto_brane::ProtoBrane` carries today EXCEPT
 /// `foolish_children`/`parent` (those live directly on [`Slot`], since the
 /// arena — not each node — owns tree structure) so [`FirCursor`]/
 /// [`FirCursorMut`]'s method table (FOOP-16.md §Specification "The
@@ -350,20 +350,20 @@ pub enum FirSpec {
     IndepInt { value: i64 },
     /// Mirrors what `NkFir` was before Phase 5's cutover deleted it.
     Nk { reason: String },
-    /// Mirrors [`crate::fir_kinds::OperatorFir`].
+    /// Mirrors `crate::fir_kinds::OperatorFir`.
     Operator { op: String },
-    /// Mirrors [`crate::fir_kinds::StatementFir`]. `nf_reason` is not part of
+    /// Mirrors `crate::fir_kinds::StatementFir`. `nf_reason` is not part of
     /// the spec — it starts `None` always, a `fir_op_step`-time discovery,
     /// never a construction input (see that kind's own migration task).
     Statement {
         identifier: Identifier,
         line_number: usize,
     },
-    /// Mirrors [`crate::fir_kinds::BraneFir`].
+    /// Mirrors `crate::fir_kinds::BraneFir`.
     Brane {
         characterizations: Characterizations,
     },
-    /// Mirrors [`crate::fir_kinds::SearchFir`]. `sf_inner_pattern` is not part
+    /// Mirrors `crate::fir_kinds::SearchFir`. `sf_inner_pattern` is not part
     /// of the spec — it starts `None` always, matching today's construction
     /// sites.
     Search {
@@ -373,26 +373,26 @@ pub enum FirSpec {
         is_value_search: bool,
         contexted: bool,
     },
-    /// Mirrors [`crate::fir_kinds::IndexFir`].
+    /// Mirrors `crate::fir_kinds::IndexFir`.
     Index {
         offset: i32,
         anchored: bool,
         contexted: bool,
     },
-    /// Mirrors [`crate::fir_kinds::FoolRefFir`]. `referent` names the original
+    /// Mirrors `crate::fir_kinds::FoolRefFir`. `referent` names the original
     /// found statement this reference wraps.
     FoolRef { referent: FirPointer },
-    /// Mirrors [`crate::fir_kinds::StayFoolishFir`]. No fields beyond `core`.
+    /// Mirrors `crate::fir_kinds::StayFoolishFir`. No fields beyond `core`.
     StayFoolish,
-    /// Mirrors [`crate::fir_kinds::StayFullyFoolishFir`]. No fields beyond `core`.
+    /// Mirrors `crate::fir_kinds::StayFullyFoolishFir`. No fields beyond `core`.
     StayFullyFoolish,
-    /// Mirrors [`crate::fir_kinds::ConcatHelper`]. No fields beyond `core`.
+    /// Mirrors `crate::fir_kinds::ConcatHelper`. No fields beyond `core`.
     ConcatHelper,
-    /// Mirrors [`crate::fir_kinds::ConcatenationFir`]. `_helpers_populated` is
+    /// Mirrors `crate::fir_kinds::ConcatenationFir`. `_helpers_populated` is
     /// not part of the spec — it is derived post-construction, matching
     /// `constanic_clone_at`'s own `FirKind::Concatenation` arm.
     Concatenation { provenance: ConcatProvenance },
-    /// Mirrors [`crate::fir_kinds::CreationFir`]. No fields beyond `core`.
+    /// Mirrors `crate::fir_kinds::CreationFir`. No fields beyond `core`.
     Creation,
     /// Mirrors `system_foo::ComparisonFir` (not in `fir_kinds.rs` — see the
     /// `ComparisonFir` plan-adjustment task in FOOP-16.plan.md Phase 1).
@@ -709,7 +709,7 @@ impl FirPointer {
     ///
     /// Always `Some` in practice — even the structural root's "parent" is
     /// itself (mirroring today's self-referential root `Weak`). `Option`
-    /// mirrors [`crate::proto_brane::ProtoBrane::parent`]'s signature so
+    /// mirrors `crate::proto_brane::ProtoBrane::parent`'s signature so
     /// callers migrating from that method keep the same shape; unlike that
     /// method's doc comment (which reserves `None` for teardown), no
     /// arena-era case actually returns `None` — the arena never drops a live
@@ -725,7 +725,7 @@ impl FirPointer {
     }
 
     /// Climbs the parent chain to the first brane-like kind, mirroring
-    /// [`crate::fir_trait::Fir::_get_my_brane`]: climb until `parent()`
+    /// `crate::fir_trait::Fir::_get_my_brane`: climb until `parent()`
     /// pointer-equals `self` (structural root) → `None`; else check
     /// brane-likeness → stop, else recurse.
     ///
@@ -765,7 +765,7 @@ impl FirPointer {
     }
 
     /// The statement this pointer's search would read as its position,
-    /// mirroring [`crate::fir_trait::Fir::_get_my_statement`] exactly: climb
+    /// mirroring `crate::fir_trait::Fir::_get_my_statement` exactly: climb
     /// until a `Statement` kind is found, or until `parent()` pointer-equals
     /// `self` (structural root, returned as-is).
     fn get_my_statement(self, storage: &FVMStorage) -> FirPointer {
@@ -781,7 +781,7 @@ impl FirPointer {
     }
 
     /// The settled result this pointer resolves to, if any, mirroring
-    /// [`crate::fir_trait::Fir::settled_result`]'s CONTRACT verbatim:
+    /// `crate::fir_trait::Fir::settled_result`'s CONTRACT verbatim:
     /// "applies the constanic gate ITSELF — pre-constanic always answers
     /// None." `pub(crate)` (not private): also called directly by
     /// `search_fir_dispatch::statement_value_for_comparison`, a nested
@@ -794,7 +794,7 @@ impl FirPointer {
         storage.slots[index].payload.ubc_children().first().copied()
     }
 
-    /// Arena-threaded [`crate::fir_trait::FirRefExt::value`]: recursively
+    /// Arena-threaded `crate::fir_trait::FirRefExt::value`: recursively
     /// unwraps through `settled_result`, returning `self` when there is none.
     pub fn value(self, storage: &FVMStorage) -> FirPointer {
         match self.settled_result(storage) {
@@ -805,7 +805,7 @@ impl FirPointer {
 
     /// Performs ONE stepping action (check-then-act) and reports progress.
     ///
-    /// Direct arena-threaded translation of [`crate::fir_trait::step_inner`],
+    /// Direct arena-threaded translation of `crate::fir_trait::step_inner`,
     /// re-read verbatim from `fir_trait.rs` before writing this (not from any
     /// earlier reconstructed notes): same `MAX_DEPTH` guard, same front-task
     /// constanic-gate (pop vs. recurse), same `Scope` mutation for
@@ -1932,19 +1932,19 @@ impl<'s> FirCursor<'s> {
         self.storage.slots[index].payload.front_task()
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::_get_my_brane`].
+    /// Mirrors `crate::fir_trait::Fir::_get_my_brane`.
     pub fn home_brane(&self) -> Option<FirCursor<'s>> {
         self.ptr
             .home_brane(self.storage)
             .map(|p| FirCursor::new(p, self.storage))
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::_get_my_statement`].
+    /// Mirrors `crate::fir_trait::Fir::_get_my_statement`.
     pub fn statement(&self) -> FirCursor<'s> {
         FirCursor::new(self.ptr.get_my_statement(self.storage), self.storage)
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::settled_result`]'s CONTRACT verbatim:
+    /// Mirrors `crate::fir_trait::Fir::settled_result`'s CONTRACT verbatim:
     /// applies the constanic gate itself.
     pub fn settled_result(&self) -> Option<FirCursor<'s>> {
         self.ptr
@@ -1952,7 +1952,7 @@ impl<'s> FirCursor<'s> {
             .map(|p| FirCursor::new(p, self.storage))
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_i64`]: `IndepInt` reports its own
+    /// Mirrors `crate::fir_trait::Fir::as_i64`: `IndepInt` reports its own
     /// value directly (its real `Fir` impl's override, re-read directly);
     /// every other migrated kind falls through to `settled_result` first,
     /// matching the trait's default body exactly. Kinds not yet migrated
@@ -1967,7 +1967,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_nk_reason`]: `Nk`'s own override
+    /// Mirrors `crate::fir_trait::Fir::as_nk_reason`: `Nk`'s own override
     /// (re-read directly) returns its reason string; every other kind's
     /// default is `None`.
     pub fn as_nk_reason(&self) -> Option<&'s str> {
@@ -1977,7 +1977,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_op_name`]: `Operator`'s AND
+    /// Mirrors `crate::fir_trait::Fir::as_op_name`: `Operator`'s AND
     /// `Comparison`'s own overrides (re-read directly — `Comparison`
     /// returns `self.op.searchable_name()`, a `&'static str`, trivially
     /// compatible with the `'s` lifetime bound here); every other kind's
@@ -1990,7 +1990,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_stmt_identifier`]: `Statement`'s
+    /// Mirrors `crate::fir_trait::Fir::as_stmt_identifier`: `Statement`'s
     /// own override (re-read directly) returns its identifier.
     pub fn as_stmt_identifier(&self) -> Option<&'s Identifier> {
         match self.node() {
@@ -1999,7 +1999,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_stmt_line_number`]: `Statement`'s
+    /// Mirrors `crate::fir_trait::Fir::as_stmt_line_number`: `Statement`'s
     /// own override (re-read directly) returns its line number.
     pub fn as_stmt_line_number(&self) -> Option<usize> {
         match self.node() {
@@ -2008,7 +2008,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::stmt_count`]: `Brane`'s AND
+    /// Mirrors `crate::fir_trait::Fir::stmt_count`: `Brane`'s AND
     /// `ConcatHelper`'s own overrides (re-read directly — `ConcatHelper` is
     /// "transparent: inherits all defaults, BraneFir-shaped stepping," per
     /// its own doc comment, and its `stmt_count`/`stmt_at` overrides are
@@ -2040,7 +2040,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::stmt_at`]: `Brane`'s AND
+    /// Mirrors `crate::fir_trait::Fir::stmt_at`: `Brane`'s AND
     /// `ConcatHelper`'s own overrides (re-read directly, identical shape)
     /// index their foolish children directly. `Concatenation`'s own real
     /// override (re-read directly) walks `ubc_children` helpers in order,
@@ -2067,7 +2067,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_brane_characterizations`]:
+    /// Mirrors `crate::fir_trait::Fir::as_brane_characterizations`:
     /// `Brane`'s own override (re-read directly) returns its
     /// characterizations' components.
     pub fn as_brane_characterizations(&self) -> &'s [String] {
@@ -2077,12 +2077,12 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::is_brane_like`]: `stmt_count().is_some()`.
+    /// Mirrors `crate::fir_trait::Fir::is_brane_like`: `stmt_count().is_some()`.
     pub fn is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_search_pattern`]: `Search`'s own
+    /// Mirrors `crate::fir_trait::Fir::as_search_pattern`: `Search`'s own
     /// override (re-read directly). Pure data accessor — NOT search
     /// execution, so unlike `fir_op_step` this is safe to implement in
     /// Phase 1 without touching Phase 2's search-engine scope.
@@ -2093,12 +2093,12 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_search_anchored`].
+    /// Mirrors `crate::fir_trait::Fir::as_search_anchored`.
     pub fn as_search_anchored(&self) -> bool {
         matches!(self.node(), FirSpec::Search { anchored: true, .. })
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_search_is_value`].
+    /// Mirrors `crate::fir_trait::Fir::as_search_is_value`.
     pub fn as_search_is_value(&self) -> bool {
         matches!(
             self.node(),
@@ -2109,7 +2109,7 @@ impl<'s> FirCursor<'s> {
         )
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_search_contexted`]: `Search` and
+    /// Mirrors `crate::fir_trait::Fir::as_search_contexted`: `Search` and
     /// `Index` both carry a `contexted` flag (re-read directly — both real
     /// `impl Fir` override this method with their own field).
     pub fn as_search_contexted(&self) -> bool {
@@ -2119,7 +2119,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_index_offset`]: `Index`'s own
+    /// Mirrors `crate::fir_trait::Fir::as_index_offset`: `Index`'s own
     /// override (re-read directly).
     pub fn as_index_offset(&self) -> i32 {
         match self.node() {
@@ -2128,12 +2128,12 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_index_anchored`].
+    /// Mirrors `crate::fir_trait::Fir::as_index_anchored`.
     pub fn as_index_anchored(&self) -> bool {
         matches!(self.node(), FirSpec::Index { anchored: true, .. })
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_fool_ref_referent`]: `FoolRef`'s
+    /// Mirrors `crate::fir_trait::Fir::as_fool_ref_referent`: `FoolRef`'s
     /// own override (re-read directly) returns the original found statement
     /// this reference wraps.
     pub fn as_fool_ref_referent(&self) -> Option<FirPointer> {
@@ -2143,7 +2143,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_concat_provenance`]:
+    /// Mirrors `crate::fir_trait::Fir::as_concat_provenance`:
     /// `Concatenation`'s own override (re-read directly) returns its
     /// provenance; every other kind's default is `Juxtaposition`.
     pub fn as_concat_provenance(&self) -> ConcatProvenance {
@@ -2153,7 +2153,7 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors [`crate::fir_trait::Fir::as_creation_display_name`]:
+    /// Mirrors `crate::fir_trait::Fir::as_creation_display_name`:
     /// `Creation`'s own override (re-read directly) delegates to
     /// [`FirPointer::get_display_name`]; every other kind's default is
     /// `None`.
@@ -3056,7 +3056,7 @@ mod search_fir_dispatch {
 
     /// Direct translation of `SearchFir::clone_stmt_result`, now including
     /// the NF-substitution path (`StatementFir::settled_result`'s override,
-    /// FOOP-33 §4): mirrors [`crate::fir_kinds::statement_value_for_comparison`]'s
+    /// FOOP-33 §4): mirrors `crate::fir_kinds::statement_value_for_comparison`'s
     /// "`settled_result()`, else the raw written body" contract exactly —
     /// a refused statement (`nf_reason` set) presents a fresh, already-`Nk`
     /// node INSTEAD of cloning its written RHS. Built directly at `Nyes::Nk`
