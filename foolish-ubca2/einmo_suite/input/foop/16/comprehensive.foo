@@ -1,0 +1,75 @@
+{
+	!! === FOOP-16 Comprehensive Test ===
+	!! FOOP-16 is an internal representation change (Rc<RefCell<dyn Fir>>
+	!! arena-per-node -> a u32-indexed FVMStorage arena) with NO new language
+	!! surface. This test's job is therefore to exercise a wide,
+	!! representative cross-section of EXISTING feature combinations through
+	!! foolish-ubca2, promoted only once its OUTPUT is confirmed byte-for-byte
+	!! identical to foolish-ubca's output for this same input -- proving the
+	!! storage mechanism changed but nothing observable did.
+
+	!! --- Nested branes ---
+	recipe = {
+		steps = {
+			prep = 7;
+			bake = 40;
+			cool = 9;
+		};
+		yield = 12;
+	};
+
+	!! --- Head/tail ---
+	series = {10; 20; 30};
+	first = series^;
+	last = series$;
+
+	!! --- Value search (forward and backward) ---
+	nums = {
+		alpha = 42;
+		beta = 15;
+		gamma = 42;
+		delta = 99;
+	};
+	fwd_val = nums~=42;
+	bwd_val = nums?=42;
+
+	!! --- Combined name+value forms ---
+	records = {
+		alice = 100;
+		bob = 200;
+		carol = 150;
+		dave = 102;
+	};
+	nv_fwd = records~.*e.*=100;
+
+	!! --- Contexted operators (& search from a prior result's position) ---
+	after_bake = recipe.steps~bake&?prep;
+	next_42 = nums~=42&#1;
+
+	!! --- AB/IB recoordination via a named-brane reference ---
+	!! `outer` is null-characterized (`'`) -- a name constant (FOOP-33 SS4).
+	!! Inside it, `via_ib` finds `x` by an IMMEDIATE-BRANE (IB) search within
+	!! `outer` itself; `via_ab` finds `top` by an ANCESTRAL-BRANE (AB) search
+	!! that climbs out of `outer` to the root where `top` is declared.
+	top = 3;
+	outer'{
+		x = 5;
+		y = 7;
+		via_ib = x + y;
+		via_ab = top + 1;
+	};
+
+	!! --- Comparison operators (system.foo detachment/recoordination) ---
+	lt_result = {1, 2, 'lt}$;
+	eq_result = {3, 3, 'eq}$;
+
+	!! --- Concatenation (juxtaposition and tail-chain) ---
+	concat_a = {p = 1; q = 2};
+	concat_b = {r = 3};
+	joined = concat_a concat_b;
+	chained = {u = 1}`{v = 2}`{w = 3};
+
+	!! --- Null-characterized name constant (FOOP-33 SS4) ---
+	'shared = ⬤;
+	restate = 'shared;
+}
