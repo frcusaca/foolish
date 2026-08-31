@@ -755,7 +755,116 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage) {
             Nyes::Braning => combine(ptr, storage),
             _ => {}
         },
+        // Direct translation of `impl Fir for StatementFir`'s real
+        // `fir_op_step`'s CORE settle shape only (re-read from `fir_kinds.rs`
+        // immediately before writing this): push the body as a task, then
+        // once it's constanic, adopt its NYES. The two NF-refusal checks
+        // (`check_null_const_conflict`/`check_rename_of_named_creation`,
+        // FOOP-33 §4) are DEFERRED here, not implemented — both call
+        // `_ib_search`/`_ab_search`/`.value()`, which are themselves
+        // search-engine operations Phase 2 owns exclusively (this module's
+        // own `SearchFir`/`IndexFir` tasks already carve out the identical
+        // exception for the same reason). Implementing a fake NF check
+        // against nothing real would be worse than not implementing it;
+        // deferred explicitly to a follow-up once Phase 2's search engine
+        // migration gives `_ib_search`/`_ab_search`/`.value()` arena
+        // equivalents to call. `nf_reason`/`settled_result`'s override are
+        // likewise deferred — `ArenaFir` carries no `nf_reason` slot yet.
+        FirSpec::Statement { .. } => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                for child in children {
+                    storage.with_mut(ptr, |fir| fir.push_task(child));
+                }
+            }
+            Nyes::Braning => {
+                if let Some(&body) = storage.foolish_children(ptr).first() {
+                    let body_nyes = storage.get_nyes(body);
+                    if body_nyes.is_constanic() {
+                        storage.with_mut(ptr, |fir| fir.set_nyes(body_nyes));
+                    }
+                }
+            }
+            _ => {}
+        },
+        // Direct translation of `impl Fir for BraneFir`'s real `fir_op_step`
+        // (re-read from `fir_kinds.rs` immediately before writing this).
+        // `_ab_search`/`_search_brane` overrides are DEFERRED — Phase 2's
+        // job, same carve-out as `SearchFir`/`IndexFir`/`Statement` above.
+        FirSpec::Brane { .. } => match storage.get_nyes(ptr) {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if children.is_empty() {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
+                } else {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                    for child in children {
+                        storage.with_mut(ptr, |fir| fir.push_task(child));
+                    }
+                }
+            }
+            Nyes::Braning => {
+                let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
+                if let Some(nyes) = decide_nyes_due_to_children(storage, &children) {
+                    storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
+                }
+            }
+            _ => {}
+        },
         other => todo!("fir_op_step for {other:?}: migrated by that kind's own per-kind task"),
+    }
+}
+
+/// Direct arena-threaded translation of `fir_kinds.rs`'s free function
+/// `_decide_nyes_due_to_children` (re-read immediately before writing this),
+/// used by `BraneFir`'s (and `ConcatHelper`'s, once migrated)
+/// `fir_op_step`'s `Braning` classification arm. Preserves the exact
+/// priority order: all-Independent → Independent; all-terminal-and-not-that
+/// → Constant; any pre-constanic → Braning (keep waiting); else any
+/// Econstanic/Woconstanic → Woconstanic; else any Nk → Nk.
+fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) -> Option<Nyes> {
+    let mut all_constant = true;
+    let mut all_independent = true;
+    let mut preconstanic_count = 0usize;
+    let mut nk_count = 0usize;
+    let mut econstanic_woconstanic_count = 0usize;
+
+    for &c in children {
+        match storage.get_nyes(c) {
+            Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => {
+                preconstanic_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Nk => {
+                nk_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Econstanic | Nyes::Woconstanic => {
+                econstanic_woconstanic_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Constant => {
+                all_independent = false;
+            }
+            _ => {}
+        }
+    }
+    if all_independent {
+        Some(Nyes::Independent)
+    } else if all_constant {
+        Some(Nyes::Constant)
+    } else if preconstanic_count > 0 {
+        Some(Nyes::Braning)
+    } else if econstanic_woconstanic_count > 0 {
+        Some(Nyes::Woconstanic)
+    } else if nk_count > 0 {
+        Some(Nyes::Nk)
+    } else {
+        unreachable!("ALARM: decide_nyes_due_to_children: no decision made.")
     }
 }
 
@@ -999,6 +1108,58 @@ impl<'s> FirCursor<'s> {
             FirSpec::Operator { op } => Some(op),
             _ => None,
         }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_stmt_identifier`]: `Statement`'s
+    /// own override (re-read directly) returns its identifier.
+    pub fn as_stmt_identifier(&self) -> Option<&'s Identifier> {
+        match self.node() {
+            FirSpec::Statement { identifier, .. } => Some(identifier),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_stmt_line_number`]: `Statement`'s
+    /// own override (re-read directly) returns its line number.
+    pub fn as_stmt_line_number(&self) -> Option<usize> {
+        match self.node() {
+            FirSpec::Statement { line_number, .. } => Some(*line_number),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::stmt_count`]: `Brane`'s own override
+    /// (re-read directly) reports its foolish-children count; every other
+    /// kind's default is `None` (not brane-like).
+    pub fn stmt_count(&self) -> Option<usize> {
+        match self.node() {
+            FirSpec::Brane { .. } => Some(self.foolish_children().len()),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::stmt_at`]: `Brane`'s own override
+    /// (re-read directly) indexes its foolish children directly.
+    pub fn stmt_at(&self, idx: usize) -> Option<FirPointer> {
+        match self.node() {
+            FirSpec::Brane { .. } => self.foolish_children().get(idx).copied(),
+            _ => None,
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::as_brane_characterizations`]:
+    /// `Brane`'s own override (re-read directly) returns its
+    /// characterizations' components.
+    pub fn as_brane_characterizations(&self) -> &'s [String] {
+        match self.node() {
+            FirSpec::Brane { characterizations } => characterizations.components(),
+            _ => &[],
+        }
+    }
+
+    /// Mirrors [`crate::fir_trait::Fir::is_brane_like`]: `stmt_count().is_some()`.
+    pub fn is_brane_like(&self) -> bool {
+        self.stmt_count().is_some()
     }
 }
 
@@ -1755,5 +1916,137 @@ mod tests {
             Some(a),
             "unsettled operands must be queued as tasks"
         );
+    }
+
+    /// `StatementFir`'s arena migration (core settle shape only — the two
+    /// NF-refusal checks are deferred to a follow-up after Phase 2's search
+    /// engine migration; see this kind's `fir_op_step` arm doc comment).
+    /// Mirrors `fir_kinds.rs::tests::statement_nyes_transitions` exactly:
+    /// `a = 9` settles Constant.
+    #[test]
+    fn statement_settles_to_its_bodys_nyes() {
+        use crate::identifier::Identifier;
+
+        let mut storage = FVMStorage::new();
+        let stmt = storage.make_root(FirSpec::Statement {
+            identifier: Identifier::from_parts(vec![], "a"),
+            line_number: 0,
+        });
+        let body = stmt.create_child(&mut storage, FirSpec::IndepInt { value: 9 });
+
+        for _ in 0..10 {
+            if storage.get_nyes(stmt).is_constanic() {
+                break;
+            }
+            stmt.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(body), Nyes::Constant);
+        assert_eq!(storage.get_nyes(stmt), Nyes::Constant);
+        assert_eq!(
+            FirCursor::new(stmt, &storage)
+                .as_stmt_identifier()
+                .map(|id| id.identifier_name()),
+            Some("a")
+        );
+        assert_eq!(
+            FirCursor::new(stmt, &storage).as_stmt_line_number(),
+            Some(0)
+        );
+    }
+
+    /// `BraneFir`'s arena migration (`_ab_search`/`_search_brane` overrides
+    /// deferred to Phase 2). Mirrors `fir_kinds.rs::tests::brane_nyes_transitions`
+    /// exactly: a brane of two settled statements settles Constant.
+    #[test]
+    fn brane_of_settled_statements_settles_constant() {
+        use crate::identifier::Identifier;
+
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let stmt_a = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"),
+                line_number: 0,
+            },
+        );
+        stmt_a.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let stmt_b = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "b"),
+                line_number: 1,
+            },
+        );
+        stmt_b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        for _ in 0..30 {
+            if storage.get_nyes(brane).is_constanic() {
+                break;
+            }
+            brane.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(brane), Nyes::Constant);
+        assert_eq!(FirCursor::new(brane, &storage).stmt_count(), Some(2));
+        assert!(FirCursor::new(brane, &storage).is_brane_like());
+    }
+
+    /// Mirrors `fir_kinds.rs::tests::brane_with_nk_child_nyes_transitions`
+    /// exactly: a brane with one NK statement settles Nk overall.
+    #[test]
+    fn brane_with_nk_child_settles_nk() {
+        use crate::identifier::Identifier;
+
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let stmt_a = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"),
+                line_number: 0,
+            },
+        );
+        stmt_a.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let stmt_bad = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "bad"),
+                line_number: 1,
+            },
+        );
+        stmt_bad.create_child(
+            &mut storage,
+            FirSpec::Nk {
+                reason: "boom".to_string(),
+            },
+        );
+
+        for _ in 0..30 {
+            if storage.get_nyes(brane).is_constanic() {
+                break;
+            }
+            brane.step(&mut storage);
+        }
+
+        assert_eq!(storage.get_nyes(brane), Nyes::Nk);
+    }
+
+    /// An empty `Brane` settles `Constant` in one step — mirrors the
+    /// `children.is_empty()` short-circuit in the real `fir_op_step`.
+    #[test]
+    fn empty_brane_settles_constant_immediately() {
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        brane.step(&mut storage);
+        assert_eq!(storage.get_nyes(brane), Nyes::Constant);
+        assert_eq!(FirCursor::new(brane, &storage).stmt_count(), Some(0));
     }
 }

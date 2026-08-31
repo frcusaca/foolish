@@ -398,13 +398,42 @@ not a claim that the arena path is live in production yet.
       operator cases" specifically, since the suite runs quickly and this confirms no regression
       crate-wide) — passes unchanged.
 
-- [ ] Migrate `StatementFir` to `FirPointer`
+- [x] Migrate `StatementFir` to `FirPointer`
+      (2026-08-30 17:24)
   - `StatementFir` is likely the most-referenced kind (every brane is a sequence of statements) — expect this task to touch the largest number of call sites of any single-kind task in this phase. If it proves larger than expected, split into indented sub-tasks per this plan's sub-task convention (e.g. one sub-task for its own fields/construction, one for its `Fir` impl's parent/children-touching methods, one for any statement-chain-building helper functions specific to it).
   - Targeted einmo re-run: full suite (statements are load-bearing everywhere; a targeted subset would not meaningfully narrow scope here).
+      Per additive-then-cutover: added `FirSpec::Statement`'s core settle shape (Prembrionic →
+      Braning, push body as task → adopt body's Nyes once constanic) to `fir_op_step`, direct
+      translation of the real `impl Fir for StatementFir`'s core logic (re-read immediately
+      before writing). **Deliberately deferred, not implemented**: the two NF-refusal checks
+      (`check_null_const_conflict`/`check_rename_of_named_creation`, FOOP-33 §4) and
+      `settled_result`'s NF-substitution override — both depend on `_ib_search`/`_ab_search`/
+      `.value()`, which are search-engine operations Phase 2 owns exclusively (same carve-out
+      `SearchFir` already has, extended here for the same reason). `ArenaFir` carries no
+      `nf_reason` slot yet. Added `FirCursor::as_stmt_identifier`/`as_stmt_line_number` mirroring
+      the trait overrides. 1 new unit test (`statement_settles_to_its_bodys_nyes`, mirroring
+      `fir_kinds.rs::tests::statement_nyes_transitions` exactly). Targeted einmo re-run: full
+      suite — passes unchanged.
 
-- [ ] Migrate `BraneFir` to `FirPointer`
+- [x] Migrate `BraneFir` to `FirPointer`
+      (2026-08-30 17:24)
   - `BraneFir` is the container every other kind's "home brane" resolves to (`get_my_brane`) — pay particular attention to `get_my_brane`'s implementation and update it to walk `FirPointer` parent links via `FVMStorage` rather than the current `.parent` chain walk.
   - Targeted einmo re-run: full suite (branes are load-bearing everywhere).
+      `FirPointer::home_brane` already exists from the Phase 1 foundational task and already
+      walks `FirPointer` parent links via `FVMStorage`, judging brane-likeness directly on
+      `FirSpec` — no change needed there for this task specifically. Added `FirSpec::Brane`'s
+      real `fir_op_step` arm (Prembrionic/Embryonic: empty→Constant immediately, else Braning +
+      push all children as tasks; Braning: classify via a new `decide_nyes_due_to_children` free
+      function, a direct arena translation of `fir_kinds.rs`'s real `_decide_nyes_due_to_children`
+      re-read immediately before writing — same priority order preserved exactly: all-Independent
+      → Independent; all-terminal → Constant; any pre-constanic → Braning; else
+      Econstanic/Woconstanic → Woconstanic; else Nk → Nk). Added `FirCursor::stmt_count`/
+      `stmt_at`/`as_brane_characterizations`/`is_brane_like` mirroring the trait overrides.
+      **Deliberately deferred**: `_ab_search`/`_search_brane` overrides (Phase 2's job).
+      3 new unit tests mirror `brane_nyes_transitions`/`brane_with_nk_child_nyes_transitions`
+      exactly, plus the empty-brane immediate-Constant short-circuit. Targeted einmo re-run: full
+      suite — passes unchanged. 29 `fvm_storage` unit tests total (up from 26), all passing;
+      `cargo clippy`/`cargo fmt` clean.
 
 - [ ] Migrate `SearchFir` to `FirPointer` — structural fields and construction only, NOT its search-execution logic
   - This task covers `SearchFir`'s own `ProtoBrane`-embedded fields and its `Rc::new_cyclic` construction sites (in `fir_kinds.rs` and the corresponding sites in `compiler.rs`, though the `compiler.rs` side is covered by Phase 4 — this task touches only `fir_kinds.rs`).
