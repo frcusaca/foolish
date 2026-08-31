@@ -1224,17 +1224,48 @@ skipped during the cutover.
     carried) before `ConcatHelper`'s and `ConcatenationFir`'s old `impl Fir` blocks can be
     deleted — this is the next concrete blocking item for this sub-task, sized similarly to
     `IndexFir`'s dispatch work (i.e., substantial, not a quick fill-in).
-    **Not yet started at all:** deleting any of the 13 `impl Fir` blocks themselves, deleting
-    `ProtoBrane`, and the ~260-test port/retire decision pass. Resume by: (1) completing
-    `populate_concat_helpers`'s real merge logic, (2) then working through the 13 kinds in a
-    safe deletion order (leaf kinds with no remaining gaps first — `IndepIntFir`, `NkFir`,
-    `CreationFir`, `FoolRefFir`, `StayFoolishFir`, `StayFullyFoolishFir`, `OperatorFir` are
-    fully arena-portable today per the earlier survey fork's report; `StatementFir`, `SearchFir`,
-    `IndexFir`, `BraneFir` now also have everything they need; `ConcatHelper`/`ConcatenationFir`
-    wait on the merge-logic completion above; `ComparisonFir` is `system_foo.rs`'s own later
-    sub-task, not this one), deleting each kind's struct/impl and re-running the full gate after
-    each (or in small batches) rather than all 13 in one uncheckable edit, (3) delete
-    `ProtoBrane` once no kind embeds it, (4) then the documented per-test port/retire pass.
+    **Update (2026-08-30, `de9c447e`): `populate_concat_helpers`'s real merge logic is now DONE**
+    (including `apply_null_const_rule_to_merged_stmt`), verified by 2 new end-to-end tests plus
+    an updated pre-existing test that pinned the old placeholder. A real, pre-existing bug in
+    `clone_subtree`'s share-not-clone path was found and fixed along the way (the shared pointer
+    was never appended to the NEW parent's `foolish_children` list — see the commit message for
+    the full explanation); this was undetected until this task's test exercised it end-to-end,
+    and did not change any einmo output (nothing currently exercises the arena path in
+    production). All four prerequisites this sub-task needed are now complete: `nf_reason` slot,
+    `IndexFir` dispatch, `StatementFir` NF checks, `ConcatHelper`/`ConcatenationFir` merge logic.
+
+    **CRITICAL STRUCTURAL FINDING before stopping this session (read before resuming):** deleting
+    any of the 13 `impl Fir` blocks / their structs CANNOT happen as an isolated step before
+    `compiler.rs`/`evaluator.rs` are cut over — `compiler.rs`'s `build_fir` still constructs
+    `IndepIntFir { .. }`/`NkFir { .. }`/etc. directly via `Rc::new_cyclic`, and `evaluator.rs`
+    still matches on/steps these concrete types through `dyn Fir`. Deleting a kind's struct while
+    those files still reference it breaks compilation immediately — there is no "leaf kinds
+    first, then cut over the files" order that keeps every intermediate commit green, because
+    `compiler.rs`/`evaluator.rs` reference ALL 13 kinds, not a subset. **The real dependency
+    order is therefore: cut `compiler.rs` over to `arena_compiler` (already fully built, Phase 4)
+    and `evaluator.rs` over to `core_fir_conversion`'s stepping loop (already fully built, Phase
+    3) FIRST — making the arena path the crate's actual live evaluator — THEN delete the 13
+    `impl Fir` blocks once nothing outside `fir_kinds.rs`/`fir_trait.rs`'s own (soon-to-be-
+    deleted) test modules references them any more.** This likely means resequencing this
+    sub-task's own checkbox order: do the `compiler.rs` and `evaluator.rs` cutover sub-tasks
+    (below, in this same Phase 5) BEFORE finishing this "delete the 13 impl Fir blocks" sub-task,
+    not after, despite this sub-task being listed first in the plan. `system_foo.rs`'s cutover
+    (which also constructs `ComparisonFir` directly) likely needs to happen in the same wave for
+    the same reason. Confirm this resequencing explicitly (or find a narrower per-kind order that
+    avoids it, e.g. if `compiler.rs`/`evaluator.rs` can be migrated to accept EITHER the old or
+    new construction per kind during a transition — check for such a seam before assuming a
+    single big-bang cutover of all three files at once is required) before starting the deletion
+    work, rather than resuming past this note as if the original leaf-kinds-first order still
+    stands.
+
+    **Not yet started at all:** deleting any of the 13 `impl Fir` blocks, deleting `ProtoBrane`,
+    the ~260-test port/retire decision pass, and the `compiler.rs`/`evaluator.rs`/`system_foo.rs`
+    cutover sub-tasks themselves (their own checkboxes, further down this Phase 5 section, are
+    still unchecked). Resume by resolving the resequencing question above, then executing
+    accordingly — likely: `compiler.rs` cutover, `evaluator.rs` cutover, `system_foo.rs` cutover
+    (all three together or in quick succession, each gated by the full test+einmo suite), THEN
+    the 13 `impl Fir` deletions (now safe, since nothing outside the doomed old code references
+    them), THEN `ProtoBrane` deletion, THEN the test port/retire pass.
 
 - [ ] Cut `compiler.rs` over to `arena_compiler`
   - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
