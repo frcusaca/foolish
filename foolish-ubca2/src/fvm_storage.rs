@@ -1318,22 +1318,13 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
         // Direct translation of `impl Fir for ComparisonFir`'s real
         // `fir_op_step`/`combine` (`system_foo.rs`, re-read in full
         // immediately before writing this) — SAME two-phase shape as
-        // `OperatorFir`: push operands, then combine once Braning.
-        // **Deliberately deferred, not implemented**: `combine`'s actual
-        // verdict-resolution tail (`resolve_boolean`, which calls
-        // `_ab_search` to find `'True`/`'False` in an ancestor brane) —
-        // exactly the search-engine dependency Phase 2 owns exclusively,
-        // same carve-out as `BraneFir`'s `_ab_search` and `StatementFir`'s
-        // NF checks. This arm implements what IS arena-portable now: the
-        // two-phase push/combine shape and the ECONSTANIC-if-unevaluated
-        // gate (`operand_is_unevaluated_here`, entirely self-contained — no
-        // search dependency, only reads a child's own `foolish_children`/
-        // `Nyes`). The integer-vs-non-integer type check and the final
-        // boolean settle are NOT implemented — once both operands are
-        // genuinely evaluated (not the ECONSTANIC-in-system.foo case), this
-        // arena translation settles `Woconstanic` rather than resolving a
-        // real verdict, an honestly-incomplete result pending Phase 2.
-        FirSpec::Comparison { .. } => match storage.get_nyes(ptr) {
+        // `OperatorFir`: push operands, then combine once Braning. The real
+        // verdict-resolution tail (`resolve_boolean`, `_ab_search` for
+        // `'True`/`'False`) is now implemented too (Phase 5 cutover
+        // prerequisite — `search_fir_dispatch::ab_search_by_pattern`,
+        // `statement_value_for_comparison`, both built for `StatementFir`'s
+        // NF checks), now that this search-engine dependency exists.
+        FirSpec::Comparison { op } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1351,10 +1342,69 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 });
                 if any_unevaluated_here {
                     storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic));
-                } else {
-                    // Real verdict resolution needs `_ab_search` — deferred.
-                    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Woconstanic));
+                    return;
                 }
+
+                // Read each operand THROUGH its SFF wrapper: `.value()`
+                // follows the settled chain to whatever the recoordinated
+                // index landed on.
+                let values: Vec<Option<i64>> = operands
+                    .iter()
+                    .map(|&o| {
+                        let resolved = o.value(storage);
+                        FirCursor::new(resolved, storage).as_i64()
+                    })
+                    .collect();
+
+                let (Some(&Some(left)), Some(&Some(right))) = (values.first(), values.get(1))
+                else {
+                    // The operands DID evaluate here, and at least one is
+                    // not an integer. Only integers are comparable (FOOP-33
+                    // §5, same principle `default_equal` follows).
+                    let nk_ptr = ptr.create_child(
+                        storage,
+                        FirSpec::Nk {
+                            reason: "comparison: non-integer operand".to_string(),
+                        },
+                    );
+                    storage.with_mut(nk_ptr, |fir| fir.set_nyes(Nyes::Nk));
+                    let me = storage.get_mut(ptr);
+                    me.push_ubc_child(nk_ptr, Nyes::Nk);
+                    me.set_alarm_reason("comparison: non-integer operand".to_string());
+                    me.set_nyes(Nyes::Nk);
+                    return;
+                };
+
+                let verdict = op.compare(left, right);
+                // Resolve `'True`/`'False` by ordinary ancestral search from
+                // THIS comparison's own position — it lives inside
+                // system.foo, so the search finds the very creations
+                // system.foo declares (FOOP-33 §5: referentially identical
+                // to a user's own `'True` reference).
+                let name = if verdict { "'True" } else { "'False" };
+                let home_brane = ptr.home_brane(storage);
+                let boolean = search_fir_dispatch::ab_search_by_pattern(storage, name, home_brane)
+                    .and_then(|(found, _)| {
+                        search_fir_dispatch::statement_value_for_comparison(storage, found)
+                    })
+                    .map(|body| body.value(storage));
+                let Some(boolean) = boolean else {
+                    // system.foo always defines 'True/'False; failing to
+                    // find one means the prelude itself is malformed — an
+                    // interpreter defect, not an unevaluable program. No
+                    // `Result` to propagate through `fir_op_step`'s arena
+                    // signature yet (same convention as `IndexFir`'s
+                    // unanchored-offset invariant panic above), so this
+                    // states the same invariant via `panic!`.
+                    panic!(
+                        "system.foo must define 'True and 'False, but {} could not resolve one",
+                        op.searchable_name()
+                    );
+                };
+                let clone = storage.clone_subtree(boolean, ptr, 0, scope.has_ancestral_sfm, false);
+                let mut cursor = FirCursorMut::new(ptr, storage);
+                cursor.push_ubc_child(clone);
+                cursor.set_nyes(Nyes::Constant);
             }
             _ => {}
         },
@@ -6094,29 +6144,91 @@ mod tests {
     /// Phase 2. Documented explicitly here rather than silently claiming a
     /// `Constant`/`Nk` verdict this task does not actually compute.
     #[test]
-    fn comparison_with_evaluated_operands_defers_the_real_verdict() {
+    fn comparison_with_evaluated_operands_resolves_the_real_verdict() {
+        // Updated (Phase 5 cutover prerequisite): ComparisonFir's real
+        // verdict resolution is no longer deferred — it needs 'True/'False
+        // reachable via ancestral search from the Comparison node's own
+        // position, mirroring resolve_boolean's real dependency. Build a
+        // minimal system.foo-shaped ancestor brane (declaring 'True/'False)
+        // with the Comparison node nested inside it, rather than the old
+        // test's isolated root (which had no ancestor to search at all).
         use crate::system_foo::ComparisonOp;
 
         let mut storage = FVMStorage::new();
-        let cmp = storage.make_root(FirSpec::Comparison {
-            op: ComparisonOp::Eq,
+        let root = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
         });
-        let left = cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
-        storage.with_mut(left, |fir| fir.set_nyes(Nyes::Constant));
-        let right = cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
-        storage.with_mut(right, |fir| fir.set_nyes(Nyes::Constant));
+        let true_stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "True"),
+                line_number: 0,
+            },
+        );
+        let true_creation = true_stmt.create_child(&mut storage, FirSpec::Creation);
+        let false_stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![String::new()], "False"),
+                line_number: 1,
+            },
+        );
+        false_stmt.create_child(&mut storage, FirSpec::Creation);
 
-        for _ in 0..5 {
-            if storage.get_nyes(cmp).is_constanic() {
-                break;
-            }
-            cmp.step(&mut storage);
-        }
+        // `'True`/`'False` must be in an ANCESTOR brane of `cmp`'s own home
+        // brane, not siblings within the SAME brane `cmp` sits in --
+        // `_ab_search`/`ab_search_by_pattern` search ANCESTORS, never the
+        // current brane's own siblings (that's IB search's job), and the
+        // ROOT brane itself is never its own ancestor. Nest one level
+        // deeper: an inner brane (mirroring how system.foo's real
+        // composition nests the user's `program` one level below the
+        // 'True/'False declarations) holds the statement whose body is the
+        // Comparison node.
+        let inner_holder_stmt = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "program"),
+                line_number: 2,
+            },
+        );
+        let inner = inner_holder_stmt.create_child(
+            &mut storage,
+            FirSpec::Brane {
+                characterizations: Characterizations::default(),
+            },
+        );
+        let holder = inner.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "eq_check"),
+                line_number: 0,
+            },
+        );
+        let cmp = holder.create_child(
+            &mut storage,
+            FirSpec::Comparison {
+                op: ComparisonOp::Eq,
+            },
+        );
+        cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
 
         assert_eq!(
             storage.get_nyes(cmp),
-            Nyes::Woconstanic,
-            "real verdict resolution is deferred to Phase 2 (needs _ab_search)"
+            Nyes::Constant,
+            "1 =̲=̲ 1 must resolve the real verdict, not defer to Woconstanic"
+        );
+        let result = FirCursor::new(cmp, &storage)
+            .ubc_children()
+            .first()
+            .copied();
+        assert_eq!(
+            result,
+            Some(true_creation),
+            "eq(1, 1) is true -- the comparison's result must be the SAME 'True creation \
+             system.foo declares (referential identity, FOOP-33 SS5), not a synthetic boolean"
         );
     }
 

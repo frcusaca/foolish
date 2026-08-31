@@ -91,9 +91,11 @@ impl ComparisonOp {
     }
 
     /// Run this operator's Rust comparison. The ONLY thing that differs
-    /// between the five operators.
+    /// between the five operators. `pub(crate)`, not private: also called
+    /// directly by `fvm_storage`'s `FirSpec::Comparison` dispatch arm
+    /// (Phase 5 cutover prerequisite), a sibling module.
     #[must_use]
-    fn compare(self, left: i64, right: i64) -> bool {
+    pub(crate) fn compare(self, left: i64, right: i64) -> bool {
         match self {
             ComparisonOp::Lt => left < right,
             ComparisonOp::Gt => left > right,
