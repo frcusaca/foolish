@@ -122,6 +122,20 @@ pub(crate) struct ArenaFir {
     tasks: VecDeque<FirPointer>,
     /// Mirrors `ProtoBrane::alarm_reason`.
     alarm_reason: Option<String>,
+    /// Mirrors `StatementFir::nf_reason` (FOOP-33 §4). Applies ONLY to
+    /// `FirSpec::Statement` nodes — every other kind leaves this `None`
+    /// forever, exactly as the real `nf_reason` field exists only on
+    /// `StatementFir`'s own struct, not on `ProtoBrane`. Kept as a plain
+    /// `ArenaFir` field (not a `FirSpec::Statement` field) for the same
+    /// reason `sf_inner_pattern` is excluded from `FirSpec::Search`'s spec:
+    /// it is a `fir_op_step`-time discovery, never a construction input (see
+    /// `FirSpec::Statement`'s own doc comment, which already says as much).
+    /// `None` in the overwhelmingly common case; `Some(reason)` once set is
+    /// terminal (never cleared) — set by the null-characterized name constant
+    /// rule (`check_null_const_conflict`) or the named-creation no-rename
+    /// rule (`check_rename_of_named_creation`), both ported to this cutover's
+    /// `StatementFir` migration task.
+    nf_reason: Option<String>,
 }
 
 impl ArenaFir {
@@ -233,6 +247,34 @@ impl ArenaFir {
     /// this had is removed now that it has a real caller.
     pub(crate) fn alarm_reason(&self) -> Option<&str> {
         self.alarm_reason.as_deref()
+    }
+
+    /// Mirrors `StatementFir::nf_reason`'s reader (FOOP-33 §4). `None` unless
+    /// this is a `FirSpec::Statement` node that a null-characterized-name
+    /// rule has refused. Terminal once set — mirrors the real field's
+    /// "set once, never cleared" contract (see this struct's `nf_reason`
+    /// field doc comment).
+    pub(crate) fn nf_reason(&self) -> Option<&str> {
+        self.nf_reason.as_deref()
+    }
+
+    /// Mirrors `StatementFir::check_null_const_conflict`/
+    /// `check_rename_of_named_creation`'s ONLY write path: `*self.nf_reason
+    /// .borrow_mut() = Some(reason)`. Terminal — the real methods both guard
+    /// with `if self.nf_reason.borrow().is_some() { return; }` BEFORE calling
+    /// this (Gotcha #5a: no re-alarm once resolved); this setter itself does
+    /// not re-check, matching `ProtoBrane::set_alarm_reason`'s equally
+    /// unconditional real counterpart — the caller owns the "already set"
+    /// guard, exactly as it does today.
+    #[expect(
+        dead_code,
+        reason = "no caller yet — StatementFir's check_null_const_conflict/ \
+                  check_rename_of_named_creation and ConcatenationFir's \
+                  apply_null_const_rule_to_merged_stmt are ported later in \
+                  this same cutover sub-task"
+    )]
+    pub(crate) fn set_nf_reason(&mut self, reason: String) {
+        self.nf_reason = Some(reason);
     }
 }
 
@@ -392,6 +434,17 @@ impl FVMStorage {
         self.slots[index].payload.alarm_reason()
     }
 
+    /// Retrieve this pointer's NF (Not Foolish) reason, if any (FOOP-33 §4).
+    /// Mirrors `StatementFir::nf_reason`'s reader. `None` for every kind
+    /// other than `FirSpec::Statement`, and `None` there too unless a
+    /// null-characterized-name rule has refused this statement. Consulted by
+    /// [`FirPointer::settled_result`] to substitute the refusal NK in place
+    /// of the written body — see that method's doc comment.
+    pub fn nf_reason(&self, ptr: FirPointer) -> Option<&str> {
+        let index = self.validate(ptr);
+        self.slots[index].payload.nf_reason()
+    }
+
     /// Retrieve, modify, and return in one call — the "retrieve a payload, be
     /// able to modify it before returning" primitive. Closure-scoped so there
     /// is no separate get/set pair to keep in sync, and no `RefCell`-style
@@ -492,6 +545,7 @@ impl FVMStorage {
                 ubc_children: Vec::new(),
                 tasks: VecDeque::new(),
                 alarm_reason: None,
+                nf_reason: None,
             },
             parent,
             foolish_children: Vec::new(),
@@ -2506,20 +2560,29 @@ mod search_fir_dispatch {
         super::nyes_from_found(found)
     }
 
-    /// Direct translation of `SearchFir::clone_stmt_result` (re-read
-    /// directly): clones the found statement's presented value (preferring
-    /// `settled_result` over the raw written body — the NF-substitution
-    /// path, still deferred per `StatementFir`'s own Phase 1 task, so this
-    /// arena translation reads the raw body directly via
-    /// `foolish_children().first()`, which is exactly what
-    /// `statement_value_for_comparison` falls through to in the common case
-    /// this crate can currently exercise).
+    /// Direct translation of `SearchFir::clone_stmt_result`, now including
+    /// the NF-substitution path (`StatementFir::settled_result`'s override,
+    /// FOOP-33 §4): mirrors [`crate::fir_kinds::statement_value_for_comparison`]'s
+    /// "`settled_result()`, else the raw written body" contract exactly —
+    /// a refused statement (`nf_reason` set) presents a fresh, already-`Nk`
+    /// node INSTEAD of cloning its written RHS. Built directly at `Nyes::Nk`
+    /// (not via the general `FirSpec::Nk` + step convention, which starts
+    /// `Prembrionic`) because `settled_result`'s own contract — "applies the
+    /// constanic gate itself" — demands the presented value already BE
+    /// constanic; the real override's doc comment makes the same point about
+    /// why it does not go through `NkFir::nk`.
     fn clone_stmt_result(
         storage: &mut FVMStorage,
         stmt: FirPointer,
         new_parent: FirPointer,
         sfm: bool,
     ) -> FirPointer {
+        if let Some(reason) = storage.nf_reason(stmt) {
+            let reason = reason.to_owned();
+            let nk = new_parent.create_child(storage, FirSpec::Nk { reason });
+            storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
+            return nk;
+        }
         let body = storage
             .foolish_children(stmt)
             .first()
