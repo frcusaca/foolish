@@ -1144,7 +1144,113 @@ this phase's tasks strictly in the order listed.
 
 ## Phase 5 — Remove residual `Rc`/`Weak`/`RefCell`/`FirRef` types from `foolish-ubca2`
 
+**Scope clarification, added after Phase 4 closed (2026-08-30 21:07):** this phase's original
+checkbox list named only the phase's END STATE (grep confirms zero `FirRef` references; delete
+`FirRef`/`FirRefExt`/`FirRefNavExt`) and never itself named the actual cutover work that state
+depends on. As documented at length in the Phase 1 "Scope clarification" note above (line ~300),
+every per-kind task in Phases 1–4 was DELIBERATELY additive: it added new, tested arena
+capability alongside the untouched, still-fully-live `Rc`/`RefCell`-based `impl Fir for XFir`
+code, which is what `compiler.rs`, `evaluator.rs`, and the einmo suite actually exercise through
+all of Phases 0–4. Confirmed by direct grep immediately before writing this note: 274 live
+references to `FirRef` remain across `fir_kinds.rs` (140), `fir_trait.rs` (45, including the
+trait/type definitions themselves), `proto_brane.rs` (23), `compiler.rs` (22), `evaluator.rs`
+(20), `system_foo.rs` (22), and `lib.rs` (2) — none of Phases 1–4 removed any of this, by design.
+The two checkboxes originally in this phase (grep-for-zero, then delete) are therefore not
+executable as a first step; they are the phase's CLOSING verification, achievable only after
+every real call site in these files is rewired from `Rc`/`RefCell`/`Weak`/`FirRef` onto
+`FirPointer`/`FVMStorage`, and every old `Rc`-based `impl Fir for XFir` block (13 in
+`fir_kinds.rs`, plus `ComparisonFir`'s in `system_foo.rs`) is deleted. The sub-tasks below name
+that cutover explicitly, split per file/tightly-coupled-file-group in dependency order (mirroring
+how Phase 1 split per-kind), so each lands as its own bisectable, fully-tested commit rather than
+one atomic all-or-nothing rewrite — preserving the bisectability this whole FOOP is designed
+around (FOOP-16.md's Rejected Alternative A). Two of this FOOP's own accumulated non-blocking
+doubts are folded in as explicit call-outs below (the `IndexFir` search-dispatch gap, and
+`compile_root_with_body_override`'s deferred root-construction path) so neither gets silently
+skipped during the cutover.
+
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run: full `foolish-ubca2` build (`cargo build -p foolish-ubca2`) and full einmo suite (`einmo_gate_checked`).
+
+- [ ] Cut `fir_kinds.rs`'s 13 `impl Fir for XFir` blocks over to `FirPointer`/`FVMStorage`, and migrate `proto_brane.rs` alongside them
+      **(Foundation group — done first, since every other file's cutover calls into these types.)**
+  - For each of the 13 kinds already migrated additively in Phase 1 (`IndepIntFir`, `NkFir`,
+    `OperatorFir`, `StatementFir`, `BraneFir`, `SearchFir`, `IndexFir`, `FoolRefFir`,
+    `StayFoolishFir`, `StayFullyFoolishFir`, `ConcatHelper`, `ConcatenationFir`, `CreationFir`):
+    delete the struct's `ProtoBrane`-embedded `Rc`/`RefCell`/`Weak` fields and its `impl Fir for
+    XFir` block entirely; any caller that matched on the concrete struct type now goes through
+    `FirPointer`/`FirSpec` dispatch (`fir_op_step`, already fully populated for all 14 kinds per
+    Phase 1/2's work) instead.
+  - **`IndexFir` call-out (non-blocking doubt from Phase 1, resolve here or explicitly re-defer
+    with a fresh justification):** `IndexFir`'s real search dispatch (`#N`/`^`/`$`) was flagged in
+    Phase 1 as having no migrating task anywhere in the plan — `SearchPredicate::Index`/`Head`/
+    `Tail` are constructed only by this crate's own tests, never by production code. This cutover
+    is the last point before `IndexFir`'s OLD `impl Fir` (which DOES correctly dispatch `#N`/`^`/
+    `$` today) is deleted — deleting it without a working arena-side equivalent would be a real
+    regression, not a carried-forward doubt. Before deleting `IndexFir`'s old `impl Fir` block,
+    either (a) complete `IndexFir`'s arena-side search dispatch using the existing
+    `SearchPredicate::Index`/`Head`/`Tail` variants and `search_fir_dispatch` machinery (extending
+    it, not building anew — the predicate variants and engine already exist), or (b) if genuinely
+    out of scope for this task's budget, STOP and report rather than deleting a working code path
+    with no replacement.
+  - `ProtoBrane` (`proto_brane.rs`) itself is deleted in this same sub-task: it is the shared
+    field-holder (`foolish_children`/`ubc_children`/`nyes`/`tasks`/`parent`/`alarm_reason`) that
+    `ArenaFir`+`FVMStorage`'s `Slot` already replace per Phase 1's foundational task — once no
+    `impl Fir for XFir` embeds a `core: ProtoBrane` field anymore, delete the struct, its `impl`
+    block, and `constanic_clone_at` (superseded by `FVMStorage`'s constanic-clone equivalent from
+    Phase 1/3, if not already present — add it there first if this cutover finds it missing).
+  - Targeted einmo re-run: full suite (every kind is touched).
+  - Commit after this sub-task.
+
+- [ ] Cut `compiler.rs` over to `arena_compiler`
+  - Replace `Compiler::compile`'s body with a call into `arena_compiler::compile`
+    (Phase 4); replace `AstnCompilerExt`'s trait/impl and the free functions `build_fir`,
+    `build_concat_element`, `validate_astn`, `classify_concat_element` with calls into (or
+    deletion in favor of) their `arena_compiler` equivalents, now that the latter are the only
+    implementation left standing after the previous sub-task removed the `Rc`-based `impl Fir`
+    machinery `compiler.rs`'s old code depended on.
+  - **`compile_root_with_body_override` call-out (non-blocking doubt from Phase 4):** this
+    function (compiler.rs:504), used exclusively by `system_foo.rs` to inject Rust-native FIR
+    bodies (e.g. `ComparisonFir`) into statements declared in ordinary Foolish source (FOOP-33
+    §5.0), was explicitly NOT translated in Phase 4 — no `arena_compiler` equivalent exists yet.
+    Do not delete or leave broken: either build the arena-side `BodyOverride`-equivalent hook
+    here (coordinating with the `system_foo.rs` sub-task below, since the two are each other's
+    only caller/callee), or explicitly sequence this function's cutover to happen together with
+    the `system_foo.rs` sub-task rather than in this one — decide and note which during this task.
+  - Once every caller is cut over, delete `compiler.rs`'s now-dead duplicate logic (the
+    `arena_compiler` module's copies of `validate_astn`/`ConcatElemKind`/`classify_concat_element`
+    become the crate's only copies — no more duplication needed once the old originals are gone).
+  - Targeted einmo re-run: full suite (construction-order changes can shift statement indices and
+    downstream search results crate-wide).
+  - Commit after this sub-task.
+
+- [ ] Cut `evaluator.rs` over to `core_fir_conversion`/the arena stepping loop
+  - Replace `UbcaEvaluator::evaluate`'s (and `step_until`/`step_until_line_number`/
+    `step_until_statement_name`'s) bodies with calls into `core_fir_conversion`'s
+    `step_to_settled`/`step_until*` and `proto_to_core_fir`/`anchor_to_core_fir` (Phase 3), now
+    that `step_inner`/`fir_op_step` (Phase 1/2's `FVMStorage` methods) are the only stepping
+    implementation left once the previous two sub-tasks remove the `Rc`-based one they call into.
+  - This is the sub-task where `einmo_gate_checked`'s OUTPUT is first produced by the arena path
+    for real — the highest-risk single step in this FOOP. Do not treat "compiles" as sufficient;
+    the full suite must match `checked/` byte-for-byte with no case skipped or waived.
+  - Targeted einmo re-run: full suite, run at least twice to rule out any nondeterminism the
+    bump-allocator/no-slot-reuse arena design might expose that `Rc`/`RefCell` masked (e.g. if
+    any part of the old code relied on drop order or `Rc` strong-count side effects — audit for
+    this specifically if any run is flaky).
+  - Commit after this sub-task.
+
+- [ ] Cut `system_foo.rs` over last
+  - `ComparisonFir`'s `impl Fir` (system_foo.rs:312) is the 14th and final `impl Fir for XFir`
+    block in the crate (the only one not in `fir_kinds.rs`) — migrate it the same way the
+    foundation-group sub-task migrated the other 13, using `FirSpec::Comparison` (Phase 1).
+  - Resolve `compile_root_with_body_override`'s arena-side hook here if the `compiler.rs`
+    sub-task deferred it here (see that sub-task's call-out) — `system_foo.rs`'s bootstrap
+    (embedding `system.foo`'s declared comparison operators with Rust-native bodies) is this
+    function's only real caller, so this is the natural place to finish it if not done already.
+  - Last, because this file's bootstrap is the final piece touching AB search termination at the
+    system root (`ab_search_terminates_at_system_root_no_infinite_walk`, an existing test) — this
+    invariant must be verified with the arena path live end-to-end, not in isolation.
+  - Targeted einmo re-run: full suite, plus explicit re-run of every `system_foo::tests::*` test
+    by name (comparison operators, `foop75` head/tail attachment, AB-search-terminates-at-root).
+  - Commit after this sub-task.
 
 - [ ] Grep `foolish-ubca2/src/` for remaining references to `FirRef`, `FirRefExt`, `FirRefNavExt`, `Rc<RefCell`, `Weak<RefCell` and confirm the count is zero outside of comments/docs explaining the old design for historical clarity (if any such explanatory comment remains, that's fine — this task removes *code*, not necessarily every mention in prose)
   - If any live code reference remains, it means an earlier phase's task was incomplete — go back and finish that migration rather than leaving a mixed old/new pointer scheme in place.
