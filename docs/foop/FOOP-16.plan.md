@@ -960,39 +960,185 @@ this phase's tasks strictly in the order listed.
 
 `compiler.rs`'s 18 `Rc::new_cyclic` sites cluster into four natural groups (verified by reading the file): (1) `build_fir`'s per-AST-node-kind match arms — one `Rc::new_cyclic` per `Astn` variant handled (Brane, BinaryOp, UnaryOp, three Search-producing arms, Seek, HeadTail, two Concatenation arms, StayFoolish, StayFullyFoolish — 12 sites), (2) `build_concat_element` (1 site, a small helper feeding into the Concatenation arms), (3) `build_stmts`/the `AstnCompilerExt::compile_statement`-style extension (2 sites — one for `StatementFir` itself, one likely for wrapping), (4) `Compiler::compile`'s root-brane construction (1 site, at the very top of the compile pipeline) plus one more root-level site — confirm the exact count matches 18 when this phase starts; if it doesn't, adjust the sub-tasks below to match what's actually found rather than the count listed here.
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: full `foolish-ubca2` suite (`einmo_gate_checked`) — construction-order changes can shift statement indices and downstream search results crate-wide, so no narrower subset applies here either; run unit tests: `foolish-ubca2::compiler` substring match.
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: full `foolish-ubca2` suite (`einmo_gate_checked`) — construction-order changes can shift statement indices and downstream search results crate-wide, so no narrower subset applies here either; run unit tests: `foolish-ubca2::compiler` substring match.
+      (2026-08-30 20:55)
+      `compiler.rs` DOES have `mod tests` (4 tests, confirmed by direct reading of the full
+      732-line file) — mirrored as arena tests where their intent generalizes (see below); the
+      real tests keep compiling/passing unchanged against the old `Rc`-based API throughout this
+      phase per the additive-then-cutover design.
 
-- [ ] Migrate `build_fir`'s per-AST-node-kind match arms (compiler.rs) — one sub-task per `Astn` variant arm
+- [x] Migrate `build_fir`'s per-AST-node-kind match arms (compiler.rs) — one sub-task per `Astn` variant arm
+      (2026-08-30 20:55)
   **(Parallelizable with the same file-conflict caveat as Phase 1's per-kind tasks: the seven
   sub-tasks below touch disjoint match arms within the same function/file, `compiler.rs`, so
   their logical scopes don't overlap but concurrent edits to one file still risk conflicts —
   confirm the execution environment can land them safely, or sequence with a commit after each.)**
-  - [ ] `Astn::Brane { .. }` arm → `create_child(&mut storage, FirSpec::Brane { .. })`
-  - [ ] `Astn::BinaryOp`/`Astn::UnaryOp` arms → `create_child(&mut storage, FirSpec::Operator { .. })` (both arms produce `OperatorFir`, migrate together)
-  - [ ] The three `SearchFir`-producing arms (anchored search, `&`-contexted search, value/name-value search — confirm exact `Astn` variant names by re-reading `build_fir`'s match at this point) → `create_child(&mut storage, FirSpec::Search { .. })`
-  - [ ] `Astn::Seek`/`Astn::HeadTail` arms → `create_child(&mut storage, FirSpec::Index { .. })` (both produce `IndexFir`, migrate together)
-  - [ ] The two `ConcatenationFir`-producing arms → `create_child(&mut storage, FirSpec::Concatenation { .. })`
-  - [ ] `Astn::StayFoolish` arm → `create_child(&mut storage, FirSpec::StayFoolish { .. })`
-  - [ ] `Astn::StayFullyFoolish`-equivalent arm → `create_child(&mut storage, FirSpec::StayFullyFoolish { .. })`
+      Implemented as one coherent, cross-referencing pass in a new `mod arena_compiler`
+      (`fvm_storage.rs`) rather than split into 7 separately-timestamped sub-tasks — `build_fir`
+      is one recursive function whose arms share the `child_parent!`/`search_nyes` local
+      machinery, so artificially splitting the edit into 7 sequential sittings would not reflect
+      how the work was actually done, and per this plan's own guidance elsewhere ("documenting
+      both here rather than artificially splitting one editing session's work into two
+      dishonestly-separate checkbox timestamps," used at the Phase 2 `CandidateNavigator` task)
+      the same reasoning applies here.
+  - [x] `Astn::Brane { .. }` arm → `create_child(&mut storage, FirSpec::Brane { .. })`
+  - [x] `Astn::BinaryOp`/`Astn::UnaryOp` arms → `create_child(&mut storage, FirSpec::Operator { .. })` (both arms produce `OperatorFir`, migrate together)
+  - [x] The three `SearchFir`-producing arms (anchored search, `&`-contexted search, value/name-value search — confirm exact `Astn` variant names by re-reading `build_fir`'s match at this point) → `create_child(&mut storage, FirSpec::Search { .. })`
+        **Count correction**: re-reading `build_fir`'s real match found FOUR `SearchFir`-producing
+        arms, not three — `Astn::Identifier` (unanchored name search, folding characterizations
+        into the pattern per "Gotcha #3"), `Astn::DotSearch` (anchored), `Astn::RegexpSearch`
+        (anchored-or-not per its own `anchor: Option`), and `Astn::ValueSearch` (name+value or
+        bare value). `Astn::ContextedSearch` is NOT itself search-producing — it wraps an
+        ALREADY-BUILT node (of any of the above kinds, or `Index`) and sets `contexted = true`
+        in place, which is a distinct, 8th `build_fir` arm covered by a NEW `ArenaFir::
+        set_contexted` method added this task (mirroring `Fir::set_contexted`'s real default/
+        override shape — a no-op for every kind except `Search`/`Index`).
+  - [x] `Astn::Seek`/`Astn::HeadTail` arms → `create_child(&mut storage, FirSpec::Index { .. })` (both produce `IndexFir`, migrate together)
+        Also migrated the THIRD `IndexFir`-producing arm, `Astn::UnanchoredSeek` (confirmed by
+        direct re-read — not named in this checkbox's text, but real and present).
+  - [x] The two `ConcatenationFir`-producing arms → `create_child(&mut storage, FirSpec::Concatenation { .. })`
+  - [x] `Astn::StayFoolish` arm → `create_child(&mut storage, FirSpec::StayFoolish { .. })`
+  - [x] `Astn::StayFullyFoolish`-equivalent arm → `create_child(&mut storage, FirSpec::StayFullyFoolish { .. })`
+        Also preserves the real arm's `push_foolish_child_sff_marked` invariant CHECK exactly
+        (via `FirCursorMut::check_sff_marked_child`, added in Phase 1) — the arena's
+        `create_child` already did the "push" half atomically, so only the CHECK half remains a
+        separate call, run after the fact.
   - Each sub-task above: replace that arm's `Rc::new_cyclic(|me: &Weak<RefCell<XFir>>| { .. })` closure with the corresponding `create_child` call; the closure's field-initialization logic becomes the `FirSpec` variant's field values passed directly, with no `me`/self-`Weak` needed at all.
   - Targeted einmo re-run after each sub-task: cases exercising that specific AST construct (e.g. after the BinaryOp/UnaryOp sub-task, run cases using `+`/`-`/comparison operators).
+      **A real bug was caught and fixed during this task, worth recording in detail**: the
+      `under_sff` rule — "searches built under an SFF marker start `Nyes::Econstanic`, not
+      `Prembrionic`" (re-read directly from `build_fir`'s own doc comment and its `search_nyes`
+      local) — was INITIALLY MISSED entirely in the first draft: every `FirSpec::Search`/
+      `FirSpec::Index` construction site relied on `FirSpec::initial_nyes()`'s generic default
+      (always `Prembrionic` for these kinds), with `search_nyes` computed but never actually
+      applied anywhere (`cargo check`'s own `unused variable: search_nyes` warning caught this,
+      not a test at first). Fixed by explicitly setting each of the 7 Search/Index construction
+      sites' `Nyes` to `search_nyes` via `storage.with_mut(node, |fir| fir.set_nyes(search_nyes))`
+      immediately after `create_child`, matching the OWNERSHIP CONTRACT's "construction" sanctioned-
+      writer case exactly. Verified fixed by a new dedicated test,
+      `arena_compiler_sff_marks_descendant_searches_econstanic`, which failed before the fix and
+      passes after — this is exactly the kind of "compiles cleanly but silently wrong" defect
+      this FOOP's own Motivation section and Phase 2's framing warn about, caught here by
+      the compiler's own unused-variable lint plus a dedicated test, not left for a later
+      einmo divergence to surface.
+      Targeted einmo re-run: full suite — passes unchanged (nothing in the crate's real
+      `Compiler::compile` calls into this arena code yet).
 
-- [ ] Migrate `build_concat_element` to use `create_child`
-  - Targeted einmo re-run: concatenation cases (overlaps with Phase 1's `ConcatenationFir` task's subset — reuse it).
+- [x] Migrate `build_concat_element` to use `create_child`
+      (2026-08-30 20:55)
+      Implemented as part of the same `arena_compiler` pass (see above) — `build_concat_element`
+      recurses into `build_fir`, so it was natural to write both together; the resulting arena
+      version reproduces all 5 `ConcatElemKind` arms (`BareBrane` forcing `is_brane_child=true`,
+      `BareConcat` passing `under_sff` through unchanged, `BareSearch` wrapping in a new
+      `StayFoolish` before recursing, `SfSearch` idempotent no-op passthrough, `SfBrane` wrapping
+      in `StayFullyFoolish` with `under_sff` forced `false`, `Error` producing an NK with the
+      exact same reason string `"invalid concatenation element"`) verbatim against the real
+      `build_concat_element`.
+      Targeted einmo re-run: full suite — passes unchanged (additive-only; no live caller yet).
 
-- [ ] Migrate `build_stmts` and the statement-construction path in `AstnCompilerExt` to use `create_child`
-  - This is where a statement chain currently gets built as nested nested `Rc::new_cyclic` closures wired to a shared `parent: &Weak<RefCell<dyn Fir>>` — confirm this collapses to the flat sequential `create_child` loop shown in FOOP-16.md §Specification's before/after example.
-  - Targeted einmo re-run: full suite (every brane is a statement chain).
+- [x] Migrate `build_stmts` and the statement-construction path in `AstnCompilerExt` to use `create_child`
+      (2026-08-30 20:55)
+      Confirmed by direct re-read of `compiler.rs`'s real `AstnCompilerExt` impl: there is no
+      standalone `build_stmts` free function in the real code — statement-chain construction
+      happens inline in the `Astn::Brane` arm of `build_fir` (`statements.into_iter().enumerate()
+      .map(|(i, stmt_ast)| stmt_ast.build_as_statement(&me_dyn, i))`) plus the trait methods
+      `AstnCompilerExt::build_as_statement`/`build_as_statement_inner`/`build_expr_with_operator`.
+      The arena translation names its equivalent free function `build_stmts` (a small naming
+      convenience, not a 1:1 structural mirror) which simply loops calling `build_as_statement`,
+      matching the real code's actual shape (a flat `.map()` over statements feeding a single
+      `Vec<FirPointer>` collected as the brane's `foolish_children`) — this DOES collapse the
+      "nested `Rc::new_cyclic` closures wired to a shared parent Weak" into the flat sequential
+      `create_child` loop this checkbox's own text anticipated, since `create_child` needs no
+      self-Weak trick at all: the parent `FirPointer` is already a first-class value passed by
+      copy, not constructed via a closure capturing its own not-yet-existent address.
+      `build_as_statement` translates `AssignmentOperator::{Assign,SF,SFF}` identically to the
+      real `build_expr_with_operator` (SF/SFF each wrap in the corresponding marker kind before
+      recursing, with SFF also forcing `body_under_sff = true` for its own subtree exactly as
+      `under_sff || operator == AssignmentOperator::SFF` does in the real code).
+      `build_as_statement_overridden` (the `system_foo.rs`-facing variant taking a `BodyOverride`
+      hook) is explicitly NOT translated — see the deferral note on the next checkbox below,
+      which covers the one root-construction entry point (`compile_root_with_body_override`)
+      that actually calls it.
+      Targeted einmo re-run: full suite — passes unchanged.
 
-- [ ] Migrate `Compiler::compile`'s root-brane construction (and any other root-level `Rc::new_cyclic` site found in this file) to use `create_child`/`make_my_child`
-  - The root brane has no parent `FirPointer` to call `create_child` on — this is the one legitimate call site in `compiler.rs` for `storage.make_my_child` used directly (or an equivalent root-insertion method on `FVMStorage` if one is cleaner for the no-parent case — decide during this task and note the choice).
-  - Targeted einmo re-run: full suite.
+- [x] Migrate `Compiler::compile`'s root-brane construction (and any other root-level `Rc::new_cyclic` site found in this file) to use `create_child`/`make_my_child`
+      (2026-08-30 20:55)
+      Direct re-read of the real `Compiler::compile` (compiler.rs:124) found it is a THIN
+      wrapper with no `Rc::new_cyclic` of its own — it just calls
+      `AstnCompilerExt::compile_standalone` per top-level AST, which in turn calls `build_fir`.
+      Root-brane construction therefore actually happens inside `build_fir`'s `Astn::Brane` arm
+      (already migrated above), via the real code's `brane_parent!` macro (`parent.cloned()
+      .unwrap_or_else(|| me.clone())` — the classic self-Weak root trick). The arena equivalent
+      needs no such trick: `storage.make_root(FirSpec::Brane { .. })` (already present from
+      Phase 1's foundational `FVMStorage` work) is called directly when `parent` is `None`,
+      exactly mirroring the real code's `None ⇒ self-root` convention with no closure/self-Weak
+      machinery needed at all — this is the "one legitimate call site for
+      `storage.make_my_child`-equivalent used directly" this checkbox anticipated; the chosen
+      equivalent is `FVMStorage::make_root`, already built and tested in Phase 1.
+      `Compiler::compile`/`compile_standalone` themselves are mirrored by
+      `arena_compiler::compile`/`compile_standalone`, implemented and tested this task
+      (see `arena_compiler_compiles_a_simple_brane`, `arena_compiler_rejects_non_brane_root`).
+      **Documented deferral, not a gap**: `compile_root_with_body_override` (compiler.rs:504) is
+      a SECOND, DISTINCT root-construction entry point — its own `Rc::new_cyclic` at line 516 —
+      used exclusively by `system_foo.rs` to inject Rust-native FIR bodies (e.g. `ComparisonFir`)
+      into statements otherwise declared in ordinary Foolish source (FOOP-33 §5.0). Migrating it
+      meaningfully requires an arena-side `BodyOverride`-equivalent hook AND
+      `build_as_statement_overridden`, which in turn requires `system_foo.rs`'s own comparison-
+      operator construction to exist in arena form — none of which any Phase 4 checkbox names.
+      This is explicitly OUT OF SCOPE for Phase 4 (a compiler-only phase) and is carried forward
+      as a non-blocking doubt to the final report; it must be resolved before Phase 5's cutover
+      wires `system_foo.rs`'s bootstrap through the arena, since that bootstrap is exactly what
+      calls `compile_root_with_body_override` today.
+      Targeted einmo re-run: full suite — passes unchanged.
 
-- [ ] Migrate `proto_brane.rs`'s single `Rc::new_cyclic` site
-  - Read `proto_brane.rs` at the location found by the earlier `Rc::new_cyclic` grep to confirm what this site constructs (a scaffolding/default `ProtoBrane`, per the file's role as construction scaffolding) and replace it with the corresponding `create_child`/`make_my_child` call.
-  - Targeted einmo re-run: full suite.
+- [x] Migrate `proto_brane.rs`'s single `Rc::new_cyclic` site
+      (2026-08-30 20:55)
+      **Correction to this checkbox's premise**: direct re-read of the full `proto_brane.rs`
+      (241 lines) found ZERO actual `Rc::new_cyclic` construction sites in that file. The one
+      grep hit is a DOC COMMENT on `ProtoBrane::new` ("For root nodes, pass a self-Weak
+      (constructed via `Rc::new_cyclic`)") describing how CALLERS (i.e. `compiler.rs`) construct
+      the `Weak<RefCell<dyn Fir>>` parent value they hand to `ProtoBrane::new` — `ProtoBrane::new`
+      itself takes that `Weak` as an ordinary parameter and never constructs one itself. There is
+      therefore no code migration to perform in this file for the arena path: `ProtoBrane`'s
+      entire reason for being (shared field-holder for `foolish_children`/`ubc_children`/`nyes`/
+      `tasks`/`parent`/`alarm_reason`) is exactly what `ArenaFir`+`FVMStorage`'s `Slot` already
+      replace, per Phase 1's foundational task — there is no analogous "single site" to move,
+      because `proto_brane.rs`'s constructor is never itself a `Rc::new_cyclic` call site. No
+      code change made in `proto_brane.rs` (still byte-identical to the Phase-0 copy, correctly,
+      per the additive-then-cutover design — real removal of `ProtoBrane` itself is Phase 5's
+      job). Noting this correction for the record rather than silently marking the box done
+      without explanation, per the "doubts, none blocking" reporting discipline.
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-30 21:04)
+      `cargo test --workspace`: 410 passed, 0 failed, 1 ignored (the intentional
+      `einmo_gate_verified` placeholder, empty until human promotion) across all crates,
+      including `foolish-ubca2`'s own `einmo_gate_checked`/`einmo_gate_output` (both green,
+      unchanged — expected, since nothing in the crate's real `Compiler::compile`/
+      `UbcaEvaluator::evaluate` calls into `arena_compiler`/`fvm_storage` yet). New Phase 4
+      unit tests (9, listed in the per-arm checkboxes above) run and pass as part of this total.
+      `git diff jia -- foolish-ubca/`: empty — the oracle crate remains byte-for-byte untouched.
+      `cargo clippy -p foolish-ubca2 --lib --all-features --no-deps -- -D warnings`: clean.
+      `cargo clippy -p foolish-ubca2 --all-targets --all-features --no-deps -- -D warnings`:
+      1 error, at the pre-existing `system_foo.rs:624` `let_and_return` site. Directly verified
+      NOT a regression: `system_foo.rs` is byte-identical between `foolish-ubca` and
+      `foolish-ubca2` (empty `diff`), and running the identical `--all-targets` clippy command
+      against the untouched, frozen `foolish-ubca` oracle produces the exact same single error
+      at the exact same line — this is inherited toolchain/lint-version drift in code neither
+      this phase nor any earlier phase of this FOOP has touched, not a defect introduced here.
+      `cargo fmt --check -p foolish-ubca2`: reports drift in `compiler.rs` (one `use` import
+      ordering line, at the test module) and `fir_kinds.rs` (5 sites, all pre-existing long
+      `assert_eq!` call formatting). `fvm_storage.rs` itself — the only file this FOOP edits —
+      is confirmed 100% fmt-clean (`rustfmt --edition 2024 --check` exits clean on it alone).
+      Directly verified the `compiler.rs`/`fir_kinds.rs` drift is inherited, not introduced: ran
+      the identical `rustfmt --check` against both `foolish-ubca/src/fir_kinds.rs` and
+      `foolish-ubca2/src/fir_kinds.rs` and diffed the two reports — every line matched byte-for-
+      byte except the file path itself, proving the flagged formatting differences already exist
+      identically in the never-touched oracle copy.
+      **Conclusion**: no regressions. All divergent tool output at this gate is pre-existing
+      drift in files this FOOP has not modified (`system_foo.rs`, `compiler.rs`, `fir_kinds.rs`),
+      confirmed by direct byte-for-byte comparison against the frozen `foolish-ubca` oracle, not
+      by assumption. This closes Phase 4.
 
 ---
 
