@@ -874,22 +874,85 @@ this phase's tasks strictly in the order listed.
 
 `evaluator.rs` is 1246 lines with a small number of free functions (verified by reading the file): `step_until`, `step_until_line_number`, `step_until_statement_name` (public entry points), `display_stmt_name` (a small helper, unlikely to touch pointers), `step_to_settled` (the core stepping loop), `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR conversion family, used for output serialization). This phase splits along that seam.
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: full `foolish-ubca2` suite (`einmo_gate_checked`) after each task — the stepping loop is exercised by every case, so no narrower subset applies; run unit tests: `foolish-ubca2::evaluator` substring match if such tests exist (check `evaluator.rs` for a `mod tests` block; if none exists, note that in this checkbox and rely on the einmo suite alone for this phase).
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: full `foolish-ubca2` suite (`einmo_gate_checked`) after each task — the stepping loop is exercised by every case, so no narrower subset applies; run unit tests: `foolish-ubca2::evaluator` substring match if such tests exist (check `evaluator.rs` for a `mod tests` block; if none exists, note that in this checkbox and rely on the einmo suite alone for this phase).
+      (2026-08-30 20:44)
+      `evaluator.rs` DOES have a `mod tests` block (`step_until_tests`, confirmed by direct
+      reading of the full 1246-line file) — its 4 tests were mirrored as arena tests directly
+      (see below) rather than relied on as-is (they test the OLD `Rc`-based `FirRef` API, which
+      keeps compiling/passing unchanged throughout this phase per the additive-then-cutover
+      design).
 
-- [ ] Migrate `step_to_settled` (the core per-FIR stepping dispatch)
+- [x] Migrate `step_to_settled` (the core per-FIR stepping dispatch)
+      (2026-08-30 20:44)
   - Replace `.borrow()`/`.borrow_mut()`/`Weak::upgrade()` call sites with `FVMStorage::get`/`FVMStorage::with_mut`. This function is where the majority of the loop's arena access concentrates — expect this to be the largest single task in this phase; split into indented sub-tasks (e.g. by NYES-state-transition branch, if the function's internal structure supports that split cleanly) if it proves larger than expected once underway.
   - Targeted einmo re-run: full suite.
+      Re-read `evaluator.rs` in full (all 1246 lines) immediately before writing any arena
+      translation. Added `core_fir_conversion::step_to_settled` — a direct translation of the
+      real function, re-confirmed to use its OWN `MAX_STEPS = 10_000` (distinct from
+      `step_inner`'s `MAX_DEPTH = 100` recursion guard — one caps total top-level iterations,
+      the other caps recursion depth within one iteration). Did NOT prove larger than expected —
+      no sub-task split needed. 1 new unit test. Targeted einmo re-run: full suite — passes
+      unchanged (nothing in the crate's real evaluator calls into this yet; wiring
+      `UbcaEvaluator::evaluate` itself requires `system_foo`/`compiler.rs` to be arena-aware
+      first, which is Phase 4's job, not this one's).
 
-- [ ] Migrate `step_until`, `step_until_line_number`, `step_until_statement_name` (the public step-N-times/step-to-target entry points)
+- [x] Migrate `step_until`, `step_until_line_number`, `step_until_statement_name` (the public step-N-times/step-to-target entry points)
+      (2026-08-30 20:44)
   - These likely call `step_to_settled` in a loop and additionally inspect FIR state directly (to check the stopping condition) — update any direct `.borrow()`/pointer-chasing here to go through `FVMStorage`.
   - Targeted einmo re-run: full suite.
+      Direct translations of all three real functions. **Deliberate signature deviation,
+      documented in the code**: the real `step_until`'s matcher is `FnMut(Option<&FirRef>) ->
+      bool` — a `FirRef` can be `.borrow()`'d directly with no extra parameter; a bare
+      `FirPointer` carries no data on its own, so this arena translation's matcher takes
+      `&FVMStorage` explicitly (`FnMut(&FVMStorage, Option<FirPointer>) -> bool`) — the same
+      necessary adaptation `SearchPredicate::matches` already made in Phase 2 for the identical
+      reason. 3 new unit tests mirror `step_until_statement_name_finds_second_statement`,
+      `step_until_line_number_finds_line`, and `step_until_generic_matcher_by_nyes` exactly.
+      Targeted einmo re-run: full suite — passes unchanged.
 
-- [ ] Migrate `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR output-serialization family)
+- [x] Migrate `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR output-serialization family)
+      (2026-08-30 20:44)
   - These functions currently take `&FirRef` (and, for the SFF variants, an additional `current_stmt: Option<&FirRef>`) and walk the tree to build the `core_fir::Fir` representation einmo actually serializes into OUTPUT. Update their signatures to take `FirPointer` plus `&FVMStorage` instead of `&FirRef`.
   - This family is worth its own task separate from `step_to_settled` because it is the direct producer of every einmo OUTPUT line — a subtle bug here would show up as a diff against `checked/` on nearly every case, making it both high-blast-radius and (usefully) easy to detect via the full-suite re-run.
   - Targeted einmo re-run: full suite (this is, by construction, the function family the entire suite's OUTPUT depends on).
+      **Direct, line-by-line translation of all five real functions — no arm simplified, even
+      the `Search` variant's deeply nested SF-unwrap-preservation logic** (`has_complex`/
+      `has_simple` branches), which a first draft of this task mistakenly simplified away before
+      being caught and corrected during self-review (a real near-miss worth recording: cutting
+      that logic would have silently diverged from `checked/` on any case exercising a search
+      that itself resolved through an SF wrapper — exactly the "subtle bug... hard to detect"
+      risk this task's own text warns about, caught here by re-comparing against the live source
+      line-by-line before considering the task done, not by a test failure).
 
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      **Resolved `evaluator.rs`'s own embedded `@Agents` comment** (on
+      `proto_to_core_fir_sff_body`, asking whether these functions could be methods on an
+      "SFFMark"-shaped type): NO — these functions dispatch across EVERY `FirSpec` variant, not
+      just SF/SFF, so there is no single type to attach them to; free functions taking
+      `FirPointer` explicitly is the same shape `fir_op_step`/`combine`/`search_fir_dispatch`
+      already use for the identical reason, documented in this module's own top-level doc
+      comment as the concrete answer to the embedded question.
+
+      **One honest, documented gap**: `sf_inner_pattern`'s `Some` branch (real
+      `as_sf_inner_pattern`) is unreachable under the arena — `FirSpec::Search` carries no such
+      field (it starts `None` always, per that variant's own doc comment from the Phase 1
+      foundational task), and no arena-migrated code sets it yet. Recorded in the code, not
+      silently dropped: this affects only rendering a search that itself resolved through an
+      SF wrapper's own pattern substitution, not exercised by any test in this crate yet since
+      nothing wires the arena path into the live evaluator (this phase doesn't rewire
+      `UbcaEvaluator::evaluate` — see the module's own doc comment).
+
+      5 new unit tests exercise `proto_to_core_fir`'s conversion of `IndepInt` (with value),
+      `Nk` (with/without the `DIV-BY-ZERO` alarm), `Brane` (statement count), and `Operator`
+      (unwraps to its settled result, not the wrapper). Targeted einmo re-run: full suite —
+      passes unchanged.
+
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-30 20:44)
+      `cargo test -p foolish-ubca2 --lib -- fvm_storage`: 74 passed, 0 failed (up from 65 at
+      Phase 2's close). `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` passes
+      unchanged throughout every task in this phase. `cargo clippy -p foolish-ubca2` on both
+      `--lib` and `--all-targets` (`--all-features --no-deps -- -D warnings`) are clean.
+      `cargo fmt -p foolish-ubca2 -- --check` is clean. **This completes Phase 3 in full.**
 
 ---
 

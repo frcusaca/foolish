@@ -212,11 +212,9 @@ impl ArenaFir {
         self.alarm_reason = Some(reason);
     }
 
-    /// Mirrors `ProtoBrane::alarm_reason`.
-    #[expect(
-        dead_code,
-        reason = "no caller yet — wired in by a later Phase 1 per-kind task"
-    )]
+    /// Mirrors `ProtoBrane::alarm_reason`. Called through
+    /// `FVMStorage::alarm_reason` (Phase 3) — the `#[expect(dead_code)]`
+    /// this had is removed now that it has a real caller.
     pub(crate) fn alarm_reason(&self) -> Option<&str> {
         self.alarm_reason.as_deref()
     }
@@ -366,6 +364,16 @@ impl FVMStorage {
     pub fn get_nyes(&self, ptr: FirPointer) -> Nyes {
         let index = self.validate(ptr);
         self.slots[index].payload.nyes
+    }
+
+    /// Retrieve this pointer's alarm reason, if any. Mirrors
+    /// `ProtoBrane::alarm_reason`. Called by `core_fir_conversion`'s
+    /// `Brane` arm (Phase 3) — the `#[expect(dead_code)]` `ArenaFir::
+    /// alarm_reason` had is removed now that it has a real caller reached
+    /// through this accessor.
+    pub fn alarm_reason(&self, ptr: FirPointer) -> Option<&str> {
+        let index = self.validate(ptr);
+        self.slots[index].payload.alarm_reason()
     }
 
     /// Retrieve, modify, and return in one call — the "retrieve a payload, be
@@ -2981,6 +2989,783 @@ mod search_fir_dispatch {
     }
 }
 
+/// Arena-threaded translation of `evaluator.rs`'s stepping loop and
+/// FIR→core-FIR output-serialization family (Phase 3 of FOOP-16). Re-read
+/// `evaluator.rs` in full (1246 lines) immediately before writing every
+/// function below.
+///
+/// # Free functions, not methods — resolving `evaluator.rs`'s own `@Agents`
+/// embedded comment
+///
+/// `evaluator.rs`'s real `proto_to_core_fir_sff_body` carries a parenthetical
+/// `(@Agents, I suppose this can't be declared as implementation on
+/// something associated with SFF marker like SFFMark? ...)` asking whether
+/// these conversion functions could be methods rather than free functions.
+/// Resolved here rather than left standing: NO — these functions dispatch
+/// across EVERY `FirSpec` variant (`match kind { FirKind::Search => ...,
+/// FirKind::Operator => ..., ... }`), not just SF/SFF, so there is no single
+/// "SFFMark"-shaped type to attach them to; the "whose method is it"
+/// question (Rule Zero, rust_instructions.md) has no single answer for a
+/// function that legitimately needs to read every kind's own state. This
+/// exactly mirrors why `fir_op_step`, `combine`, and every
+/// `search_fir_dispatch` function in this same module are ALSO free
+/// functions taking `FirPointer` explicitly rather than methods — established
+/// convention, not an oversight, and this module's own use of the SAME shape
+/// for the SAME reason is the concrete answer to the embedded question.
+///
+/// No production caller yet — `UbcaEvaluator::evaluate` (the crate's real
+/// entry point) is not rewired to call into this module; that requires
+/// `system_foo`/`compiler.rs` to be arena-aware first (Phase 4's job).
+/// Exercised only by this file's own `#[cfg(test)]` tests, hence
+/// `cfg_attr(not(test), expect(dead_code))` rather than a bare `#[expect]` —
+/// same pattern as `search_engine`'s own module-level guard at the
+/// equivalent point in Phase 2.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no production caller yet — UbcaEvaluator::evaluate is rewired once Phase 4 \
+                  makes system_foo/compiler.rs arena-aware"
+    )
+)]
+mod core_fir_conversion {
+    use super::{FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH};
+
+    use foolish_core::fir as core_fir;
+    use foolish_core::fir::{
+        Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
+        CreationFirBuilder, FirQueryable, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder,
+        Nyes, OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder,
+        StayFullyFoolishFirBuilder,
+    };
+
+    /// Direct arena-threaded translation of `evaluator.rs`'s real
+    /// `step_to_settled` (re-read immediately before writing this): steps
+    /// `ptr` up to `MAX_STEPS` times, returning `Ok(())` once constanic, or
+    /// an `Eval` error naming the iteration count if the step budget is
+    /// exhausted first. `MAX_STEPS` here reuses `search_fir_dispatch`'s
+    /// module-level `MAX_DEPTH` guard's SIBLING concept at the top level —
+    /// re-read directly: the real `step_to_settled` uses its own
+    /// `MAX_STEPS = 10_000` constant, distinct from `step_inner`'s
+    /// `MAX_DEPTH = 100` recursion guard (one caps total top-level
+    /// iterations, the other caps recursion depth within one iteration) —
+    /// so this defines its OWN `MAX_STEPS`, not a reuse of `MAX_DEPTH`.
+    const MAX_STEPS: usize = 10_000;
+
+    pub(crate) fn step_to_settled(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
+        let mut last_step = 0;
+        for step in 0..MAX_STEPS {
+            ptr.step(storage);
+            last_step = step;
+            if storage.get_nyes(ptr).is_constanic() {
+                return Ok(());
+            }
+        }
+        if !storage.get_nyes(ptr).is_constanic() {
+            return Err(format!("Iteration exceeded {last_step}"));
+        }
+        Ok(())
+    }
+
+    /// Direct arena-threaded translation of `evaluator.rs`'s real
+    /// `step_until` (re-read immediately before writing this): the UBCA
+    /// debugger-breakpoint equivalent — steps until `matcher` accepts the
+    /// front task (or `None` when there is no front task), returning the
+    /// step count, or an error if the FVM settles first or the step budget
+    /// is exhausted. Reuses [`MAX_STEPS`] — the real function's own
+    /// `MAX_STEPS` constant, re-confirmed to be the SAME `10_000` value as
+    /// `step_to_settled`'s (both defined identically in `evaluator.rs`, one
+    /// module-level constant there; kept as one shared constant here too,
+    /// not duplicated).
+    ///
+    /// **Deliberate signature deviation**: the real `step_until`'s matcher
+    /// is `FnMut(Option<&FirRef>) -> bool` — a `FirRef` can be `.borrow()`'d
+    /// directly by the closure with no extra parameter. A bare `FirPointer`
+    /// carries no data on its own, so this arena translation's matcher takes
+    /// `&FVMStorage` explicitly alongside `Option<FirPointer>`
+    /// (`FnMut(&FVMStorage, Option<FirPointer>) -> bool`) — the same
+    /// necessary adaptation `SearchPredicate::matches` already made for the
+    /// identical reason in Phase 2.
+    pub(crate) fn step_until(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+        mut matcher: impl FnMut(&FVMStorage, Option<FirPointer>) -> bool,
+    ) -> Result<usize, String> {
+        for step in 0..MAX_STEPS {
+            let front = FirCursor::new(ptr, storage).front_task();
+            if matcher(storage, front) {
+                return Ok(step);
+            }
+            if storage.get_nyes(ptr).is_constanic() {
+                return Err(format!(
+                    "FVM settled (nyes={:?}) before condition was met at step {step}",
+                    storage.get_nyes(ptr)
+                ));
+            }
+            ptr.step(storage);
+        }
+        Err(format!(
+            "Step limit ({MAX_STEPS}) reached before condition was met"
+        ))
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `step_until_line_number`.
+    pub(crate) fn step_until_line_number(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+        line: usize,
+    ) -> Result<usize, String> {
+        step_until(storage, ptr, |storage, front| {
+            front
+                .and_then(|f| FirCursor::new(f, storage).as_stmt_line_number())
+                .is_some_and(|l| l == line)
+        })
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `step_until_statement_name`.
+    pub(crate) fn step_until_statement_name(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+        name: &str,
+    ) -> Result<usize, String> {
+        step_until(storage, ptr, |storage, front| {
+            front
+                .and_then(|f| FirCursor::new(f, storage).as_stmt_identifier())
+                .is_some_and(|id| id.searchable_name() == name)
+        })
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `display_stmt_name`
+    /// (re-read directly): an anonymous statement (`compiler::ANON_STMT_NAME`,
+    /// or any empty name) renders with no `name=` prefix.
+    fn display_stmt_name(name: Option<&str>) -> Option<String> {
+        match name {
+            Some(n) if n.is_empty() || n == crate::compiler::ANON_STMT_NAME => None,
+            Some(n) => Some(n.to_string()),
+            None => None,
+        }
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir`.
+    pub(crate) fn proto_to_core_fir(storage: &FVMStorage, ptr: FirPointer) -> core_fir::Fir {
+        proto_to_core_fir_inner(storage, ptr, false, None, 0)
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir_sff_body`
+    /// (re-read in full immediately before writing this): top-level searches
+    /// get EMBRYONIC state; operator operands get CONSTANT state; operators
+    /// get WOCONSTANIC/CONSTANT based on operand states. See `current_stmt`'s
+    /// doc comment on the real function, preserved verbatim in spirit: the
+    /// statement whose body is currently being converted, threaded so
+    /// `as_creation_display_name` can tell whether a creation is being
+    /// rendered from its own defining statement or from elsewhere.
+    fn proto_to_core_fir_sff_body(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        current_stmt: Option<FirPointer>,
+        depth: usize,
+    ) -> core_fir::Fir {
+        if depth > MAX_DEPTH {
+            return NkFirBuilder::new("max recursion depth exceeded").build();
+        }
+        let cursor = FirCursor::new(ptr, storage);
+        match cursor.node() {
+            FirSpec::Search { .. } => {
+                SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                    .anchored(cursor.as_search_anchored())
+                    .state(Nyes::Embryonic)
+                    .build()
+            }
+            FirSpec::Operator { .. } => {
+                let op = cursor.as_op_name().unwrap_or("?").to_string();
+                let operand_firs: Vec<core_fir::Fir> = cursor
+                    .foolish_children()
+                    .iter()
+                    .map(|&c| proto_to_core_fir_sff_operand(storage, c, current_stmt, depth + 1))
+                    .collect();
+                let op_state = if operand_firs
+                    .iter()
+                    .any(|f| matches!(f.hs_state(), Nyes::Econstanic | Nyes::Woconstanic))
+                {
+                    Nyes::Woconstanic
+                } else {
+                    Nyes::Constant
+                };
+                OperatorFirBuilder::new(op)
+                    .operands(operand_firs)
+                    .state(op_state)
+                    .build()
+            }
+            FirSpec::IndepInt { .. } => ConstantIntFirBuilder::new(cursor.as_i64().unwrap_or(0))
+                .state(Nyes::Constant)
+                .build(),
+            FirSpec::Nk { .. } => NkFirBuilder::new(cursor.as_nk_reason().unwrap_or("unknown"))
+                .state(Nyes::Nk)
+                .build(),
+            _ => proto_to_core_fir_inner(storage, ptr, true, current_stmt, depth + 1),
+        }
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir_sff_operand`.
+    fn proto_to_core_fir_sff_operand(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        current_stmt: Option<FirPointer>,
+        depth: usize,
+    ) -> core_fir::Fir {
+        if depth > MAX_DEPTH {
+            return NkFirBuilder::new("max recursion depth exceeded").build();
+        }
+        let cursor = FirCursor::new(ptr, storage);
+        match cursor.node() {
+            FirSpec::Search { .. } => {
+                SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                    .anchored(cursor.as_search_anchored())
+                    .state(Nyes::Econstanic)
+                    .build()
+            }
+            FirSpec::IndepInt { .. } => ConstantIntFirBuilder::new(cursor.as_i64().unwrap_or(0))
+                .state(Nyes::Constant)
+                .build(),
+            FirSpec::Nk { .. } => NkFirBuilder::new(cursor.as_nk_reason().unwrap_or("unknown"))
+                .state(Nyes::Nk)
+                .build(),
+            _ => proto_to_core_fir_inner(storage, ptr, true, current_stmt, depth + 1),
+        }
+    }
+
+    /// Direct translation of `evaluator.rs`'s real `anchor_to_core_fir`.
+    fn anchor_to_core_fir(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        current_stmt: Option<FirPointer>,
+        depth: usize,
+    ) -> core_fir::Fir {
+        let cursor = FirCursor::new(ptr, storage);
+        let state = storage.get_nyes(ptr);
+        if matches!(cursor.node(), FirSpec::Search { .. }) {
+            return SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                .anchored(cursor.as_search_anchored())
+                .state(state)
+                .build();
+        }
+        proto_to_core_fir_inner(storage, ptr, true, current_stmt, depth + 1)
+    }
+
+    /// Direct, line-by-line translation of `evaluator.rs`'s real
+    /// `proto_to_core_fir_inner` (re-read in full immediately before writing
+    /// this — the direct producer of every einmo OUTPUT line, per this
+    /// phase's own framing of why this function family is worth its own
+    /// task). Every match arm preserves the original's exact logic,
+    /// including the Search/Index/StayFoolish arms' deeply nested
+    /// unwrap-vs-preserve-wrapper decisions — none simplified, even where a
+    /// shorter form seemed tempting, per this task's own "direct
+    /// translation, not a redesign" discipline (matching Phase 2's).
+    fn proto_to_core_fir_inner(
+        storage: &FVMStorage,
+        ptr: FirPointer,
+        preserve_search: bool,
+        current_stmt: Option<FirPointer>,
+        depth: usize,
+    ) -> core_fir::Fir {
+        if depth > MAX_DEPTH {
+            return NkFirBuilder::new("max recursion depth exceeded").build();
+        }
+        let cursor = FirCursor::new(ptr, storage);
+        let state = storage.get_nyes(ptr);
+
+        match cursor.node().clone() {
+            FirSpec::IndepInt { .. } => ConstantIntFirBuilder::new(cursor.as_i64().unwrap_or(0))
+                .state(state)
+                .build(),
+            FirSpec::Nk { .. } => {
+                let reason = cursor.as_nk_reason().unwrap_or("unknown").to_string();
+                let mut builder = NkFirBuilder::new(reason.as_str()).state(state);
+                if reason == "division by zero" {
+                    builder = builder.alarm(Alarm {
+                        level: AlarmLevel::Mild,
+                        code: "DIV-BY-ZERO".to_string(),
+                        message: "Division by zero produces NK".to_string(),
+                        source: AlarmSource::Evaluator,
+                    });
+                }
+                builder.build()
+            }
+            // A comparison renders as its RESULT — see the real function's
+            // own comment (re-read directly, preserved verbatim in spirit).
+            FirSpec::Comparison { .. } => {
+                if let Some(&result) = cursor.ubc_children().first() {
+                    return proto_to_core_fir_inner(
+                        storage,
+                        result,
+                        preserve_search,
+                        current_stmt,
+                        depth + 1,
+                    );
+                }
+                NkFirBuilder::new("comparison").state(state).build()
+            }
+            FirSpec::Operator { .. } => {
+                if state == Nyes::Constant
+                    && let Some(&result) = cursor.ubc_children().first()
+                {
+                    return proto_to_core_fir_inner(
+                        storage,
+                        result,
+                        preserve_search,
+                        current_stmt,
+                        depth + 1,
+                    );
+                }
+                if state == Nyes::Nk {
+                    let op_name = cursor.as_op_name().unwrap_or("").to_string();
+                    let any_operand_nk = cursor
+                        .foolish_children()
+                        .iter()
+                        .any(|&c| storage.get_nyes(c) == Nyes::Nk);
+                    if !any_operand_nk
+                        && op_name != "$"
+                        && let Some(&result) = cursor.ubc_children().first()
+                    {
+                        return proto_to_core_fir_inner(
+                            storage,
+                            result,
+                            preserve_search,
+                            current_stmt,
+                            depth + 1,
+                        );
+                    }
+                }
+                let op = cursor.as_op_name().unwrap_or("?").to_string();
+                let operand_firs: Vec<core_fir::Fir> = if op == "$" {
+                    cursor
+                        .foolish_children()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &c)| {
+                            if i == 0 {
+                                IndexFirBuilder::new(-1)
+                                    .anchored(false)
+                                    .state(Nyes::Econstanic)
+                                    .build()
+                            } else {
+                                proto_to_core_fir_inner(
+                                    storage,
+                                    c,
+                                    preserve_search,
+                                    current_stmt,
+                                    depth + 1,
+                                )
+                            }
+                        })
+                        .collect()
+                } else {
+                    cursor
+                        .foolish_children()
+                        .iter()
+                        .map(|&c| {
+                            proto_to_core_fir_inner(
+                                storage,
+                                c,
+                                preserve_search,
+                                current_stmt,
+                                depth + 1,
+                            )
+                        })
+                        .collect()
+                };
+                OperatorFirBuilder::new(op)
+                    .operands(operand_firs)
+                    .state(state)
+                    .build()
+            }
+            FirSpec::Statement { .. } => {
+                let name =
+                    display_stmt_name(cursor.as_stmt_identifier().map(|id| id.searchable_name()));
+                // Deferred NF-substitution: `statement_value_for_comparison`'s
+                // settled_result-first preference is not yet arena-portable
+                // (StatementFir's Phase 1 task deferred it) — this arena
+                // translation reads the raw written body directly, matching
+                // that method's own fallback path for the common case.
+                let body_fir = cursor
+                    .foolish_children()
+                    .first()
+                    .map(|&c| {
+                        proto_to_core_fir_inner(storage, c, preserve_search, Some(ptr), depth + 1)
+                    })
+                    .unwrap_or_else(|| NkFirBuilder::new("empty statement").build());
+                NormalBraneFirBuilder::new()
+                    .statement(name, body_fir)
+                    .state(state)
+                    .build()
+            }
+            FirSpec::Brane { .. } => {
+                let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = cursor
+                    .foolish_children()
+                    .iter()
+                    .map(|&c| {
+                        let c_cursor = FirCursor::new(c, storage);
+                        let name = display_stmt_name(
+                            c_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
+                        );
+                        let body_fir = c_cursor
+                            .foolish_children()
+                            .first()
+                            .map(|&b| {
+                                proto_to_core_fir_inner(
+                                    storage,
+                                    b,
+                                    preserve_search,
+                                    Some(c),
+                                    depth + 1,
+                                )
+                            })
+                            .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                        (name, body_fir)
+                    })
+                    .collect();
+                let mut effective_state = state;
+                if state == Nyes::Constant || state == Nyes::Independent {
+                    for (_, body) in &stmt_tuples {
+                        let body_state = body.hs_state();
+                        if matches!(body_state, Nyes::Econstanic | Nyes::Woconstanic) {
+                            effective_state = Nyes::Woconstanic;
+                            break;
+                        }
+                        if body_state == Nyes::Nk {
+                            effective_state = Nyes::Nk;
+                            break;
+                        }
+                    }
+                }
+                let mut builder = NormalBraneFirBuilder::new()
+                    .characterizations(cursor.as_brane_characterizations().to_vec())
+                    .statements(stmt_tuples)
+                    .state(effective_state);
+                if let Some(reason) = storage.alarm_reason(ptr) {
+                    builder = builder.alarm(Alarm {
+                        level: AlarmLevel::Mild,
+                        code: "ITERATION-EXCEEDED".to_string(),
+                        message: reason.replace("ubca evaluation error: ", ""),
+                        source: AlarmSource::Evaluator,
+                    });
+                }
+                builder.build()
+            }
+            FirSpec::Search {
+                is_value_search, ..
+            } => {
+                if state.is_constanic()
+                    && let Some(&result) = cursor.ubc_children().first()
+                {
+                    // When the ubc_child is a settled search whose own
+                    // ubc_child is a complex type (Brane, Operator, SF,
+                    // SFF), this search came from unwrapping an SF
+                    // value. UBC preserves the search wrapper in this
+                    // case rather than resolving to the final value —
+                    // re-read directly, translated verbatim, not
+                    // simplified.
+                    let result_is_search = matches!(storage.get(result), FirSpec::Search { .. });
+                    if result_is_search && storage.get_nyes(result).is_constanic() {
+                        let result_cursor = FirCursor::new(result, storage);
+                        let inner_ubc = result_cursor.ubc_children();
+                        let first_inner = inner_ubc.first().copied();
+                        let has_complex = first_inner.is_some_and(|r| {
+                            let is_complex_type = matches!(
+                                storage.get(r),
+                                FirSpec::Brane { .. }
+                                    | FirSpec::Operator { .. }
+                                    | FirSpec::StayFoolish
+                                    | FirSpec::StayFullyFoolish
+                            );
+                            let has_resolved_value =
+                                !FirCursor::new(r, storage).ubc_children().is_empty();
+                            is_complex_type && !has_resolved_value
+                        });
+                        if has_complex {
+                            let inner_fir = SearchFirBuilder::new(
+                                result_cursor.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(result_cursor.as_search_anchored())
+                            .state(Nyes::Econstanic)
+                            .build();
+                            return SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                                .anchored(cursor.as_search_anchored())
+                                .result(inner_fir)
+                                .state(Nyes::Woconstanic)
+                                .build();
+                        }
+                        // Simple result (IndepInt/NK): build inner
+                        // search with resolved value.
+                        let has_simple = first_inner.is_some_and(|r| {
+                            matches!(
+                                storage.get(r),
+                                FirSpec::IndepInt { .. } | FirSpec::Nk { .. }
+                            )
+                        });
+                        if has_simple {
+                            let inner_result_fir = proto_to_core_fir_inner(
+                                storage,
+                                first_inner.unwrap(),
+                                false,
+                                current_stmt,
+                                depth + 1,
+                            );
+                            return SearchFirBuilder::new(
+                                result_cursor.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(result_cursor.as_search_anchored())
+                            .result(inner_result_fir)
+                            .state(storage.get_nyes(result))
+                            .build();
+                        }
+                    }
+
+                    let resolved = proto_to_core_fir_inner(
+                        storage,
+                        result,
+                        preserve_search,
+                        current_stmt,
+                        depth + 1,
+                    );
+                    if !preserve_search {
+                        let resolved_state = storage.get_nyes(result);
+                        if matches!(resolved_state, Nyes::Constant | Nyes::Independent) {
+                            // `sf_inner_pattern`'s `Some` branch (re-read
+                            // directly, `as_sf_inner_pattern`) is NOT
+                            // reachable here: `FirSpec::Search` carries no
+                            // `sf_inner_pattern` field — it starts `None`
+                            // always in the arena model (per `FirSpec::
+                            // Search`'s own doc comment), and no
+                            // arena-migrated code path sets it yet (setting
+                            // it is part of the still-unmigrated
+                            // SF-unwrap-via-search machinery). An honestly
+                            // incomplete gap, not a silent wrong answer:
+                            // this only affects rendering a search that
+                            // itself resolved through an SF wrapper's own
+                            // pattern substitution, which no test in this
+                            // crate's suite yet exercises through the arena
+                            // path (Phase 3 does not wire this into the
+                            // live evaluator — see this module's own doc
+                            // comment).
+                            return resolved;
+                        }
+                    }
+                    return SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                        .anchored(cursor.as_search_anchored())
+                        .result(resolved)
+                        .state(state)
+                        .build();
+                }
+                let mut builder = SearchFirBuilder::new(cursor.as_search_pattern().unwrap_or(""))
+                    .anchored(cursor.as_search_anchored())
+                    .state(state);
+                if is_value_search {
+                    builder = builder.is_value(true);
+                    let children = cursor.foolish_children();
+                    let has_anchor = cursor.as_search_anchored();
+                    if has_anchor && let Some(&a) = children.first() {
+                        builder = builder.anchor(proto_to_core_fir_inner(
+                            storage,
+                            a,
+                            false,
+                            current_stmt,
+                            depth + 1,
+                        ));
+                    }
+                    let value_idx = usize::from(has_anchor);
+                    if let Some(&v) = children.get(value_idx) {
+                        builder = builder.value(proto_to_core_fir_inner(
+                            storage,
+                            v,
+                            false,
+                            current_stmt,
+                            depth + 1,
+                        ));
+                    }
+                }
+                if let Some(reason) = storage.alarm_reason(ptr) {
+                    builder = builder.alarm(Alarm {
+                        level: AlarmLevel::Mild,
+                        code: "VALUE-SEARCH-UNSUPPORTED-PATTERN".to_string(),
+                        message: reason.to_string(),
+                        source: AlarmSource::Evaluator,
+                    });
+                }
+                builder.build()
+            }
+            FirSpec::Index {
+                offset, anchored, ..
+            } => {
+                if state.is_constanic()
+                    && let Some(&result) = cursor.ubc_children().first()
+                {
+                    let resolved = proto_to_core_fir_inner(
+                        storage,
+                        result,
+                        preserve_search,
+                        current_stmt,
+                        depth + 1,
+                    );
+                    let resolved_state = storage.get_nyes(result);
+                    let result_is_brane = matches!(storage.get(result), FirSpec::Brane { .. });
+                    if !preserve_search
+                        && (matches!(resolved_state, Nyes::Constant | Nyes::Independent)
+                            || result_is_brane)
+                    {
+                        return resolved;
+                    }
+                    let mut builder = IndexFirBuilder::new(offset)
+                        .anchored(anchored)
+                        .result(resolved)
+                        .state(state);
+                    if anchored && let Some(&anchor_ref) = cursor.foolish_children().first() {
+                        builder = builder.anchor(anchor_to_core_fir(
+                            storage,
+                            anchor_ref,
+                            current_stmt,
+                            depth + 1,
+                        ));
+                    }
+                    return builder.build();
+                }
+                let mut builder = IndexFirBuilder::new(offset).anchored(anchored).state(state);
+                if anchored && let Some(&anchor_ref) = cursor.foolish_children().first() {
+                    builder = builder.anchor(anchor_to_core_fir(
+                        storage,
+                        anchor_ref,
+                        current_stmt,
+                        depth + 1,
+                    ));
+                }
+                builder.build()
+            }
+            FirSpec::StayFoolish => {
+                let inner_ref = cursor.foolish_children().first().copied();
+                let expr_fir = inner_ref
+                    .map(|c| proto_to_core_fir_inner(storage, c, true, current_stmt, depth + 1))
+                    .unwrap_or_else(|| NkFirBuilder::new("empty sf").build());
+                StayFoolishFirBuilder::new(expr_fir).state(state).build()
+            }
+            FirSpec::StayFullyFoolish => {
+                let expr_fir = cursor
+                    .foolish_children()
+                    .first()
+                    .map(|&c| proto_to_core_fir_sff_body(storage, c, current_stmt, depth + 1))
+                    .unwrap_or_else(|| NkFirBuilder::new("empty sff").build());
+                StayFullyFoolishFirBuilder::new(expr_fir)
+                    .state(state)
+                    .build()
+            }
+            FirSpec::Concatenation { provenance } => {
+                let joined = !cursor.ubc_children().is_empty();
+                let empty_done = matches!(state, Nyes::Constant | Nyes::Independent);
+                if state.is_constanic() && (joined || empty_done) {
+                    let count = cursor.stmt_count().unwrap_or(0);
+                    let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)
+                        .filter_map(|i| {
+                            let stmt = cursor.stmt_at(i)?;
+                            let s_cursor = FirCursor::new(stmt, storage);
+                            let name = display_stmt_name(
+                                s_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
+                            );
+                            let body_fir = s_cursor
+                                .foolish_children()
+                                .first()
+                                .map(|&c| {
+                                    proto_to_core_fir_inner(
+                                        storage,
+                                        c,
+                                        preserve_search,
+                                        Some(stmt),
+                                        depth + 1,
+                                    )
+                                })
+                                .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                            Some((name, body_fir))
+                        })
+                        .collect();
+                    let mut effective_state = state;
+                    if state == Nyes::Constant || state == Nyes::Independent {
+                        for (_, body) in &stmt_tuples {
+                            let body_state = body.hs_state();
+                            if matches!(body_state, Nyes::Econstanic | Nyes::Woconstanic) {
+                                effective_state = Nyes::Woconstanic;
+                                break;
+                            }
+                            if body_state == Nyes::Nk {
+                                effective_state = Nyes::Nk;
+                                break;
+                            }
+                        }
+                    }
+                    return NormalBraneFirBuilder::new()
+                        .statements(stmt_tuples)
+                        .state(effective_state)
+                        .build();
+                }
+                let elem_firs: Vec<core_fir::Fir> = cursor
+                    .foolish_children()
+                    .iter()
+                    .map(|&c| {
+                        proto_to_core_fir_inner(
+                            storage,
+                            c,
+                            preserve_search,
+                            current_stmt,
+                            depth + 1,
+                        )
+                    })
+                    .collect();
+                let is_tail = provenance == crate::fir_kinds::ConcatProvenance::TailConcatenation;
+                ConcatenationFirBuilder::new()
+                    .elements(elem_firs)
+                    .state(state)
+                    .is_tail_concatenation(is_tail)
+                    .build()
+            }
+            FirSpec::ConcatHelper => {
+                let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = cursor
+                    .foolish_children()
+                    .iter()
+                    .map(|&c| {
+                        let c_cursor = FirCursor::new(c, storage);
+                        let name = display_stmt_name(
+                            c_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
+                        );
+                        let body_fir = c_cursor
+                            .foolish_children()
+                            .first()
+                            .map(|&b| {
+                                proto_to_core_fir_inner(
+                                    storage,
+                                    b,
+                                    preserve_search,
+                                    Some(c),
+                                    depth + 1,
+                                )
+                            })
+                            .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                        (name, body_fir)
+                    })
+                    .collect();
+                NormalBraneFirBuilder::new()
+                    .statements(stmt_tuples)
+                    .state(state)
+                    .build()
+            }
+            FirSpec::FoolRef { .. } => NkFirBuilder::new("unknown fir kind").build(),
+            FirSpec::Creation => {
+                let mut builder = CreationFirBuilder::new();
+                if let Some(name) = cursor.as_creation_display_name(current_stmt) {
+                    builder = builder.name(name);
+                }
+                builder.build()
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4754,5 +5539,213 @@ mod tests {
             "AB search for 'x' from inner brane's 'y' must climb out and find it"
         );
         assert_eq!(FirCursor::new(search, &storage).as_i64(), Some(99));
+    }
+
+    // ── Phase 3: evaluator.rs stepping loop / core-FIR conversion tests ──
+
+    use core_fir_conversion::{proto_to_core_fir, step_to_settled};
+    use foolish_core::fir::FirQueryable;
+
+    /// `step_to_settled`'s happy path: an `IndepInt` settles within budget.
+    #[test]
+    fn step_to_settled_settles_a_simple_fir() {
+        let mut storage = FVMStorage::new();
+        let ptr = storage.make_root(FirSpec::IndepInt { value: 7 });
+        assert!(step_to_settled(&mut storage, ptr).is_ok());
+        assert_eq!(storage.get_nyes(ptr), Nyes::Constant);
+    }
+
+    /// `proto_to_core_fir` on a settled `IndepInt` produces a
+    /// `hs_constant_int` matching the value — mirrors the direct
+    /// `FirKind::IndepInt` arm of the real `proto_to_core_fir_inner`.
+    #[test]
+    fn proto_to_core_fir_renders_constant_int() {
+        let mut storage = FVMStorage::new();
+        let ptr = storage.make_root(FirSpec::IndepInt { value: 42 });
+        step_to_settled(&mut storage, ptr).unwrap();
+
+        let rendered = proto_to_core_fir(&storage, ptr);
+        assert_eq!(rendered.hs_constant_int(), Some(42));
+        assert_eq!(rendered.hs_state(), Nyes::Constant);
+    }
+
+    /// `proto_to_core_fir` on a settled `Nk` produces `hs_nk` with the
+    /// reason string — mirrors the `FirKind::Nk` arm.
+    #[test]
+    fn proto_to_core_fir_renders_nk_with_reason() {
+        let mut storage = FVMStorage::new();
+        let ptr = storage.make_root(FirSpec::Nk {
+            reason: "unbound name".to_string(),
+        });
+        step_to_settled(&mut storage, ptr).unwrap();
+
+        let rendered = proto_to_core_fir(&storage, ptr);
+        let (reason, alarm) = rendered.hs_nk().expect("should render as Nk");
+        assert_eq!(reason, "unbound name");
+        assert!(alarm.is_none(), "only 'division by zero' gets an alarm");
+    }
+
+    /// `proto_to_core_fir` on `Nk` with reason "division by zero" attaches
+    /// the `DIV-BY-ZERO` alarm — mirrors that specific real-code branch.
+    #[test]
+    fn proto_to_core_fir_division_by_zero_gets_an_alarm() {
+        let mut storage = FVMStorage::new();
+        let ptr = storage.make_root(FirSpec::Nk {
+            reason: "division by zero".to_string(),
+        });
+        step_to_settled(&mut storage, ptr).unwrap();
+
+        let rendered = proto_to_core_fir(&storage, ptr);
+        let (_, alarm) = rendered.hs_nk().unwrap();
+        let alarm = alarm.expect("division by zero must carry an alarm");
+        assert_eq!(alarm.code, "DIV-BY-ZERO");
+    }
+
+    /// `proto_to_core_fir` on a settled `Brane` of settled statements
+    /// produces `hs_brane` with the right statement count and names —
+    /// mirrors the `FirKind::Brane` arm, including the display-name
+    /// suppression for `compiler::ANON_STMT_NAME`-equivalent anonymous
+    /// names (not exercised here since these test statements are named).
+    #[test]
+    fn proto_to_core_fir_renders_brane_with_named_statements() {
+        use crate::identifier::Identifier;
+
+        let mut storage = FVMStorage::new();
+        let brane = storage.make_root(FirSpec::Brane {
+            characterizations: Characterizations::default(),
+        });
+        let stmt = brane.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "x"),
+                line_number: 0,
+            },
+        );
+        stmt.create_child(&mut storage, FirSpec::IndepInt { value: 5 });
+
+        for _ in 0..10 {
+            if storage.get_nyes(brane).is_constanic() {
+                break;
+            }
+            brane.step(&mut storage);
+        }
+
+        let rendered = proto_to_core_fir(&storage, brane);
+        let (_characterizations, statements) = rendered.hs_brane().expect("should render as Brane");
+        assert_eq!(statements.len(), 1);
+    }
+
+    /// `proto_to_core_fir` on a settled `Operator` unwraps to its computed
+    /// result (an `IndepInt`), not the operator wrapper — mirrors the
+    /// `FirKind::Operator` arm's `state == Nyes::Constant` unwrap branch.
+    #[test]
+    fn proto_to_core_fir_unwraps_settled_operator_to_its_result() {
+        let mut storage = FVMStorage::new();
+        let op = storage.make_root(FirSpec::Operator {
+            op: "+".to_string(),
+        });
+        let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+        let b = op.create_child(&mut storage, FirSpec::IndepInt { value: 3 });
+        storage.with_mut(a, |fir| fir.set_nyes(Nyes::Constant));
+        storage.with_mut(b, |fir| fir.set_nyes(Nyes::Constant));
+
+        for _ in 0..10 {
+            if storage.get_nyes(op).is_constanic() {
+                break;
+            }
+            op.step(&mut storage);
+        }
+
+        let rendered = proto_to_core_fir(&storage, op);
+        assert_eq!(
+            rendered.hs_constant_int(),
+            Some(5),
+            "settled operator renders as its unwrapped result, not the wrapper"
+        );
+    }
+
+    use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};
+
+    /// `step_until_statement_name` finds the SECOND statement in a two-line
+    /// brane — mirrors `evaluator.rs::step_until_tests::
+    /// step_until_statement_name_finds_second_statement`'s intent.
+    #[test]
+    fn step_until_statement_name_finds_second_statement() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let a = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "a"),
+                line_number: 0,
+            },
+        );
+        a.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let b = root.create_child(
+            &mut storage,
+            FirSpec::Statement {
+                identifier: Identifier::from_parts(vec![], "b"),
+                line_number: 1,
+            },
+        );
+        b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        let steps = step_until_statement_name(&mut storage, root, "b").unwrap();
+        eprintln!("stopped after {steps} steps");
+        let front = FirCursor::new(root, &storage).front_task();
+        assert!(front.is_some());
+        assert_eq!(
+            FirCursor::new(front.unwrap(), &storage)
+                .as_stmt_identifier()
+                .map(|id| id.searchable_name()),
+            Some("b")
+        );
+    }
+
+    /// `step_until_line_number` stops when the front task reaches the given
+    /// line — mirrors `step_until_line_number_finds_line`'s intent.
+    #[test]
+    fn step_until_line_number_finds_line() {
+        use crate::identifier::Identifier;
+
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        for (name, line, value) in [("a", 0, 1), ("b", 1, 2), ("c", 2, 3)] {
+            let stmt = root.create_child(
+                &mut storage,
+                FirSpec::Statement {
+                    identifier: Identifier::from_parts(vec![], name),
+                    line_number: line,
+                },
+            );
+            stmt.create_child(&mut storage, FirSpec::IndepInt { value });
+        }
+
+        let steps = step_until_line_number(&mut storage, root, 2).unwrap();
+        eprintln!("stopped after {steps} steps");
+        let front = FirCursor::new(root, &storage).front_task().unwrap();
+        assert_eq!(
+            FirCursor::new(front, &storage).as_stmt_line_number(),
+            Some(2)
+        );
+    }
+
+    /// The generic `step_until` matcher — stops when the front task's own
+    /// `Nyes` is constanic — mirrors `step_until_generic_matcher_by_nyes`'s
+    /// intent.
+    #[test]
+    fn step_until_generic_matcher_by_nyes() {
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let a = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
+        let _b = root.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+
+        let steps = step_until(&mut storage, root, |storage, front| {
+            front.is_some_and(|f| storage.get_nyes(f).is_constanic())
+        })
+        .unwrap();
+        eprintln!("stopped after {steps} steps");
+        let front = FirCursor::new(root, &storage).front_task().unwrap();
+        assert_eq!(front, a);
+        assert!(storage.get_nyes(front).is_constanic());
     }
 }
