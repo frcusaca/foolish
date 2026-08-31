@@ -1449,13 +1449,14 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             is_value_search, ..
         } => {
             if is_value_search {
-                search_fir_dispatch::value_search_step(storage, ptr);
+                search_fir_dispatch::value_search_step(storage, ptr, scope.has_ancestral_sfm);
             } else {
                 search_fir_dispatch::name_search_step(
                     storage,
                     ptr,
                     scope.current_statement,
                     scope.current_brane,
+                    scope.has_ancestral_sfm,
                 );
             }
         }
@@ -3490,6 +3491,7 @@ mod search_fir_dispatch {
         ptr: FirPointer,
         current_statement: Option<FirPointer>,
         current_brane: Option<FirPointer>,
+        has_ancestral_sfm: bool,
     ) {
         let (anchored, forward, contexted) = match storage.get(ptr) {
             FirSpec::Search {
@@ -3520,7 +3522,7 @@ mod search_fir_dispatch {
                 } else {
                     match ib_search_with_engine(storage, ptr, current_statement) {
                         Some((stmt, _nyes)) => {
-                            handle_found(storage, ptr, stmt, false);
+                            handle_found(storage, ptr, stmt, has_ancestral_sfm);
                             storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
                         }
                         None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning)),
@@ -3532,7 +3534,7 @@ mod search_fir_dispatch {
                     settle_from_ubc_result(storage, ptr);
                 } else if contexted && anchored {
                     match contexted_search_from_anchor(storage, ptr, forward) {
-                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, false),
+                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, has_ancestral_sfm),
                         // `anchored` is always true in this branch, so the
                         // real fir_op_step's `if self.anchored { Nk } else
                         // { Econstanic }` always takes the Nk arm here.
@@ -3554,14 +3556,14 @@ mod search_fir_dispatch {
                         let predicate = SearchPredicate::Name { pattern };
                         match contextful_search_scan_no_body_check(storage, &mut nav, &predicate) {
                             ScanOutcome::Found(stmt) => {
-                                handle_found(storage, ptr, stmt, false);
+                                handle_found(storage, ptr, stmt, has_ancestral_sfm);
                             }
                             _ => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
                         }
                     }
                 } else {
                     match ab_search_with_engine(storage, ptr, current_brane) {
-                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, false),
+                        Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, has_ancestral_sfm),
                         None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Econstanic)),
                     }
                 }
@@ -3652,7 +3654,11 @@ mod search_fir_dispatch {
     /// position; `Braning` does the contexted/anchored/unanchored (AB-style)
     /// dispatch, mirroring `name_search_step`'s `Braning` arm shape closely
     /// but scanning with the value predicate instead of a name predicate.
-    pub(crate) fn value_search_step(storage: &mut FVMStorage, ptr: FirPointer) {
+    pub(crate) fn value_search_step(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+        has_ancestral_sfm: bool,
+    ) {
         let (anchored, forward, contexted) = match storage.get(ptr) {
             FirSpec::Search {
                 anchored,
@@ -3694,7 +3700,7 @@ mod search_fir_dispatch {
                     nav.set_range(0, range_end);
                     match contextful_search_scan(storage, &mut nav, &predicate) {
                         ScanOutcome::Found(stmt) => {
-                            handle_found(storage, ptr, stmt, false);
+                            handle_found(storage, ptr, stmt, has_ancestral_sfm);
                         }
                         ScanOutcome::NkStop => {
                             storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
@@ -3727,7 +3733,7 @@ mod search_fir_dispatch {
                     let anchor_settled = storage.get_nyes(anchor).is_constanic();
                     match contexted_search_from_anchor(storage, ptr, forward) {
                         Some((stmt, _nyes)) => {
-                            handle_found(storage, ptr, stmt, false);
+                            handle_found(storage, ptr, stmt, has_ancestral_sfm);
                             return;
                         }
                         None => {
@@ -3771,7 +3777,7 @@ mod search_fir_dispatch {
                 };
                 match scan_outcome {
                     ScanOutcome::Found(stmt) => {
-                        handle_found(storage, ptr, stmt, false);
+                        handle_found(storage, ptr, stmt, has_ancestral_sfm);
                     }
                     ScanOutcome::NkStop => {
                         storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
@@ -4451,6 +4457,101 @@ mod core_fir_conversion {
             }
             FirSpec::StayFoolish => {
                 let inner_ref = cursor.foolish_children().first().copied();
+                // Direct translation of the real `evaluator.rs`'s
+                // `FirKind::StayFoolish` output arm (re-read in full
+                // immediately before writing this): when the inner
+                // expression is itself a settled Search whose OWN result is
+                // a "complex" kind (Brane/Operator/SF/SFF), the search
+                // wrapper is preserved and rendered UNWRAPPED — the outer
+                // `<...>` SF marker is NOT shown at all, matching how a
+                // detached-and-recoordinated SF value is presented as its
+                // search, not its wrapper. Four sub-cases, mirroring the
+                // real code's four `if`/`return` branches exactly.
+                if let Some(inner) = inner_ref {
+                    let inner_spec = storage.get(inner).clone();
+                    if matches!(inner_spec, FirSpec::Search { .. })
+                        && storage.get_nyes(inner).is_constanic()
+                    {
+                        let inner_cursor = FirCursor::new(inner, storage);
+                        if let Some(result) = inner_cursor.ubc_children().first().copied() {
+                            let result_is_complex = matches!(
+                                storage.get(result),
+                                FirSpec::Brane { .. }
+                                    | FirSpec::Operator { .. }
+                                    | FirSpec::StayFoolish
+                                    | FirSpec::StayFullyFoolish
+                            );
+                            if result_is_complex {
+                                let result_cursor = FirCursor::new(result, storage);
+                                if !result_cursor.ubc_children().is_empty()
+                                    || storage.get_nyes(result).is_constanic()
+                                {
+                                    let inner_result_fir = proto_to_core_fir_inner(
+                                        storage,
+                                        result,
+                                        false,
+                                        current_stmt,
+                                        depth + 1,
+                                    );
+                                    return SearchFirBuilder::new(
+                                        inner_cursor.as_search_pattern().unwrap_or(""),
+                                    )
+                                    .anchored(inner_cursor.as_search_anchored())
+                                    .result(inner_result_fir)
+                                    .state(storage.get_nyes(inner))
+                                    .build();
+                                }
+                                let search_fir = SearchFirBuilder::new(
+                                    inner_cursor.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(inner_cursor.as_search_anchored())
+                                .state(Nyes::Econstanic)
+                                .build();
+                                return StayFoolishFirBuilder::new(search_fir)
+                                    .state(Nyes::Woconstanic)
+                                    .build();
+                            }
+                            if matches!(storage.get(result), FirSpec::Search { .. }) {
+                                let result_cursor = FirCursor::new(result, storage);
+                                let inner_fir = SearchFirBuilder::new(
+                                    result_cursor.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(result_cursor.as_search_anchored())
+                                .state(Nyes::Econstanic)
+                                .build();
+                                let outer_search = SearchFirBuilder::new(
+                                    inner_cursor.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(inner_cursor.as_search_anchored())
+                                .result(inner_fir)
+                                .state(Nyes::Woconstanic)
+                                .build();
+                                return StayFoolishFirBuilder::new(outer_search)
+                                    .state(Nyes::Woconstanic)
+                                    .build();
+                            }
+                            if matches!(
+                                storage.get(result),
+                                FirSpec::IndepInt { .. } | FirSpec::Nk { .. }
+                            ) {
+                                let inner_result_fir = proto_to_core_fir_inner(
+                                    storage,
+                                    result,
+                                    false,
+                                    current_stmt,
+                                    depth + 1,
+                                );
+                                return SearchFirBuilder::new(
+                                    inner_cursor.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(inner_cursor.as_search_anchored())
+                                .result(inner_result_fir)
+                                .state(storage.get_nyes(inner))
+                                .build();
+                            }
+                        }
+                    }
+                }
                 let expr_fir = inner_ref
                     .map(|c| proto_to_core_fir_inner(storage, c, true, current_stmt, depth + 1))
                     .unwrap_or_else(|| NkFirBuilder::new("empty sf").build());
@@ -8431,6 +8532,72 @@ mod tests {
         assert!(
             rendered.contains("state: Nk"),
             "the whole composed brane must settle Nk once the refusal propagates, got: {rendered}"
+        );
+    }
+
+    /// Regression for a real, load-bearing bug found via a comparative
+    /// step-by-step trace against the real, untouched `foolish-ubca` oracle
+    /// (see FOOP-16.plan.md's Phase 5 notes for the full trace): `handle_found`
+    /// (called from `name_search_step`/`value_search_step`) hardcoded
+    /// `sfm = false` at every call site, instead of threading `scope.
+    /// has_ancestral_sfm` through — exactly as the real `SearchFir::
+    /// handle_found` does (`Self::clone_stmt_result(&stmt, &self_weak, scope.
+    /// has_ancestral_sfm)`, re-read directly). `transform_for_clone`'s own
+    /// documented contract is "SFM-descendant: preserve the source NYES
+    /// verbatim (foolishly ignorant)" — with the bug, a search found from
+    /// inside an SF (`<...>`) wrapper always cloned as though NOT
+    /// SFM-descendant, so its own ECONSTANIC descendant searches (built
+    /// ECONSTANIC by the `under_sff` rule when the ORIGINAL declaration was
+    /// inside an SFF marker) transitioned to EMBRYONIC on clone and
+    /// genuinely re-searched and resolved in the new context — instead of
+    /// staying inertly ECONSTANIC, verbatim, as the real evaluator does.
+    ///
+    /// Concretely: `{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10;}`'s
+    /// `sf` reference resolves `sff` via a name search inside an SF wrapper;
+    /// the real oracle's clone of `sff`'s `a + b` stays `Woconstanic` with
+    /// both operand searches `Econstanic` (confirmed via direct step-by-step
+    /// trace against `foolish-ubca` — the clone's operand searches settle
+    /// `[Econstanic, Econstanic]` in ONE step and never progress further).
+    /// The arena, before this fix, let the SAME clone's operand searches
+    /// progress `Embryonic -> Braning -> Constant`, finding real values
+    /// (`a=1`, `b=2`) and fully resolving to `3` — an over-eager resolution
+    /// the real evaluator's SFM-verbatim-preservation rule exists to
+    /// prevent.
+    #[test]
+    fn search_found_inside_sf_threads_ancestral_sfm_to_its_clone() {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compile(
+            &mut storage,
+            "{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}",
+        )
+        .unwrap();
+        let root = roots[0];
+        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+
+        let stmts = storage.foolish_children(root).to_vec();
+        let sf_body = storage.foolish_children(stmts[3])[0]; // sf's SF wrapper
+        let sf_search = storage.foolish_children(sf_body)[0]; // the search for "sff" inside it
+        let clone = FirCursor::new(sf_search, &storage)
+            .ubc_children()
+            .first()
+            .copied()
+            .expect("sf's search must have settled with a result");
+
+        assert_eq!(
+            storage.get_nyes(clone),
+            Nyes::Woconstanic,
+            "sf's cloned Op+ must stay Woconstanic (SFM-verbatim), not fully resolve"
+        );
+        let operand_nyes: Vec<_> = storage
+            .foolish_children(clone)
+            .iter()
+            .map(|&c| storage.get_nyes(c))
+            .collect();
+        assert_eq!(
+            operand_nyes,
+            vec![Nyes::Econstanic, Nyes::Econstanic],
+            "the cloned Op+'s own operand searches must stay Econstanic verbatim, \
+             not re-search and resolve in sf's new context"
         );
     }
 }
