@@ -444,20 +444,35 @@ The full three-stage contract (`output` throwaway / `checked` frozen / `verified
 the "a failing einmo test is broken code, not a stale baseline" rule, and the foreign-baseline
 prohibition live in `rust_instructions.md` §"Phase-by-phase testing discipline."
 
+### Verified-tier tests are never `#[ignore]`d in the code
+
+An `einmo_gate_verified` test (or any test asserting a `checked/`↔`verified/` correspondence)
+must never carry a source-level `#[ignore]` attribute added by an agent. `verified/` is the
+human-signed, highest-trust tier of the three-stage contract; an `#[ignore]` baked into the code
+silently and permanently removes that gate from every future `cargo test` run, for every agent
+and every human, with no visible trace beyond a line in a diff nobody is looking at.
+
+If a Verified gate is noisy during ordinary work — e.g. its `verified/` is genuinely still empty
+for a crate mid-migration, and its expected, unresolved failure would otherwise clutter every
+`cargo test` run — an agent may skip it for a given invocation via a **command-line filter**
+(`cargo test --workspace -- --skip einmo_gate_verified`, or the equivalent per-crate form), never
+by adding `#[ignore]` to the source. A command-line skip is scoped to one invocation and leaves
+the test itself live, undisguised, and immediately visible to the next `cargo test --workspace`
+that does not pass the filter; a code-level `#[ignore]` is a standing, silent, and easily
+forgotten exemption. See AGENTS.md's Verified-tier rule for the full statement, including that
+this applies retroactively to any existing such `#[ignore]` an agent already added.
+
 ---
 
 ## Last Updated
 
-**Date**: 2026-08-12
-**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
-**Changes**: Added **§"Sub-Section Test Subsets (frequent-run discipline)"** under Plan Files:
-every plan sub-section (and every undivided phase) STARTS with an "Establish relevant tests"
-checkbox naming the sub-section's small test subset — old unit tests and einmo cases the work
-must not break, plus new tests as they are written — and linking to the central test-running
-reference (`README.md` §"Running specific tests"). The subset runs frequently during
-development; when the sub-section completes, ALL tests run. Implementers run tests through
-subagents in parallel where available (the agent equivalent of several terminals). Plans name
-CASES; the command forms live only in the README section, so einmo CLI evolution touches one
-place. Added the matching bullet to "Constructing the Plan"; both FOOP skills updated to match.
+**Date**: 2026-09-01
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Added **§"Verified-tier tests are never `#[ignore]`d in the code"** under the
+Promotion Review Gate: an agent may quiet a noisy, expected-to-fail `einmo_gate_verified` for
+one `cargo test` invocation via a command-line `--skip` filter, but must never add `#[ignore]`
+to the test's source — that is a standing, silent exemption an agent must not grant itself.
+Mirrors the rule added to AGENTS.md the same day, prompted by finding exactly this on
+`foolish-ubca2`'s `einmo_gate_verified` without a distinct human sign-off (FOOP-16).
 
 This log keeps only the single newest entry — see `git log foop.md` for full history.
