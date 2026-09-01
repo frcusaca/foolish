@@ -1,0 +1,22 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: misc/alarm_nested_division_by_zero.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:2daa0f5a33fe5d423e4d9d639cdaa86ed7b666dd17abb6f8ab81f225d7148a46
+generated: 2026-09-01T17:03:30.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{outer = {inner = 5 / 0};}
+①
+{NK
+  outer={NK
+      inner=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
+  }
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:30.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:30.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"xsio+YhTYAg44FBPMbZXhtI2bVfiVlP1D/oWrtdDtWRG4AEs/n0vy+B8Z0VMk+Kcbo0p9KSRq9CCG0xB2VtlBg==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:30.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"CKA+E4+9iAsErv/ShDQbtpyexvL4JaKU1mEHWEeW2Cj2JKuQUdhf4ObPNLXIOQrNl8PiE0yR/5Xr80vDtbwXBQ==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:12.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"ory7d53s6FKXyAivIGRPtd8JWkmRP/EWXJAD0Y0Z8AjC8+IEEH9Jyza0OMFap3xMZsV4SSoUQcH6g7gjUxXlCQ==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:25.000000000Z"}

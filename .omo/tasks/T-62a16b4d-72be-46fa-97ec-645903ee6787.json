@@ -1,9 +1,0 @@
-{
-  "id": "T-62a16b4d-72be-46fa-97ec-645903ee6787",
-  "subject": "Phase 1: einmo crate scaffolding",
-  "description": "Create Cargo.toml, lib.rs, main.rs, cargo_einmo.rs, stub modules, add to workspace",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0ae4bb81effegRmLdkkL6nVrQG"
-}

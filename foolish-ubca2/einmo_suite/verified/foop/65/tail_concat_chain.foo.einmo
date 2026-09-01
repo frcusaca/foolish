@@ -1,0 +1,71 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/65/tail_concat_chain.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:efa8a5772ec2e96276f7a5238cddbb00b44e8113bf4ba9aa3eaedd31ad404e52
+generated: 2026-09-01T17:03:27.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! FOOP-65 — tail concatenator chain: §3.1 worked example.
+	!! The backtick form and juxtaposition form produce identical settled branes.
+
+	!! Define operands
+	a_brn = {1};
+	b_brn = {2};
+	c_brn = {3};
+	d_brn = {4};
+	e_brn = {5};
+	f_brn = {6};
+
+	!! Backtick form: a_brn`b_brn`c_brn`d_brn e_brn f_brn
+	!! This is: (d_brn e_brn f_brn) c_brn b_brn a_brn
+	chain_backtick = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
+
+	!! Juxtaposition form (reversed source order = same concatenation)
+	chain_juxta    = d_brn e_brn f_brn c_brn b_brn a_brn;
+}
+①
+{
+  aˍbrn={
+      1
+  };
+  bˍbrn={
+      2
+  };
+  cˍbrn={
+      3
+  };
+  dˍbrn={
+      4
+  };
+  eˍbrn={
+      5
+  };
+  fˍbrn={
+      6
+  };
+  chainˍbacktick={
+      4;
+      5;
+      6;
+      3;
+      2;
+      1
+  };
+  chainˍjuxta={
+      4;
+      5;
+      6;
+      3;
+      2;
+      1
+  }
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"3EWUt8B9CohZTdNf8Cn3OKwyU4Idjb46xSdsBWUOMP3ptVzk6S9V8SQONF1lff+SgWMQXPXYR/NSeQ6jM3JHDg==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"zUibrzBAjtMsvsJYlmin1WrmceoP7jiswVkFXNh5SAjO6PvBJVz3m1mKee3hn/3Bp+ZJ2BR5fjHkkutiAkkiAw==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:12.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"RT5XrVMKPUxDni0pFQEp8nygcw86lOFPWn0/D0l/dKcC3S15R1CGlG/e3gOBP5s/uGMQOr+XAwiUclXJw8sRBQ==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:25.000000000Z"}

@@ -1,0 +1,35 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/33/boolean/null_char_constant.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:2734b8dba56ed38deb55ac2dd6a417b02b37b7b316eeb7172fd5de28268c7432
+generated: 2026-09-01T17:03:28.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! FOOP-33 §4: 'True is a null-characterized name constant in system.foo.
+	!! A user brane may re-state it to an EQUAL value (permitted -- same
+	!! creation, resolved via ordinary ancestral search) but a conflicting
+	!! redefinition (a different value) refuses -- get_value() becomes NF
+	!! ("'True not-foolish") instead of the written RHS.
+	!! FOOP-33 Phase 9: restate/'True/conflict now render as 'True (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	restate = 'True;
+	'True = 'True;
+	conflict = 'True;
+	'True = 3;
+}
+①
+{NK
+  restate='True;
+  'True='True;
+  conflict='True;
+  'True=??? ('True not-foolish)
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:28.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:28.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"A89rK55zCGcIqePMm6x8AwWnOzdCc0hyewvvZfSu442UWrzCXRQJdqc+33e3j42mqfW5wD2IqjrGf4cM+8lHAg==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:28.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"oWQivprnZvUZTxNfPTiIlKMJhrerPHDZUjOZUX70I6YFMINDJOR+WqChgm+IsDlDvoOJeO0qvoodwOsYyRgyDQ==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:11.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"oKXLy3UzyFoG1gV6QQ3KD4LOZsRIX4LtTsaGcj2SATYp/dY2U8lizIKmQeWButQlh5IdOO9jTuImugQSwzvFAA==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:24.000000000Z"}

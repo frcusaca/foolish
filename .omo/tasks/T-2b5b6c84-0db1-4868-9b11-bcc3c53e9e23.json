@@ -1,9 +1,0 @@
-{
-  "id": "T-2b5b6c84-0db1-4868-9b11-bcc3c53e9e23",
-  "subject": "Create zweimomo crate with three Evaluator impls",
-  "description": "Create the zweimomo crate (Phase 14 of FOOP-54): Cargo.toml, lib.rs, evaluators.rs with UbcaEvaluatorAdapter, RustPythonEvaluator, BoaEvaluator, brane_name_perspective, and unit tests.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0ae047178ffe7TrOJNaHd9pqF4"
-}

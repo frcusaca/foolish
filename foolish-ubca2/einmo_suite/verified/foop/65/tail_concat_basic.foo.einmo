@@ -1,0 +1,56 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/65/tail_concat_basic.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:a18a831baaf24bcad23cc6cedb63ed2e364bf92b86d842c37e0e4597ea7d7c1d
+generated: 2026-09-01T17:03:27.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! FOOP-65 — tail concatenator basic equivalence pairs.
+	!! Each pair: backtick form next to juxtaposition form, settling identically.
+
+	!! Define brane values to use as operands (concatenation requires branes)
+	lhs = {x=1;};
+	rhs = {y=2;};
+
+	!! Pair 1: two brane variables — backtick vs juxtaposition
+	p1_backtick = lhs`rhs;
+	p1_juxta    = rhs lhs;
+
+	!! Pair 2: two brane literals
+	p2_backtick = {a=10;}`{b=20;};
+	p2_juxta    = {b=20;} {a=10;};
+}
+①
+{
+  lhs={
+      x=1
+  };
+  rhs={
+      y=2
+  };
+  p1ˍbacktick={
+      y=2;
+      x=1
+  };
+  p1ˍjuxta={
+      y=2;
+      x=1
+  };
+  p2ˍbacktick={
+      b=20;
+      a=10
+  };
+  p2ˍjuxta={
+      b=20;
+      a=10
+  }
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"AiZgeaE1AZElgPXfKQj/cuL2XcX7/xuMOfMKsk+qoCCfUc/h/JYpEXmXjcya3C0jcahsav4bl+tzDjj6qE8+Bw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"lSfLDoeDeENXsgrD6EYwogQPGECMwfxP6+coFtQ/8hywaZzj+OWOoLmLY6o5xZDCtTar9Pn+cphE9Hb/6hCcBw==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:12.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"W7+FcyGFCpzXtgwDC661Tz5tdnICL6mq1RGs+RkO7xB3JS0wzeBa9706tXtZZP1Orod/aviYxsB9ZNgPE2ycBA==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:24.000000000Z"}

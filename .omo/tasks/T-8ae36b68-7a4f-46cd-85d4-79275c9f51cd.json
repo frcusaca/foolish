@@ -1,9 +1,0 @@
-{
-  "id": "T-8ae36b68-7a4f-46cd-85d4-79275c9f51cd",
-  "subject": "Refresh FOOP-92.plan.md: fix paths, drop ubcb, reframe phases as from-scratch, drop .snap migration",
-  "description": "Fix all foolish/foolish-core/ → foolish-core/ paths. Fix workspace root (foolish/Cargo.toml → ./Cargo.toml). Drop ubcb dev-dep and ubcb adapter tasks. Reframe Phase 2 (signature) and Phase 3 (snapshot_suite) as \"implement from scratch in einmo per FOOP-22\" not \"copy/migrate from foolish-core\". Drop Phase 14 (.snap corpus migration) — replace with zweimomo corpus creation. Fix worktree origin path (foop-62-ubca-mimo is stale).",
-  "status": "in_progress",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
-}

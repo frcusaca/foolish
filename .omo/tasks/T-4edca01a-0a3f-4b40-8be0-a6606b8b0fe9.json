@@ -1,9 +1,0 @@
-{
-  "id": "T-4edca01a-0a3f-4b40-8be0-a6606b8b0fe9",
-  "subject": "Add Ampersand token to lexer",
-  "description": "Add Ampersand (&) to Token enum in token.rs and lexer.rs",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0cad06453ffeHa5PjCfSkl6nRs"
-}

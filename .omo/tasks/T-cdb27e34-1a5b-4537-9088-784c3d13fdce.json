@@ -1,9 +1,0 @@
-{
-  "id": "T-cdb27e34-1a5b-4537-9088-784c3d13fdce",
-  "subject": "Remove dead evaluate subcommand from einmo/src/cli.rs",
-  "description": "Apply 5 edits to remove: Command::Evaluate variant, EvaluateArgs struct, CommandEvaluator struct, cmd_evaluate fn, and its dispatch match arm. Verify with cargo check/clippy.",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_053b5b6a3ffeaIGO5unWeApRtt"
-}

@@ -1,0 +1,34 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/33/boolean/constants.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:59b80a0d2f97dd3fb4dfdc0172ede679a1076d64a258d59ed9c4270a9ce27a7e
+generated: 2026-09-01T17:03:23.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! FOOP-33 §4: 'True and 'False resolve as ordinary ancestral (sibling)
+	!! lookups into system.foo -- composed as the implicit root ancestor of
+	!! every program. Note the LEADING QUOTE is required: a bare True (no
+	!! quote) can never match the null-characterized 'True (searchable_name
+	!! comparison is unconditional -- see FOOP-33.md §3 "quote-bearing
+	!! search").
+	!! FOOP-33 Phase 9: t1/t2/f1 now render as 'True/'True/'False (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	t1 = 'True;
+	t2 = 'True;
+	f1 = 'False;
+}
+①
+{
+  t1='True;
+  t2='True;
+  f1='False
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"tM4tOk/gxL5kYQ3khMwKIgzvcXfOudRpitI/YRf6IlzmUiU15FxRsDPQjmo3/FC+S5JDunqoNTkHsolgtcLqCw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"lzRba2xmf/psnaMDZAsak7LgO1fHsU0ePFPnF9bSfp9HRX+flkcmIBcuETYoqpqiNusK5lDnEuGp80eb4Yg/Dw==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:11.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"tnF8e+dVhRDP4Cy3sR/47lj2SHQcGqAiq97NlILVTP6eAn3eQeOz7of6RwiuJin+pf197g2GNkm6+11y1tB7Bg==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:24.000000000Z"}

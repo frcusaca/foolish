@@ -1,9 +1,0 @@
-{
-  "id": "T-c50a6c63-db3e-4ee9-825a-9e2d136dcb0f",
-  "subject": "Zweimomo dependents + final tests",
-  "description": "Add one dependent per language suite. Generate, verify, run cargo test -p zweimomo.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
-}

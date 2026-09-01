@@ -1,0 +1,153 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/16/comprehensive.foo
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:d169161628f481b112d03948cbb2eab51b968e30158f7c1ea612a6b9bef9f41d
+generated: 2026-09-01T17:03:25.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! === FOOP-16 Comprehensive Test ===
+	!! FOOP-16 is an internal representation change (Rc<RefCell<dyn Fir>>
+	!! arena-per-node -> a u32-indexed FVMStorage arena) with NO new language
+	!! surface. This test's job is therefore to exercise a wide,
+	!! representative cross-section of EXISTING feature combinations through
+	!! foolish-ubca2, promoted only once its OUTPUT is confirmed byte-for-byte
+	!! identical to foolish-ubca's output for this same input -- proving the
+	!! storage mechanism changed but nothing observable did.
+
+	!! --- Nested branes ---
+	recipe = {
+		steps = {
+			prep = 7;
+			bake = 40;
+			cool = 9;
+		};
+		yield = 12;
+	};
+
+	!! --- Head/tail ---
+	series = {10; 20; 30};
+	first = series^;
+	last = series$;
+
+	!! --- Value search (forward and backward) ---
+	nums = {
+		alpha = 42;
+		beta = 15;
+		gamma = 42;
+		delta = 99;
+	};
+	fwd_val = nums~=42;
+	bwd_val = nums?=42;
+
+	!! --- Combined name+value forms ---
+	records = {
+		alice = 100;
+		bob = 200;
+		carol = 150;
+		dave = 102;
+	};
+	nv_fwd = records~.*e.*=100;
+
+	!! --- Contexted operators (& search from a prior result's position) ---
+	after_bake = recipe.steps~bake&?prep;
+	next_42 = nums~=42&#1;
+
+	!! --- AB/IB recoordination via a named-brane reference ---
+	!! `outer` is null-characterized (`'`) -- a name constant (FOOP-33 SS4).
+	!! Inside it, `via_ib` finds `x` by an IMMEDIATE-BRANE (IB) search within
+	!! `outer` itself; `via_ab` finds `top` by an ANCESTRAL-BRANE (AB) search
+	!! that climbs out of `outer` to the root where `top` is declared.
+	top = 3;
+	outer'{
+		x = 5;
+		y = 7;
+		via_ib = x + y;
+		via_ab = top + 1;
+	};
+
+	!! --- Comparison operators (system.foo detachment/recoordination) ---
+	lt_result = {1, 2, 'lt}$;
+	eq_result = {3, 3, 'eq}$;
+
+	!! --- Concatenation (juxtaposition and tail-chain) ---
+	concat_a = {p = 1; q = 2};
+	concat_b = {r = 3};
+	joined = concat_a concat_b;
+	chained = {u = 1}`{v = 2}`{w = 3};
+
+	!! --- Null-characterized name constant (FOOP-33 SS4) ---
+	'shared = ⬤;
+	restate = 'shared;
+}
+①
+{
+  recipe={
+      steps={
+          prep=7;
+          bake=40;
+          cool=9
+      };
+      yield=12
+  };
+  series={
+      10;
+      20;
+      30
+  };
+  first=10;
+  last=30;
+  nums={
+      alpha=42;
+      beta=15;
+      gamma=42;
+      delta=99
+  };
+  fwdˍval=42;
+  bwdˍval=42;
+  records={
+      alice=100;
+      bob=200;
+      carol=150;
+      dave=102
+  };
+  nvˍfwd=100;
+  afterˍbake=7;
+  nextˍ42=15;
+  top=3;
+  outer'{
+    x=5;
+    y=7;
+    viaˍib=12;
+    viaˍab=4
+  };
+  ltˍresult='True;
+  eqˍresult='True;
+  concatˍa={
+      p=1;
+      q=2
+  };
+  concatˍb={
+      r=3
+  };
+  joined={
+      p=1;
+      q=2;
+      r=3
+  };
+  chained={
+      w=3;
+      v=2;
+      u=1
+  };
+  'shared=⬤;
+  restate='shared
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:25.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:25.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"B4i0yFXHUIGtbk8CvUkghbSkKNrNvY/pb6R8xz8bwHLfJ77yHemnmijUIw3q/v2w73xnVoGc2I+QM/YNsukCDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:25.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"/FEzTuOCHemyGFigcfCKOHnDLYbUFLymIFV/VTylSTFCNOdNJYGZBsGQNeMNwlR9F+ast9kLyTYmF0Mnd6hwBg==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:11.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"7ARVGlShZU8ahxVTE6lD2c0+B7kGg+u/tTOKPbXNX2HDAGlEuUDxQYHrf4gpjf9Ib4DQgDIJIonXPUp0/sdQBQ==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T18:53:23.000000000Z"}

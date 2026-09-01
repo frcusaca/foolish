@@ -1,9 +1,0 @@
-{
-  "id": "T-eddb4fa0-eb39-4b38-869c-529f6a07d263",
-  "subject": "Add contexted field to SearchFir and IndexFir",
-  "description": "Add contexted: bool field and implement contexted search logic in fir_kinds.rs",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0cad06453ffeHa5PjCfSkl6nRs"
-}

@@ -1,9 +1,0 @@
-{
-  "id": "T-8ab81fdb-a93f-4174-98ee-a68ac1fdec72",
-  "subject": "Write unit tests for Scope capabilities, upward navigation, and ignorance gates",
-  "description": "Tests: search_ib bounded by stmt_idx, search_ab parent-chain widening, index boundary semantics, how_ignorant Ignorance variants, upward navigation from arbitrary depths, is_root self-Weak check.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_14a15ee1cffeSJnMegdCvUuy7v"
-}

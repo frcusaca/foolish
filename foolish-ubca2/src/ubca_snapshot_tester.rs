@@ -99,9 +99,7 @@ mod einmo_tests {
     /// The suite config at a stated escalating level (FOOP-64 §"The escalating
     /// validation levels"). The level is required — einmo has no default.
     fn config(level: ValidationLevel) -> TestConfig {
-        // The Foolish separator (`!!` + LF, a Foolish line comment) — Foolish
-        // sources may contain einmo's default `①` glyph.
-        TestConfig::new(einmo_suite_dir(), level).foolish_separator()
+        TestConfig::new(einmo_suite_dir(), level)
     }
 
     /// **Output gate**: every input evaluates, is written and self-verifies

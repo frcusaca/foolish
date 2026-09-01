@@ -1,9 +1,0 @@
-{
-  "id": "T-8c8261e7-b473-4764-86a7-ab38c781b5e1",
-  "subject": "Modify check_value_pattern_ready for all settling cases",
-  "description": "Handle NK, ECONSTANIC, WOCONSTANIC, non-integer patterns properly",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0cb18f4b5ffeRQ00M3Pb6ffgMi"
-}

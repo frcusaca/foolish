@@ -1,9 +1,0 @@
-{
-  "id": "T-cc442668-c611-4e77-9997-5044b02a0273",
-  "subject": "Add zweimomo spec section to FOOP-92.md",
-  "description": "Add a new \"Use Case D — zweimomo: cross-language validation harness\" section. Three pure-Rust interpreters as Evaluator impls: foolish-ubca (Foolish), rustpython-vm (Python), boa_engine (JavaScript). Note the pure-Rust rationale (no C/FFI toolchain, keeps harness portable + einmo-repo-promotable). Parallel test-input matrix: arithmetic, parsing/nested-expr, name-binding+scope, data-structures/nesting, function-call (Foolish via concatenation+$ tail-binding = equivalents in Python fn(args)/JS fn(args)). Capability ceiling dictated by foolish-ubca (int-only, no strings/floats/loops/conditionals). Embedding API sketches for all three. Plan task: use existing .foo snap inputs for inspiration.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
-}

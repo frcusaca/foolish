@@ -1,12 +1,12 @@
-#einmo 1 encoding=utf-8 separator=!!\n
+#einmo 1 encoding=utf-8 separator=①\n
 test: foop/65/tail_concat_chain.foo
-suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
-producer: 4d2172f8
-producer-diff: sha256:41f779f29aea23e647f101c78006e2776e900088e1562277f52a89b4446209d3
-generated: 2026-08-11T21:57:09.000000000Z
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 5c65a84c
+producer-diff: sha256:efa8a5772ec2e96276f7a5238cddbb00b44e8113bf4ba9aa3eaedd31ad404e52
+generated: 2026-09-01T17:03:27.000000000Z
 status: normal
 status-detail: 
-sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 {
 	!! FOOP-65 — tail concatenator chain: §3.1 worked example.
 	!! The backtick form and juxtaposition form produce identical settled branes.
@@ -26,7 +26,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	!! Juxtaposition form (reversed source order = same concatenation)
 	chain_juxta    = d_brn e_brn f_brn c_brn b_brn a_brn;
 }
-!!
+①
 {
   aˍbrn={
       1
@@ -62,9 +62,9 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
       2;
       1
   }
-}!!
-!!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:09.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:09.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Jr6LwyjdZFoAyBs0fkK+h2K3Y+/rArgvmiwfFo7x2nmA1mid2lMMV+oDnAELWRt1I7rmL8Xa225brCM1764yDA==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:09.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"+94Q44Olo44vJy9GO4bjlS3iGhXPQOWM+pS8OeJp17HEaNtKYONK6fxDNFiEmla/6JR4XAu7MjzsGI+4PRx9BA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T21:59:39.000000000Z"}
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"3EWUt8B9CohZTdNf8Cn3OKwyU4Idjb46xSdsBWUOMP3ptVzk6S9V8SQONF1lff+SgWMQXPXYR/NSeQ6jM3JHDg==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"zUibrzBAjtMsvsJYlmin1WrmceoP7jiswVkFXNh5SAjO6PvBJVz3m1mKee3hn/3Bp+ZJ2BR5fjHkkutiAkkiAw==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:12.000000000Z"}

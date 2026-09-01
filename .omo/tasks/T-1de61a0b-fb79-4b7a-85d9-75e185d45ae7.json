@@ -1,9 +1,0 @@
-{
-  "id": "T-1de61a0b-fb79-4b7a-85d9-75e185d45ae7",
-  "subject": "Add zweimomo plan phases + use-existing-snaps task to FOOP-92.plan.md",
-  "description": "Add new plan phases: zweimomo crate scaffolding (deps: einmo, rustpython-vm, boa_engine, foolish-ubca), three Evaluator impls (UbcaEvaluator adapter wrapping existing UbcaEvaluator; RustPythonEvaluator; BoaEvaluator), parallel test-input corpus (arithmetic, parsing, name-binding, data-structures, function-call × 3 languages), einmo tests asserting correspondence. Add task: use existing foolish-ubca/snapshot_tests/input/*.foo for inspiration and syntax guidance.",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
-}

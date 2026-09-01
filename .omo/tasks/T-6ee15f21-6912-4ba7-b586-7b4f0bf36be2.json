@@ -1,9 +1,0 @@
-{
-  "id": "T-6ee15f21-6912-4ba7-b586-7b4f0bf36be2",
-  "subject": "Add `similar` crate and `reference` metadata to format.rs",
-  "description": "Add `similar = \"1\"` to einmo/Cargo.toml. Add `reference: Option<String>` field to EinmoFile metadata (parse + serialize).",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
-}

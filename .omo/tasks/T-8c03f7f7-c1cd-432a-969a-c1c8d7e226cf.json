@@ -1,9 +1,0 @@
-{
-  "id": "T-8c03f7f7-c1cd-432a-969a-c1c8d7e226cf",
-  "subject": "Verify all tests pass (existing 31 + new tests)",
-  "description": "Run cargo test -p foolish-ubca --lib and confirm all pass including cross_check.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_14a15ee1cffeSJnMegdCvUuy7v"
-}

@@ -1,9 +1,0 @@
-{
-  "id": "T-b4b25e85-f7ef-4ccb-9d74-123c85a39584",
-  "subject": "Run cargo test verification",
-  "description": "Run cargo test -p foolish-ubca --lib -- --skip approval_all and verify 85+ tests pass",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_12350cb53ffehCCzbcp4sbh04q"
-}

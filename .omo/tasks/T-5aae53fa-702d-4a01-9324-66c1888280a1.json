@@ -1,9 +1,0 @@
-{
-  "id": "T-5aae53fa-702d-4a01-9324-66c1888280a1",
-  "subject": "Add per-language research appendices (Foolish, RustPython, Boa) to FOOP-92.md",
-  "description": "Add appendices to FOOP-92.md capturing per-language research learnings: (G) Foolish-ubca — syntax reference, capability envelope, function-call via concatenation+$ tail-binding, search family, SF/SFF, NK/alarms; (H) RustPython — crate=rustpython-vm v0.5.0, pure-Rust confirmation, embedding API (Interpreter::without_stdlib, enter, eval::eval, .str(vm)?.as_str()), not-Send caveat, stdlib sandboxing; (I) Boa — crate=boa_engine v0.21.1, pure-Rust confirmation, embedding API (Context::default, Source::from_bytes, eval, .to_string(&mut ctx)?.to_std_string_escaped()), not-Send caveat, no fs/network by default.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
-}

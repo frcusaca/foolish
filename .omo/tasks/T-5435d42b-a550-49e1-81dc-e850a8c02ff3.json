@@ -1,9 +1,0 @@
-{
-  "id": "T-5435d42b-a550-49e1-81dc-e850a8c02ff3",
-  "subject": "README: central \"Running specific tests\" section (single + subset, unit + einmo, batching examples)",
-  "description": "Replace stale run_einmo_tests/--command \"cat\" block; add central section with verified commands; update Last Updated.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_008b93267ffeY9m6ODLRYYUjQP"
-}

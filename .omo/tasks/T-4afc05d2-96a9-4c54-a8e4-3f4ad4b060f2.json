@@ -1,9 +1,0 @@
-{
-  "id": "T-4afc05d2-96a9-4c54-a8e4-3f4ad4b060f2",
-  "subject": "Fix classify_concat_element for Concatenation AST nodes",
-  "description": "Fixed classify_concat_element to handle Astn::Concatenation via BareConcat variant. Rewrote all 3 einmo tests with correct behavior. All baselines promoted to checked.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_01792e1afffe0iWqDc5aUzFJ9q"
-}

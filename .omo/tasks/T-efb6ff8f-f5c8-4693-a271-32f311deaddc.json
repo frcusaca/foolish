@@ -1,9 +1,0 @@
-{
-  "id": "T-efb6ff8f-f5c8-4693-a271-32f311deaddc",
-  "subject": "Add RegexpSearch compiler support",
-  "description": "Add handling for Astn::RegexpSearch in compiler.rs, creating SearchFir with regex pattern flag.",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": [],
-  "threadID": "ses_148dbf6b6ffeu57sDCF5H15Jrx"
-}

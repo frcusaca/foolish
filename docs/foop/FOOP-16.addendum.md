@@ -23,17 +23,17 @@ Rc<RefCell<dyn Fir>>                    <- shared handle; RefCell = runtime-chec
         │  IS-A Fir  (13 concrete structs implement the trait; dispatch via vtable)
         ▼
 ┌───────────────────────────────┐
-│ IndepIntFir  (or any of 13)     │
-│                                  │
-│  core: ProtoBrane  ──HAS-A──────┼──►┌────────────────────────────────┐
-│  value: i64  (kind-specific)     │   │ ProtoBrane                      │
-└───────────────────────────────┘   │  foolish_children: Vec<FirRef>   │ tree topology
-                                      │  ubc_children: RefCell<Vec<_>>   │ tree topology (mutable)
-                                      │  nyes: Cell<Nyes>                 │ eval state (mutable)
-                                      │  tasks: RefCell<VecDeque<_>>     │ eval state (mutable)
-                                      │  parent: Weak<RefCell<dyn Fir>>   │ tree topology (back-link)
-                                      │  alarm_reason: RefCell<_>          │
-                                      └────────────────────────────────┘
+│ IndepIntFir  (or any of 13)   │
+│                               │
+│  core: ProtoBrane  ──HAS-A────┼──►┌────────────────────────────────┐
+│  value: i64  (kind-specific)  │   │ ProtoBrane                     │
+└───────────────────────────────┘   │  foolish_children: Vec<FirRef> │ tree topology
+                                    │  ubc_children: RefCell<Vec<_>> │ tree topology (mutable)
+                                    │  nyes: Cell<Nyes>              │ eval state (mutable)
+                                    │  tasks: RefCell<VecDeque<_>>   │ eval state (mutable)
+                                    │  parent: Weak<RefCell<dyn Fir>>│ tree topology (back-link)
+                                    │  alarm_reason: RefCell<_>      │
+                                    └────────────────────────────────┘
 ```
 
 `trait Fir`'s one bridge method, `fn core(&self) -> &ProtoBrane`, is what
@@ -49,24 +49,24 @@ FirPointer  (Copy: arena stamp + index + generation)   <- validated handle, neve
         │  looked up via FVMStorage::get/get_mut(ptr)
         ▼
 ┌──────────────────────────────────────┐
-│ Slot                                    │  <- one arena slot = one node, owned by FVMStorage
-│                                          │
-│  parent: FirPointer         ────────────┼── tree topology (moved OUT of the payload)
-│  foolish_children: Vec<FirPointer>  ────┼── tree topology (moved OUT of the payload)
-│  generation: u32                          │
-│                                            │
-│  payload: ArenaFir  ──HAS-A───────────────┼──►┌─────────────────────────────────┐
-└──────────────────────────────────────┘      │ ArenaFir                           │
-                                                 │  spec: FirSpec ──HAS-A───────────┼──►FirSpec::IndepInt{value}
-                                                 │                                    │     | FirSpec::Operator{op}
-                                                 │                                    │     | ...14 variants
-                                                 │  ubc_children: Vec<FirPointer>     │ eval state (plain)
-                                                 │  nyes: Nyes                          │ eval state (plain)
-                                                 │  tasks: VecDeque<FirPointer>         │ eval state (plain)
-                                                 │  alarm_reason: Option<String>          │
-                                                 │  nf_reason: Option<String>               │
-                                                 │  helpers_populated: bool                  │
-                                                 └─────────────────────────────────┘
+│ Slot                                 │  <- one arena slot = one node, owned by FVMStorage
+│                                      │
+│  parent: FirPointer      ────────────┼── tree topology (moved OUT of the payload)
+│  foolish_children: Vec<FirPointer> ──┼── tree topology (moved OUT of the payload)
+│  generation: u32                     │
+│                                      │
+│  payload: ArenaFir  ──HAS-A──────────┼──►┌─────────────────────────────────┐
+└──────────────────────────────────────┘   │ ArenaFir                        │
+                                           │  spec: FirSpec ──HAS-A──────────┼──►FirSpec::IndepInt{value}
+                                           │                                 │     | FirSpec::Operator{op}
+                                           │                                 │     | ...14 variants
+                                           │  ubc_children: Vec<FirPointer>  │ eval state (plain)
+                                           │  nyes: Nyes                     │ eval state (plain)
+                                           │  tasks: VecDeque<FirPointer>    │ eval state (plain)
+                                           │  alarm_reason: Option<String>   │
+                                           │  nf_reason: Option<String>      │
+                                           │  helpers_populated: bool        │
+                                           └─────────────────────────────────┘
 
 FVMStorage { arena_id, slots: Vec<Slot> }   <- owns every node; &mut FVMStorage is the ONE exclusivity mechanism
 ```
