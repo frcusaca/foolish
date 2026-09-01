@@ -66,7 +66,7 @@ pub struct FirPointer {
 /// carried so a future slot-reuse scheme does not need to change
 /// `FirPointer`'s shape.
 struct Slot {
-    payload: ArenaFir,
+    payload: ProtoBrane,
     parent: FirPointer,
     /// Parse-time children — fixed topology, set once at construction.
     foolish_children: Vec<FirPointer>,
@@ -79,7 +79,7 @@ struct Slot {
 /// not here — the arena, not each node, owns topology — so [`FirCursor`]/
 /// [`FirCursorMut`] have one place to read and write it.
 #[derive(Debug, Clone)]
-pub(crate) struct ArenaFir {
+pub(crate) struct ProtoBrane {
     spec: FirSpec,
     nyes: Nyes,
     /// Compute-time children (search results, resolved references — as
@@ -109,9 +109,9 @@ pub(crate) struct ArenaFir {
     helpers_populated: bool,
 }
 
-impl ArenaFir {
+impl ProtoBrane {
     /// No caller yet — kept as the symmetric counterpart to [`Self::set_nyes`]
-    /// for code that already holds an `&ArenaFir` (e.g. inside a
+    /// for code that already holds an `&ProtoBrane` (e.g. inside a
     /// `with_mut`/`get_mut` closure) and would otherwise have to route back
     /// through `FVMStorage` just to read what it already has in hand.
     #[expect(
@@ -144,7 +144,7 @@ impl ArenaFir {
     }
 
     /// Takes the child's current `Nyes` as a parameter, rather than looking
-    /// it up itself, because `ArenaFir` cannot reach across arena slots to
+    /// it up itself, because `ProtoBrane` cannot reach across arena slots to
     /// read another node's state — the caller
     /// ([`FirCursorMut::push_ubc_child`]) already has `&FVMStorage` access
     /// to read it first.
@@ -294,7 +294,7 @@ pub enum FirSpec {
     StayFullyFoolish,
     ConcatHelper,
     /// `helpers_populated` is not part of the spec: it starts `false` and is
-    /// set at most once, after construction (see [`ArenaFir::helpers_populated`]).
+    /// set at most once, after construction (see [`ProtoBrane::helpers_populated`]).
     Concatenation {
         provenance: ConcatProvenance,
     },
@@ -386,7 +386,7 @@ impl FVMStorage {
     }
 
     /// Terminal (FOOP-33 §4) — the caller owns the "already set" guard, see
-    /// `ArenaFir::set_nf_reason`.
+    /// `ProtoBrane::set_nf_reason`.
     pub(crate) fn set_nf_reason(&mut self, ptr: FirPointer, reason: String) {
         let index = self.validate(ptr);
         self.slots[index].payload.set_nf_reason(reason);
@@ -397,19 +397,23 @@ impl FVMStorage {
     /// is no separate get/set pair to keep in sync, and no `RefCell`-style
     /// runtime borrow tracking is needed: the `&mut self` borrow on
     /// `FVMStorage` is the only exclusivity check required. `pub(crate)`:
-    /// `ArenaFir` is this module's own internal payload type, never exposed
+    /// `ProtoBrane` is this module's own internal payload type, never exposed
     /// outside it.
-    pub(crate) fn with_mut<R>(&mut self, ptr: FirPointer, f: impl FnOnce(&mut ArenaFir) -> R) -> R {
+    pub(crate) fn with_mut<R>(
+        &mut self,
+        ptr: FirPointer,
+        f: impl FnOnce(&mut ProtoBrane) -> R,
+    ) -> R {
         let index = self.validate(ptr);
         f(&mut self.slots[index].payload)
     }
 
-    /// Retrieve one exclusive, held `&mut ArenaFir` for a run of several
+    /// Retrieve one exclusive, held `&mut ProtoBrane` for a run of several
     /// SEQUENTIAL writes with nothing storage-needing interleaved between
     /// them — the same capability as `with_mut`, offered as a plain borrow
     /// rather than a closure; the choice between the two is style, not
     /// capability.
-    pub(crate) fn get_mut(&mut self, ptr: FirPointer) -> &mut ArenaFir {
+    pub(crate) fn get_mut(&mut self, ptr: FirPointer) -> &mut ProtoBrane {
         let index = self.validate(ptr);
         &mut self.slots[index].payload
     }
@@ -516,7 +520,7 @@ impl FVMStorage {
         };
         let nyes = spec.initial_nyes();
         self.slots.push(Slot {
-            payload: ArenaFir {
+            payload: ProtoBrane {
                 spec,
                 nyes,
                 ubc_children: Vec::new(),
@@ -1895,7 +1899,7 @@ fn sift_for_first_non_econstanic_descendent_search(
 /// storage-needing thing, get the borrow back," which is otherwise legal
 /// Rust but visually noisy to write out by hand at every site that needs it.
 ///
-/// `$handle` is a `&mut`-typed borrow (e.g. `&mut ArenaFir` from
+/// `$handle` is a `&mut`-typed borrow (e.g. `&mut ProtoBrane` from
 /// `FVMStorage::get_mut`), so ending its borrow is `let _ = $handle;`, not
 /// `drop($handle)` — `drop` on a `&mut T` reference is a no-op (it drops the
 /// reference value itself, a `Copy`-free but trivially-droppable pointer, not
@@ -4848,8 +4852,9 @@ mod tests {
         assert_eq!(storage.get_nyes(child), Nyes::Constant);
     }
 
-    /// A freshly-created node starts at its spec's initial `Nyes` — matching
-    /// every kind's own constructor call to `ProtoBrane::new(.., Nyes::X)`.
+    /// A freshly-created node starts at its spec's initial `Nyes` — the same
+    /// starting state each kind's own constructor established when nodes were
+    /// built one-by-one rather than allocated from an arena.
     #[test]
     fn initial_nyes_matches_each_kinds_own_constructor() {
         let mut storage = FVMStorage::new();
@@ -4956,9 +4961,9 @@ mod tests {
         assert!(cursor.settled_result().is_none()); // IndepInt never has a settled_result body
     }
 
-    /// `FirCursorMut::push_ubc_child` mirrors `ProtoBrane::push_ubc_child`
-    /// exactly: pushes to `ubc_children` AND enqueues as a task only when the
-    /// child is not already constanic.
+    /// `FirCursorMut::push_ubc_child` keeps the two-part contract exactly:
+    /// pushes to `ubc_children` AND enqueues as a task only when the child is
+    /// not already constanic.
     #[test]
     fn fir_cursor_mut_push_ubc_child_enqueues_only_non_constanic_children() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
@@ -4984,8 +4989,7 @@ mod tests {
     }
 
     /// `FirCursorMut::push_search_result`'s SINGULAR-RESULT INVARIANT trips
-    /// its `debug_assert!` on a second push — mirrors
-    /// `ProtoBrane::push_search_result`'s own test coverage intent.
+    /// its `debug_assert!` on a second push.
     #[test]
     #[should_panic(expected = "singular-result")]
     fn push_search_result_rejects_a_second_result() {
@@ -7040,7 +7044,7 @@ mod tests {
     /// `\o<name` (SF sugar via `=$`-equivalent) — a contexted search built
     /// via `Astn::ContextedSearch` — has its `contexted` flag set true post
     /// construction, exercising `build_fir`'s `ContextedSearch` arm and
-    /// `ArenaFir::set_contexted` together.
+    /// `ProtoBrane::set_contexted` together.
     #[test]
     fn arena_compiler_contexted_search_sets_the_contexted_flag() {
         let mut storage = FVMStorage::new();
