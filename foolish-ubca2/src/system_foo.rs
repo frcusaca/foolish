@@ -1,21 +1,12 @@
-//! `system.foo` — shared constants and the comparison-operator enum, kept
-//! live after Phase 5's cutover (FOOP-16).
+//! `system.foo` — shared constants and the comparison-operator enum.
 //!
-//! Before Phase 5, this file also held `system.foo` COMPOSITION logic
-//! (`compose_program_with_system`/`compose_one`/`program_result`/
-//! `comparison_body`) and `ComparisonFir`, a full `Rc`-based `impl Fir`
-//! kind — all now DELETED, superseded by their arena equivalents in
-//! `fvm_storage.rs`'s `arena_compiler` module
-//! (`compose_program_with_system`/`program_result`/`comparison_body`/
-//! `build_comparison`) and `FirSpec::Comparison`'s `fir_op_step` dispatch
-//! arm, which is what `UbcaEvaluator::evaluate` — the crate's one
-//! genuinely production-facing entry point — actually calls.
-//!
-//! What remains here is exactly the data those arena equivalents still
-//! read directly (`ComparisonOp`, `OPERAND_SRC`, `SYSTEM_FOO_SRC`), plus a
-//! handful of tests that never depended on the deleted `Rc`-based
-//! machinery in the first place (they call `UbcaEvaluator::evaluate`
-//! directly) and so needed no porting.
+//! `system.foo` composition itself (`compose_program_with_system`/
+//! `compose_one`/`program_result`/`comparison_body`) and comparison
+//! evaluation live in `fvm_storage.rs`'s `arena_compiler` module and
+//! `FirSpec::Comparison`'s `fir_op_step` dispatch arm. What remains here is
+//! exactly the data those read directly (`ComparisonOp`, `OPERAND_SRC`,
+//! `SYSTEM_FOO_SRC`), plus tests that exercise them via
+//! `UbcaEvaluator::evaluate` directly.
 
 /// The five comparison operators `system.foo` supplies (FOOP-33 §5.0).
 ///

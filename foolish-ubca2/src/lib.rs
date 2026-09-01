@@ -1,18 +1,12 @@
 //! # foolish-ubca2
 //!
-//! UBCa — arena-backed FIR storage (FOOP-16), replacing the original
-//! `foolish-ubca` crate's `Rc<RefCell<dyn Fir>>`/`ProtoBrane` design with a
-//! `u32`-indexed arena (`fvm_storage::FVMStorage`) addressed through the
-//! validated handle type `fvm_storage::FirPointer`.
+//! UBCa — arena-backed FIR storage. Every FIR node lives in a `u32`-indexed
+//! arena (`fvm_storage::FVMStorage`) addressed through the validated handle
+//! type `fvm_storage::FirPointer`, in place of `foolish-ubca`'s sibling
+//! `Rc<RefCell<dyn Fir>>`/`ProtoBrane` design.
 //!
-//! Phase 5's cutover (see `docs/foop/FOOP-16.plan.md`) deleted the crate's
-//! original `Rc`-based `Fir` trait/`ProtoBrane`/per-kind struct machinery
-//! (`fir_trait.rs`, `proto_brane.rs`, `fir_kinds.rs`, `compiler.rs`'s and
-//! `system_foo.rs`'s `Rc`-based construction) once `UbcaEvaluator::evaluate`
-//! — the crate's one genuinely production-facing entry point (confirmed by
-//! direct research: `foolish-ubca2` has zero real external callers in this
-//! workspace) — was fully and correctly rewired onto the arena path, proven
-//! by the complete `einmo_gate_checked` suite passing end-to-end through it.
+//! `UbcaEvaluator::evaluate` is the crate's one production-facing entry
+//! point.
 //!
 //! - **`FVMStorage`**: the arena; owns every node reachable from any
 //!   `FirPointer` it minted.

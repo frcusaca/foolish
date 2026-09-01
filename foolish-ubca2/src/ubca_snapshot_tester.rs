@@ -187,11 +187,10 @@ mod einmo_tests {
     /// output↔checked correspondence, then asserts checked↔verified
     /// correspondence with human attestation.
     ///
-    /// Ignored in `foolish-ubca2` (FOOP-16 Phase 0): `einmo_suite/verified/`
-    /// starts intentionally empty here — human-signed attestation is a
-    /// separate concern from the copy-migration itself, per FOOP-16.plan.md's
-    /// Phase 0 instruction not to copy `foolish-ubca`'s `verified/` forward.
-    /// Un-ignore once a human has run
+    /// Ignored: `einmo_suite/verified/` is intentionally empty here —
+    /// human-signed attestation is a separate concern, deliberately not
+    /// copied forward from `foolish-ubca`'s own `verified/`. Un-ignore once
+    /// a human has run
     /// `einmo promote checked to verified foolish-ubca2/einmo_suite --interactive`
     /// against this crate's own `checked/`.
     #[test]

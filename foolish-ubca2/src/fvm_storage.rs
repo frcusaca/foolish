@@ -1,31 +1,11 @@
-//! `FVMStorage` — the arena-backed FIR store (FOOP-16).
+//! `FVMStorage` — the arena-backed FIR store.
 //!
-//! Replaces `Rc<RefCell<dyn Fir>>` children and `Weak<RefCell<dyn Fir>>` parent
-//! back-pointers with `u32`-indexed arena slots addressed through the validated
-//! handle type [`FirPointer`]. See `docs/foop/FOOP-16.md` §Specification for the
-//! full design rationale; this module is a direct implementation of that
-//! specification's `FirPointer`/`FVMStorage`/`FirSpec` section.
-//!
-//! # This module's scope, right now
-//!
-//! This is a **foundational, additive** module (FOOP-16.plan.md Phase 1's
-//! first task): at the point this file is introduced, no existing FIR kind's
-//! fields have changed yet, `trait Fir` (`fir_trait.rs`) is untouched, and
-//! nothing in the rest of the crate calls into this module. The existing
-//! `Fir` trait is built around `&self` + interior mutability (`Cell`/
-//! `RefCell` inside `ProtoBrane`) specifically so a `Rc<RefCell<dyn Fir>>`
-//! handle can be shared and mutated through a shared reference — that design
-//! is exactly what the arena replaces (a `&mut Fir` from `FVMStorage::get_mut`
-//! provides the same exclusivity `RefCell`'s runtime check gave, but checked
-//! at compile time). Storing today's `Fir` trait object unmodified inside a
-//! `Slot` would keep the very interior-mutability machinery this FOOP exists
-//! to remove, so this task stores a placeholder [`ArenaFir`] payload instead —
-//! proven correct against its own small test suite — and each later per-kind
-//! migration task (starting with `IndepIntFir`) is where that kind's `Fir`
-//! impl is rewritten to take `&FVMStorage`/`&mut FVMStorage` explicitly and
-//! becomes the real `Slot` payload. This sequencing matches the plan's own
-//! phrasing for this task: "it only adds the new types alongside the old
-//! ones."
+//! Every FIR node lives in a `u32`-indexed arena slot, addressed through the
+//! validated handle type [`FirPointer`] rather than a `Rc<RefCell<dyn Fir>>`
+//! with a `Weak` parent back-pointer. A `&mut FVMStorage` borrow is the sole
+//! exclusivity check for mutation — no per-node interior mutability, no
+//! runtime borrow panics. See `docs/foop/FOOP-16.md` §Specification for the
+//! full design rationale.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -81,60 +61,42 @@ pub struct FirPointer {
 
 /// One arena slot: the stored payload plus its generation counter.
 ///
-/// `generation` is not load-bearing for safety in FOOP-16's scope (no slot
-/// reuse — see FOOP-16.md §Specification "Arena allocation and expansion");
-/// it is carried now so a future FOOP that introduces slot reuse does not need
-/// to change `FirPointer`'s shape.
+/// `generation` is not load-bearing for safety today — slots are never
+/// reused/reclaimed, so every generation value is currently `0` — but is
+/// carried so a future slot-reuse scheme does not need to change
+/// `FirPointer`'s shape.
 struct Slot {
     payload: ArenaFir,
     parent: FirPointer,
-    /// Parse-time children (immutable topology), mirroring
-    /// `ProtoBrane::foolish_children`.
+    /// Parse-time children — fixed topology, set once at construction.
     foolish_children: Vec<FirPointer>,
     generation: u32,
 }
 
-/// Placeholder per-node payload for this foundational task.
+/// Per-node payload stored in each arena slot.
 ///
-/// Deliberately NOT `trait Fir` — see this module's top-level doc comment for
-/// why. Holds exactly the data every kind needs generically, mirroring every
-/// field `crate::proto_brane::ProtoBrane` carries today EXCEPT
-/// `foolish_children`/`parent` (those live directly on [`Slot`], since the
-/// arena — not each node — owns tree structure) so [`FirCursor`]/
-/// [`FirCursorMut`]'s method table (FOOP-16.md §Specification "The
-/// `FirCursor`/`FirCursorMut` wrapper") has something real to read and write.
-/// Each per-kind migration task replaces reads/writes of this placeholder
-/// with that kind's own arena-aware `Fir` impl; `ArenaFir` itself is deleted
-/// once every kind has migrated (tracked as part of Phase 1's per-kind tasks,
-/// not a separate cleanup).
+/// Tree structure (`parent`, `foolish_children`) lives on [`Slot`] itself,
+/// not here — the arena, not each node, owns topology — so [`FirCursor`]/
+/// [`FirCursorMut`] have one place to read and write it.
 #[derive(Debug, Clone)]
 pub(crate) struct ArenaFir {
     spec: FirSpec,
     nyes: Nyes,
-    /// Compute-time children, mirroring `ProtoBrane::ubc_children`. A plain
-    /// `Vec` here, not `RefCell<Vec<_>>` — the arena's `&mut FVMStorage`
-    /// borrow is the only exclusivity check needed, so the `RefCell` this
-    /// field wraps today becomes unnecessary (see FOOP-16.md §Specification
-    /// "`FirCursor`/`FirCursorMut`", `ubc_children` row: "removes the
-    /// `self.ubc_children.borrow().clone()` dance").
+    /// Compute-time children (search results, resolved references — as
+    /// opposed to `foolish_children`'s fixed parse-time topology). A plain
+    /// `Vec`: the arena's `&mut FVMStorage` borrow is the only exclusivity
+    /// check a mutator needs, so no interior mutability is required here.
     ubc_children: Vec<FirPointer>,
-    /// Task queue, mirroring `ProtoBrane::tasks`.
+    /// Task queue driving this node's stepping.
     tasks: VecDeque<FirPointer>,
-    /// Mirrors `ProtoBrane::alarm_reason`.
     alarm_reason: Option<String>,
-    /// Mirrors `StatementFir::nf_reason` (FOOP-33 §4). Applies ONLY to
-    /// `FirSpec::Statement` nodes — every other kind leaves this `None`
-    /// forever, exactly as the real `nf_reason` field exists only on
-    /// `StatementFir`'s own struct, not on `ProtoBrane`. Kept as a plain
-    /// `ArenaFir` field (not a `FirSpec::Statement` field) for the same
-    /// reason `sf_inner_pattern` is excluded from `FirSpec::Search`'s spec:
-    /// it is a `fir_op_step`-time discovery, never a construction input (see
-    /// `FirSpec::Statement`'s own doc comment, which already says as much).
-    /// `None` in the overwhelmingly common case; `Some(reason)` once set is
-    /// terminal (never cleared) — set by the null-characterized name constant
-    /// rule (`check_null_const_conflict`) or the named-creation no-rename
-    /// rule (`check_rename_of_named_creation`), both ported to this cutover's
-    /// `StatementFir` migration task.
+    /// Set only on `FirSpec::Statement` nodes, by the null-characterized
+    /// name-constant rule (`check_null_const_conflict`) or the named-creation
+    /// no-rename rule (`check_rename_of_named_creation`) — both discovered
+    /// during `fir_op_step`, never known at construction time, which is why
+    /// this lives as a runtime-set field rather than a `FirSpec::Statement`
+    /// constructor input. `None` in the common case; once set, terminal
+    /// (never cleared) — a statement refused once stays refused.
     nf_reason: Option<String>,
     /// Mirrors `ConcatenationFir::_helpers_populated`. Applies ONLY to
     /// `FirSpec::Concatenation` nodes. A monotonic one-way gate distinct
@@ -148,11 +110,9 @@ pub(crate) struct ArenaFir {
 }
 
 impl ArenaFir {
-    /// Mirrors `ProtoBrane::get_nyes`. No caller yet — every current read
-    /// goes through `FVMStorage::get_nyes` instead, which has direct slot
-    /// access; kept as the symmetric counterpart to `set_nyes` below for a
-    /// future caller that already holds an `&ArenaFir` (e.g. inside a
-    /// `with_mut`/`get_mut` closure) and would otherwise need to route back
+    /// No caller yet — kept as the symmetric counterpart to [`Self::set_nyes`]
+    /// for code that already holds an `&ArenaFir` (e.g. inside a
+    /// `with_mut`/`get_mut` closure) and would otherwise have to route back
     /// through `FVMStorage` just to read what it already has in hand.
     #[expect(
         dead_code,
@@ -162,26 +122,14 @@ impl ArenaFir {
         self.nyes
     }
 
-    /// Mirrors `ProtoBrane::set_nyes`. Not further visibility-restricted here
-    /// (unlike `ProtoBrane::set_nyes`'s `pub(crate)`, itself already the
-    /// tightest this module needs) because `ArenaFir` itself is `pub(crate)`
-    /// — the OWNERSHIP CONTRACT (FOOP-62 #10, quoted in full on
-    /// `ProtoBrane::set_nyes`) still applies and is enforced the same way:
-    /// only a node's own `fir_op_step` or construction may call this, once
-    /// each per-kind migration task wires a real `fir_op_step` through
-    /// `FVMStorage::with_mut`/`get_mut`. This module has no caller yet to
-    /// misuse it.
+    /// A FIR owns its own `nyes`; it must never be changed from outside the
+    /// FIR. `pub(crate)`, not `pub`, is the enforcement: only a node's own
+    /// `fir_op_step` or its own construction may call this.
     pub(crate) fn set_nyes(&mut self, n: Nyes) {
         self.nyes = n;
     }
 
-    /// Mirrors `Fir::set_contexted` (default no-op, overridden by
-    /// `SearchFir`/`IndexFir` in the real trait): sets the `contexted` flag
-    /// on a `FirSpec::Search`/`FirSpec::Index` node in place, matching
-    /// `Astn::ContextedSearch`'s real construction-time mutation
-    /// (`fir.borrow_mut().set_contexted(true)`, re-read directly from
-    /// `compiler.rs`) — a no-op for every other kind, exactly as the
-    /// trait's default body is for every kind that does not override it.
+    /// No-op except on `FirSpec::Search`/`FirSpec::Index`.
     pub(crate) fn set_contexted(&mut self, value: bool) {
         match &mut self.spec {
             FirSpec::Search { contexted, .. } | FirSpec::Index { contexted, .. } => {
@@ -191,20 +139,15 @@ impl ArenaFir {
         }
     }
 
-    /// Mirrors `ProtoBrane::ubc_children`. Returns a slice directly — no
-    /// clone-out-of-`Vec` dance, since there is no `RefCell` to reenter (see
-    /// this struct's own doc comment on the `ubc_children` field, and
-    /// FOOP-16.md §Specification's `FirCursor` method table).
     pub(crate) fn ubc_children(&self) -> &[FirPointer] {
         &self.ubc_children
     }
 
-    /// Mirrors `ProtoBrane::push_ubc_child`: pushes to `ubc_children` AND
-    /// enqueues as a task if the child is not already constanic. Takes the
-    /// child's current `Nyes` as a parameter (rather than looking it up
-    /// itself) because `ArenaFir` cannot reach across slots to read another
-    /// node's state — the caller ([`FirCursorMut::push_ubc_child`]) already
-    /// has `&FVMStorage` access to read it first.
+    /// Takes the child's current `Nyes` as a parameter, rather than looking
+    /// it up itself, because `ArenaFir` cannot reach across arena slots to
+    /// read another node's state — the caller
+    /// ([`FirCursorMut::push_ubc_child`]) already has `&FVMStorage` access
+    /// to read it first.
     pub(crate) fn push_ubc_child(&mut self, child: FirPointer, child_nyes: Nyes) {
         self.ubc_children.push(child);
         if !child_nyes.is_constanic() {
@@ -212,8 +155,10 @@ impl ArenaFir {
         }
     }
 
-    /// Mirrors `ProtoBrane::push_search_result`'s SINGULAR-RESULT INVARIANT
-    /// (FOOP-62) `debug_assert!`, verbatim.
+    /// A search settles with at most one result ever pushed to
+    /// `ubc_children` (the singular-result invariant); a second push
+    /// indicates a search re-resolving after already settling, a logic
+    /// error rather than a legitimate re-evaluation.
     pub(crate) fn push_search_result(&mut self, result: FirPointer, result_nyes: Nyes) {
         debug_assert!(
             self.ubc_children.is_empty(),
@@ -223,75 +168,50 @@ impl ArenaFir {
         self.push_ubc_child(result, result_nyes);
     }
 
-    /// Mirrors `ProtoBrane::clear_ubc_children`.
     pub(crate) fn clear_ubc_children(&mut self) {
         self.ubc_children.clear();
     }
 
-    /// Mirrors `ProtoBrane::front_task`.
     pub(crate) fn front_task(&self) -> Option<FirPointer> {
         self.tasks.front().copied()
     }
 
-    /// Mirrors `ProtoBrane::pop_front_task`.
     pub(crate) fn pop_front_task(&mut self) {
         self.tasks.pop_front();
     }
 
-    /// Mirrors `ProtoBrane::push_task`.
     pub(crate) fn push_task(&mut self, t: FirPointer) {
         self.tasks.push_back(t);
     }
 
-    /// Mirrors `ProtoBrane::set_alarm_reason`. Called by
-    /// `search_fir_dispatch::check_value_pattern_ready` (Phase 2's final
-    /// task) — the `#[expect(dead_code)]` this had at the Phase 1
-    /// foundational task is removed now that it has a real caller.
     pub(crate) fn set_alarm_reason(&mut self, reason: String) {
         self.alarm_reason = Some(reason);
     }
 
-    /// Mirrors `ProtoBrane::alarm_reason`. Called through
-    /// `FVMStorage::alarm_reason` (Phase 3) — the `#[expect(dead_code)]`
-    /// this had is removed now that it has a real caller.
     pub(crate) fn alarm_reason(&self) -> Option<&str> {
         self.alarm_reason.as_deref()
     }
 
-    /// Mirrors `StatementFir::nf_reason`'s reader (FOOP-33 §4). `None` unless
-    /// this is a `FirSpec::Statement` node that a null-characterized-name
-    /// rule has refused. Terminal once set — mirrors the real field's
-    /// "set once, never cleared" contract (see this struct's `nf_reason`
-    /// field doc comment).
+    /// `None` unless this is a `FirSpec::Statement` node that a
+    /// null-characterized-name rule has refused.
     pub(crate) fn nf_reason(&self) -> Option<&str> {
         self.nf_reason.as_deref()
     }
 
-    /// Mirrors `StatementFir::check_null_const_conflict`/
-    /// `check_rename_of_named_creation`'s ONLY write path: `*self.nf_reason
-    /// .borrow_mut() = Some(reason)`. Terminal — the real methods both guard
-    /// with `if self.nf_reason.borrow().is_some() { return; }` BEFORE calling
-    /// this (Gotcha #5a: no re-alarm once resolved); this setter itself does
-    /// not re-check, matching `ProtoBrane::set_alarm_reason`'s equally
-    /// unconditional real counterpart — the caller owns the "already set"
-    /// guard, exactly as it does today. Called through
-    /// `FVMStorage::set_nf_reason`, which has a real caller as of Phase 5's
-    /// `StatementFir` NF-check port (`search_fir_dispatch::
-    /// check_null_const_conflict`).
+    /// The caller must check `nf_reason().is_some()` itself first — this
+    /// setter does not guard against re-setting, so a refusal already
+    /// recorded is never re-alarmed only if the caller checks before calling.
     pub(crate) fn set_nf_reason(&mut self, reason: String) {
         self.nf_reason = Some(reason);
     }
 
-    /// Mirrors `ConcatenationFir::_helpers_populated`'s reader. See this
-    /// struct's `helpers_populated` field doc comment for why this cannot
-    /// be inferred from `ubc_children`'s emptiness.
+    /// See the `helpers_populated` field's own doc comment for why this
+    /// cannot be inferred from `ubc_children`'s emptiness.
     pub(crate) fn helpers_populated(&self) -> bool {
         self.helpers_populated
     }
 
-    /// Mirrors `ConcatenationFir::_helpers_populated`'s ONLY write path:
-    /// `self._helpers_populated.set(true)`. One-way — never called with
-    /// `false` (the real `Cell<bool>` is likewise never reset).
+    /// One-way — never called with `false`.
     pub(crate) fn set_helpers_populated(&mut self) {
         self.helpers_populated = true;
     }
@@ -310,10 +230,7 @@ pub struct FVMStorage {
 }
 
 /// How a concatenation was spelled in source. Affects SEQUENCING ONLY — never
-/// evaluation (FOOP-65 §5.3). Relocated here at Phase 5's cutover (formerly
-/// `fir_kinds::ConcatProvenance`, deleted along with the rest of that file's
-/// `Rc`-based machinery) since `FirSpec::Concatenation` is this enum's only
-/// remaining user.
+/// evaluation (FOOP-65 §5.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConcatProvenance {
     /// Ordinary brane concatenation (juxtaposition): `{a}{b}{c}`.
@@ -325,47 +242,38 @@ pub enum ConcatProvenance {
 
 /// The name used for an anonymous statement (a bare expression with no LHS
 /// identifier). The sequencer renders a statement named `???` WITHOUT a
-/// `name=` prefix (FOOP-62 #19). Relocated here at Phase 5's cutover
-/// (formerly `compiler::ANON_STMT_NAME`, deleted along with the rest of that
-/// file's `Rc`-based machinery) since `arena_compiler`/`core_fir_conversion`
-/// are this constant's only remaining users.
+/// `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
 
-/// One variant per FIR kind (per `fir_kinds.rs`'s 13 `impl Fir for` sites plus
-/// `system_foo.rs`'s `ComparisonFir` — 14 total, confirmed by direct grep
-/// against `foolish-ubca2/src/fir_kinds.rs` and `system_foo.rs` when this type
-/// was written; see FOOP-16.plan.md Phase 1's "Re-verify the authoritative
-/// FIR-kind list" and the `ComparisonFir` plan-adjustment task).
+/// One variant per FIR kind.
 ///
-/// Each variant's fields mirror that kind's own non-tree-structural fields —
+/// Each variant's fields are that kind's own non-tree-structural data —
 /// parent/children are handled generically by [`FVMStorage::make_my_child`],
 /// so no variant carries a parent or child list.
 ///
 /// This enum exists so construction dispatches on data rather than
-/// fragmenting into a `create_x_child` method per kind (FOOP-16.md
-/// §Specification "`FirPointer`'s handle-side methods").
+/// fragmenting into a `create_x_child` method per kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FirSpec {
-    /// Mirrors what `IndepIntFir` was before Phase 5's cutover deleted it.
-    IndepInt { value: i64 },
-    /// Mirrors what `NkFir` was before Phase 5's cutover deleted it.
-    Nk { reason: String },
-    /// Mirrors `crate::fir_kinds::OperatorFir`.
-    Operator { op: String },
-    /// Mirrors `crate::fir_kinds::StatementFir`. `nf_reason` is not part of
-    /// the spec — it starts `None` always, a `fir_op_step`-time discovery,
-    /// never a construction input (see that kind's own migration task).
+    IndepInt {
+        value: i64,
+    },
+    Nk {
+        reason: String,
+    },
+    Operator {
+        op: String,
+    },
+    /// `nf_reason` is not part of the spec: it starts `None` always,
+    /// discovered later during `fir_op_step`, never known at construction.
     Statement {
         identifier: Identifier,
         line_number: usize,
     },
-    /// Mirrors `crate::fir_kinds::BraneFir`.
     Brane {
         characterizations: Characterizations,
     },
-    /// Mirrors `crate::fir_kinds::SearchFir`. `sf_inner_pattern` is not part
-    /// of the spec — it starts `None` always, matching today's construction
-    /// sites.
+    /// `sf_inner_pattern` is not part of the spec: it starts `None` always.
     Search {
         pattern: String,
         anchored: bool,
@@ -373,43 +281,41 @@ pub enum FirSpec {
         is_value_search: bool,
         contexted: bool,
     },
-    /// Mirrors `crate::fir_kinds::IndexFir`.
     Index {
         offset: i32,
         anchored: bool,
         contexted: bool,
     },
-    /// Mirrors `crate::fir_kinds::FoolRefFir`. `referent` names the original
-    /// found statement this reference wraps.
-    FoolRef { referent: FirPointer },
-    /// Mirrors `crate::fir_kinds::StayFoolishFir`. No fields beyond `core`.
+    /// `referent` names the original found statement this reference wraps.
+    FoolRef {
+        referent: FirPointer,
+    },
     StayFoolish,
-    /// Mirrors `crate::fir_kinds::StayFullyFoolishFir`. No fields beyond `core`.
     StayFullyFoolish,
-    /// Mirrors `crate::fir_kinds::ConcatHelper`. No fields beyond `core`.
     ConcatHelper,
-    /// Mirrors `crate::fir_kinds::ConcatenationFir`. `_helpers_populated` is
-    /// not part of the spec — it is derived post-construction, matching
-    /// `constanic_clone_at`'s own `FirKind::Concatenation` arm.
-    Concatenation { provenance: ConcatProvenance },
-    /// Mirrors `crate::fir_kinds::CreationFir`. No fields beyond `core`.
+    /// `helpers_populated` is not part of the spec: it starts `false` and is
+    /// set at most once, after construction (see [`ArenaFir::helpers_populated`]).
+    Concatenation {
+        provenance: ConcatProvenance,
+    },
     Creation,
-    /// Mirrors `system_foo::ComparisonFir` (not in `fir_kinds.rs` — see the
-    /// `ComparisonFir` plan-adjustment task in FOOP-16.plan.md Phase 1).
-    Comparison { op: crate::system_foo::ComparisonOp },
+    Comparison {
+        op: crate::system_foo::ComparisonOp,
+    },
 }
 
 impl FirSpec {
-    /// The `Nyes` a freshly-constructed node of this spec starts at, mirroring
-    /// each kind's own constructor call to `ProtoBrane::new(.., Nyes::X)` seen
-    /// directly in `fir_kinds.rs`/`system_foo.rs` today: every kind starts
-    /// `Prembrionic` except `CreationFir` (`Independent`, since a creation is
-    /// self-contained with no context dependency) — confirmed by reading
-    /// `CreationFir::creation`, `IndepIntFir::constant_int`, `NkFir::nk`, and
-    /// every other kind's constructor directly.
+    /// The `Nyes` a freshly-constructed node of this spec starts at.
+    ///
+    /// `Creation` and `IndepInt` are fully determined the moment they're
+    /// written — a literal integer or a creation mark needs no children and
+    /// no computation to know its value — so they start `Independent`
+    /// (already settled). Every other kind depends on stepping (its own
+    /// computation, or its children's) to reach a settled value, so it
+    /// starts `Prembrionic`.
     fn initial_nyes(&self) -> Nyes {
         match self {
-            FirSpec::Creation | FirSpec::IndepInt{..} => Nyes::Independent,
+            FirSpec::Creation | FirSpec::IndepInt { .. } => Nyes::Independent,
             _ => Nyes::Prembrionic,
         }
     }
@@ -463,31 +369,24 @@ impl FVMStorage {
         self.slots[index].payload.nyes
     }
 
-    /// Retrieve this pointer's alarm reason, if any. Mirrors
-    /// `ProtoBrane::alarm_reason`. Called by `core_fir_conversion`'s
-    /// `Brane` arm (Phase 3) — the `#[expect(dead_code)]` `ArenaFir::
-    /// alarm_reason` had is removed now that it has a real caller reached
-    /// through this accessor.
     pub fn alarm_reason(&self, ptr: FirPointer) -> Option<&str> {
         let index = self.validate(ptr);
         self.slots[index].payload.alarm_reason()
     }
 
     /// Retrieve this pointer's NF (Not Foolish) reason, if any (FOOP-33 §4).
-    /// Mirrors `StatementFir::nf_reason`'s reader. `None` for every kind
-    /// other than `FirSpec::Statement`, and `None` there too unless a
-    /// null-characterized-name rule has refused this statement. Consulted by
-    /// [`FirPointer::settled_result`] to substitute the refusal NK in place
-    /// of the written body — see that method's doc comment.
+    /// `None` for every kind other than `FirSpec::Statement`, and `None`
+    /// there too unless a null-characterized-name rule has refused this
+    /// statement. Consulted by [`FirPointer::settled_result`] to substitute
+    /// the refusal NK in place of the written body — see that method's doc
+    /// comment.
     pub fn nf_reason(&self, ptr: FirPointer) -> Option<&str> {
         let index = self.validate(ptr);
         self.slots[index].payload.nf_reason()
     }
 
-    /// Sets this pointer's NF reason (FOOP-33 §4). Mirrors
-    /// `StatementFir::check_null_const_conflict`/`check_rename_of_named_
-    /// creation`'s write path — terminal, but the caller owns the
-    /// "already set" guard (see `ArenaFir::set_nf_reason`'s doc comment).
+    /// Terminal (FOOP-33 §4) — the caller owns the "already set" guard, see
+    /// `ArenaFir::set_nf_reason`.
     pub(crate) fn set_nf_reason(&mut self, ptr: FirPointer, reason: String) {
         let index = self.validate(ptr);
         self.slots[index].payload.set_nf_reason(reason);
@@ -497,14 +396,9 @@ impl FVMStorage {
     /// able to modify it before returning" primitive. Closure-scoped so there
     /// is no separate get/set pair to keep in sync, and no `RefCell`-style
     /// runtime borrow tracking is needed: the `&mut self` borrow on
-    /// `FVMStorage` is the only exclusivity check required.
-    ///
-    /// `pub(crate)` for now, not `pub`: the FOOP-16.md spec's final signature
-    /// takes `impl FnOnce(&mut Fir) -> R` once a real arena-aware `Fir` trait
-    /// exists; today's receiver is the internal [`ArenaFir`] placeholder,
-    /// which must not leak as public API before that trait is real (Rule
-    /// zero: private defensively, public by design). Widens to `pub` in the
-    /// per-kind migration task that gives it its final signature.
+    /// `FVMStorage` is the only exclusivity check required. `pub(crate)`:
+    /// `ArenaFir` is this module's own internal payload type, never exposed
+    /// outside it.
     pub(crate) fn with_mut<R>(&mut self, ptr: FirPointer, f: impl FnOnce(&mut ArenaFir) -> R) -> R {
         let index = self.validate(ptr);
         f(&mut self.slots[index].payload)
@@ -512,18 +406,15 @@ impl FVMStorage {
 
     /// Retrieve one exclusive, held `&mut ArenaFir` for a run of several
     /// SEQUENTIAL writes with nothing storage-needing interleaved between
-    /// them. See FOOP-16.md §Specification "`FVMStorage` — the arena" and the
-    /// `OperatorFir::combine` walkthrough that motivated this alongside
-    /// `with_mut` — the two are equally powerful; the choice is style.
-    ///
-    /// `pub(crate)` for now — same reasoning as [`Self::with_mut`] above.
+    /// them — the same capability as `with_mut`, offered as a plain borrow
+    /// rather than a closure; the choice between the two is style, not
+    /// capability.
     pub(crate) fn get_mut(&mut self, ptr: FirPointer) -> &mut ArenaFir {
         let index = self.validate(ptr);
         &mut self.slots[index].payload
     }
 
-    /// This pointer's parse-time children, in construction order, mirroring
-    /// `ProtoBrane::foolish_children`.
+    /// This pointer's parse-time children, in construction order.
     pub fn foolish_children(&self, ptr: FirPointer) -> &[FirPointer] {
         let index = self.validate(ptr);
         &self.slots[index].foolish_children
@@ -555,31 +446,21 @@ impl FVMStorage {
 
     /// Allocates a fresh node with `parent` as its `.parent` field, WITHOUT
     /// appending it to `parent`'s `foolish_children` list. For nodes that
-    /// are a computed RESULT, not part of the parse-derived topology — the
-    /// arena's structural counterpart to the real `Rc::new(RefCell::new(..))`
-    /// pattern used throughout `fir_kinds.rs`/`system_foo.rs` for exactly
-    /// this case (a fresh `NkFir` built and pushed only to `ubc_children`,
-    /// e.g. `OperatorFir::combine`'s NK-on-child-NK/division-by-zero
-    /// branches, `ConcatenationFir`'s type-error branch, `IndexFir`'s
-    /// named-non-brane-anchor diagnostic): the real `Rc::new` there
-    /// deliberately does NOT touch the parent's `foolish_children` `Vec` at
-    /// all, unlike `Rc::new_cyclic`-based construction (which always wires
-    /// into the parse tree).
+    /// are a computed RESULT, not part of the parse-derived topology (e.g.
+    /// `combine`'s NK-on-child-NK/division-by-zero branches,
+    /// `ConcatenationFir`'s type-error branch, `IndexFir`'s
+    /// named-non-brane-anchor diagnostic) — `create_child`/`make_my_child`'s
+    /// ALWAYS-append contract is correct for parse topology but wrong here.
     ///
-    /// **Real, load-bearing bug this fixes** (found via `einmo_gate_checked`
-    /// diverging for the first time once `UbcaEvaluator::evaluate` was
-    /// rewired onto the arena path, Phase 5's cutover): every call site
-    /// that used `ptr.create_child(storage, FirSpec::Nk { .. })` for a
-    /// RESULT node was — via `create_child`/`make_my_child`'s ALWAYS-append
-    /// contract — silently corrupting `foolish_children` with the result,
-    /// which then fed straight back into anything iterating `foolish_children`
-    /// afterward (the `Operator`/`Concatenation`/`Index` output-serialization
-    /// arms' own operand-rendering loops, and `combine`'s own `any_nk`
-    /// re-check on a later step). Confirmed directly: `{a = 10 / 0 * 5;}`'s
-    /// outer `*` operator had exactly 2 `foolish_children` (`/`-node, `5`)
-    /// before settling and 3 AFTER (`/`-node, `5`, a phantom fresh
-    /// `Nk{reason:"operator nk"}`) — the phantom is `combine`'s own NK
-    /// result, wrongly self-appended to the very list `combine` itself
+    /// Using `create_child` for a result node instead of this method is a
+    /// real, silent bug: the result node ends up corrupting
+    /// `foolish_children`, which then feeds into anything iterating it
+    /// afterward — the operand-rendering loops in output serialization, and
+    /// `combine`'s own `any_nk` re-check on a later step. For example,
+    /// `{a = 10 / 0 * 5;}`'s outer `*` operator would have exactly 2
+    /// `foolish_children` (`/`-node, `5`) before settling and 3 after
+    /// (`/`-node, `5`, a phantom fresh `Nk{reason:"operator nk"}`) if its
+    /// result were wrongly self-appended to the very list `combine` itself
     /// reads on next entry.
     pub(crate) fn make_orphan_child(&mut self, parent: FirPointer, spec: FirSpec) -> FirPointer {
         self.validate(parent);
@@ -590,19 +471,12 @@ impl FVMStorage {
     /// list WITHOUT allocating a new slot and WITHOUT reparenting `child`
     /// (its own `.parent` field, and therefore its home brane and line
     /// number, are left exactly as they were). This is `revive_constanic`'s
-    /// "share-not-clone" path's missing half: the real `constanic_clone_at`
-    /// shares a `Constant`/`Independent` non-Brane (or a `FoolRef`/
-    /// `Creation` regardless of NYES) by returning the SAME `Rc` unchanged —
-    /// `Rc::clone(fir_ref)`, still pointing at its OLD parent — while the
-    /// NEW parent's own `ProtoBrane::foolish_children` `Vec` still gets the
-    /// shared pointer appended (an ordinary `Vec::push`, independent of the
-    /// child's own parent field). `revive_constanic`'s share branch previously
-    /// returned the shared pointer WITHOUT this append — a real, pre-
-    /// existing gap (undetected until `populate_concat_helpers`'s cutover
-    /// task exercised it end-to-end: a `ConcatHelper` merging an
-    /// already-Constant statement ended up with an EMPTY `foolish_children`
-    /// list despite `revive_constanic` reporting a "successful" share, because
-    /// nothing had appended the shared pointer to the new parent).
+    /// "share-not-clone" path's other half: sharing a node means its own
+    /// parent link stays untouched, but the NEW parent's `foolish_children`
+    /// list must still record the shared pointer as one of its children —
+    /// without this append, a caller like `populate_concat_helpers` that
+    /// walks the new parent's `foolish_children` afterward would silently
+    /// see the shared child missing, even though the share reported success.
     pub(crate) fn attach_shared_foolish_child(&mut self, parent: FirPointer, child: FirPointer) {
         self.validate(parent);
         self.validate(child);
@@ -612,10 +486,7 @@ impl FVMStorage {
     }
 
     /// Inserts the very first node of a fresh arena, self-parented (its own
-    /// `FirPointer` as its parent — mirroring today's `Rc::new_cyclic`
-    /// self-`Weak` root convention, confirmed by `proto_brane_parent_link`'s
-    /// test in `proto_brane.rs`: a root's parent, upgraded, pointer-equals the
-    /// root itself).
+    /// `FirPointer` is its own parent).
     ///
     /// Unlike `make_my_child`, there is no pre-existing parent to validate or
     /// wire into — this method exists specifically for that no-parent case.
@@ -670,11 +541,9 @@ impl Default for FVMStorage {
 
 #[cfg(test)]
 impl FVMStorage {
-    /// Creates a fresh arena containing a single self-rooting leaf, mirroring
-    /// `fir_trait.rs::tests::make_leaf`'s signature closely enough that a
-    /// reader who knows one recognizes the other (FOOP-16.md §Specification
-    /// "Test helpers"). A leaf here is an `IndepInt` — the simplest kind with
-    /// no interesting children — at the given `Nyes`.
+    /// Creates a fresh arena containing a single self-rooting leaf. A leaf
+    /// here is an `IndepInt` — the simplest kind with no interesting
+    /// children — at the given `Nyes`.
     pub(crate) fn test_leaf(nyes: Nyes) -> (Self, FirPointer) {
         let mut storage = Self::new();
         let ptr = storage.make_root(FirSpec::IndepInt { value: 0 });
@@ -683,9 +552,7 @@ impl FVMStorage {
     }
 
     /// Creates a fresh arena containing a root `Brane` with the given
-    /// children specs, mirroring `fir_trait.rs::tests::make_root_brane`'s
-    /// signature closely enough that a reader who knows one recognizes the
-    /// other (FOOP-16.md §Specification "Test helpers").
+    /// children specs.
     pub(crate) fn test_root_brane(children_specs: &[FirSpec]) -> (Self, FirPointer) {
         let mut storage = Self::new();
         let root = storage.make_root(FirSpec::Brane {
@@ -699,21 +566,17 @@ impl FVMStorage {
 }
 
 impl FirPointer {
-    /// Primary construction call site, used everywhere in this FOOP's plan.
-    /// Delegates to [`FVMStorage::make_my_child`].
+    /// The primary construction call site. Delegates to
+    /// [`FVMStorage::make_my_child`].
     pub fn create_child(self, storage: &mut FVMStorage, spec: FirSpec) -> FirPointer {
         storage.make_my_child(self, spec)
     }
 
-    /// This pointer's parent, per the arena's stored parent link.
-    ///
-    /// Always `Some` in practice — even the structural root's "parent" is
-    /// itself (mirroring today's self-referential root `Weak`). `Option`
-    /// mirrors `crate::proto_brane::ProtoBrane::parent`'s signature so
-    /// callers migrating from that method keep the same shape; unlike that
-    /// method's doc comment (which reserves `None` for teardown), no
-    /// arena-era case actually returns `None` — the arena never drops a live
-    /// node out from under a valid pointer.
+    /// This pointer's parent, per the arena's stored parent link. Always
+    /// `Some` in practice — even the structural root's "parent" is itself —
+    /// since the arena never drops a live node out from under a valid
+    /// pointer. `Option` is kept in the signature for callers that need to
+    /// distinguish the root case explicitly.
     pub fn get_parent(self, storage: &FVMStorage) -> Option<FirPointer> {
         Some(storage.parent(self))
     }
@@ -724,19 +587,9 @@ impl FirPointer {
         storage.parent(self) == self
     }
 
-    /// Climbs the parent chain to the first brane-like kind, mirroring
-    /// `crate::fir_trait::Fir::_get_my_brane`: climb until `parent()`
-    /// pointer-equals `self` (structural root) → `None`; else check
-    /// brane-likeness → stop, else recurse.
-    ///
-    /// "Brane-like" at this foundational stage is judged directly on
-    /// [`FirSpec`] (`Brane` or `ConcatHelper` — the two kinds whose real `Fir`
-    /// impls report `is_brane_like() == true` today, confirmed by reading
-    /// `BraneFir`'s and `ConcatHelper`'s `Fir` impls directly) rather than
-    /// through a `dyn Fir` call, since no kind has a real arena-aware `Fir`
-    /// impl yet. Each per-kind migration task's own `is_brane_like` override
-    /// supersedes this once that kind's `Fir` impl exists; this method is
-    /// re-pointed at that point rather than duplicated.
+    /// Climbs the parent chain to the first brane-like kind: climb until
+    /// `parent()` pointer-equals `self` (structural root) → `None`; else
+    /// check brane-likeness → stop, else recurse.
     pub fn home_brane(self, storage: &FVMStorage) -> Option<FirPointer> {
         let parent = storage.parent(self);
         if parent == self {
@@ -750,11 +603,6 @@ impl FirPointer {
     }
 
     /// Whether this pointer is brane-like (has statements to iterate).
-    /// Delegates to [`FirCursor::is_brane_like`] — now that `Brane`'s AND
-    /// `ConcatHelper`'s real `stmt_count` overrides are both migrated, this
-    /// is the same real judgment, not a separate placeholder (the earlier
-    /// duplication between this method and `FirCursor::is_brane_like` is
-    /// resolved by unifying on one implementation).
     fn is_brane_like(self, storage: &FVMStorage) -> bool {
         FirCursor::new(self, storage).is_brane_like()
     }
@@ -764,10 +612,9 @@ impl FirPointer {
         matches!(storage.get(self), FirSpec::Statement { .. })
     }
 
-    /// The statement this pointer's search would read as its position,
-    /// mirroring `crate::fir_trait::Fir::_get_my_statement` exactly: climb
-    /// until a `Statement` kind is found, or until `parent()` pointer-equals
-    /// `self` (structural root, returned as-is).
+    /// The statement this pointer's search would read as its position:
+    /// climb until a `Statement` kind is found, or until `parent()`
+    /// pointer-equals `self` (structural root, returned as-is).
     fn get_my_statement(self, storage: &FVMStorage) -> FirPointer {
         if self.is_statement(storage) {
             return self;
@@ -780,10 +627,9 @@ impl FirPointer {
         }
     }
 
-    /// The settled result this pointer resolves to, if any, mirroring
-    /// `crate::fir_trait::Fir::settled_result`'s CONTRACT verbatim:
-    /// "applies the constanic gate ITSELF — pre-constanic always answers
-    /// None." `pub(crate)` (not private): also called directly by
+    /// The settled result this pointer resolves to, if any. Applies the
+    /// constanic gate itself — pre-constanic always answers `None`.
+    /// `pub(crate)`: also called directly by
     /// `search_fir_dispatch::statement_value_for_comparison`, a nested
     /// module.
     pub(crate) fn settled_result(self, storage: &FVMStorage) -> Option<FirPointer> {
@@ -794,8 +640,8 @@ impl FirPointer {
         storage.slots[index].payload.ubc_children().first().copied()
     }
 
-    /// Arena-threaded `crate::fir_trait::FirRefExt::value`: recursively
-    /// unwraps through `settled_result`, returning `self` when there is none.
+    /// Recursively unwraps through `settled_result`, returning `self` when
+    /// there is none.
     pub fn value(self, storage: &FVMStorage) -> FirPointer {
         match self.settled_result(storage) {
             Some(child) => child.value(storage),
@@ -803,39 +649,22 @@ impl FirPointer {
         }
     }
 
-    /// Performs ONE stepping action (check-then-act) and reports progress.
-    ///
-    /// Direct arena-threaded translation of `crate::fir_trait::step_inner`,
-    /// re-read verbatim from `fir_trait.rs` before writing this (not from any
-    /// earlier reconstructed notes): same `MAX_DEPTH` guard, same front-task
-    /// constanic-gate (pop vs. recurse), same `Scope` mutation for
-    /// `StayFoolish`/`Statement`/brane-like kinds before recursing.
-    ///
-    /// `fir_op_step` itself is NOT wired in yet — no kind has an arena-aware
-    /// `fir_op_step` at this foundational stage (see this module's top-level
-    /// doc comment). This method is complete and tested up to that point: the
-    /// front-task-present branches (pop / recurse) are exercised by this
-    /// task's own tests; the `None` branch (call `fir_op_step`) is a
-    /// `todo!()` until the first per-kind migration task gives it something
-    /// real to call.
+    /// Performs ONE stepping action: if the front task is already constanic,
+    /// pop it; otherwise recurse into it. Once there is no front task left,
+    /// calls this node's own `fir_op_step`.
     pub fn step(self, storage: &mut FVMStorage) -> FirPointer {
         step_inner(self, storage, ArenaScope::default(), 0)
     }
 
-    /// Direct arena-threaded translation of `CreationFir::get_display_name`
-    /// (re-read in full immediately before writing this). `self` must be a
-    /// `FirSpec::Creation` pointer; `viewed_from` is the statement currently
-    /// being rendered. The arena's `FirPointer` equality replaces every
-    /// `Rc::ptr_eq` in the original one-for-one — a genuinely cleaner
-    /// translation than the original's identity-comparison ceremony, since
-    /// `FirPointer` is already `PartialEq`.
+    /// The display name a `Creation` reports when read from `viewed_from`,
+    /// if any. `self` must be a `FirSpec::Creation` pointer.
     ///
-    /// Two conditions, both required (FOOP-33, quoted from the original):
-    /// (1) reached somewhere OTHER than its own defining statement — a
-    /// creation's parent statement is where it was born, and reporting that
-    /// same name back there reads as self-referential; (2) the defining
-    /// statement's name is null-characterized — only a protected constant
-    /// like `'True` qualifies.
+    /// Two conditions must both hold (FOOP-33): (1) `viewed_from` is
+    /// somewhere OTHER than the creation's own defining statement — that
+    /// statement is where it was born, and reporting the same name back
+    /// there would read as self-referential; (2) the defining statement's
+    /// name is null-characterized — only a protected constant like `'True`
+    /// qualifies.
     #[must_use]
     pub fn get_display_name(self, storage: &FVMStorage, viewed_from: FirPointer) -> Option<String> {
         let parent = storage.parent(self);
@@ -863,27 +692,21 @@ impl FirPointer {
         Some(name)
     }
 
-    /// Direct arena-threaded translation of `FirRefNavExt::find_stmt_index`
-    /// (re-read directly, `fir_kinds.rs`): the index of `stmt` among
-    /// `self`'s statements, by identity. `self` must be brane-like.
+    /// The index of `stmt` among `self`'s statements, by identity. `self`
+    /// must be brane-like.
     ///
-    /// Naming note: this is a `sift_*`-shaped operation (an ordinary
-    /// Rust-side walk, no Foolish search semantics) but keeps its original
-    /// name — `find_stmt_index` — for continuity with the method it
-    /// translates; a rename is not part of this task's scope.
+    /// An ordinary Rust-side walk, not a Foolish search — the `sift_*`
+    /// naming convention would apply, but `find_stmt_index` is kept to match
+    /// this operation's established name elsewhere in the crate.
     pub fn find_stmt_index(self, storage: &FVMStorage, stmt: FirPointer) -> Option<usize> {
         let cursor = FirCursor::new(self, storage);
         let count = cursor.stmt_count()?;
         (0..count).find(|&i| cursor.stmt_at(i) == Some(stmt))
     }
 
-    /// Direct arena-threaded translation of `fir_kinds.rs`'s free function
-    /// `find_enclosing_stmt_and_brane` (re-read in full immediately before
-    /// writing this): climbs the parent chain from `self` until a
-    /// `Statement` kind is found, then returns that statement together with
-    /// its home brane. `None` if the climb reaches the structural root
-    /// without finding a `Statement` (mirroring the original's `while let
-    /// Some(node) = current` loop, which stops at `None`/self-parenting).
+    /// Climbs the parent chain from `self` until a `Statement` kind is
+    /// found, then returns that statement together with its home brane.
+    /// `None` if the climb reaches the structural root without finding one.
     pub fn find_enclosing_stmt_and_brane(
         self,
         storage: &FVMStorage,
@@ -904,57 +727,13 @@ impl FirPointer {
     }
 }
 
-/// Guard against runaway recursion on pathologically deep trees. Same value
-/// as `fir_trait.rs`'s `MAX_DEPTH`, re-read directly from that file (not
-/// reconstructed) to confirm the match.
+/// Guard against runaway recursion on pathologically deep trees.
 const MAX_DEPTH: usize = 100;
 
-/// Recursion companion for [`FirPointer::step`], carrying the depth counter.
-/// Direct translation of `fir_trait.rs`'s real `step_inner`, re-read in full
-/// immediately before writing this function:
-///
-/// ```text
-/// fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, UbcError> {
-///     if depth > MAX_DEPTH { return Ok(StepReport::NoProgress); }
-///     let front = this.borrow().core().front_task();
-///     match front {
-///         Some(front_rc) => {
-///             if front_rc.borrow().core().get_nyes().is_constanic() {
-///                 this.borrow().core().pop_front_task();
-///             } else {
-///                 // Scope mutation for StayFoolish/Statement/brane-like, then recurse.
-///                 step_inner(&front_rc, &child_scope, depth + 1)?;
-///             }
-///             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
-///         }
-///         None => {
-///             this.borrow().fir_op_step(scope)?;
-///             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
-///         }
-///     }
-/// }
-/// ```
-///
-/// This translation returns the pointer itself rather than a `StepReport` —
-/// callers read `storage.get_nyes(ptr)` for the report; `Scope` threading and
-/// `fir_op_step` dispatch are deferred to the per-kind/evaluator migration
-/// tasks that give them something real to operate on (Phase 1 per-kind tasks,
-/// Phase 3 for the evaluator loop itself) — this function proves the
-/// pop-vs-recurse shape is faithfully preserved under the arena now, before
-/// any kind depends on it.
-/// Arena-threaded stand-in for `fir_trait.rs`'s `Scope`, carrying all three
-/// fields the real `Scope` does (`current_statement`/`current_brane` — the
-/// IB/AB search anchors — plus `has_ancestral_sfm`). Not named `Scope` to
-/// avoid colliding with `crate::fir_trait::Scope`, the still-live real type
-/// every unmigrated kind's `Rc`-based `fir_op_step` keeps using.
-///
-/// `has_ancestral_sfm` was deliberately omitted through Phase 1-4 (no
-/// arena-migrated kind read it yet — SFF's own SFM threading was exercised
-/// only through `revive_constanic`'s `sfm` parameter, not through this scope)
-/// and is added here at Phase 5's `IndexFir` cutover, its first real reader
-/// (the real `IndexFir::fir_op_step`'s contexted/anchored branches pass
-/// `scope.has_ancestral_sfm` straight through to `constanic_clone_at`, i.e.
-/// this arena's `clone_stmt_result`/`revive_constanic`).
+/// Carries `step`'s scope down the tree: `current_statement`/`current_brane`
+/// (the IB/AB search anchors) and `has_ancestral_sfm` (threaded through to
+/// `clone_stmt_result`/`revive_constanic` by `IndexFir`'s contexted/anchored
+/// dispatch).
 #[derive(Debug, Clone, Copy, Default)]
 struct ArenaScope {
     current_statement: Option<FirPointer>,
@@ -962,6 +741,7 @@ struct ArenaScope {
     has_ancestral_sfm: bool,
 }
 
+/// Recursion companion for [`FirPointer::step`], carrying the depth counter.
 fn step_inner(
     ptr: FirPointer,
     storage: &mut FVMStorage,
@@ -977,13 +757,11 @@ fn step_inner(
             if storage.get_nyes(front_ptr).is_constanic() {
                 storage.with_mut(ptr, |fir| fir.pop_front_task());
             } else {
-                // Direct translation of the real step_inner's Scope
-                // mutation, re-confirmed against fir_trait.rs: set
-                // has_ancestral_sfm when `this` is StayFoolish; set
-                // current_statement when `this` (the node ABOUT TO RECURSE
-                // INTO ITS CHILD, i.e. `ptr` here) is a Statement; set
-                // current_brane when `this` is brane-like. All three are set
-                // on `ptr`'s own scope before recursing into `front_ptr`.
+                // Set has_ancestral_sfm when `ptr` is StayFoolish; set
+                // current_statement when `ptr` (the node ABOUT TO RECURSE
+                // INTO ITS CHILD) is a Statement; set current_brane when
+                // `ptr` is brane-like. All three are set on `ptr`'s own
+                // scope before recursing into `front_ptr`.
                 let mut child_scope = scope;
                 if matches!(storage.get(ptr), FirSpec::StayFoolish) {
                     child_scope.has_ancestral_sfm = true;
@@ -1005,57 +783,28 @@ fn step_inner(
     }
 }
 
-/// Enum-dispatch `fir_op_step` equivalent (rust_instructions.md §7 "Enum
-/// dispatch": matching a known, finite variant set and calling concrete
-/// logic is preferred over `dyn` here, since `FirSpec`'s variant set is
-/// exactly the crate's FIR-kind set). Each per-kind migration task adds its
-/// kind's real combining logic here, translated from that kind's real
-/// `impl Fir for XFir`'s `fir_op_step` (re-read directly, not reconstructed).
-///
-/// All 14 `FirSpec` variants (one per real FIR kind, per that enum's own doc
-/// comment) now have a real arm — `IndexFir`'s arm (added at Phase 5's
-/// cutover prerequisite) was the last. The `match` below is therefore
-/// EXHAUSTIVE with no fallback arm: the `todo!()` catch-all this function
-/// used through Phases 1-4 was removed once the compiler confirmed
-/// exhaustiveness (an `unreachable_patterns` warning on the old fallback arm
-/// was the signal), so a future 15th kind added without its own arm now gets
-/// a compile error naming the missing variant, matching
-/// rust_instructions.md's "implement fully or don't add it" over a
-/// silent/panicking catch-all.
+/// Enum dispatch for `fir_op_step`, one arm per [`FirSpec`] variant
+/// (rust_instructions.md §7: preferred over `dyn` when the variant set is
+/// closed and known). The match is exhaustive with no fallback arm, so a
+/// future 15th kind added without its own arm is a compile error naming the
+/// missing variant, not a silent or panicking catch-all.
 fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
     let spec = storage.get(ptr).clone();
     match spec {
-        // Direct translation of `impl Fir for IndepIntFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this): "if not already constanic, set Constant." An
-        // IndepInt never has children/tasks, so there is no Braning phase —
-        // one step settles it, exactly as today's
-        // `constant_int_prembrionic_to_constant_in_one_step` test pins.
+        // An IndepInt has no children or tasks, so there is no Braning
+        // phase — one step settles it.
         FirSpec::IndepInt { .. } => {
             if !storage.get_nyes(ptr).is_constanic() {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Constant));
             }
         }
-        // Direct translation of `impl Fir for NkFir`'s real `fir_op_step`
-        // (re-read from `fir_kinds.rs` immediately before writing this):
-        // identical one-step-settles shape to IndepInt, settling to Nk
-        // instead of Constant.
         FirSpec::Nk { .. } => {
             if !storage.get_nyes(ptr).is_constanic() {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
             }
         }
-        // Direct translation of `impl Fir for OperatorFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this, including its `combine` helper). NOTE: `OperatorFir`
-        // is NOT brane-like under the arena either — re-checked directly:
-        // it has no `stmt_count`/`is_brane_like` override in the real `impl
-        // Fir for OperatorFir`, and no such note exists anywhere in the
-        // current `AGENTS.md`/`CLAUDE.md` (grepped, zero matches) — the
-        // plan's own "AGENTS.md describes it as brane-like (FOOP-9)" note is
-        // stale/incorrect, recorded as a non-blocking doubt in this
-        // checkbox's completion note, not acted on (the real source is the
-        // authority, not the plan's paraphrase of it).
+        // `Operator` is not brane-like — it has no `stmt_count`/
+        // `is_brane_like` override.
         FirSpec::Operator { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
@@ -1072,21 +821,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             Nyes::Braning => combine(ptr, storage),
             _ => {}
         },
-        // Direct translation of `impl Fir for StatementFir`'s real
-        // `fir_op_step`'s CORE settle shape only (re-read from `fir_kinds.rs`
-        // immediately before writing this): push the body as a task, then
-        // once it's constanic, adopt its NYES. The two NF-refusal checks
-        // (`check_null_const_conflict`/`check_rename_of_named_creation`,
-        // FOOP-33 §4) are DEFERRED here, not implemented — both call
-        // `_ib_search`/`_ab_search`/`.value()`, which are themselves
-        // search-engine operations Phase 2 owns exclusively (this module's
-        // own `SearchFir`/`IndexFir` tasks already carve out the identical
-        // exception for the same reason). The two NF-refusal checks
-        // (FOOP-33 §4) are now implemented (Phase 5 cutover prerequisite,
-        // `search_fir_dispatch::check_null_const_conflict`/
-        // `check_rename_of_named_creation`), now that Phase 2's search
-        // engine gives `_ib_search`/`_ab_search`/`.value()` arena
-        // equivalents to call and the `nf_reason` slot exists.
+        // Push the body as a task; once it's constanic, adopt its NYES. If
+        // this statement's name is null-characterized, run the FOOP-33 §4
+        // refusal checks (`check_null_const_conflict`/
+        // `check_rename_of_named_creation`) first — a name-constant
+        // redefinition or a named-creation rename is caught and recorded via
+        // `nf_reason` before the body's value is adopted.
         FirSpec::Statement { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
@@ -1106,23 +846,16 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             _ => false,
                         };
                         if is_nully {
-                            // NOTE: the real `check_null_const_conflict` does NOT use
-                            // `Scope` at all — it reaches itself via `self_weak` and
-                            // calls `_ib_search(&self_rc, pattern)`/`_ab_search(&self_rc,
-                            // pattern)` with `self_ref = ptr` (THIS statement). Its
-                            // `ib_search_by_pattern` counterpart wants the SEARCHING
-                            // STATEMENT (`Some(ptr)` is correct there — it derives the
-                            // home brane and index from it). But `ab_search_by_pattern`
-                            // wants the STARTING BRANE (mirroring `_ab_search`'s own
-                            // `self._get_my_brane(self_ref)` — computed BEFORE the
-                            // climb, not the statement itself): passing `Some(ptr)`
-                            // there made `current_brane.get_my_statement() ==
-                            // current_brane` trivially true (a statement's own
-                            // "get_my_statement" is itself), short-circuiting to `None`
-                            // immediately — caught by
-                            // `statement_null_const_conflict_is_refused` still failing
-                            // after the first fix attempt. Fixed by passing `ptr`'s own
-                            // home brane instead.
+                            // `check_null_const_conflict`'s `ib_search_by_pattern` call
+                            // wants the SEARCHING STATEMENT (it derives the home brane
+                            // and index from `ptr` itself), but its
+                            // `ab_search_by_pattern` call wants the STARTING BRANE that
+                            // `_ab_search` climbs from. Passing the statement itself
+                            // there would make `current_brane.get_my_statement() ==
+                            // current_brane` trivially true (a statement's own home
+                            // statement is itself) and short-circuit to `None`
+                            // immediately — so `ptr`'s home brane, not `ptr`, goes to
+                            // the `ab_search_by_pattern` call.
                             let home_brane = ptr.home_brane(storage);
                             search_fir_dispatch::check_null_const_conflict(
                                 storage,
@@ -1139,10 +872,6 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for BraneFir`'s real `fir_op_step`
-        // (re-read from `fir_kinds.rs` immediately before writing this).
-        // `_ab_search`/`_search_brane` overrides are DEFERRED — Phase 2's
-        // job, same carve-out as `SearchFir`/`IndexFir`/`Statement` above.
         FirSpec::Brane { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1163,19 +892,14 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for FoolRefFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this): a no-op — `FoolRefFir` is born `Constant` at
-        // construction (`push_search_result_pair`, translated below as
+        // A no-op — a `FoolRef` is born `Constant` at construction (see
         // `push_search_result_pair`) and never needs stepping.
         FirSpec::FoolRef { .. } => {}
-        // Direct translation of `impl Fir for StayFoolishFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this): once its wrapped `expr` is constanic, expose
-        // EXPR'S OWN resolved value (its `ubc_children[0]`, or `expr` itself
-        // if it has none) as this node's own `ubc_children[0]`, adopting
-        // that resolved value's `Nyes` — SF unwraps to a shared VALUE, never
-        // producing its own genuinely-new node.
+        // Once its wrapped `expr` is constanic, expose EXPR'S OWN resolved
+        // value (its `ubc_children[0]`, or `expr` itself if it has none) as
+        // this node's own `ubc_children[0]`, adopting that value's `Nyes`.
+        // SF unwraps to a shared value; it never produces a genuinely new
+        // node of its own.
         FirSpec::StayFoolish => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1208,17 +932,13 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for StayFullyFoolishFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this). Same value-unwrap shape as `StayFoolish` above,
-        // with two differences preserved exactly: (1) SFF always moves to
-        // `Braning` and pushes tasks unconditionally — no empty-children
-        // short-circuit (matches the real code: no `if children.is_empty()`
-        // branch exists for SFF); (2) the settled `Nyes` is remapped through
-        // `SearchFir::nyes_from_found`-equivalent logic (an SFF wrapper
-        // "can't be ECONSTANIC" — an Econstanic result means SFF itself is
-        // WAITING on it, i.e. Woconstanic, while the pushed result keeps its
-        // own Econstanic unchanged).
+        // Same value-unwrap shape as `StayFoolish`, with two differences:
+        // (1) SFF always moves to `Braning` and pushes tasks
+        // unconditionally — there is no empty-children short-circuit; (2)
+        // the settled `Nyes` goes through `nyes_from_found`: an SFF wrapper
+        // can never itself be Econstanic — an Econstanic result means SFF is
+        // still WAITING on it (Woconstanic), while the pushed result keeps
+        // its own Econstanic unchanged.
         FirSpec::StayFullyFoolish => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1249,13 +969,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for ConcatHelper`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this) — IDENTICAL shape to `BraneFir`'s arm above
-        // (ConcatHelper is "transparent: inherits all defaults,
-        // BraneFir-shaped stepping," per its own doc comment, confirmed by
-        // direct re-read). `_search_brane` override is DEFERRED — Phase 2's
-        // job, same carve-out as `BraneFir`'s `_ab_search`/`_search_brane`.
+        // Same shape as `Brane`'s arm — a `ConcatHelper` is transparent,
+        // inheriting brane-shaped stepping.
         FirSpec::ConcatHelper => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1276,16 +991,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for ConcatenationFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this) — the TYPE-CHECK and JOIN-READINESS logic (Braning's
-        // "one pass over the elements" block) AND `populate_concat_helpers`'s
-        // real line-merging body (Phase 5 cutover prerequisite,
-        // `search_fir_dispatch::populate_concat_helpers`/
-        // `apply_null_const_rule_to_merged_stmt`) are both now implemented in
-        // full, now that `default_equal`/`set_nf_reason`/
-        // `statement_value_for_comparison` exist in arena form
-        // (`StatementFir`'s NF-check task).
+        // Every element must resolve to a brane, or the whole concatenation
+        // is NK (with the offending indexes named); if some elements are
+        // still unresolved (not yet brane-like but not a type error either)
+        // the concatenation waits (`Woconstanic`). Once every element is
+        // brane-like, `populate_concat_helpers` builds and joins the merged
+        // lines exactly once (`helpers_populated` below is that gate).
         FirSpec::Concatenation { .. } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
@@ -1335,11 +1046,10 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     return;
                 }
 
-                // JOIN-READY: two-pass, exactly mirroring the real
-                // `_helpers_populated` gate. First pass builds the helper(s)
-                // and pushes them as tasks, staying pre-constanic so the
-                // driver drains the helper's own stepping before re-entry;
-                // second pass settles from the DRAINED helper results (the
+                // Two-pass: the first pass builds the helper(s) and pushes
+                // them as tasks, staying pre-constanic so the driver drains
+                // the helpers' own stepping before re-entry; the second pass
+                // settles from the DRAINED helper results (the
                 // joined/recoordinated copies), not the raw elements.
                 let already_populated = storage.get_mut(ptr).helpers_populated();
                 if !already_populated {
@@ -1363,20 +1073,11 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // Direct translation of `impl Fir for CreationFir`'s real
-        // `fir_op_step` (re-read from `fir_kinds.rs` immediately before
-        // writing this): a no-op — a creation is born `Independent` at
-        // construction and never needs stepping.
+        // A no-op — a creation is born `Independent` at construction and
+        // never needs stepping.
         FirSpec::Creation => {}
-        // Direct translation of `impl Fir for ComparisonFir`'s real
-        // `fir_op_step`/`combine` (`system_foo.rs`, re-read in full
-        // immediately before writing this) — SAME two-phase shape as
-        // `OperatorFir`: push operands, then combine once Braning. The real
-        // verdict-resolution tail (`resolve_boolean`, `_ab_search` for
-        // `'True`/`'False`) is now implemented too (Phase 5 cutover
-        // prerequisite — `search_fir_dispatch::ab_search_by_pattern`,
-        // `statement_value_for_comparison`, both built for `StatementFir`'s
-        // NF checks), now that this search-engine dependency exists.
+        // Same two-phase shape as `Operator`: push operands, then combine
+        // once Braning.
         FirSpec::Comparison { op } => match storage.get_nyes(ptr) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
@@ -1462,10 +1163,6 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             _ => {}
         },
-        // `SearchFir`'s dispatch — RESOLVES the `fir_op_step` `todo!()` for
-        // this kind (Phase 2's final task). Direct translation of `impl Fir
-        // for SearchFir`'s real `fir_op_step`'s own first line: `if
-        // self.is_value_search { return self.value_search_step(scope); }`.
         FirSpec::Search {
             is_value_search, ..
         } => {
@@ -1481,13 +1178,6 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 );
             }
         }
-        // `IndexFir`'s dispatch — RESOLVES the previously-open `fir_op_step`
-        // gap for this kind (Phase 5 cutover prerequisite, per FOOP-16.plan.md's
-        // own call-out: "before deleting IndexFir's old impl Fir block, either
-        // complete IndexFir's arena-side search dispatch... or explicitly
-        // re-defer"). Direct, section-by-section translation of `impl Fir for
-        // IndexFir`'s real `fir_op_step` (re-read from `fir_kinds.rs`
-        // immediately before writing this).
         FirSpec::Index {
             offset,
             anchored,
@@ -1502,18 +1192,13 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             fir.set_nyes(Nyes::Braning);
                         });
                     } else {
-                        // Real code returns `Err(UbcError::Eval(...))` for a
-                        // non-negative unanchored offset — this arena
-                        // translation preserves that as a `panic!`, matching
-                        // this crate's established convention (confirmed by
-                        // re-reading sibling arms above) that `fir_op_step`'s
-                        // arena signature has no `Result` to propagate through
-                        // yet; an unanchored non-negative `IndexFir` is a
+                        // An unanchored non-negative offset is a
                         // construction-time invariant violation the compiler
-                        // itself should never produce (`arena_compiler`'s
-                        // `Astn::HeadTail`/`Astn::UnanchoredSeek` arms only ever
-                        // build unanchored `Index` nodes with negative offsets),
-                        // not a reachable runtime program state.
+                        // itself should never produce — only
+                        // `Astn::HeadTail`/`Astn::UnanchoredSeek` build
+                        // unanchored `Index` nodes, and always with negative
+                        // offsets — so this is a bug to panic on, not a
+                        // reachable runtime program state.
                         assert!(offset < 0, "unanchored index requires negative offset");
                         match ptr.find_enclosing_stmt_and_brane(storage) {
                             Some((stmt_ref, brane_ref)) => {
@@ -1606,8 +1291,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             }
                             None => {
                                 if !storage.get_nyes(anchor).is_constanic() {
-                                    // Anchor still stepping — no progress this call, matching
-                                    // the real code's early `return Ok(())` (leaves NYES as-is).
+                                    // Anchor still stepping — no progress this call; leave NYES as-is.
                                 } else {
                                     storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
                                 }
@@ -1617,8 +1301,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         let anchor = storage.foolish_children(ptr)[0];
                         let resolved = anchor.value(storage);
                         if !FirCursor::new(resolved, storage).is_brane_like() {
-                            // FOOP-75 §7 (verbatim rationale re-read from
-                            // `fir_kinds.rs`): settling NK is only half the
+                            // FOOP-75 §7: settling NK is only half the
                             // answer — name the offending anchor when it is
                             // itself nameable (an integer literal), so the
                             // rendered output reads `d =$ ??? (4 is not a
@@ -1679,12 +1362,9 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
     }
 }
 
-/// Direct arena-threaded translation of `SearchFir::nyes_from_found`
-/// (re-read from `fir_kinds.rs` immediately before writing this — used by
-/// `StayFullyFoolish`'s settle-remapping and, once migrated, by real search
-/// dispatch). Preserves the exact mapping: Econstanic/Woconstanic →
-/// Woconstanic; Constant/Independent → Constant; Nk → Nk; anything else
-/// (pre-constanic) passes through unchanged.
+/// Remaps a found node's `Nyes` for the caller's own settlement:
+/// Econstanic/Woconstanic → Woconstanic; Constant/Independent → Constant;
+/// Nk → Nk; anything else (pre-constanic) passes through unchanged.
 fn nyes_from_found(found: Nyes) -> Nyes {
     match found {
         Nyes::Econstanic | Nyes::Woconstanic => Nyes::Woconstanic,
@@ -1694,13 +1374,10 @@ fn nyes_from_found(found: Nyes) -> Nyes {
     }
 }
 
-/// Direct arena-threaded translation of `fir_kinds.rs`'s free function
-/// `_decide_nyes_due_to_children` (re-read immediately before writing this),
-/// used by `BraneFir`'s (and `ConcatHelper`'s, once migrated)
-/// `fir_op_step`'s `Braning` classification arm. Preserves the exact
-/// priority order: all-Independent → Independent; all-terminal-and-not-that
-/// → Constant; any pre-constanic → Braning (keep waiting); else any
-/// Econstanic/Woconstanic → Woconstanic; else any Nk → Nk.
+/// Classifies a Braning node's settled state from its children's states, in
+/// priority order: all-Independent → Independent; all-Constant (nothing
+/// pending) → Constant; any pre-constanic child → Braning (keep waiting);
+/// else any Econstanic/Woconstanic → Woconstanic; else any Nk → Nk.
 fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) -> Option<Nyes> {
     let mut all_constant = true;
     let mut all_independent = true;
@@ -1746,23 +1423,16 @@ fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) ->
     }
 }
 
-/// Direct arena-threaded translation of `impl OperatorFir { fn combine }`
-/// (re-read from `fir_kinds.rs` immediately before writing this — the exact
-/// function FOOP-16.md's own specification walks through as the motivating
-/// example for `create_child`/`FVMStorage::get_mut`). Each of the four
-/// "build standalone, then `constanic_clone_at`-to-reparent" triplets in the
-/// original (NK-from-child, division-by-zero, modulo-by-zero, arithmetic
-/// result) collapses to ONE `create_child` call here, exactly as the FOOP's
-/// Motivation section predicts — `create_child` builds the node already
-/// parented under `ptr`, so there is no separate "clone to reparent" step at
-/// all under the arena.
+/// Resolves an `Operator` node once all its operands are known: an NK
+/// operand short-circuits to NK, a non-integer operand yields `Woconstanic`
+/// (not yet resolvable), division/modulo by zero produce NK, and otherwise
+/// the arithmetic result becomes a fresh `Constant` `IndepInt` child.
 ///
-/// `scope.has_ancestral_sfm` (threaded into `constanic_clone_at` in the
-/// original) has no arena equivalent parameter here: `revive_constanic` isn't
-/// invoked at all in this translation, because `create_child` already
-/// produces an already-parented node — there is nothing to `revive_constanic`.
-/// This is the arena-era simplification the FOOP's Motivation section
-/// describes directly, not an omission.
+/// Building the result node directly under `ptr` needs no separate
+/// build-standalone-then-reparent step: `create_child`/`make_orphan_child`
+/// already produce an already-parented node, so `revive_constanic` (which
+/// exists for relocating an *existing* subtree into a new context) has
+/// nothing to do here.
 fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
     let op = match storage.get(ptr) {
         FirSpec::Operator { op } => op.clone(),
@@ -1835,21 +1505,11 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
             values[0] % values[1]
         }
         "-" if values.len() == 1 => -values[0],
-        // FOOP-75 §7's deleted "$" arm stays deleted here too — the real
-        // `combine` no longer has it (confirmed by direct re-read), so there
-        // is nothing to translate.
         _ => {
-            // The real `combine` returns `Err(UbcError::Eval(...))` here.
-            // This arena translation has no `Result` return (matching
-            // `fir_op_step`'s own signature in this module, which is
-            // infallible at this stage — error propagation through the
-            // arena's `fir_op_step` dispatch is deferred to Phase 3's
-            // evaluator migration, which gives `step`/`fir_op_step` their
-            // real `Result<_, UbcError>` signatures). An unknown operator is
-            // an internal-consistency condition (the compiler is the only
-            // producer of `Operator` specs and only ever uses known
-            // operators), so `unreachable!` here is a faithful placeholder,
-            // not a swallowed error class.
+            // The compiler is the only producer of `Operator` specs and only
+            // ever uses known operators, so an unknown one here means the
+            // compiler and this dispatch have fallen out of sync — an
+            // internal-consistency bug, not a runtime error to propagate.
             unreachable!(
                 "combine: unknown operator {op:?} ({} operands)",
                 values.len()
@@ -1886,20 +1546,17 @@ impl<'s> FirCursor<'s> {
         self.storage.get(self.ptr)
     }
 
-    /// Mirrors `ProtoBrane::foolish_children`.
     pub fn foolish_children(&self) -> &'s [FirPointer] {
         self.storage.foolish_children(self.ptr)
     }
 
-    /// Mirrors `ProtoBrane::ubc_children`.
     pub fn ubc_children(&self) -> &'s [FirPointer] {
         let index = self.storage.validate(self.ptr);
         self.storage.slots[index].payload.ubc_children()
     }
 
-    /// Mirrors `ProtoBrane::all_children`: ubc first (evaluator renders as
-    /// `result=`), then foolish — same render-order contract preserved
-    /// exactly.
+    /// `ubc_children` first (the evaluator renders these as `result=`), then
+    /// `foolish_children` — this render order is load-bearing for output.
     pub fn all_children(&self) -> impl Iterator<Item = FirPointer> + 's {
         self.ubc_children()
             .iter()
@@ -1907,60 +1564,46 @@ impl<'s> FirCursor<'s> {
             .copied()
     }
 
-    /// Mirrors `ProtoBrane::parent` (`Weak::upgrade()`), simplified: `None`
-    /// remains only for the true structural root (see [`FirPointer::get_parent`]'s
-    /// doc comment for why the "only during teardown" case disappears under
-    /// the arena).
+    /// `None` only for the true structural root — see
+    /// [`FirPointer::get_parent`].
     pub fn parent(&self) -> Option<FirPointer> {
         self.ptr.get_parent(self.storage)
     }
 
-    /// Mirrors `ProtoBrane::is_root`, simplified: no `self_rc` parameter
-    /// needed — `self.ptr` already carries self-identity (see
-    /// [`FirPointer::is_root`]'s doc comment).
     pub fn is_root(&self) -> bool {
         self.ptr.is_root(self.storage)
     }
 
-    /// Mirrors `ProtoBrane::get_nyes`.
     pub fn get_nyes(&self) -> Nyes {
         self.storage.get_nyes(self.ptr)
     }
 
-    /// Mirrors `ProtoBrane::front_task`.
     pub fn front_task(&self) -> Option<FirPointer> {
         let index = self.storage.validate(self.ptr);
         self.storage.slots[index].payload.front_task()
     }
 
-    /// Mirrors `crate::fir_trait::Fir::_get_my_brane`.
     pub fn home_brane(&self) -> Option<FirCursor<'s>> {
         self.ptr
             .home_brane(self.storage)
             .map(|p| FirCursor::new(p, self.storage))
     }
 
-    /// Mirrors `crate::fir_trait::Fir::_get_my_statement`.
     pub fn statement(&self) -> FirCursor<'s> {
         FirCursor::new(self.ptr.get_my_statement(self.storage), self.storage)
     }
 
-    /// Mirrors `crate::fir_trait::Fir::settled_result`'s CONTRACT verbatim:
-    /// applies the constanic gate itself.
+    /// Applies the constanic gate itself: `None` unless this node is
+    /// constanic.
     pub fn settled_result(&self) -> Option<FirCursor<'s>> {
         self.ptr
             .settled_result(self.storage)
             .map(|p| FirCursor::new(p, self.storage))
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_i64`: `IndepInt` reports its own
-    /// value directly (its real `Fir` impl's override, re-read directly);
-    /// every other migrated kind falls through to `settled_result` first,
-    /// matching the trait's default body exactly. Kinds not yet migrated
-    /// answer `None` rather than panicking — `as_i64`'s default in
-    /// `fir_trait.rs` already tolerates "no settled result" as `None`, so an
-    /// unmigrated kind (which never settles under the arena yet) is exactly
-    /// that case, not a distinct failure mode needing its own `todo!()`.
+    /// `IndepInt` reports its own value directly; every other kind falls
+    /// through to its settled result. A kind with no settled result answers
+    /// `None`.
     pub fn as_i64(&self) -> Option<i64> {
         match self.node() {
             FirSpec::IndepInt { value } => Some(*value),
@@ -1968,9 +1611,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_nk_reason`: `Nk`'s own override
-    /// (re-read directly) returns its reason string; every other kind's
-    /// default is `None`.
     pub fn as_nk_reason(&self) -> Option<&'s str> {
         match self.node() {
             FirSpec::Nk { reason } => Some(reason),
@@ -1978,11 +1618,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_op_name`: `Operator`'s AND
-    /// `Comparison`'s own overrides (re-read directly — `Comparison`
-    /// returns `self.op.searchable_name()`, a `&'static str`, trivially
-    /// compatible with the `'s` lifetime bound here); every other kind's
-    /// default is `None`.
     pub fn as_op_name(&self) -> Option<&'s str> {
         match self.node() {
             FirSpec::Operator { op } => Some(op),
@@ -1991,8 +1626,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_stmt_identifier`: `Statement`'s
-    /// own override (re-read directly) returns its identifier.
     pub fn as_stmt_identifier(&self) -> Option<&'s Identifier> {
         match self.node() {
             FirSpec::Statement { identifier, .. } => Some(identifier),
@@ -2000,8 +1633,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_stmt_line_number`: `Statement`'s
-    /// own override (re-read directly) returns its line number.
     pub fn as_stmt_line_number(&self) -> Option<usize> {
         match self.node() {
             FirSpec::Statement { line_number, .. } => Some(*line_number),
@@ -2009,20 +1640,12 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::stmt_count`: `Brane`'s AND
-    /// `ConcatHelper`'s own overrides (re-read directly — `ConcatHelper` is
-    /// "transparent: inherits all defaults, BraneFir-shaped stepping," per
-    /// its own doc comment, and its `stmt_count`/`stmt_at` overrides are
-    /// byte-for-byte identical to `BraneFir`'s) report the foolish-children
-    /// count. `Concatenation`'s own real override (re-read directly,
-    /// `ConcatenationFir::stmt_count`) is more involved: `Some(0)` while
-    /// no helper is populated AND there are no elements at all (the
-    /// genuinely-empty concatenation case); otherwise the SUM of every
-    /// `ubc_children` helper's own `stmt_count` (there is at most one
-    /// helper under this FOOP's Phase A scope — `populate_concat_helpers`
-    /// builds a single flat helper — but this sums generally, matching the
-    /// real code's own `.map(..).sum()` shape rather than assuming exactly
-    /// one). Every other kind's default is `None` (not brane-like).
+    /// `Brane` and `ConcatHelper` report their foolish-children count.
+    /// `Concatenation` is `Some(0)` only when genuinely empty (no helper
+    /// populated and no elements); otherwise it's the sum of every
+    /// `ubc_children` helper's own `stmt_count` (summed generally, though in
+    /// practice there is at most one helper). Every other kind is `None`
+    /// (not brane-like).
     pub fn stmt_count(&self) -> Option<usize> {
         match self.node() {
             FirSpec::Brane { .. } | FirSpec::ConcatHelper => Some(self.foolish_children().len()),
@@ -2041,10 +1664,8 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::stmt_at`: `Brane`'s AND
-    /// `ConcatHelper`'s own overrides (re-read directly, identical shape)
-    /// index their foolish children directly. `Concatenation`'s own real
-    /// override (re-read directly) walks `ubc_children` helpers in order,
+    /// `Brane` and `ConcatHelper` index their foolish children directly.
+    /// `Concatenation` walks its `ubc_children` helpers in order,
     /// subtracting each helper's own `stmt_count` from `idx` until it lands
     /// inside one, then delegates to that helper's `stmt_at`.
     pub fn stmt_at(&self, idx: usize) -> Option<FirPointer> {
@@ -2069,7 +1690,7 @@ impl<'s> FirCursor<'s> {
     }
 
     /// Mirrors `crate::fir_trait::Fir::as_brane_characterizations`:
-    /// `Brane`'s own override (re-read directly) returns its
+    /// `Brane`'s own override returns its
     /// characterizations' components.
     pub fn as_brane_characterizations(&self) -> &'s [String] {
         match self.node() {
@@ -2078,15 +1699,10 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::is_brane_like`: `stmt_count().is_some()`.
     pub fn is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_search_pattern`: `Search`'s own
-    /// override (re-read directly). Pure data accessor — NOT search
-    /// execution, so unlike `fir_op_step` this is safe to implement in
-    /// Phase 1 without touching Phase 2's search-engine scope.
     pub fn as_search_pattern(&self) -> Option<&'s str> {
         match self.node() {
             FirSpec::Search { pattern, .. } => Some(pattern),
@@ -2094,12 +1710,10 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_search_anchored`.
     pub fn as_search_anchored(&self) -> bool {
         matches!(self.node(), FirSpec::Search { anchored: true, .. })
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_search_is_value`.
     pub fn as_search_is_value(&self) -> bool {
         matches!(
             self.node(),
@@ -2110,9 +1724,6 @@ impl<'s> FirCursor<'s> {
         )
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_search_contexted`: `Search` and
-    /// `Index` both carry a `contexted` flag (re-read directly — both real
-    /// `impl Fir` override this method with their own field).
     pub fn as_search_contexted(&self) -> bool {
         match self.node() {
             FirSpec::Search { contexted, .. } | FirSpec::Index { contexted, .. } => *contexted,
@@ -2120,8 +1731,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_index_offset`: `Index`'s own
-    /// override (re-read directly).
     pub fn as_index_offset(&self) -> i32 {
         match self.node() {
             FirSpec::Index { offset, .. } => *offset,
@@ -2129,14 +1738,10 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_index_anchored`.
     pub fn as_index_anchored(&self) -> bool {
         matches!(self.node(), FirSpec::Index { anchored: true, .. })
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_fool_ref_referent`: `FoolRef`'s
-    /// own override (re-read directly) returns the original found statement
-    /// this reference wraps.
     pub fn as_fool_ref_referent(&self) -> Option<FirPointer> {
         match self.node() {
             FirSpec::FoolRef { referent } => Some(*referent),
@@ -2144,9 +1749,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_concat_provenance`:
-    /// `Concatenation`'s own override (re-read directly) returns its
-    /// provenance; every other kind's default is `Juxtaposition`.
     pub fn as_concat_provenance(&self) -> ConcatProvenance {
         match self.node() {
             FirSpec::Concatenation { provenance } => *provenance,
@@ -2154,10 +1756,6 @@ impl<'s> FirCursor<'s> {
         }
     }
 
-    /// Mirrors `crate::fir_trait::Fir::as_creation_display_name`:
-    /// `Creation`'s own override (re-read directly) delegates to
-    /// [`FirPointer::get_display_name`]; every other kind's default is
-    /// `None`.
     pub fn as_creation_display_name(&self, viewed_from: Option<FirPointer>) -> Option<String> {
         if !matches!(self.node(), FirSpec::Creation) {
             return None;
@@ -2170,16 +1768,13 @@ impl<'s> FirCursor<'s> {
 /// a time, so unlike `FirCursor` this does NOT support "wrap once, call five
 /// mutating methods" — each mutating call still needs its own `&mut`
 /// reborrow under the hood. Its value is bundling `ptr`+`storage` for ONE
-/// logical mutating operation, not batching several (see FOOP-16.md
-/// §Specification's resolution of the two-cursor-type design question: the
-/// real complaint `get_mut` already answers is "several writes with nothing
-/// storage-needing in between," not "I need `&mut` too often").
+/// logical mutating operation, not batching several ([`FVMStorage::get_mut`]
+/// is for "several writes with nothing storage-needing in between").
 ///
-/// **Must never be held live across a call into [`FirPointer::step`]** — see
-/// FOOP-16.md §Specification "Borrow discipline under the arena." This is a
-/// discipline enforced by the type system for the SAME reason `RefCell`'s
-/// borrow panic enforces it today, just caught one build earlier (a compile
-/// error, not a runtime panic risk).
+/// **Must never be held live across a call into [`FirPointer::step`].**
+/// Rust's borrow checker enforces this at compile time: holding a live
+/// `FirCursorMut` (or any `&mut FVMStorage` borrow) across a recursive
+/// `step` call simply fails to compile.
 pub struct FirCursorMut<'s> {
     ptr: FirPointer,
     storage: &'s mut FVMStorage,
@@ -2191,39 +1786,24 @@ impl<'s> FirCursorMut<'s> {
         Self { ptr, storage }
     }
 
-    /// Mirrors `ProtoBrane::set_nyes`'s OWNERSHIP CONTRACT verbatim (FOOP-62
-    /// #10): a FIR owns its own nyes — nyes must NOT be changed from outside
-    /// the FIR. The ONLY sanctioned writers are (1) a FIR on ITSELF, inside
-    /// its own `fir_op_step`, and (2) construction. `pub(crate)` — not
-    /// `pub` — is the enforcement mechanism, exactly as it is on
-    /// `ProtoBrane::set_nyes` today.
-    ///
-    /// Called by `search_fir_dispatch::handle_found` (Phase 2's final
-    /// task), the first real `fir_op_step`-adjacent code to hold a
-    /// `FirCursorMut` and call this — the `#[expect(dead_code)]` this had
-    /// at the foundational task is removed now that it has a real caller.
+    /// A FIR owns its own `nyes`; it must never be changed from outside the
+    /// FIR. The ONLY sanctioned writers are (1) a FIR on ITSELF, inside its
+    /// own `fir_op_step`, and (2) construction. `pub(crate)`, not `pub`, is
+    /// the enforcement.
     pub(crate) fn set_nyes(&mut self, n: Nyes) {
         self.storage.get_mut(self.ptr).set_nyes(n);
     }
 
-    /// Delegates to [`FirPointer::create_child`] — the live, in-arena
-    /// equivalent of `ProtoBrane::push_foolish_child` for a node that needs
-    /// to grow a new child post-construction. There is deliberately no
-    /// `FirCursorMut` equivalent of `push_foolish_child` itself: that method
-    /// is construction-time-only (`&mut self` on a not-yet-live
-    /// `ProtoBrane`), a case `create_child` already covers completely (see
-    /// FOOP-16.md §Specification's `FirCursorMut` method table).
     pub fn create_child(&mut self, spec: FirSpec) -> FirPointer {
         self.ptr.create_child(self.storage, spec)
     }
 
-    /// Mirrors `ProtoBrane::push_foolish_child_sff_marked`: pushes a
-    /// parse-time child under an SF/SFF marker, panicking (unconditionally —
-    /// not a `debug_assert!`) if any search-kind descendant of `child` is not
-    /// exactly `ECONSTANIC`. `child` must already be a child of `self.ptr`
-    /// (i.e. already `create_child`-ed) — unlike today's `ProtoBrane` method,
-    /// the arena's `create_child` already wires parent/child atomically, so
-    /// this method's ONLY remaining job is the invariant CHECK, not the push.
+    /// Pushes a parse-time child under an SF/SFF marker, panicking
+    /// (unconditionally, not a `debug_assert!`) if any search-kind
+    /// descendant of `child` is not exactly `ECONSTANIC` — an SFF body must
+    /// be built entirely from unevaluated material, so a descendant search
+    /// that already ran is an internal-consistency violation, not a
+    /// recoverable condition. `child` must already be a child of `self.ptr`.
     pub fn check_sff_marked_child(&self, child: FirPointer) {
         if let Some(offender) = sift_for_first_non_econstanic_descendent_search(self.storage, child)
         {
@@ -2241,8 +1821,6 @@ impl<'s> FirCursorMut<'s> {
         }
     }
 
-    /// Mirrors `ProtoBrane::push_ubc_child`: pushes to `ubc_children` AND
-    /// enqueues as a task if the child is not already constanic.
     pub fn push_ubc_child(&mut self, child: FirPointer) {
         let child_nyes = self.storage.get_nyes(child);
         self.storage
@@ -2250,8 +1828,6 @@ impl<'s> FirCursorMut<'s> {
             .push_ubc_child(child, child_nyes);
     }
 
-    /// Mirrors `ProtoBrane::push_search_result`'s SINGULAR-RESULT INVARIANT
-    /// (FOOP-62) `debug_assert!`.
     pub fn push_search_result(&mut self, result: FirPointer) {
         let result_nyes = self.storage.get_nyes(result);
         self.storage
@@ -2259,18 +1835,13 @@ impl<'s> FirCursorMut<'s> {
             .push_search_result(result, result_nyes);
     }
 
-    /// Direct arena-threaded translation of the free function
-    /// `push_search_result_pair` (re-read from `fir_kinds.rs` immediately
-    /// before writing this): pushes a search RESULT and its `FoolRef`
-    /// bookkeeping entry to `ubc_children`, in that order. Preserves the
-    /// FoolRefFir TWO-CHILD INVARIANT exactly — after this call,
-    /// `ubc_children` holds `[result, fool_ref]`; `[0]` is the value every
-    /// existing reader accesses via `.first()`, `[1]` is invisible to them.
-    /// `referent` is the ORIGINAL found statement (not the cloned result) —
-    /// a genuinely shared `FirPointer`, exactly as `FoolRefFir::referent`
-    /// today shares the original `Rc`, not a clone of it (confirmed by
-    /// `revive_constanic`'s own `FoolRef`-always-shares rule, which this
-    /// invariant depends on staying true).
+    /// Pushes a search RESULT and its `FoolRef` bookkeeping entry to
+    /// `ubc_children`, in that order — the FoolRef two-child invariant:
+    /// `[0]` is the value every reader accesses via `.first()`, `[1]` is
+    /// invisible to them. `referent` is the ORIGINAL found statement, not
+    /// the cloned result — a genuinely shared `FirPointer` (see
+    /// `revive_constanic`'s `FoolRef`-always-shares rule, which this
+    /// invariant depends on).
     pub fn push_search_result_pair(&mut self, result: FirPointer, referent: FirPointer) {
         let fool_ref = self.create_child(FirSpec::FoolRef { referent });
         self.storage
@@ -2279,38 +1850,27 @@ impl<'s> FirCursorMut<'s> {
         self.push_ubc_child(fool_ref);
     }
 
-    /// Mirrors `ProtoBrane::clear_ubc_children`.
     pub fn clear_ubc_children(&mut self) {
         self.storage.get_mut(self.ptr).clear_ubc_children();
     }
 
-    /// Mirrors `ProtoBrane::pop_front_task`.
     pub fn pop_front_task(&mut self) {
         self.storage.get_mut(self.ptr).pop_front_task();
     }
 
-    /// Mirrors `ProtoBrane::push_task`.
     pub fn push_task(&mut self, t: FirPointer) {
         self.storage.get_mut(self.ptr).push_task(t);
     }
 }
 
-/// The first descendant search kind (per `fir_kinds.rs`'s
-/// `ProtoBrane::sift_for_first_non_econstanic_descendent_search`, re-read
-/// directly before writing this) that is NOT exactly `Nyes::Econstanic`, or
-/// `None` if every one of them is. Arena-threaded translation, preserving the
-/// exact `== Econstanic` check (not `is_constanic()`) — see that method's own
-/// doc comment for why the distinction matters (an SFF-marked search sitting
-/// at CONSTANT or NK means it DID run, which is exactly what this guard
-/// catches).
+/// The first descendant search kind that is NOT exactly `Nyes::Econstanic`,
+/// or `None` if every one of them is. The check is `== Econstanic`
+/// specifically, not `is_constanic()`: an SFF-marked search sitting at
+/// `Constant` or `Nk` means it DID run, which is exactly what this guard
+/// exists to catch.
 ///
 /// Naming: `sift_*`, not `search_*` — an ordinary Rust-side tree walk with no
-/// Foolish search semantics (see AGENTS.md/CLAUDE.md's "Sift" terminology).
-///
-/// "Search kind" is judged directly on [`FirSpec`] (`Search`/`Index`) at this
-/// foundational stage, mirroring `Fir::is_search_kind`'s exact variant set
-/// (`FirKind::Search | FirKind::Index`, confirmed by reading `fir_trait.rs`
-/// directly) rather than through a `dyn Fir` call.
+/// Foolish search semantics.
 fn sift_for_first_non_econstanic_descendent_search(
     storage: &FVMStorage,
     node: FirPointer,
@@ -2342,11 +1902,6 @@ fn sift_for_first_non_econstanic_descendent_search(
 /// the pointee), which `clippy::drop_ref`/rustc's own `dropping_references`
 /// lint catches. `let _ = ...` genuinely ends the borrow's lifetime at that
 /// point under NLL, which is the actual effect this macro needs.
-///
-/// See FOOP-16.md §Specification: not exercised by `OperatorFir::combine`
-/// itself (that walkthrough is what motivated `FVMStorage::get_mut` instead);
-/// kept available here for whichever later per-kind or evaluator-migration
-/// function turns out to need the rarer interleaved-reacquisition shape.
 #[macro_export]
 macro_rules! temporary_release {
     ($handle:ident, $reacquire:expr, $body:expr) => {{
@@ -2358,11 +1913,8 @@ macro_rules! temporary_release {
 }
 
 impl FVMStorage {
-    /// Also known as **"constanic clone"** — the name used in `foolish-ubca`'s
-    /// original `ProtoBrane::constanic_clone_at`, which this is a direct
-    /// arena-threaded translation of (re-read in full from `fir_kinds.rs`
-    /// immediately before writing this — not from any earlier reconstructed
-    /// notes). "Revival" is the right word for what this does: it makes a
+    /// Also known as **"constanic clone."** "Revival" is the right word for
+    /// what this does: it makes a
     /// copy of an already-constanic (settled) FIR for use in a new context
     /// (AB/IB recoordination — a named brane referenced elsewhere and
     /// detached/recloned into that new site), and the copy is given an
@@ -2386,33 +1938,23 @@ impl FVMStorage {
     ///    state — this is what keeps the `FoolRefFir` two-child invariant's
     ///    original-statement reference genuinely shared, and a named
     ///    creation's identity intact.
-    /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — RESOLVED as of
-    ///    the `StayFoolishFir`/`StayFullyFoolishFir` per-kind migration task
-    ///    (the placeholder this doc comment used to describe, deferred from
-    ///    the Phase 1 foundational task, is now closed out): checked FIRST,
-    ///    before the share-not-clone check, exactly matching
-    ///    `constanic_clone_at`'s own real order. `StayFoolish` tries its
-    ///    settled `ubc_children[0]` first; either kind falls through to its
-    ///    first `foolish_children` entry; if both are empty, an `eprintln!`
-    ///    ALARM fires (matching the original) and the wrapper clones as-is.
+    /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — checked FIRST,
+    ///    before the share-not-clone check. `StayFoolish` tries its settled
+    ///    `ubc_children[0]` first; either kind falls through to its first
+    ///    `foolish_children` entry; if both are empty, an `eprintln!` ALARM
+    ///    fires and the wrapper clones as-is.
     /// 3. **Recursive per-node rebuild** for every other kind (this is where
     ///    the `Nyes`-regressing revival above actually happens, via
     ///    `Nyes::transform_for_clone`): children come from cloning each
-    ///    `foolish_children`/`ubc_children` entry in turn (mirroring
-    ///    `clone_children_for_constanic_clone`), so the whole subtree is
-    ///    rebuilt top-down, one recursive call per surviving node.
+    ///    `foolish_children`/`ubc_children` entry in turn, so the whole
+    ///    subtree is rebuilt top-down, one recursive call per surviving node.
     ///
-    /// `index` becomes a cloned `Statement`'s new `line_number`, exactly as
-    /// `constanic_clone_at` does today (used directly as the position, not
-    /// carried over from the original). `sfm` and `skip_foolish_children` are
-    /// threaded through exactly as their names suggest, matching the source
-    /// method's own parameters one-for-one.
+    /// `index` becomes a cloned `Statement`'s new `line_number` — used
+    /// directly as the position, not carried over from the original.
     ///
-    /// A pointer into the original subtree remains exactly as valid after a
-    /// clone as it was before: this method only ADDS new slots for the
-    /// freshly-rebuilt nodes; the original subtree's slots are untouched —
-    /// the arena-era restatement of the correctness property `Rc` reference
-    /// counting gives "for free" today (see FOOP-16.md §Specification).
+    /// A pointer into the original subtree remains valid after a clone: this
+    /// method only ADDS new slots for the freshly-rebuilt nodes; the
+    /// original subtree's slots are untouched.
     pub fn revive_constanic(
         &mut self,
         root: FirPointer,
@@ -2421,16 +1963,12 @@ impl FVMStorage {
         sfm: bool,
         skip_foolish_children: bool,
     ) -> FirPointer {
-        // 2. StayFoolish/StayFullyFoolish unwrapping — checked FIRST, before
-        // the share-not-clone check below (re-confirmed by direct re-read:
-        // `constanic_clone_at`'s SF/SFF branch is the very first thing the
-        // real function does). Only `StayFoolish` (not `StayFullyFoolish`)
-        // tries its settled `ubc_children[0]` first; either kind falls
-        // through to its first `foolish_children` entry; if BOTH are empty,
-        // the real function logs an ALARM and falls through to clone the
-        // wrapper as-is via the normal share/rebuild logic below — this
-        // arena translation does the same (`eprintln!`, matching the
-        // original's own diagnostic, not a panic).
+        // StayFoolish/StayFullyFoolish unwrapping — checked FIRST, before
+        // the share-not-clone check below. Only `StayFoolish` (not
+        // `StayFullyFoolish`) tries its settled `ubc_children[0]` first;
+        // either kind falls through to its first `foolish_children` entry;
+        // if BOTH are empty, this logs an ALARM and falls through to clone
+        // the wrapper as-is via the normal share/rebuild logic below.
         let spec = self.get(root).clone();
         if matches!(spec, FirSpec::StayFoolish | FirSpec::StayFullyFoolish) {
             if matches!(spec, FirSpec::StayFoolish)
@@ -2453,15 +1991,12 @@ impl FVMStorage {
         let nyes = self.get_nyes(root);
         let spec = self.get(root).clone();
 
-        // 1. Share-not-clone: Constant/Independent non-Brane always shares;
+        // Share-not-clone: Constant/Independent non-Brane always shares;
         // FoolRef/Creation always share regardless of NYES. The shared
         // pointer is NOT reparented (its own `.parent` stays exactly as it
-        // was — mirroring the real `Rc::clone(fir_ref)`'s untouched
-        // `ProtoBrane`), but it IS appended to `new_parent`'s
-        // `foolish_children` list (`attach_shared_foolish_child`) — a real
-        // bug fix found and fixed during this cutover's `ConcatHelper`
-        // merge-logic task: without this append, a caller like
-        // `populate_concat_helpers` that walks `new_parent`'s
+        // was) but IS appended to `new_parent`'s `foolish_children` list
+        // (`attach_shared_foolish_child`) — without this append, a caller
+        // like `populate_concat_helpers` that walks `new_parent`'s
         // `foolish_children` afterward would silently see the shared child
         // missing, even though `revive_constanic` reported success.
         let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
@@ -2472,10 +2007,9 @@ impl FVMStorage {
             return root;
         }
 
-        // 3. Recursive per-node rebuild. The new node's own spec is the
+        // Recursive per-node rebuild. The new node's own spec is the
         // source's spec, with a Statement's line_number renumbered to
-        // `index` (mirroring constanic_clone_at's FirKind::Statement arm
-        // exactly: `let line = index;`).
+        // `index`.
         let new_spec = match spec {
             FirSpec::Statement { identifier, .. } => FirSpec::Statement {
                 identifier,
@@ -2498,17 +2032,12 @@ impl FVMStorage {
             self.slots[index_in_slots].payload.ubc_children().to_vec()
         };
         for ubc in ubc_children {
-            // `revive_constanic`'s own rebuild path always appends the new
-            // pointer to `new_parent`'s `foolish_children` (`create_child`'s
-            // ALWAYS-append contract, correct for the topology-cloning case
-            // this method exists for) — but a UBC-CHILD clone belongs ONLY
-            // in `ubc_children`, never `foolish_children` (same bug class
-            // `make_orphan_child` fixes elsewhere; found here while auditing
-            // every `create_child`/`push_ubc_child` pairing after the
-            // `combine`/`populate_concat_helpers` fixes). The share path
-            // (`attach_shared_foolish_child`) has the identical problem for
-            // an already-constanic UBC child. Pop the wrongly-appended
-            // entry back off before recording it correctly below.
+            // `create_child`'s parent construction path always appends the
+            // new pointer to `new_parent`'s `foolish_children` — correct for
+            // rebuilding parse-time topology, but a UBC-CHILD clone belongs
+            // ONLY in `ubc_children`, never `foolish_children`. Pop the
+            // wrongly-appended entry back off before recording it correctly
+            // below.
             let cloned = self.revive_constanic(ubc, new_ptr, 0, sfm, false);
             let index_in_slots = self.validate(new_ptr);
             let fc = &mut self.slots[index_in_slots].foolish_children;
@@ -2522,16 +2051,13 @@ impl FVMStorage {
     }
 }
 
-/// Direct arena-threaded translation of `fir_kinds.rs`'s real
-/// `default_equal` (re-read in full immediately before writing this).
-/// Preserves the exact branch order: NK-on-either-side → Unknowable;
-/// both-integers → compare; else resolve `.value()` and compare kind
-/// (`Creation`-vs-`Creation` → pointer identity; `Brane`-vs-`Brane` →
-/// Unknowable; anything else → NotEqual).
+/// Branch order: NK-on-either-side → Unknowable; both-integers → compare;
+/// else resolve `.value()` and compare kind (`Creation`-vs-`Creation` →
+/// pointer identity; `Brane`-vs-`Brane` → Unknowable; anything else →
+/// NotEqual).
 ///
-/// Kind discrimination is done directly on [`FirSpec`] rather than through a
-/// `kind()`-style accessor — `FirSpec` already carries the same information
-/// `FirKind` would, so no duplicate enum is needed under the arena.
+/// Kind discrimination is done directly on [`FirSpec`], which already
+/// carries the same information a separate `kind()`-style accessor would.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Equality {
     Equal,
@@ -2539,10 +2065,6 @@ pub(crate) enum Equality {
     Unknowable,
 }
 
-/// Called by `search_engine::SearchPredicate::matches`'s `Value`/`NameValue`
-/// arms, which are in turn called by `search_fir_dispatch` (Phase 2's final
-/// task) — genuinely reachable from production code now, so the
-/// `cfg_attr(not(test), expect(dead_code))` this had is removed.
 pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) -> Equality {
     if storage.get_nyes(a) == Nyes::Nk || storage.get_nyes(b) == Nyes::Nk {
         return Equality::Unknowable;
@@ -2581,27 +2103,16 @@ pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) 
     Equality::NotEqual
 }
 
-/// Direct arena-threaded translation of `fir_kinds.rs`'s `mod
-/// contextful_search` (re-read in full immediately before writing every
-/// item below — this is Phase 2 of FOOP-16, the highest silent-regression
-/// risk in the entire FOOP; every type/function here is a literal,
-/// line-by-line translation of the real module, not a redesign).
-///
-/// `SearchFir`'s own dispatch task (Phase 2's final task, `mod
-/// search_fir_dispatch` below) wires this module into `fir_op_step`'s live
-/// dispatch, so every item here is now genuinely reachable from production
-/// code — the `cfg_attr(not(test), expect(dead_code))` this module had
-/// while unwired is removed.
+/// The search engine: the candidate-navigation and predicate-matching
+/// machinery `SearchFir`'s dispatch (`mod search_fir_dispatch` below) drives
+/// during a search step.
 pub(crate) mod search_engine {
     use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};
 
     use foolish_core::fir::Nyes;
     use regex::Regex;
 
-    /// Relocated here at Phase 5's cutover (formerly `SearchFir::
-    /// matches_pattern`, `fir_kinds.rs`, deleted along with the rest of that
-    /// file's `Rc`-based machinery) — a pure string/regex match with no FIR
-    /// dependency at all, so a straight relocation, not a translation.
+    /// Exact match, or a regex match if `pattern` isn't already anchored.
     pub(crate) fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
         if stmt_name == pattern {
             return true;
@@ -2617,16 +2128,11 @@ pub(crate) mod search_engine {
         false
     }
 
-    /// Where the Navigator starts scanning from. Mirrors the real
-    /// `CursorSource` verbatim (not yet wired to anything — the FOOP's
-    /// `CursorSource::Contextless`/`Contexted` distinction governs how a
-    /// `Navigator` is CONSTRUCTED, which is `SearchFir`'s own dispatch
-    /// logic's job, migrated in the next Phase 2 task).
+    /// Where a Navigator starts scanning from.
     #[expect(
         dead_code,
-        reason = "not yet constructed anywhere, including this file's own tests — SearchFir's \
-                  dispatch task (the next Phase 2 task) is what decides Contextless vs. \
-                  Contexted and constructs a Navigator accordingly"
+        reason = "never constructed — BraneNavigator::new takes an explicit forward flag \
+                  directly instead of going through this type"
     )]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) enum CursorSource {
@@ -2642,9 +2148,7 @@ pub(crate) mod search_engine {
         NkStop,
     }
 
-    /// Result of the core scan loop. `Found` carries a genuinely comparable
-    /// `FirPointer` (already `Eq`), so unlike the original's hand-written
-    /// `Rc::ptr_eq`-based `PartialEq`, this can `#[derive]` directly.
+    /// Result of the core scan loop.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub(crate) enum ScanOutcome {
         Found(FirPointer),
@@ -2658,11 +2162,6 @@ pub(crate) mod search_engine {
     /// The candidate is the *full* statement — name, body/value, line
     /// number, parent, NYES — everything reachable from the statement
     /// `FirPointer` via `&FVMStorage`.
-    ///
-    /// Variant set UNCHANGED from the real `SearchPredicate` (per this
-    /// plan's own instruction: "this task is a signature/access-pattern
-    /// migration only, not a semantic change"): `Name`, `Value`,
-    /// `NameValue`, `Index`, `Head`, `Tail`.
     #[derive(Debug)]
     pub(crate) enum SearchPredicate {
         /// Name-match: `?name` / `~name` / `.name`. Reads the candidate's name.
@@ -2671,47 +2170,29 @@ pub(crate) mod search_engine {
         Value { pattern: FirPointer },
         /// Atomic name+value: `?name=v` / `~name=v`. Both gates on the same candidate.
         NameValue { name: String, value: FirPointer },
-        /// Positional index: `#N`. Reads the candidate's position in the scan.
-        ///
-        /// `#N` positional index — `IndexFir`'s real search predicate.
-        /// Constructed by production code as of Phase 5's cutover
-        /// (`IndexFir`'s own `fir_op_step` arm in this file, added to
-        /// resolve the previously-open gap this variant's doc comment used
-        /// to describe: "migrated STRUCTURAL-FIELDS-ONLY in Phase 1... no
-        /// Phase 2+ task anywhere in this plan gives `IndexFir` its real
-        /// search dispatch"). No `#[expect(dead_code)]` needed any more —
-        /// it has a real, non-test caller now.
+        /// Positional index: `#N`. Reads the candidate's position in the
+        /// scan. The only predicate `IndexFir`'s own dispatch constructs —
+        /// `^`/`$` head/tail both compile down to an `Index` with the
+        /// appropriate offset (`0` for head, a tail-relative negative
+        /// offset for tail) rather than to `Head`/`Tail` below.
         Index(i32),
-        /// First position: `^`. Matches when position == 0.
-        ///
-        /// **Still not constructed by production code** (unlike `Index`
-        /// above): the real `IndexFir::fir_op_step` (re-read directly)
-        /// dispatches `^`/`$` head/tail through `Astn::HeadTail`'s
-        /// `is_head`/offset-based construction, which resolves to an
-        /// ordinary `Index` predicate with `offset = 0` (head) or a
-        /// tail-relative negative offset — NOT through this `Head`/`Tail`
-        /// predicate variant at all (confirmed by re-reading `IndexFir`'s
-        /// full real dispatch: it only ever constructs
-        /// `SearchPredicate::Index(..)`, never `Head`/`Tail`). This is a
-        /// pre-existing, non-blocking observation carried forward from
-        /// Phase 2 — `Head`/`Tail` remain exercised only by this file's own
-        /// tests, hence `cfg_attr(not(test), ...)` rather than a bare
-        /// `#[expect]`.
+        /// First position: `^`. Matches when position == 0. Never
+        /// constructed by production code — see `Index`'s doc comment above.
         #[cfg_attr(
             not(test),
             expect(
                 dead_code,
-                reason = "IndexFir's own dispatch is unmigrated — no production caller builds this variant yet"
+                reason = "no production caller builds this variant — IndexFir compiles ^/$ down to Index instead"
             )
         )]
         Head,
-        /// Last position: `$`. Matches when position == total - 1. Same
-        /// not-yet-constructed-by-production status as `Index` above.
+        /// Last position: `$`. Matches when position == total - 1. Never
+        /// constructed by production code — see `Index`'s doc comment above.
         #[cfg_attr(
             not(test),
             expect(
                 dead_code,
-                reason = "IndexFir's own dispatch is unmigrated — no production caller builds this variant yet"
+                reason = "no production caller builds this variant — IndexFir compiles ^/$ down to Index instead"
             )
         )]
         Tail,
@@ -2727,10 +2208,7 @@ pub(crate) mod search_engine {
     }
 
     impl SearchPredicate {
-        /// Apply this predicate to a candidate statement. Direct
-        /// arena-threaded translation of the real `SearchPredicate::matches`
-        /// — same match arms, same order, `&FVMStorage` reads standing in
-        /// for `.borrow()`.
+        /// Apply this predicate to a candidate statement.
         pub(crate) fn matches(
             &self,
             storage: &FVMStorage,
@@ -2812,8 +2290,7 @@ pub(crate) mod search_engine {
             }
         }
 
-        /// Like [`Self::matches`] but skips the body-NYES gate. Direct
-        /// translation of the real `matches_no_body_check`.
+        /// Like [`Self::matches`] but skips the body-NYES gate.
         ///
         /// For positional/name-only predicates (Index, Head, Tail, Name) the
         /// candidate's body settling state is irrelevant — the caller decides
@@ -2871,11 +2348,9 @@ pub(crate) mod search_engine {
     }
 
     /// Check a candidate's body NYES after it passes positional/name gates.
-    /// Direct translation of the real `check_body_nyes`: pre-constanic →
-    /// unreachable (the real function's own `unreachable!`, preserved
-    /// verbatim — a pre-constanic body reaching this point is an internal
-    /// consistency violation, not a legitimate outcome). NK → NkStop.
-    /// Otherwise → Approve.
+    /// A pre-constanic body reaching this point is an internal-consistency
+    /// violation, not a legitimate outcome — hence `unreachable!` rather
+    /// than a handled case. NK → NkStop. Otherwise → Approve.
     fn check_body_nyes(storage: &FVMStorage, candidate: FirPointer) -> MatchOutcome {
         let nyes = storage
             .foolish_children(candidate)
@@ -2889,8 +2364,7 @@ pub(crate) mod search_engine {
     }
 
     /// Navigator contract: yields candidate statements as (`FirPointer`,
-    /// brane_position). Direct translation of the real `CandidateNavigator`
-    /// trait — same two methods, same correctness contract:
+    /// brane_position), with two correctness requirements:
     ///
     /// 1. **Correctly ordered** — the one mandated order.
     /// 2. **Complete** — every reachable candidate, exactly once, then stops.
@@ -2901,14 +2375,7 @@ pub(crate) mod search_engine {
         fn total(&self) -> usize;
     }
 
-    /// Iterates a brane's statements in order (forward or backward). Direct
-    /// arena-threaded translation of the real `BraneNavigator`: the
-    /// **ordering contract is preserved exactly** — the arena's
-    /// `Vec`-backed `foolish_children` is walked in the identical order
-    /// today's `Vec<FirRef>` iteration produces, forward or backward, since
-    /// both read the SAME underlying construction-order `Vec` (arena
-    /// `foolish_children` IS the ordered child list, same as
-    /// `ProtoBrane::foolish_children` was).
+    /// Iterates a brane's statements in order, forward or backward.
     #[derive(Debug)]
     pub(crate) struct BraneNavigator {
         children: Vec<FirPointer>,
@@ -2918,14 +2385,6 @@ pub(crate) mod search_engine {
     }
 
     impl BraneNavigator {
-        /// Direct translation of the real `BraneNavigator::new`: reads
-        /// `stmt_count()`/`stmt_at()` (the brane-like capability accessors,
-        /// already migrated onto `FirCursor` for `Brane`/`ConcatHelper` —
-        /// `Concatenation`'s own `stmt_count`/`stmt_at` overrides remain
-        /// unmigrated per Phase 1's documented deferral, so a
-        /// `BraneNavigator` built over an unmerged `Concatenation` sees 0
-        /// candidates, matching that kind's current honest-incomplete
-        /// state rather than panicking).
         pub(crate) fn new(storage: &FVMStorage, brane: FirPointer, forward: bool) -> Self {
             let cursor = FirCursor::new(brane, storage);
             let len = cursor.stmt_count().unwrap_or(0);
@@ -2939,11 +2398,6 @@ pub(crate) mod search_engine {
             }
         }
 
-        /// Direct translation of the real `BraneNavigator::set_range`.
-        /// Called by `search_fir_dispatch`'s contexted-search and
-        /// value-search bounded scans (Phase 2's final task) — the
-        /// `#[expect(dead_code)]` this had is removed now that it has real
-        /// callers.
         pub(crate) fn set_range(&mut self, start: usize, end: usize) {
             if start > end || start >= self.children.len() {
                 self.done = true;
@@ -2961,9 +2415,6 @@ pub(crate) mod search_engine {
     }
 
     impl CandidateNavigator for BraneNavigator {
-        /// Direct translation of the real `next_candidate` — identical
-        /// cursor-advance logic (forward: increment, done at end; backward:
-        /// decrement, done at zero).
         fn next_candidate(&mut self) -> Option<(FirPointer, usize)> {
             if self.done || self.pos >= self.children.len() {
                 return None;
@@ -2989,18 +2440,11 @@ pub(crate) mod search_engine {
         }
     }
 
-    /// The core scan loop of the ContextfulSearch engine. Direct translation
-    /// of the real `contextful_search_scan` — same two shared rules, same
-    /// order, same `Miss`/`Found`/`NkStop` outcomes:
-    ///
-    /// - **Wait-on-nye**: not applicable here (arena candidates cannot be
-    ///   pre-constanic per `check_body_nyes`'s own `unreachable!`, matching
-    ///   the original exactly).
-    /// - **NK-stop**: if a candidate's predicate returns `NkStop`, the scan
-    ///   halts (the search itself becomes NK).
-    ///
-    /// Returns `Miss` when all candidates are exhausted with no match. The
-    /// caller decides the settlement: anchored → NK, unanchored → ECONSTANIC.
+    /// The core scan loop of the ContextfulSearch engine: if a candidate's
+    /// predicate returns `NkStop`, the scan halts and the search itself
+    /// becomes NK. Returns `Miss` when all candidates are exhausted with no
+    /// match. The caller decides the settlement: anchored → NK, unanchored
+    /// → ECONSTANIC.
     pub(crate) fn contextful_search_scan(
         storage: &FVMStorage,
         nav: &mut dyn CandidateNavigator,
@@ -3019,19 +2463,9 @@ pub(crate) mod search_engine {
     }
 
     /// Like [`contextful_search_scan`] but uses
-    /// [`SearchPredicate::matches_no_body_check`]. Direct translation of the
-    /// real `contextful_search_scan_no_body_check` — for contextless
-    /// searches (`IndexFir`, `SearchFir` name search) where body settling is
-    /// the caller's responsibility.
-    ///
-    /// This task's own re-verification (per the plan: "confirm after the
-    /// previous two tasks that this loop needs no further change beyond
-    /// what flows through from `CandidateNavigator`'s and `SearchPredicate`'s
-    /// own migrations") confirms exactly that: both scan functions needed
-    /// ONLY signature changes (`&FVMStorage` threaded through, `FirPointer`
-    /// replacing `FirRef`) — no logic in either loop itself changed at all,
-    /// matching the plan's own prediction that this could turn out to be a
-    /// re-verification task rather than a code-change task.
+    /// [`SearchPredicate::matches_no_body_check`] — for contextless searches
+    /// (`IndexFir`, `SearchFir` name search) where body settling is the
+    /// caller's responsibility.
     pub(crate) fn contextful_search_scan_no_body_check(
         storage: &FVMStorage,
         nav: &mut dyn CandidateNavigator,
@@ -3050,16 +2484,11 @@ pub(crate) mod search_engine {
     }
 }
 
-/// `SearchFir`'s own predicate-building and dispatch logic, arena-threaded.
-/// Direct translation of `impl SearchFir`'s and `impl Fir for SearchFir`'s
-/// real methods (`fir_kinds.rs`, re-read in full immediately before writing
-/// every function below — this is where Phase 1's deferred "search-execution
-/// logic" is migrated, wiring `search_engine` into the crate's live
-/// evaluation path for the first time). Kept as free functions taking
-/// `FirPointer` + `&mut FVMStorage` explicitly, matching this module's
-/// established `fir_op_step`/`combine` convention, rather than methods on
-/// `FirPointer` itself — these are `SearchFir`-specific, not generic
-/// arena operations every kind needs.
+/// `SearchFir`'s own predicate-building and dispatch logic. Free functions
+/// taking `FirPointer` + `&mut FVMStorage` explicitly, matching this
+/// module's `fir_op_step`/`combine` convention, rather than methods on
+/// `FirPointer` itself — these are `SearchFir`-specific, not generic arena
+/// operations every kind needs.
 mod search_fir_dispatch {
     use super::search_engine::{
         BraneNavigator, ScanOutcome, SearchPredicate, contextful_search_scan,
@@ -3069,27 +2498,16 @@ mod search_fir_dispatch {
 
     use foolish_core::fir::Nyes;
 
-    /// Direct translation of `SearchFir::nyes_from_found` (re-read
-    /// directly) — same mapping as the free `nyes_from_found` this module
-    /// already defines for `StayFullyFoolish` (both translate the SAME real
-    /// function; kept as one shared arena function rather than duplicated,
-    /// since the original crate ALSO has both call the same
-    /// `SearchFir::nyes_from_found`).
     fn nyes_from_found(found: Nyes) -> Nyes {
         super::nyes_from_found(found)
     }
 
-    /// Direct translation of `SearchFir::clone_stmt_result`, now including
-    /// the NF-substitution path (`StatementFir::settled_result`'s override,
-    /// FOOP-33 §4): mirrors `crate::fir_kinds::statement_value_for_comparison`'s
-    /// "`settled_result()`, else the raw written body" contract exactly —
-    /// a refused statement (`nf_reason` set) presents a fresh, already-`Nk`
-    /// node INSTEAD of cloning its written RHS. Built directly at `Nyes::Nk`
-    /// (not via the general `FirSpec::Nk` + step convention, which starts
-    /// `Prembrionic`) because `settled_result`'s own contract — "applies the
-    /// constanic gate itself" — demands the presented value already BE
-    /// constanic; the real override's doc comment makes the same point about
-    /// why it does not go through `NkFir::nk`.
+    /// The statement a search found presents its NF-substitution value if
+    /// it's been refused (`nf_reason` set: a fresh, already-`Nk` node
+    /// instead of cloning its written RHS — `settled_result`'s own contract
+    /// requires the presented value already BE constanic, which a
+    /// `Prembrionic`-starting `FirSpec::Nk` node would not be), otherwise
+    /// its written body, cloned via `revive_constanic`.
     pub(super) fn clone_stmt_result(
         storage: &mut FVMStorage,
         stmt: FirPointer,
@@ -3113,11 +2531,9 @@ mod search_fir_dispatch {
         storage.revive_constanic(body, new_parent, index, sfm, false)
     }
 
-    /// Direct translation of `SearchFir::handle_found` (re-read directly):
-    /// clones the found statement's value under `self`, pairs it with a
-    /// `FoolRefFir` wrapping the ORIGINAL statement (the two-child
-    /// invariant, already verified in Phase 1's `FoolRefFir` task), and
-    /// moves to `Braning`.
+    /// Clones the found statement's value under `self`, pairs it with a
+    /// `FoolRef` wrapping the ORIGINAL statement (the two-child invariant),
+    /// and moves to `Braning`.
     fn handle_found(storage: &mut FVMStorage, ptr: FirPointer, stmt: FirPointer, sfm: bool) {
         let clone = clone_stmt_result(storage, stmt, ptr, sfm);
         let mut cursor = super::FirCursorMut::new(ptr, storage);
@@ -3125,15 +2541,11 @@ mod search_fir_dispatch {
         cursor.set_nyes(Nyes::Braning);
     }
 
-    /// Direct translation of `SearchFir::settle_from_ubc_result` (re-read
-    /// directly): once a result is pushed, adopt its (remapped) NYES.
-    /// Direct arena translation of `fir_kinds.rs`'s free function
-    /// `statement_value_for_comparison` (re-read directly): the value a
-    /// statement PRESENTS — its `settled_result()` (the NF-refusal NK, if
-    /// already refused) if set, else the raw written body. Used by the two
-    /// NF-refusal checks below, which must compare against what a PRIOR
-    /// statement already presents, not its raw RHS (poisoning must be
-    /// transitive per FOOP-33 §4).
+    /// The value a statement PRESENTS: its `settled_result()` (the
+    /// NF-refusal NK, if already refused) if set, else the raw written
+    /// body. Used by the two NF-refusal checks below, which must compare
+    /// against what a PRIOR statement already presents, not its raw RHS —
+    /// poisoning must be transitive (FOOP-33 §4).
     pub(super) fn statement_value_for_comparison(
         storage: &FVMStorage,
         stmt: FirPointer,
@@ -3142,13 +2554,11 @@ mod search_fir_dispatch {
             .or_else(|| storage.foolish_children(stmt).first().copied())
     }
 
-    /// Direct arena translation of `StatementFir::check_null_const_conflict`
-    /// (FOOP-33 §4, re-read in full immediately before writing this): a
-    /// null-characterized statement checks ITSELF, once its body is
-    /// constanic, against any EARLIER same-name null-characterized statement
-    /// (IB, then AB) — refusing (`set_nf_reason`) if the two values are not
-    /// `Equal`. Terminal: does nothing if `nf_reason` is already set
-    /// (Gotcha #5a, no re-alarm).
+    /// A null-characterized statement (FOOP-33 §4) checks ITSELF, once its
+    /// body is constanic, against any EARLIER same-name null-characterized
+    /// statement (IB, then AB) — refusing (`set_nf_reason`) if the two
+    /// values are not `Equal`. Terminal: does nothing if `nf_reason` is
+    /// already set (no re-alarm once refused).
     pub(super) fn check_null_const_conflict(
         storage: &mut FVMStorage,
         stmt: FirPointer,
@@ -3185,17 +2595,13 @@ mod search_fir_dispatch {
 
     /// Shared write path for both NF-refusal rules below: sets `nf_reason`
     /// AND materializes the refusal as a fresh, already-`Nk` node pushed to
-    /// `stmt`'s `ubc_children` — this is what makes `FirPointer::
-    /// settled_result`'s GENERIC `ubc_children().first()` read (used
+    /// `stmt`'s `ubc_children`. This second step is required: `FirPointer::
+    /// settled_result`'s generic `ubc_children().first()` read (used
     /// pervasively, including by read-only output serialization, which
-    /// cannot itself allocate a fresh node the way the real `Rc::new`-per-
-    /// call `StatementFir::settled_result` override does) correctly answer
-    /// `Some(nk)` for a refused statement instead of `None` (which silently
-    /// falls through to the raw written body — a real bug found via
-    /// `einmo_gate_checked`: the NF mechanism set `nf_reason` correctly but
-    /// nothing ever surfaced it through `settled_result`'s read path, so
-    /// `'True = 3` rendered as unrefused `3` even though `nf_reason` was
-    /// genuinely `Some("'True not-foolish")` on the very same pointer).
+    /// cannot itself allocate a node on demand) must find something there to
+    /// answer `Some(nk)` for a refused statement — setting `nf_reason` alone
+    /// would leave `ubc_children` empty and `settled_result` would fall
+    /// through to the raw, unrefused written body instead.
     fn refuse_statement(storage: &mut FVMStorage, stmt: FirPointer, reason: String) {
         storage.set_nf_reason(stmt, reason.clone());
         let nk = storage.make_orphan_child(stmt, FirSpec::Nk { reason });
@@ -3204,11 +2610,9 @@ mod search_fir_dispatch {
         me.push_ubc_child(nk, Nyes::Nk);
     }
 
-    /// Direct arena translation of `StatementFir::check_rename_of_named_
-    /// creation` (FOOP-33, re-read in full immediately before writing this):
-    /// a null-characterized statement whose constanic value resolves to a
-    /// creation with a DIFFERENT original name is refused — "named creations
-    /// cannot be renamed." Terminal, same guard as
+    /// A null-characterized statement whose constanic value resolves to a
+    /// creation with a DIFFERENT original name is refused (FOOP-33: named
+    /// creations cannot be renamed). Terminal, same guard as
     /// `check_null_const_conflict`.
     pub(super) fn check_rename_of_named_creation(
         storage: &mut FVMStorage,
@@ -3251,18 +2655,16 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct arena translation of `ConcatenationFir::apply_null_const_rule_
-    /// to_merged_stmt` (FOOP-33 §4, re-read in full immediately before
-    /// writing this): the null-characterized name constant rule, applied at
-    /// concatenation merge time — `StatementFir`'s own `check_null_const_
-    /// conflict` never fires for a merge-cloned statement (it was built
-    /// already-constanic via `revive_constanic`, which skips `Prembrionic`/
-    /// `Embryonic`/`Braning` entirely), so `ConcatenationFir` enforces the
-    /// SAME rule itself here, against statements already merged BEFORE
-    /// `new_stmt`. `already_merged` is searched in REVERSE (nearest-first)
-    /// so a same-name chain compares each new one against the NEAREST
-    /// prior, transitively carrying any earlier refusal forward via
-    /// `statement_value_for_comparison`'s settled-result-first read.
+    /// The null-characterized name-constant rule (FOOP-33 §4), applied at
+    /// concatenation merge time: `check_null_const_conflict`'s own `fir_op_step`
+    /// gate never fires for a merge-cloned statement (`revive_constanic` builds
+    /// it already-constanic, skipping `Prembrionic`/`Embryonic`/`Braning`
+    /// entirely), so this enforces the same rule directly, against statements
+    /// already merged BEFORE `new_stmt`. `already_merged` is searched in
+    /// REVERSE (nearest-first) so a same-name chain compares each new one
+    /// against the NEAREST prior, transitively carrying any earlier refusal
+    /// forward via `statement_value_for_comparison`'s settled-result-first
+    /// read.
     pub(super) fn apply_null_const_rule_to_merged_stmt(
         storage: &mut FVMStorage,
         new_stmt: FirPointer,
@@ -3304,17 +2706,13 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct arena translation of `ConcatenationFir::populate_concat_
-    /// helpers` (re-read in full immediately before writing this): Phase A
-    /// — a single `ConcatHelper` with ALL merged lines (no `MAX_BRANE_SIZE`
-    /// limit yet). Constanic-clones every element's statements (in order,
-    /// via each element's OWN resolved `.value()`) into one flat
+    /// Builds a single `ConcatHelper` holding ALL merged lines (no
+    /// `MAX_BRANE_SIZE` limit). Constanic-clones every element's statements
+    /// (in order, via each element's OWN resolved `.value()`) into one flat
     /// `ConcatHelper`, applying the null-const merge rule to each clone as
     /// it is added, then pushes the helper as `ptr`'s sole `ubc_children`
-    /// entry. Structural only — the CALLER decides `ptr`'s own NYES (this
-    /// mirrors the real function's own contract exactly: "Structural only —
-    /// the caller decides NYES"). Empty (no lines at all) is a no-op, same
-    /// as the real function.
+    /// entry. Structural only — the CALLER decides `ptr`'s own NYES. A
+    /// no-op when there are no lines at all.
     pub(super) fn populate_concat_helpers(storage: &mut FVMStorage, ptr: FirPointer) {
         let elements: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
 
@@ -3331,13 +2729,8 @@ mod search_fir_dispatch {
 
         // Build the (empty) helper first so its pointer becomes the parent
         // of every cloned line — cross-element search resolution walks to
-        // it, matching the real code's "build the helper first so its Weak
-        // becomes the parent" ordering exactly. `make_orphan_child`, not
-        // `create_child`: the real `ConcatHelper` is pushed ONLY to
-        // `ubc_children` (`self.core.push_ubc_child(helper_fir)`), never to
-        // `foolish_children` — the same bug class as `combine`'s result
-        // nodes (see `make_orphan_child`'s own doc comment), found and
-        // fixed alongside them.
+        // it. `make_orphan_child`, not `create_child`: the helper belongs
+        // ONLY in `ubc_children`, never `foolish_children`.
         let helper = storage.make_orphan_child(ptr, FirSpec::ConcatHelper);
 
         let mut cloned_stmts: Vec<FirPointer> = Vec::with_capacity(total_lines);
@@ -3373,20 +2766,18 @@ mod search_fir_dispatch {
         }
     }
 
-    /// The offset of `self`'s value operand among its foolish children —
-    /// direct translation of `SearchFir::value_child`'s indexing rule
-    /// (`1` if anchored — the anchor occupies `[0]` — else `0`).
+    /// `self`'s value operand: index `1` if anchored (the anchor occupies
+    /// `[0]`), else index `0`.
     fn value_child(storage: &FVMStorage, ptr: FirPointer) -> FirPointer {
         let anchored = matches!(storage.get(ptr), FirSpec::Search { anchored: true, .. });
         let idx = if anchored { 1 } else { 0 };
         storage.foolish_children(ptr)[idx]
     }
 
-    /// Direct translation of `SearchFir::ib_search_with_engine` (re-read
-    /// directly): an immediate-brane name search, scanning backward from
-    /// (but excluding) the current statement's own position. `checked_sub`
-    /// (not `saturating_sub`) preserves the index-0 self-hit guard exactly
-    /// — a statement at position 0 has no preceding range at all.
+    /// An immediate-brane name search, scanning backward from (but
+    /// excluding) the current statement's own position. `checked_sub`, not
+    /// `saturating_sub`: a statement at position 0 has no preceding range
+    /// at all, and the `?` on `None` is exactly the self-hit guard.
     fn ib_search_with_engine(
         storage: &FVMStorage,
         ptr: FirPointer,
@@ -3401,12 +2792,9 @@ mod search_fir_dispatch {
 
     /// Generalization of [`ib_search_with_engine`] taking the search pattern
     /// directly rather than reading it off a `FirSpec::Search` node — needed
-    /// by `StatementFir`'s NF-refusal checks (FOOP-33 §4,
-    /// `check_null_const_conflict`), which search by the STATEMENT's own
-    /// `searchable_name()`, not by a `Search` node's pattern (the statement
-    /// itself is not a `Search`). `ib_search_with_engine` above is now a
-    /// thin wrapper over this, preserving its exact original behavior for
-    /// its existing callers.
+    /// by `check_null_const_conflict` (FOOP-33 §4), which searches by the
+    /// STATEMENT's own `searchable_name()`, not by a `Search` node's
+    /// pattern (the statement itself is not a `Search`).
     pub(super) fn ib_search_by_pattern(
         storage: &FVMStorage,
         pattern: &str,
@@ -3427,10 +2815,9 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct translation of `SearchFir::ab_search_with_engine` (re-read
-    /// directly): an ancestral-brane name search, climbing outward one
-    /// brane at a time, scanning each ancestor's statements strictly
-    /// BEFORE the position the climb entered it from.
+    /// An ancestral-brane name search, climbing outward one brane at a
+    /// time, scanning each ancestor's statements strictly BEFORE the
+    /// position the climb entered it from.
     fn ab_search_with_engine(
         storage: &FVMStorage,
         ptr: FirPointer,
@@ -3479,14 +2866,11 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct translation of `SearchFir::contexted_search_from_anchor`
-    /// (re-read in full immediately before writing this): reads the
-    /// anchor's `FoolRefFir` bookkeeping entry (`ubc_children[1]`, per the
-    /// two-child invariant), resolves ITS referent's home brane and
+    /// Reads the anchor's `FoolRef` bookkeeping entry (`ubc_children[1]`,
+    /// per the two-child invariant), resolves ITS referent's home brane and
     /// position, then scans a range strictly AFTER (forward) or BEFORE
-    /// (backward) that position within the SAME home brane — never
-    /// crossing out of it (the contexted-search "never leaves the home
-    /// brane" rule, AGENTS.md §Searches).
+    /// (backward) that position within the SAME home brane — a contexted
+    /// search never leaves the home brane (AGENTS.md §Searches).
     fn contexted_search_from_anchor(
         storage: &FVMStorage,
         ptr: FirPointer,
@@ -3546,11 +2930,8 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct translation of `impl Fir for SearchFir`'s real `fir_op_step`'s
-    /// NAME-SEARCH path (the `is_value_search` branch is
-    /// [`value_search_step`] below — dispatched the same way the real
-    /// `fir_op_step`'s very first line does: `if self.is_value_search {
-    /// return self.value_search_step(scope); }`).
+    /// The NAME-SEARCH path — the `is_value_search` branch is
+    /// [`value_search_step`] below.
     pub(crate) fn name_search_step(
         storage: &mut FVMStorage,
         ptr: FirPointer,
@@ -3600,9 +2981,9 @@ mod search_fir_dispatch {
                 } else if contexted && anchored {
                     match contexted_search_from_anchor(storage, ptr, forward) {
                         Some((stmt, _nyes)) => handle_found(storage, ptr, stmt, has_ancestral_sfm),
-                        // `anchored` is always true in this branch, so the
-                        // real fir_op_step's `if self.anchored { Nk } else
-                        // { Econstanic }` always takes the Nk arm here.
+                        // `anchored` is always true in this branch, so a
+                        // miss settles Nk (an unanchored miss would settle
+                        // Econstanic instead).
                         None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
                     }
                 } else if anchored {
@@ -3637,10 +3018,9 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct translation of `SearchFir::build_value_predicate` (re-read
-    /// directly): builds a `Value` predicate if the pattern is empty
-    /// (`?=`/`~=`), else a `NameValue` predicate (`?name=v`/`~name=v`).
-    /// `None` if the value operand is not yet constanic — the caller
+    /// Builds a `Value` predicate if the pattern is empty (`?=`/`~=`), else
+    /// a `NameValue` predicate (`?name=v`/`~name=v`). `None` if the value
+    /// operand is not yet constanic — the caller
     /// ([`check_value_pattern_ready`]) is responsible for confirming
     /// readiness first.
     fn build_value_predicate(storage: &FVMStorage, ptr: FirPointer) -> Option<SearchPredicate> {
@@ -3662,15 +3042,12 @@ mod search_fir_dispatch {
         }
     }
 
-    /// Direct translation of `SearchFir::check_value_pattern_ready` (re-read
-    /// directly): gates the value-search dispatch on the value operand's
-    /// own NYES, preserving the exact branch-by-branch NYES propagation
-    /// rules (FOOP-23 rendering appendix, quoted in the real source):
-    /// pre-constanic → push as task, not ready; NK → Nk; WOCONSTANIC →
-    /// inherit Woconstanic (waiting on constanics, not a miss); ECONSTANIC →
-    /// inherit Econstanic; else confirm the resolved value is either an
-    /// integer or a creation (the two comparable value kinds), else Nk with
-    /// the exact alarm-reason string.
+    /// Gates the value-search dispatch on the value operand's own NYES
+    /// (FOOP-23): pre-constanic → push as task, not ready; NK → Nk;
+    /// WOCONSTANIC → inherit Woconstanic (waiting on constanics, not a
+    /// miss); ECONSTANIC → inherit Econstanic; else confirm the resolved
+    /// value is either an integer or a creation (the two comparable value
+    /// kinds), else Nk.
     fn check_value_pattern_ready(storage: &mut FVMStorage, ptr: FirPointer) -> bool {
         let value_fir = value_child(storage, ptr);
         let nyes = storage.get_nyes(value_fir);
@@ -3708,10 +3085,9 @@ mod search_fir_dispatch {
         true
     }
 
-    /// Direct translation of `SearchFir::value_search_step` (re-read in
-    /// full immediately before writing this) — the value-search dispatch
-    /// (`?=`/`~=`/`?name=v`/`~name=v`), a distinct three-phase shape from
-    /// [`name_search_step`]'s two phases: `Prembrionic` pushes BOTH the
+    /// The value-search dispatch (`?=`/`~=`/`?name=v`/`~name=v`), a distinct
+    /// three-phase shape from [`name_search_step`]'s two phases:
+    /// `Prembrionic` pushes BOTH the
     /// anchor (if anchored) and the value operand as tasks together (unlike
     /// name-search, which pushes only the anchor); `Embryonic` (unanchored
     /// only — anchored searches skip straight to `Braning`) does the
@@ -3858,35 +3234,16 @@ mod search_fir_dispatch {
     }
 }
 
-/// Arena-threaded translation of `evaluator.rs`'s stepping loop and
-/// FIR→core-FIR output-serialization family (Phase 3 of FOOP-16). Re-read
-/// `evaluator.rs` in full (1246 lines) immediately before writing every
-/// function below.
+/// The stepping loop and the FIR→core-FIR output-serialization family that
+/// `UbcaEvaluator::evaluate` drives.
 ///
-/// # Free functions, not methods — resolving `evaluator.rs`'s own `@Agents`
-/// embedded comment
+/// # Free functions, not methods
 ///
-/// `evaluator.rs`'s real `proto_to_core_fir_sff_body` carries a parenthetical
-/// `(@Agents, I suppose this can't be declared as implementation on
-/// something associated with SFF marker like SFFMark? ...)` asking whether
-/// these conversion functions could be methods rather than free functions.
-/// Resolved here rather than left standing: NO — these functions dispatch
-/// across EVERY `FirSpec` variant (`match kind { FirKind::Search => ...,
-/// FirKind::Operator => ..., ... }`), not just SF/SFF, so there is no single
-/// "SFFMark"-shaped type to attach them to; the "whose method is it"
-/// question (Rule Zero, rust_instructions.md) has no single answer for a
-/// function that legitimately needs to read every kind's own state. This
-/// exactly mirrors why `fir_op_step`, `combine`, and every
-/// `search_fir_dispatch` function in this same module are ALSO free
-/// functions taking `FirPointer` explicitly rather than methods — established
-/// convention, not an oversight, and this module's own use of the SAME shape
-/// for the SAME reason is the concrete answer to the embedded question.
-///
-/// `UbcaEvaluator::evaluate` (the crate's real entry point) is rewired to
-/// call into this module as of Phase 5's cutover — `step_to_settled` and
-/// `proto_to_core_fir` are re-exported at this file's top level
-/// (`pub(crate) use core_fir_conversion::{..}` below) for exactly that
-/// caller. No more `#[expect(dead_code)]` needed.
+/// These conversion functions dispatch across EVERY `FirSpec` variant
+/// (`match kind { FirSpec::Search => ..., FirSpec::Operator => ..., ... }`),
+/// so there is no single type to attach them to as methods — the same
+/// reason `fir_op_step`, `combine`, and every `search_fir_dispatch`
+/// function are also free functions taking `FirPointer` explicitly.
 mod core_fir_conversion {
     use super::{
         ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH,
@@ -3901,17 +3258,11 @@ mod core_fir_conversion {
         StayFullyFoolishFirBuilder,
     };
 
-    /// Direct arena-threaded translation of `evaluator.rs`'s real
-    /// `step_to_settled` (re-read immediately before writing this): steps
-    /// `ptr` up to `MAX_STEPS` times, returning `Ok(())` once constanic, or
-    /// an `Eval` error naming the iteration count if the step budget is
-    /// exhausted first. `MAX_STEPS` here reuses `search_fir_dispatch`'s
-    /// module-level `MAX_DEPTH` guard's SIBLING concept at the top level —
-    /// re-read directly: the real `step_to_settled` uses its own
-    /// `MAX_STEPS = 10_000` constant, distinct from `step_inner`'s
-    /// `MAX_DEPTH = 100` recursion guard (one caps total top-level
-    /// iterations, the other caps recursion depth within one iteration) —
-    /// so this defines its OWN `MAX_STEPS`, not a reuse of `MAX_DEPTH`.
+    /// Steps `ptr` up to `MAX_STEPS` times, returning `Ok(())` once
+    /// constanic, or an error naming the iteration count if the step
+    /// budget is exhausted first. Caps total top-level iterations —
+    /// distinct from `step_inner`'s `MAX_DEPTH`, which caps recursion depth
+    /// within a single iteration.
     const MAX_STEPS: usize = 10_000;
 
     pub(crate) fn step_to_settled(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
@@ -3929,29 +3280,18 @@ mod core_fir_conversion {
         Ok(())
     }
 
-    /// Direct arena-threaded translation of `evaluator.rs`'s real
-    /// `step_until` (re-read immediately before writing this): the UBCA
-    /// debugger-breakpoint equivalent — steps until `matcher` accepts the
-    /// front task (or `None` when there is no front task), returning the
-    /// step count, or an error if the FVM settles first or the step budget
-    /// is exhausted. Reuses [`MAX_STEPS`] — the real function's own
-    /// `MAX_STEPS` constant, re-confirmed to be the SAME `10_000` value as
-    /// `step_to_settled`'s (both defined identically in `evaluator.rs`, one
-    /// module-level constant there; kept as one shared constant here too,
-    /// not duplicated).
+    /// The UBCA debugger-breakpoint equivalent — steps until `matcher`
+    /// accepts the front task (or `None` when there is no front task),
+    /// returning the step count, or an error if the FVM settles first or
+    /// the step budget is exhausted.
     ///
-    /// **Deliberate signature deviation**: the real `step_until`'s matcher
-    /// is `FnMut(Option<&FirRef>) -> bool` — a `FirRef` can be `.borrow()`'d
-    /// directly by the closure with no extra parameter. A bare `FirPointer`
-    /// carries no data on its own, so this arena translation's matcher takes
-    /// `&FVMStorage` explicitly alongside `Option<FirPointer>`
-    /// (`FnMut(&FVMStorage, Option<FirPointer>) -> bool`) — the same
-    /// necessary adaptation `SearchPredicate::matches` already made for the
-    /// identical reason in Phase 2.
-    /// No production caller: this is developer-facing debugger tooling
-    /// (mirroring the real `evaluator.rs::step_until`'s own scope — also
-    /// `pub` there but never called by `UbcaEvaluator::evaluate`), not part
-    /// of `evaluate`'s own cutover. Exercised by this file's own tests.
+    /// The matcher takes `&FVMStorage` explicitly alongside
+    /// `Option<FirPointer>` (rather than a bare `Option<FirPointer>`)
+    /// because a `FirPointer` carries no data of its own — it must be
+    /// read through the arena to be inspected.
+    ///
+    /// No production caller: this is developer-facing debugger tooling, not
+    /// part of `evaluate`'s own path. Exercised by this file's own tests.
     #[cfg_attr(
         not(test),
         expect(
@@ -3983,7 +3323,6 @@ mod core_fir_conversion {
         ))
     }
 
-    /// Direct translation of `evaluator.rs`'s real `step_until_line_number`.
     /// No production caller — see `step_until`'s doc comment.
     #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
     pub(crate) fn step_until_line_number(
@@ -3998,7 +3337,6 @@ mod core_fir_conversion {
         })
     }
 
-    /// Direct translation of `evaluator.rs`'s real `step_until_statement_name`.
     /// No production caller — see `step_until`'s doc comment.
     #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
     pub(crate) fn step_until_statement_name(
@@ -4013,9 +3351,8 @@ mod core_fir_conversion {
         })
     }
 
-    /// Direct translation of `evaluator.rs`'s real `display_stmt_name`
-    /// (re-read directly): an anonymous statement (`compiler::ANON_STMT_NAME`,
-    /// or any empty name) renders with no `name=` prefix.
+    /// An anonymous statement (`ANON_STMT_NAME`, or any empty name) renders
+    /// with no `name=` prefix.
     fn display_stmt_name(name: Option<&str>) -> Option<String> {
         match name {
             Some(n) if n.is_empty() || n == ANON_STMT_NAME => None,
@@ -4024,16 +3361,13 @@ mod core_fir_conversion {
         }
     }
 
-    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir`.
     pub(crate) fn proto_to_core_fir(storage: &FVMStorage, ptr: FirPointer) -> core_fir::Fir {
         proto_to_core_fir_inner(storage, ptr, false, None, 0)
     }
 
-    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir_sff_body`
-    /// (re-read in full immediately before writing this): top-level searches
-    /// get EMBRYONIC state; operator operands get CONSTANT state; operators
-    /// get WOCONSTANIC/CONSTANT based on operand states. See `current_stmt`'s
-    /// doc comment on the real function, preserved verbatim in spirit: the
+    /// Renders an SFF body: top-level searches get EMBRYONIC state;
+    /// operator operands get CONSTANT state; operators get
+    /// WOCONSTANIC/CONSTANT based on operand states. `current_stmt` is the
     /// statement whose body is currently being converted, threaded so
     /// `as_creation_display_name` can tell whether a creation is being
     /// rendered from its own defining statement or from elsewhere.
@@ -4084,7 +3418,6 @@ mod core_fir_conversion {
         }
     }
 
-    /// Direct translation of `evaluator.rs`'s real `proto_to_core_fir_sff_operand`.
     fn proto_to_core_fir_sff_operand(
         storage: &FVMStorage,
         ptr: FirPointer,
@@ -4130,15 +3463,9 @@ mod core_fir_conversion {
         proto_to_core_fir_inner(storage, ptr, true, current_stmt, depth + 1)
     }
 
-    /// Direct, line-by-line translation of `evaluator.rs`'s real
-    /// `proto_to_core_fir_inner` (re-read in full immediately before writing
-    /// this — the direct producer of every einmo OUTPUT line, per this
-    /// phase's own framing of why this function family is worth its own
-    /// task). Every match arm preserves the original's exact logic,
-    /// including the Search/Index/StayFoolish arms' deeply nested
-    /// unwrap-vs-preserve-wrapper decisions — none simplified, even where a
-    /// shorter form seemed tempting, per this task's own "direct
-    /// translation, not a redesign" discipline (matching Phase 2's).
+    /// The producer of every OUTPUT line: converts one FIR node (and its
+    /// tree of descendants) into the serializable `core_fir::Fir`
+    /// representation.
     fn proto_to_core_fir_inner(
         storage: &FVMStorage,
         ptr: FirPointer,
@@ -4170,7 +3497,7 @@ mod core_fir_conversion {
                 builder.build()
             }
             // A comparison renders as its RESULT — see the real function's
-            // own comment (re-read directly, preserved verbatim in spirit).
+            // own comment.
             FirSpec::Comparison { .. } => {
                 if let Some(&result) = cursor.ubc_children().first() {
                     return proto_to_core_fir_inner(
@@ -4261,15 +3588,10 @@ mod core_fir_conversion {
                 let name =
                     display_stmt_name(cursor.as_stmt_identifier().map(|id| id.searchable_name()));
                 // Prefer settled_result() (the NF-refusal NK, if this
-                // statement was refused) over the raw written body — FOOP-33
-                // §4, `search_fir_dispatch::statement_value_for_comparison`.
-                // Without this, the null-const rule's refusal is enforced
-                // internally but never actually rendered: `'True = 3` would
-                // still SHOW `3` instead of the NF NK (a real bug found and
-                // fixed at Phase 5's `evaluate` cutover — this arm was
-                // written at Phase 3, before `nf_reason`/`statement_value_
-                // for_comparison` existed in arena form, and never updated
-                // once `StatementFir`'s NF-check task built them).
+                // statement was refused) over the raw written body (FOOP-33
+                // §4) — without this, a refusal is enforced internally but
+                // never rendered: `'True = 3` would still SHOW `3` instead
+                // of the NF NK.
                 let body_fir = search_fir_dispatch::statement_value_for_comparison(storage, ptr)
                     .map(|c| {
                         proto_to_core_fir_inner(storage, c, preserve_search, Some(ptr), depth + 1)
@@ -4290,8 +3612,7 @@ mod core_fir_conversion {
                             c_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
                         );
                         // Prefer settled_result() over the raw written body —
-                        // see the `Statement` arm's doc comment above (same
-                        // real bug, same fix, same NF-substitution rule).
+                        // see the `Statement` arm above.
                         let body_fir =
                             search_fir_dispatch::statement_value_for_comparison(storage, c)
                                 .map(|b| {
@@ -4345,9 +3666,7 @@ mod core_fir_conversion {
                     // ubc_child is a complex type (Brane, Operator, SF,
                     // SFF), this search came from unwrapping an SF
                     // value. UBC preserves the search wrapper in this
-                    // case rather than resolving to the final value —
-                    // re-read directly, translated verbatim, not
-                    // simplified.
+                    // case rather than resolving to the final value.
                     let result_is_search = matches!(storage.get(result), FirSpec::Search { .. });
                     if result_is_search && storage.get_nyes(result).is_constanic() {
                         let result_cursor = FirCursor::new(result, storage);
@@ -4414,23 +3733,14 @@ mod core_fir_conversion {
                     if !preserve_search {
                         let resolved_state = storage.get_nyes(result);
                         if matches!(resolved_state, Nyes::Constant | Nyes::Independent) {
-                            // `sf_inner_pattern`'s `Some` branch (re-read
-                            // directly, `as_sf_inner_pattern`) is NOT
+                            // `sf_inner_pattern`'s `Some` branch is NOT
                             // reachable here: `FirSpec::Search` carries no
                             // `sf_inner_pattern` field — it starts `None`
-                            // always in the arena model (per `FirSpec::
-                            // Search`'s own doc comment), and no
-                            // arena-migrated code path sets it yet (setting
-                            // it is part of the still-unmigrated
-                            // SF-unwrap-via-search machinery). An honestly
-                            // incomplete gap, not a silent wrong answer:
-                            // this only affects rendering a search that
-                            // itself resolved through an SF wrapper's own
-                            // pattern substitution, which no test in this
-                            // crate's suite yet exercises through the arena
-                            // path (Phase 3 does not wire this into the
-                            // live evaluator — see this module's own doc
-                            // comment).
+                            // always, and nothing sets it. This only
+                            // affects rendering a search that itself
+                            // resolved through an SF wrapper's own pattern
+                            // substitution, a case no test in this crate's
+                            // suite currently exercises.
                             return resolved;
                         }
                     }
@@ -4525,16 +3835,12 @@ mod core_fir_conversion {
             }
             FirSpec::StayFoolish => {
                 let inner_ref = cursor.foolish_children().first().copied();
-                // Direct translation of the real `evaluator.rs`'s
-                // `FirKind::StayFoolish` output arm (re-read in full
-                // immediately before writing this): when the inner
-                // expression is itself a settled Search whose OWN result is
-                // a "complex" kind (Brane/Operator/SF/SFF), the search
-                // wrapper is preserved and rendered UNWRAPPED — the outer
-                // `<...>` SF marker is NOT shown at all, matching how a
-                // detached-and-recoordinated SF value is presented as its
-                // search, not its wrapper. Four sub-cases, mirroring the
-                // real code's four `if`/`return` branches exactly.
+                // When the inner expression is itself a settled Search
+                // whose OWN result is a "complex" kind (Brane/Operator/SF/
+                // SFF), the search wrapper is preserved and rendered
+                // UNWRAPPED — the outer `<...>` SF marker is NOT shown at
+                // all: a detached-and-recoordinated SF value is presented
+                // as its search, not its wrapper.
                 if let Some(inner) = inner_ref {
                     let inner_spec = storage.get(inner).clone();
                     if matches!(inner_spec, FirSpec::Search { .. })
@@ -4744,30 +4050,9 @@ mod core_fir_conversion {
     }
 }
 
-/// Arena-threaded translation of `compiler.rs`'s AST→FIR construction (Phase
-/// 4 of FOOP-16). Re-read `compiler.rs` in full (732 lines) immediately
-/// before writing every function below — confirmed exactly 18
-/// `Rc::new_cyclic` sites, matching the plan's own count, clustered exactly
-/// as the plan describes: 12 in `build_fir`'s per-`Astn`-variant match arms,
-/// 1 in `build_concat_element`, 2 in the statement-construction path
-/// (`build_as_statement_inner`, `compile_root_with_body_override`), 1 in
-/// `build_expr_with_operator`, 1 in `compile_root_with_body_override`'s own
-/// root, 1 in the test module's `root_parent` helper (not translated — test
-/// scaffolding, not production code).
-///
-/// No production caller yet: `Compiler::compile` itself is not rewired to
-/// call into this module — doing so would require the ENTIRE downstream
-/// crate (evaluator, system_foo) to consume `FirPointer` trees instead of
-/// `FirRef` trees, which is Phase 5's coordinated cutover, not this task's.
-/// This module is a complete, standalone, PARALLEL arena compiler,
-/// exercised by its own tests, proven correct in isolation — exactly
-/// mirroring how `core_fir_conversion`/`search_fir_dispatch` were each
-/// additive and un-wired until their own cutover point.
-/// `UbcaEvaluator::evaluate` (the crate's real entry point) is rewired to
-/// call into this module as of Phase 5's cutover — `compose_program_with_
-/// system` and `program_result` are re-exported at this file's top level
-/// (`pub(crate) use arena_compiler::{..}` below) for exactly that caller.
-/// No more `#[expect(dead_code)]` needed.
+/// AST→FIR construction — the compiler `UbcaEvaluator::evaluate` drives
+/// (via `compose_program_with_system`/`program_result`, re-exported at this
+/// file's top level).
 mod arena_compiler {
     use super::{
         ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec,
@@ -4778,11 +4063,7 @@ mod arena_compiler {
 
     use crate::identifier::{Characterizations, Identifier};
 
-    /// Element types allowed inside a ConcatBrane. Byte-for-byte copy of
-    /// `compiler.rs`'s real (private) `ConcatElemKind` — duplicated rather
-    /// than exposed from `compiler.rs`, since this task does not otherwise
-    /// need to touch that file at all, and this is a small, self-contained,
-    /// storage-independent AST-classification type.
+    /// Element types allowed inside a ConcatBrane.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     enum ConcatElemKind {
         BareBrane,
@@ -4793,11 +4074,9 @@ mod arena_compiler {
         Error,
     }
 
-    /// Byte-for-byte copy of `compiler.rs`'s real (private) `validate_astn`
-    /// (re-read directly) — a plain, storage-independent AST walk; no
-    /// `FirPointer` involvement at all, so this is copied verbatim with no
-    /// arena threading needed, for the same reason `ConcatElemKind` above is
-    /// duplicated rather than exposed.
+    /// Rejects AST shapes this crate doesn't support (before any FIR
+    /// construction begins) — a plain, storage-independent AST walk with no
+    /// `FirPointer` involvement.
     fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         match ast {
             Astn::IfExpr { .. } => anyhow::bail!("if-then-else: not supported (FOOP=2)"),
@@ -4859,7 +4138,7 @@ mod arena_compiler {
     }
 
     /// Byte-for-byte copy of `compiler.rs`'s real (private)
-    /// `classify_concat_element` (re-read directly) — plain AST
+    /// `classify_concat_element` — plain AST
     /// classification, no `FirPointer` involvement, duplicated for the same
     /// reason as `ConcatElemKind`/`validate_astn` above.
     fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
@@ -4917,12 +4196,9 @@ mod arena_compiler {
         }
     }
 
-    /// Direct arena-threaded translation of `compiler.rs`'s real
-    /// `build_concat_element` (re-read in full immediately before writing
-    /// this): `parent` is the ALREADY-CREATED arena parent (the
-    /// `Concatenation`/`ConcatHelper`-equivalent node), so unlike the
-    /// original's `Rc::new_cyclic`-per-wrapper-kind construction, each
-    /// wrapper here is one `create_child` call.
+    /// `parent` is the ALREADY-CREATED arena parent (the
+    /// `Concatenation`/`ConcatHelper` node), so each wrapper here is one
+    /// `create_child` call.
     fn build_concat_element(
         storage: &mut FVMStorage,
         ast: Astn,
@@ -4952,24 +4228,14 @@ mod arena_compiler {
         }
     }
 
-    /// Direct, line-by-line arena-threaded translation of `compiler.rs`'s
-    /// real `build_fir` (re-read in full immediately before writing this —
-    /// every one of the 12 `Rc::new_cyclic` sites in the real function's
-    /// match arms is translated, none skipped).
-    ///
-    /// `parent: Option<FirPointer>` mirrors the original's `Option<&Weak<...>>`
-    /// exactly: `None` means build a ROOT (self-parented via
+    /// `parent: None` means build a ROOT (self-parented via
     /// `FVMStorage::make_root`); `Some(p)` means a child of `p` (via
-    /// `create_child`). Every arm that recurses builds its OWN node FIRST
-    /// (via `make_root`/`create_child` with a placeholder-then-mutate shape
-    /// is NOT needed here — unlike the original's `Rc::new_cyclic`, which
-    /// needs the self-`Weak` to exist BEFORE children can be built with it
-    /// as their parent, `create_child`/`make_root` need only the FINAL field
-    /// values, which for tree-structural fields are nothing at all — so the
-    /// arena order is: construct this node first (getting its `FirPointer`
-    /// immediately), THEN build children as its `create_child`s. This is
-    /// the exact "collapses to one `create_child` call" simplification
-    /// FOOP-16.md's Motivation section describes.
+    /// `create_child`). Every arm that recurses builds its OWN node FIRST —
+    /// `create_child`/`make_root` need no placeholder-then-mutate step, since
+    /// they need only the node's final field values (tree structure is
+    /// handled generically by the arena itself) — so the order is:
+    /// construct this node, getting its `FirPointer` immediately, THEN
+    /// build children as its `create_child`s.
     fn build_fir(
         storage: &mut FVMStorage,
         ast: Astn,
@@ -5282,21 +4548,13 @@ mod arena_compiler {
         }
     }
 
-    /// Direct translation of `compiler.rs`'s real `Compiler::compile`'s
-    /// per-AST-node entry point (`AstnCompilerExt::compile_standalone`),
-    /// combined here into one function since the arena has no analogous
-    /// `impl AstnCompilerExt for Astn` — free functions taking `Astn` by
-    /// value already match this module's own established shape.
+    /// A plain, no-system.foo compile path.
     ///
-    /// No production caller as of Phase 5's `evaluate` cutover:
-    /// `UbcaEvaluator::evaluate`'s real body goes through
-    /// `compose_program_with_system`/`compose_one`/`compile_root_with_body_
-    /// override` (system.foo composition is not opt-in — see FOOP-33 §4),
-    /// never this plain `Compiler::compile`-equivalent path. Kept and
-    /// exercised by this file's own tests as the direct counterpart to the
-    /// real (still-`pub`, still `Compiler::compile`-based) `compiler.rs`,
-    /// which this crate's ~150+ legacy tests still call directly and will
-    /// until the Phase 5 test port/retire pass.
+    /// No production caller: `UbcaEvaluator::evaluate`'s real body goes
+    /// through `compose_program_with_system`/`compose_one`/
+    /// `compile_root_with_body_override` instead — system.foo composition
+    /// is not opt-in (FOOP-33 §4). Kept and exercised by this file's own
+    /// tests.
     #[cfg_attr(
         not(test),
         expect(
@@ -5316,7 +4574,6 @@ mod arena_compiler {
         Ok(build_fir(storage, ast, None, false))
     }
 
-    /// Direct translation of `compiler.rs`'s real `Compiler::compile`.
     /// No production caller — see `compile_standalone`'s doc comment.
     #[cfg_attr(
         not(test),
@@ -5332,14 +4589,13 @@ mod arena_compiler {
             .collect()
     }
 
-    /// Direct translation of `compiler.rs`'s real `compile_stmt_body_under`
-    /// (re-read in full immediately before writing this): parse `source`,
-    /// require it to be exactly one top-level brane with exactly one
-    /// (assignment) statement, then build ONLY that statement's body under
-    /// `parent` via `build_expr_with_operator` — never wrapping it in a
-    /// `Statement`/`Brane` of its own. Used by `system_foo`'s comparison-
-    /// operator installer to compile each fixed `OPERAND_SRC` fragment
-    /// (`"{o = <<#-2>>;}"`) directly beneath the `ComparisonFir` node.
+    /// Parses `source`, requires it to be exactly one top-level brane with
+    /// exactly one (assignment) statement, then builds ONLY that
+    /// statement's body under `parent` via `build_expr_with_operator` —
+    /// never wrapping it in a `Statement`/`Brane` of its own. Used by
+    /// `system_foo`'s comparison-operator installer to compile each fixed
+    /// `OPERAND_SRC` fragment (`"{o = <<#-2>>;}"`) directly beneath the
+    /// `ComparisonFir` node.
     pub(crate) fn compile_stmt_body_under(
         storage: &mut FVMStorage,
         source: &str,
@@ -5364,30 +4620,21 @@ mod arena_compiler {
         ))
     }
 
-    /// A body-override hook, mirroring `compiler.rs`'s real `BodyOverride`
-    /// type alias (`&dyn Fn(&Identifier, &Weak<RefCell<dyn Fir>>) ->
-    /// Option<FirRef>`) but arena-shaped: takes `&mut FVMStorage` (needed to
-    /// actually construct a replacement body) and the STATEMENT's own
-    /// `FirPointer` (the arena's parent handle, standing in for the real
-    /// hook's `stmt_weak`) rather than a `Weak` self-reference. Returns
+    /// A body-override hook: takes `&mut FVMStorage` (needed to construct a
+    /// replacement body) and the STATEMENT's own `FirPointer`. Returns
     /// `Some(body)` to supply that body INSTEAD of the ordinary compiled
-    /// one, or `None` to fall through to normal construction — identical
-    /// contract to the real `BodyOverride`.
+    /// one, or `None` to fall through to normal construction.
     pub(crate) type ArenaBodyOverride<'a> =
         &'a dyn Fn(&Identifier, &mut FVMStorage, FirPointer) -> Option<FirPointer>;
 
-    /// Arena counterpart to `compiler.rs`'s real `AstnCompilerExt::
-    /// build_as_statement_overridden`/`build_as_statement_inner`'s override
-    /// path: builds ONE statement, consulting `override_body` first (by the
+    /// Builds ONE statement, consulting `override_body` first (by the
     /// statement's OWN identifier) before falling through to the ordinary
-    /// `build_expr_with_operator` path this module's plain `build_as_
-    /// statement` already uses. Kept as its own function (not folded into
-    /// `build_as_statement`) since `override_body` is threaded ONLY at the
-    /// top level of `compile_root_with_body_override`'s own statement loop
-    /// — the real hook's own doc comment states it runs "ONLY over
-    /// system.foo's own top-level statements", so no OTHER call site in
+    /// `build_expr_with_operator` path `build_as_statement` uses. Kept as
+    /// its own function since `override_body` is threaded ONLY at the top
+    /// level of `compile_root_with_body_override`'s own statement loop —
+    /// system.foo's own top-level statements are the only call site in
     /// this module (nested branes, concatenation elements, etc.) needs this
-    /// parameter at all, matching the real code's own scope exactly.
+    /// this crate that ever needs this override parameter at all.
     fn build_as_statement_overridden(
         storage: &mut FVMStorage,
         ast: Astn,
@@ -5432,7 +4679,7 @@ mod arena_compiler {
     }
 
     /// Arena counterpart to `compiler.rs`'s real `compile_root_with_body_
-    /// override` (re-read in full immediately before writing this):
+    /// override`:
     /// compile a top-level brane AST as a self-rooting root, letting
     /// `override_body` replace individual statements' bodies. Identical to
     /// `compile_standalone` except for the per-statement hook.
@@ -5458,20 +4705,13 @@ mod arena_compiler {
         Ok(root)
     }
 
-    /// Arena counterpart to `system_foo::ComparisonFir::comparison` (re-read
-    /// in full immediately before writing this): build a `FirSpec::
-    /// Comparison` node with its two SFF-marked operand lookups, compiled
-    /// from `system_foo::OPERAND_SRC`'s fixed Foolish source via
-    /// `compile_stmt_body_under`. `system_foo::OPERAND_SRC`'s own doc
-    /// comment explains why the operands are compiled from source (so
-    /// `build_fir`'s `under_sff` rule applies exactly, matching this
-    /// arena's own `build_expr_with_operator`'s `AssignmentOperator::SFF`
-    /// handling) rather than hand-built — no separate panic-guard
-    /// equivalent to the real `push_foolish_child_sff_marked` is needed:
-    /// the arena's `under_sff` propagation through `build_fir`/
-    /// `build_expr_with_operator` IS the same mechanism, already exercised
-    /// end-to-end by `arena_compiler_sff_marks_descendant_searches_
-    /// econstanic` (Phase 4).
+    /// Builds a `FirSpec::Comparison` node with its two SFF-marked operand
+    /// lookups, compiled from `system_foo::OPERAND_SRC`'s fixed Foolish
+    /// source via `compile_stmt_body_under`. The operands are compiled from
+    /// source, not hand-built, specifically so `build_fir`'s `under_sff`
+    /// rule applies to them exactly like any other SFF-marked expression —
+    /// no separate panic-guard is needed beyond the ordinary `under_sff`
+    /// propagation through `build_fir`/`build_expr_with_operator`.
     pub(crate) fn build_comparison(
         storage: &mut FVMStorage,
         op: crate::system_foo::ComparisonOp,
@@ -5485,14 +4725,12 @@ mod arena_compiler {
         cmp
     }
 
-    /// Arena counterpart to `system_foo::comparison_body` (re-read in full
-    /// immediately before writing this): supply a `ComparisonFir`-shaped
-    /// body for each comparison operator's `system.foo` statement, matched
-    /// by the statement's OWN null-characterized searchable name against
-    /// `ComparisonOp::ALL`. Returns `None` (fall through to ordinary
-    /// construction) for every other statement — this hook runs ONLY over
-    /// `system.foo`'s own top-level statements, never over user source,
-    /// exactly as the real hook's doc comment states.
+    /// Supplies a `Comparison`-shaped body for each comparison operator's
+    /// `system.foo` statement, matched by the statement's OWN
+    /// null-characterized searchable name against `ComparisonOp::ALL`.
+    /// Returns `None` (fall through to ordinary construction) for every
+    /// other statement — this hook runs ONLY over `system.foo`'s own
+    /// top-level statements, never over user source.
     pub(crate) fn comparison_body(
         identifier: &Identifier,
         storage: &mut FVMStorage,
@@ -5503,11 +4741,10 @@ mod arena_compiler {
         Some(build_comparison(storage, op, stmt))
     }
 
-    /// Arena counterpart to `system_foo::compose_one` (re-read in full
-    /// immediately before writing this): compose `system.foo` with a single
-    /// user program's AST, appended as a statement named `program` (last),
-    /// and compile the combined AST as one self-rooting brane via
-    /// `compile_root_with_body_override` with `comparison_body` as the hook.
+    /// Composes `system.foo` with a single user program's AST, appended as
+    /// a statement named `program` (last), and compiles the combined AST as
+    /// one self-rooting brane via `compile_root_with_body_override` with
+    /// `comparison_body` as the hook.
     pub(crate) fn compose_one(
         storage: &mut FVMStorage,
         system_ast: Astn,
@@ -5533,10 +4770,8 @@ mod arena_compiler {
         compile_root_with_body_override(storage, composed, &comparison_body)
     }
 
-    /// Arena counterpart to `system_foo::compose_program_with_system`
-    /// (re-read in full immediately before writing this): parse
-    /// `system.foo` and the user's source, and compose ONE user top-level
-    /// item with `system.foo` per [`compose_one`], per top-level item.
+    /// Parses `system.foo` and the user's source, composing each of the
+    /// user's top-level items with `system.foo` per [`compose_one`].
     pub(crate) fn compose_program_with_system(
         storage: &mut FVMStorage,
         user_source: &str,
@@ -5557,16 +4792,13 @@ mod arena_compiler {
             .collect()
     }
 
-    /// Arena counterpart to `system_foo::program_result` (re-read in full
-    /// immediately before writing this): extract the `program` member's
-    /// VALUE from a composed root — the LAST statement of the composite
-    /// brane (FOOP-33 §4). Structural access (`stmt_count`/`stmt_at`),
-    /// never a Foolish search. `.value()` on the STATEMENT itself would
-    /// just return the statement (a plain `Statement` has no settled
-    /// result in the common case), so this resolves through
-    /// `foolish_children().first()` (the written body) first, THEN
-    /// `.value()` — exactly mirroring the real function's own two-step
-    /// resolution and its own explanatory comment.
+    /// Extracts the `program` member's VALUE from a composed root — the
+    /// LAST statement of the composite brane (FOOP-33 §4). Structural
+    /// access (`stmt_count`/`stmt_at`), never a Foolish search. `.value()`
+    /// on the STATEMENT itself would just return the statement (a plain
+    /// `Statement` has no settled result in the common case), so this
+    /// resolves through `foolish_children().first()` (the written body)
+    /// first, THEN `.value()`.
     pub(crate) fn program_result(
         storage: &FVMStorage,
         composed_root: FirPointer,
@@ -5581,11 +4813,10 @@ mod arena_compiler {
     }
 }
 
-/// Minimal re-export surface for `evaluator.rs`'s `UbcaEvaluator::evaluate`
-/// (Phase 5's cutover) — `arena_compiler`/`core_fir_conversion` themselves
-/// stay private modules (Rule Zero: private defensively, public by design);
-/// only the exact four functions `evaluate`'s body needs are re-exported,
-/// not the modules' full surface.
+/// Minimal re-export surface for `UbcaEvaluator::evaluate` —
+/// `arena_compiler`/`core_fir_conversion` themselves stay private modules;
+/// only the exact functions `evaluate`'s body needs are re-exported, not
+/// the modules' full surface.
 pub(crate) use arena_compiler::{compose_program_with_system, program_result};
 pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_settled};
 
@@ -5629,7 +4860,15 @@ mod tests {
         assert_eq!(storage.get_nyes(creation), Nyes::Independent);
 
         let int_child = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
-        assert_eq!(storage.get_nyes(int_child), Nyes::Prembrionic);
+        assert_eq!(storage.get_nyes(int_child), Nyes::Independent);
+
+        let op_child = root.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
+        assert_eq!(storage.get_nyes(op_child), Nyes::Prembrionic);
     }
 
     /// A `FirPointer` minted by one `FVMStorage` must never validate against a
@@ -5682,8 +4921,7 @@ mod tests {
         assert_eq!(grandchild.home_brane(&storage), None);
     }
 
-    /// `test_leaf`/`test_root_brane` round-trip correctly, mirroring
-    /// `fir_trait.rs`'s `make_leaf`/`make_root_brane` shortcuts.
+    /// `test_leaf`/`test_root_brane` round-trip correctly.
     #[test]
     fn test_helpers_build_expected_shapes() {
         let (storage, leaf) = FVMStorage::test_leaf(Nyes::Constant);
@@ -5710,13 +4948,10 @@ mod tests {
         assert_eq!(cursor.get_nyes(), storage.get_nyes(child));
         assert_eq!(cursor.parent(), Some(root));
         assert_eq!(cursor.home_brane().map(|c| c.ptr), Some(root));
-        // `child` has no `Statement` ancestor, so `_get_my_statement`'s real
-        // logic (re-verified directly against `fir_trait.rs`) climbs all the
+        // `child` has no `Statement` ancestor, so the climb goes all the
         // way to the structural root and stops there — NOT back to `child`
-        // itself. `root` is where the climb terminates (its own parent is
-        // itself), matching the shape `get_my_statement_returns_self_if_statement`'s
-        // SIBLING test `get_my_statement_climbs_to_parent_statement` documents
-        // for the analogous real-Statement case.
+        // itself. `root` is where the climb terminates, since its own
+        // parent is itself.
         assert_eq!(cursor.statement().ptr, root);
         assert!(cursor.settled_result().is_none()); // IndepInt never has a settled_result body
     }
@@ -5729,7 +4964,12 @@ mod tests {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let settled = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         storage.with_mut(settled, |fir| fir.set_nyes(Nyes::Constant));
-        let unsettled = root.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
+        let unsettled = root.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
 
         {
             let mut cursor = FirCursorMut::new(root, &mut storage);
@@ -5867,8 +5107,12 @@ mod tests {
     #[test]
     fn revive_constanic_recursively_clones_foolish_children() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[
-            FirSpec::IndepInt { value: 1 },
-            FirSpec::IndepInt { value: 2 },
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
         ]);
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
@@ -5940,33 +5184,32 @@ mod tests {
         );
     }
 
-    /// `IndepIntFir`'s arena migration: mirrors the existing
-    /// `fir_kinds.rs::tests::constant_int_prembrionic_to_constant_in_one_step`
-    /// test exactly — Prembrionic → Constant in ONE step, no Braning phase
-    /// (an IndepInt has no children/tasks).
+    /// A literal integer is fully determined the moment it's written, so it
+    /// is born `Independent` and needs no stepping at all — no Prembrionic
+    /// phase, no Braning phase (an IndepInt has no children/tasks either
+    /// way).
     #[test]
-    fn indep_int_prembrionic_to_constant_in_one_step() {
+    fn indep_int_starts_independent_and_needs_no_stepping() {
         let mut storage = FVMStorage::new();
         let node = storage.make_root(FirSpec::IndepInt { value: 42 });
-        assert_eq!(storage.get_nyes(node), Nyes::Prembrionic);
+        assert_eq!(storage.get_nyes(node), Nyes::Independent);
 
         node.step(&mut storage);
 
-        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+        assert_eq!(storage.get_nyes(node), Nyes::Independent);
         assert_eq!(FirCursor::new(node, &storage).as_i64(), Some(42));
     }
 
-    /// Stepping an already-constanic `IndepInt` again is a no-op — mirrors
-    /// `stepping_already_settled_is_noop`'s intent for this kind.
+    /// Stepping an already-settled `IndepInt` repeatedly is a no-op.
     #[test]
     fn indep_int_stepping_already_settled_is_noop() {
         let mut storage = FVMStorage::new();
         let node = storage.make_root(FirSpec::IndepInt { value: 1 });
         node.step(&mut storage);
-        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+        assert_eq!(storage.get_nyes(node), Nyes::Independent);
 
         node.step(&mut storage);
-        assert_eq!(storage.get_nyes(node), Nyes::Constant);
+        assert_eq!(storage.get_nyes(node), Nyes::Independent);
     }
 
     /// `NkFir`'s arena migration: mirrors the existing
@@ -5989,14 +5232,11 @@ mod tests {
         );
     }
 
-    /// `OperatorFir`'s arena migration: mirrors
-    /// `fir_kinds.rs::tests::operator_nyes_transitions` exactly — `2 + 3`
-    /// settles Constant with value `5`. Both operands start pre-settled
-    /// (`Constant`), so `combine` fires without a genuine Braning-phase
-    /// child-stepping round-trip — this test's own `step` loop drains the
-    /// (already-constanic) operand tasks first, then settles via `combine`,
-    /// exactly mirroring the two-step shape `step_to_settled` exercises in
-    /// the original test.
+    /// `2 + 3` settles Constant with value `5`. Both operands start
+    /// pre-settled (`Constant`), so `combine` fires without a genuine
+    /// Braning-phase child-stepping round-trip — this test's own `step`
+    /// loop drains the (already-constanic) operand tasks first, then
+    /// settles via `combine`.
     #[test]
     fn operator_addition_settles_constant() {
         let mut storage = FVMStorage::new();
@@ -6059,8 +5299,18 @@ mod tests {
         let op = storage.make_root(FirSpec::Operator {
             op: "+".to_string(),
         });
-        let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
-        let _b = op.create_child(&mut storage, FirSpec::IndepInt { value: 3 });
+        let a = op.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
+        let _b = op.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
         // `a`/`b` both start Prembrionic (unsettled) — the default.
 
         op.step(&mut storage);
@@ -6073,11 +5323,9 @@ mod tests {
         );
     }
 
-    /// `StatementFir`'s arena migration (core settle shape only — the two
-    /// NF-refusal checks are deferred to a follow-up after Phase 2's search
-    /// engine migration; see this kind's `fir_op_step` arm doc comment).
-    /// Mirrors `fir_kinds.rs::tests::statement_nyes_transitions` exactly:
-    /// `a = 9` settles Constant.
+    /// The core settle shape, with no null-characterized name in play so
+    /// the NF-refusal checks stay out of scope: `a = 9` settles Independent
+    /// (a statement mirrors its body's exact settled state).
     #[test]
     fn statement_settles_to_its_bodys_nyes() {
         use crate::identifier::Identifier;
@@ -6096,8 +5344,8 @@ mod tests {
             stmt.step(&mut storage);
         }
 
-        assert_eq!(storage.get_nyes(body), Nyes::Constant);
-        assert_eq!(storage.get_nyes(stmt), Nyes::Constant);
+        assert_eq!(storage.get_nyes(body), Nyes::Independent);
+        assert_eq!(storage.get_nyes(stmt), Nyes::Independent);
         assert_eq!(
             FirCursor::new(stmt, &storage)
                 .as_stmt_identifier()
@@ -6110,11 +5358,11 @@ mod tests {
         );
     }
 
-    /// `BraneFir`'s arena migration (`_ab_search`/`_search_brane` overrides
-    /// deferred to Phase 2). Mirrors `fir_kinds.rs::tests::brane_nyes_transitions`
-    /// exactly: a brane of two settled statements settles Constant.
+    /// A brane whose statements are all literal (`Independent`) values
+    /// settles `Independent` itself — `decide_nyes_due_to_children` checks
+    /// all-`Independent` before all-`Constant`.
     #[test]
-    fn brane_of_settled_statements_settles_constant() {
+    fn brane_of_all_independent_statements_settles_independent() {
         use crate::identifier::Identifier;
 
         let mut storage = FVMStorage::new();
@@ -6145,7 +5393,7 @@ mod tests {
             brane.step(&mut storage);
         }
 
-        assert_eq!(storage.get_nyes(brane), Nyes::Constant);
+        assert_eq!(storage.get_nyes(brane), Nyes::Independent);
         assert_eq!(FirCursor::new(brane, &storage).stmt_count(), Some(2));
         assert!(FirCursor::new(brane, &storage).is_brane_like());
     }
@@ -6192,8 +5440,8 @@ mod tests {
         assert_eq!(storage.get_nyes(brane), Nyes::Nk);
     }
 
-    /// An empty `Brane` settles `Constant` in one step — mirrors the
-    /// `children.is_empty()` short-circuit in the real `fir_op_step`.
+    /// An empty `Brane` settles `Constant` in one step, via the
+    /// `children.is_empty()` short-circuit.
     #[test]
     fn empty_brane_settles_constant_immediately() {
         let mut storage = FVMStorage::new();
@@ -6205,13 +5453,9 @@ mod tests {
         assert_eq!(FirCursor::new(brane, &storage).stmt_count(), Some(0));
     }
 
-    /// `SearchFir`'s arena migration is STRUCTURAL FIELDS AND CONSTRUCTION
-    /// ONLY, per this plan's explicit carve-out (search-execution logic —
-    /// `SearchPredicate`/`CandidateNavigator`/`contextful_search_scan` — is
-    /// Phase 2's job). This test proves construction and the pure data
-    /// accessors round-trip correctly; it does NOT attempt to validate
-    /// search correctness, which `fir_op_step`'s own `todo!()` for
-    /// `FirSpec::Search` still correctly reflects.
+    /// Construction and the pure data accessors round-trip correctly. Does
+    /// NOT exercise search dispatch correctness — see the end-to-end
+    /// dispatch tests below for that.
     #[test]
     fn search_fir_structural_construction_and_accessors_round_trip() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
@@ -6234,20 +5478,13 @@ mod tests {
         assert_eq!(storage.get_nyes(search), Nyes::Prembrionic);
     }
 
-    /// `IndexFir`'s arena migration is likewise STRUCTURAL FIELDS AND
-    /// CONSTRUCTION ONLY — its real `fir_op_step` resolves `#N`/`^`/`$`
-    /// through `BraneNavigator`/`SearchPredicate`/
-    /// `contextful_search_scan_no_body_check` (re-read directly,
-    /// `fir_kinds.rs`), exactly the machinery this plan's `SearchFir` task
-    /// already carves out as Phase 2's job — extended here to `IndexFir` for
-    /// the identical reason (a genuine plan gap: the original per-kind list
-    /// did not give `IndexFir` the same explicit carve-out `SearchFir` got,
-    /// even though its real logic is equally search-engine-dependent).
-    /// Index resolution (both branches, re-confirmed by direct re-read)
-    /// resolves against the ANCHOR (`foolish_children()[0]`, for the
-    /// anchored+contexted case) or the enclosing STATEMENT/BRANE found by
-    /// walking the PARENT chain (`find_enclosing_stmt_and_brane`, for the
-    /// unanchored case) — never against a sibling directly.
+    /// Construction and the pure data accessors round-trip correctly. Does
+    /// NOT exercise `#N`/`^`/`$` resolution itself — see the IndexFir
+    /// dispatch tests below for that. Index resolution resolves against the
+    /// ANCHOR (`foolish_children()[0]`, for the anchored+contexted case) or
+    /// the enclosing STATEMENT/BRANE found by walking the PARENT chain
+    /// (`find_enclosing_stmt_and_brane`, for the unanchored case) — never
+    /// against a sibling directly.
     #[test]
     fn index_fir_structural_construction_and_accessors_round_trip() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
@@ -6315,8 +5552,7 @@ mod tests {
         // invisible. Its contract applies the constanic gate itself, so
         // `root` must be constanic first (a real search FIR would already
         // be constanic by the time it pushes a result; this test sets it
-        // directly rather than stepping a real search, which is Phase 2's
-        // scope).
+        // directly rather than stepping a real search).
         storage.with_mut(root, |fir| fir.set_nyes(Nyes::Constant));
         assert_eq!(
             FirCursor::new(root, &storage)
@@ -6414,7 +5650,12 @@ mod tests {
     fn revive_constanic_unwraps_stay_fully_foolish_to_first_foolish_child() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let sff = root.create_child(&mut storage, FirSpec::StayFullyFoolish);
-        let inner = sff.create_child(&mut storage, FirSpec::IndepInt { value: 9 });
+        let inner = sff.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
         // inner stays Prembrionic — a full-rebuild case, not a share.
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
@@ -6428,13 +5669,16 @@ mod tests {
             cloned, inner,
             "a pre-constanic inner must be rebuilt, not shared"
         );
-        assert_eq!(storage.get(cloned), &FirSpec::IndepInt { value: 9 });
+        assert_eq!(
+            storage.get(cloned),
+            &FirSpec::Operator {
+                op: "+".to_string()
+            }
+        );
     }
 
-    /// `ConcatHelper`'s arena migration: identical `BraneFir`-shaped
-    /// stepping ("transparent: inherits all defaults," confirmed by direct
-    /// re-read of the real `impl Fir for ConcatHelper`). Mirrors
-    /// `fir_kinds.rs::tests::concat_helper_nyes_transitions` exactly.
+    /// `ConcatHelper` steps identically to a `Brane` — it is transparent,
+    /// inheriting brane-shaped stepping.
     #[test]
     fn concat_helper_settles_like_a_brane() {
         use crate::identifier::Identifier;
@@ -6457,7 +5701,7 @@ mod tests {
             helper.step(&mut storage);
         }
 
-        assert_eq!(storage.get_nyes(helper), Nyes::Constant);
+        assert_eq!(storage.get_nyes(helper), Nyes::Independent);
         assert_eq!(FirCursor::new(helper, &storage).stmt_count(), Some(1));
     }
 
@@ -6661,14 +5905,9 @@ mod tests {
         assert_eq!(creation.get_display_name(&storage, elsewhere), None);
     }
 
-    /// `ComparisonFir`'s arena migration is the two-phase push/combine shape
-    /// PLUS the entirely self-contained ECONSTANIC-if-unevaluated-here gate
-    /// (see this kind's `fir_op_step` arm doc comment — the real verdict
-    /// resolution needs `_ab_search`, deferred to Phase 2). This test proves
-    /// the ECONSTANIC gate: an operand whose own first foolish child is
-    /// itself `Econstanic` (mirroring `<<#-1>>`'s SFF-wrapped-search shape
-    /// inside `system.foo`, per `operand_is_unevaluated_here`'s real logic,
-    /// re-read directly) makes the whole comparison settle `Econstanic`.
+    /// An operand whose own first foolish child is itself `Econstanic`
+    /// (shaped like `<<#-1>>`, an SFF-wrapped index search inside
+    /// `system.foo`) makes the whole comparison settle `Econstanic`.
     #[test]
     fn comparison_settles_econstanic_when_an_operand_is_unevaluated_here() {
         use crate::system_foo::ComparisonOp;
@@ -6703,21 +5942,15 @@ mod tests {
         assert_eq!(FirCursor::new(cmp, &storage).as_op_name(), Some("'lt"));
     }
 
-    /// When both operands ARE genuinely evaluated (not the
-    /// unevaluated-in-system.foo case), this arena translation settles
-    /// `Woconstanic` — an honestly-incomplete result, since the real verdict
-    /// resolution (`resolve_boolean`, via `_ab_search`) is deferred to
-    /// Phase 2. Documented explicitly here rather than silently claiming a
-    /// `Constant`/`Nk` verdict this task does not actually compute.
+    /// When both operands ARE genuinely evaluated, the comparison resolves
+    /// to whichever of `'True`/`'False` its ancestral search finds — which
+    /// needs `'True`/`'False` reachable via ancestral search from the
+    /// Comparison node's own position, so this test builds a minimal
+    /// system.foo-shaped ancestor brane declaring them, with the Comparison
+    /// node nested inside it (an isolated root with no ancestor to search
+    /// would not exercise this path).
     #[test]
     fn comparison_with_evaluated_operands_resolves_the_real_verdict() {
-        // Updated (Phase 5 cutover prerequisite): ComparisonFir's real
-        // verdict resolution is no longer deferred — it needs 'True/'False
-        // reachable via ancestral search from the Comparison node's own
-        // position, mirroring resolve_boolean's real dependency. Build a
-        // minimal system.foo-shaped ancestor brane (declaring 'True/'False)
-        // with the Comparison node nested inside it, rather than the old
-        // test's isolated root (which had no ancestor to search at all).
         use crate::system_foo::ComparisonOp;
 
         let mut storage = FVMStorage::new();
@@ -6742,14 +5975,11 @@ mod tests {
         false_stmt.create_child(&mut storage, FirSpec::Creation);
 
         // `'True`/`'False` must be in an ANCESTOR brane of `cmp`'s own home
-        // brane, not siblings within the SAME brane `cmp` sits in --
-        // `_ab_search`/`ab_search_by_pattern` search ANCESTORS, never the
-        // current brane's own siblings (that's IB search's job), and the
-        // ROOT brane itself is never its own ancestor. Nest one level
-        // deeper: an inner brane (mirroring how system.foo's real
-        // composition nests the user's `program` one level below the
-        // 'True/'False declarations) holds the statement whose body is the
-        // Comparison node.
+        // brane, not siblings within the SAME brane `cmp` sits in —
+        // `ab_search_by_pattern` searches ANCESTORS, never the current
+        // brane's own siblings, and the ROOT brane itself is never its own
+        // ancestor. Nest one level deeper: an inner brane holds the
+        // statement whose body is the Comparison node.
         let inner_holder_stmt = root.create_child(
             &mut storage,
             FirSpec::Statement {
@@ -6798,7 +6028,7 @@ mod tests {
         );
     }
 
-    // ── Phase 2: search engine arena migration tests ────────────────────
+    // ── Search engine tests ──────────────────────────────────────────
     //
     // Mirror the spirit (not every single case) of `fir_kinds.rs`'s real
     // `ContextfulSearch engine tests` module: Navigator ordering contract,
@@ -6884,7 +6114,7 @@ mod tests {
     }
 
     /// `SearchPredicate::Name` approves an exact match on a settled
-    /// candidate, mirroring `matcher_name_approve_on_exact_match`'s intent.
+    /// candidate.
     #[test]
     fn search_predicate_name_approves_exact_match() {
         let (mut storage, brane) = FVMStorage::test_root_brane(&[]);
@@ -7179,7 +6409,7 @@ mod tests {
         );
     }
 
-    // ── Phase 2, final task: SearchFir end-to-end dispatch tests ────────
+    // ── SearchFir end-to-end dispatch tests ──────────────────────────
     //
     // These exercise the FULL fir_op_step dispatch through FirPointer::step
     // (not the lower-level search_engine primitives directly), proving
@@ -7426,7 +6656,7 @@ mod tests {
         assert_eq!(FirCursor::new(search, &storage).as_i64(), Some(99));
     }
 
-    // ── Phase 3: evaluator.rs stepping loop / core-FIR conversion tests ──
+    // ── Stepping loop / core-FIR conversion tests ───────────────────
 
     use core_fir_conversion::{proto_to_core_fir, step_to_settled};
     use foolish_core::fir::FirQueryable;
@@ -7437,12 +6667,11 @@ mod tests {
         let mut storage = FVMStorage::new();
         let ptr = storage.make_root(FirSpec::IndepInt { value: 7 });
         assert!(step_to_settled(&mut storage, ptr).is_ok());
-        assert_eq!(storage.get_nyes(ptr), Nyes::Constant);
+        assert_eq!(storage.get_nyes(ptr), Nyes::Independent);
     }
 
     /// `proto_to_core_fir` on a settled `IndepInt` produces a
-    /// `hs_constant_int` matching the value — mirrors the direct
-    /// `FirKind::IndepInt` arm of the real `proto_to_core_fir_inner`.
+    /// `hs_constant_int` matching the value.
     #[test]
     fn proto_to_core_fir_renders_constant_int() {
         let mut storage = FVMStorage::new();
@@ -7451,7 +6680,7 @@ mod tests {
 
         let rendered = proto_to_core_fir(&storage, ptr);
         assert_eq!(rendered.hs_constant_int(), Some(42));
-        assert_eq!(rendered.hs_state(), Nyes::Constant);
+        assert_eq!(rendered.hs_state(), Nyes::Independent);
     }
 
     /// `proto_to_core_fir` on a settled `Nk` produces `hs_nk` with the
@@ -7634,7 +6863,7 @@ mod tests {
         assert!(storage.get_nyes(front).is_constanic());
     }
 
-    // ── Phase 4: arena_compiler tests ────────────────────────────────────
+    // ── arena_compiler tests ─────────────────────────────────────────
 
     use arena_compiler::compile;
 
@@ -7776,9 +7005,8 @@ mod tests {
 
     /// `<<x>>` (StayFullyFoolish) builds its descendant search ECONSTANIC —
     /// exercises `build_fir`'s `StayFullyFoolish` arm and the `under_sff`
-    /// rule together, mirroring `push_foolish_child_sff_marked_accepts_a_properly_marked_body`'s
-    /// intent (that this crate's own compiler produces bodies satisfying
-    /// the SFF invariant).
+    /// rule together, proving this crate's own compiler produces bodies
+    /// satisfying the SFF invariant.
     #[test]
     fn arena_compiler_sff_marks_descendant_searches_econstanic() {
         let mut storage = FVMStorage::new();
@@ -7841,7 +7069,7 @@ mod tests {
         );
     }
 
-    // ── IndexFir dispatch (Phase 5 cutover prerequisite) ────────────────
+    // ── IndexFir dispatch tests ──────────────────────────────────────
 
     /// Builds an `Index` node whose sole foolish child is a fresh `Brane` of
     /// three statements `a=10; b=20; c=30`, returning `(storage, idx,
@@ -7880,12 +7108,11 @@ mod tests {
         (storage, idx, stmts)
     }
 
-    /// Direct arena counterpart to the real `index_finds_element_at_offset_
-    /// in_anchor_brane`: an anchored `#1` index into a brane of three
-    /// statements settles Constant with the middle statement's value.
-    /// Exercises `IndexFir`'s `Prembrionic`/`Embryonic` push-anchor-task
-    /// arm, then the `Braning` anchored-search arm (`BraneNavigator` +
-    /// `SearchPredicate::Index`), then `settle_from_ubc_result`.
+    /// An anchored `#1` index into a brane of three statements settles
+    /// Constant with the middle statement's value. Exercises `IndexFir`'s
+    /// `Prembrionic`/`Embryonic` push-anchor-task arm, then the `Braning`
+    /// anchored-search arm (`BraneNavigator` + `SearchPredicate::Index`),
+    /// then `settle_from_ubc_result`.
     #[test]
     fn index_fir_finds_element_at_offset_in_anchor_brane() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(1, true);
@@ -7905,8 +7132,7 @@ mod tests {
         );
     }
 
-    /// Direct arena counterpart to the real `index_out_of_bounds_is_nk`: an
-    /// anchored index whose target falls outside the anchor brane's
+    /// An anchored index whose target falls outside the anchor brane's
     /// statement range settles Nk.
     #[test]
     fn index_fir_out_of_bounds_is_nk() {
@@ -7916,9 +7142,8 @@ mod tests {
         assert!(FirCursor::new(idx, &storage).ubc_children().is_empty());
     }
 
-    /// Direct arena counterpart to the real `index_negative_offset_from_
-    /// back`-style indexing: `#-1` anchored into a three-statement brane
-    /// addresses the LAST statement.
+    /// `#-1` anchored into a three-statement brane addresses the LAST
+    /// statement.
     #[test]
     fn index_fir_negative_offset_from_back() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(-1, true);
@@ -8019,11 +7244,10 @@ mod tests {
         );
     }
 
-    /// Direct arena counterpart to the real `foop75_non_brane_anchor_names_
-    /// the_value`-style diagnostic: an anchored `IndexFir` whose anchor
-    /// resolves to a non-brane, NAMEABLE value (an integer literal) settles
-    /// Nk AND records a named reason (FOOP-75 §7) — both via a fresh
-    /// ubc_children Nk AND via `alarm_reason`.
+    /// An anchored `IndexFir` whose anchor resolves to a non-brane,
+    /// NAMEABLE value (an integer literal) settles Nk AND records a named
+    /// reason (FOOP-75 §7) — both via a fresh ubc_children Nk AND via
+    /// `alarm_reason`.
     #[test]
     fn index_fir_anchor_not_a_brane_names_the_value() {
         let mut storage = FVMStorage::new();
@@ -8088,12 +7312,11 @@ mod tests {
         );
     }
 
-    /// Direct arena counterpart to the real `contexted_index_offset_finds_
-    /// next_statement`: a contexted, anchored index (`&#1`-shaped) reads its
-    /// anchor's `FoolRefFir` bookkeeping entry to find the REFERENT's home
-    /// brane and position, then indexes relative to THAT position — not the
-    /// position of the index node itself. Exercises the `contexted &&
-    /// anchored` branch, distinct from the plain-anchored branch above.
+    /// A contexted, anchored index (`&#1`-shaped) reads its anchor's
+    /// `FoolRef` bookkeeping entry to find the REFERENT's home brane and
+    /// position, then indexes relative to THAT position — not the position
+    /// of the index node itself. Exercises the `contexted && anchored`
+    /// branch, distinct from the plain-anchored branch above.
     #[test]
     fn index_fir_contexted_finds_statement_relative_to_anchors_referent() {
         let mut storage = FVMStorage::new();
@@ -8157,9 +7380,8 @@ mod tests {
         );
     }
 
-    /// Direct arena counterpart to the real `contexted_index_out_of_range_
-    /// is_nk`: a contexted index whose target falls outside the referent's
-    /// home brane range settles Nk.
+    /// A contexted index whose target falls outside the referent's home
+    /// brane range settles Nk.
     #[test]
     fn index_fir_contexted_out_of_range_is_nk() {
         let mut storage = FVMStorage::new();
@@ -8201,7 +7423,7 @@ mod tests {
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
     }
 
-    // ── StatementFir NF-refusal checks (FOOP-33 §4, Phase 5 cutover) ────
+    // ── StatementFir NF-refusal checks (FOOP-33 §4) ─────────────────
 
     /// A null-characterized statement redefining an existing same-name
     /// null-characterized constant with a DIFFERENT value is refused: its
@@ -8275,7 +7497,7 @@ mod tests {
         );
     }
 
-    // ── ConcatenationFir real merge (populate_concat_helpers, Phase 5) ──
+    // ── ConcatenationFir real merge (populate_concat_helpers) ───────
 
     /// Concatenating two non-empty branes actually JOINS their statements
     /// into one flat, constant `ConcatHelper` (not the old Woconstanic
@@ -8318,7 +7540,7 @@ mod tests {
         b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
         core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
-        assert_eq!(storage.get_nyes(cat), Nyes::Constant);
+        assert_eq!(storage.get_nyes(cat), Nyes::Independent);
 
         let helpers = FirCursor::new(cat, &storage).ubc_children().to_vec();
         assert_eq!(
@@ -8406,7 +7628,7 @@ mod tests {
         );
     }
 
-    // ── compose_program_with_system / evaluate cutover (Phase 5) ────────
+    // ── compose_program_with_system / evaluate tests ────────────────
 
     /// End-to-end: composing a trivial user program `{x = 1;}` with the real
     /// embedded `system.foo` source settles, and `program_result` correctly
@@ -8466,23 +7688,19 @@ mod tests {
         );
         // A Creation is born Independent (self-contained, no context
         // dependency) -- that's the SPECIFIC constanic state expected here,
-        // not merely "some constanic state" (re-confirmed directly:
-        // CreationFir's real fir_op_step: "born Independent at
-        // construction and never needs stepping").
+        // not merely "some constanic state".
         assert_eq!(storage.get_nyes(r_value), Nyes::Independent);
     }
 
-    /// Regression for a real, load-bearing bug found while wiring
-    /// `UbcaEvaluator::evaluate` onto the arena path (Phase 5 cutover): a
-    /// result-only node built via `ptr.create_child(storage, ..)` was
-    /// silently appended to `ptr`'s `foolish_children` (the ALWAYS-append
-    /// contract every `create_child` call has) even though it should live
-    /// ONLY in `ubc_children` — corrupting the very list `combine`'s own
-    /// `any_nk` re-check (and every output-serialization operand loop)
-    /// reads. `{a = 10 / 0 * 5;}`'s outer `*` operator must have EXACTLY
-    /// its 2 parse-derived operands in `foolish_children` even after
-    /// settling to Nk (its own division-by-zero-propagated result must
-    /// live only in `ubc_children`, via `make_orphan_child`).
+    /// Regression: a result-only node built via `ptr.create_child(storage,
+    /// ..)` would be silently appended to `ptr`'s `foolish_children` (the
+    /// ALWAYS-append contract every `create_child` call has) even though it
+    /// should live ONLY in `ubc_children` — corrupting the very list
+    /// `combine`'s own `any_nk` re-check (and every output-serialization
+    /// operand loop) reads. `{a = 10 / 0 * 5;}`'s outer `*` operator must
+    /// have EXACTLY its 2 parse-derived operands in `foolish_children` even
+    /// after settling to Nk (its own division-by-zero-propagated result
+    /// must live only in `ubc_children`, via `make_orphan_child`).
     #[test]
     fn combine_nk_result_does_not_pollute_foolish_children() {
         let mut storage = FVMStorage::new();
@@ -8605,34 +7823,27 @@ mod tests {
         );
     }
 
-    /// Regression for a real, load-bearing bug found via a comparative
-    /// step-by-step trace against the real, untouched `foolish-ubca` oracle
-    /// (see FOOP-16.plan.md's Phase 5 notes for the full trace): `handle_found`
-    /// (called from `name_search_step`/`value_search_step`) hardcoded
-    /// `sfm = false` at every call site, instead of threading `scope.
-    /// has_ancestral_sfm` through — exactly as the real `SearchFir::
-    /// handle_found` does (`Self::clone_stmt_result(&stmt, &self_weak, scope.
-    /// has_ancestral_sfm)`, re-read directly). `transform_for_clone`'s own
-    /// documented contract is "SFM-descendant: preserve the source NYES
-    /// verbatim (foolishly ignorant)" — with the bug, a search found from
-    /// inside an SF (`<...>`) wrapper always cloned as though NOT
-    /// SFM-descendant, so its own ECONSTANIC descendant searches (built
-    /// ECONSTANIC by the `under_sff` rule when the ORIGINAL declaration was
-    /// inside an SFF marker) transitioned to EMBRYONIC on clone and
-    /// genuinely re-searched and resolved in the new context — instead of
-    /// staying inertly ECONSTANIC, verbatim, as the real evaluator does.
+    /// Regression: `handle_found` (called from
+    /// `name_search_step`/`value_search_step`) hardcoded `sfm = false` at
+    /// every call site, instead of threading `scope.has_ancestral_sfm`
+    /// through. `transform_for_clone`'s contract is "SFM-descendant:
+    /// preserve the source NYES verbatim (foolishly ignorant)" — with the
+    /// bug, a search found from inside an SF (`<...>`) wrapper always
+    /// cloned as though NOT SFM-descendant, so its own ECONSTANIC
+    /// descendant searches (built ECONSTANIC by the `under_sff` rule when
+    /// the ORIGINAL declaration was inside an SFF marker) transitioned to
+    /// EMBRYONIC on clone and genuinely re-searched and resolved in the new
+    /// context — instead of staying inertly ECONSTANIC, verbatim.
     ///
     /// Concretely: `{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10;}`'s
-    /// `sf` reference resolves `sff` via a name search inside an SF wrapper;
-    /// the real oracle's clone of `sff`'s `a + b` stays `Woconstanic` with
-    /// both operand searches `Econstanic` (confirmed via direct step-by-step
-    /// trace against `foolish-ubca` — the clone's operand searches settle
-    /// `[Econstanic, Econstanic]` in ONE step and never progress further).
-    /// The arena, before this fix, let the SAME clone's operand searches
-    /// progress `Embryonic -> Braning -> Constant`, finding real values
-    /// (`a=1`, `b=2`) and fully resolving to `3` — an over-eager resolution
-    /// the real evaluator's SFM-verbatim-preservation rule exists to
-    /// prevent.
+    /// `sf` reference resolves `sff` via a name search inside an SF
+    /// wrapper; the clone of `sff`'s `a + b` must stay `Woconstanic` with
+    /// both operand searches `Econstanic` (settling `[Econstanic,
+    /// Econstanic]` in ONE step and never progressing further). With the
+    /// bug, the clone's operand searches would instead progress
+    /// `Embryonic -> Braning -> Constant`, finding real values (`a=1`,
+    /// `b=2`) and fully resolving to `3` — an over-eager resolution the
+    /// SFM-verbatim-preservation rule exists to prevent.
     #[test]
     fn search_found_inside_sf_threads_ancestral_sfm_to_its_clone() {
         let mut storage = FVMStorage::new();
@@ -8671,10 +7882,9 @@ mod tests {
         );
     }
 
-    // ── Ported from fir_trait.rs before its Phase 5 deletion ────────────
+    // ── Regression guards ────────────────────────────────────────────
 
-    /// Ported from `fir_trait.rs`'s `ib_search_at_index_zero_does_not_find_self`
-    /// (FOOP-13 regression, re-read before porting): a statement that is the
+    /// FOOP-13 regression guard: a statement that is the
     /// FIRST statement in its brane (`line_number == 0`) must not find
     /// itself via its own backward IB search. The real bug: computing the
     /// backward-scan end as `line_number.saturating_sub(1)` SATURATES to `0`
@@ -8725,9 +7935,7 @@ mod tests {
         );
     }
 
-    /// Ported from `fir_trait.rs`'s `statement_at_index_zero_settles_
-    /// without_self_reference_hang` (FOOP-13 regression's end-to-end
-    /// companion, re-read before porting): the actual runtime path
+    /// FOOP-13 regression guard's end-to-end companion: the actual runtime path
     /// (`UbcaEvaluator::evaluate`, not a direct `_ib_search`/
     /// `ib_search_by_pattern` call) must not hang forever on a bare
     /// self-referential search at brane-index 0. Before the fix this
@@ -8749,10 +7957,9 @@ mod tests {
         );
     }
 
-    /// Ported from `fir_kinds.rs`'s `null_const_rule_does_not_fire_on_plain_
-    /// names` regression guard (re-read before porting): `k=1; k=2` (no
-    /// leading `'`) must NOT be refused — the null-const rule only fires on
-    /// null-characterized coordinate names, never on plain ones.
+    /// Regression guard: `k=1; k=2` (no leading `'`) must NOT be refused —
+    /// the null-const rule only fires on null-characterized coordinate
+    /// names, never on plain ones.
     #[test]
     fn null_const_rule_does_not_fire_on_plain_names() {
         let mut storage = FVMStorage::new();
@@ -8770,12 +7977,10 @@ mod tests {
         );
     }
 
-    /// Ported from `fir_kinds.rs`'s `null_const_concatenation_empty_and_
-    /// single_operand_merge_without_spurious_nf` regression guard (re-read
-    /// before porting): an empty concatenation operand, or a single-operand
-    /// concatenation, must merge without any spurious NF — the collision
-    /// check must not misfire when there's nothing (or only one thing) to
-    /// collide with.
+    /// Regression guard: an empty concatenation operand, or a
+    /// single-operand concatenation, must merge without any spurious NF —
+    /// the collision check must not misfire when there's nothing (or only
+    /// one thing) to collide with.
     #[test]
     fn null_const_concatenation_empty_and_single_operand_merge_without_spurious_nf() {
         let mut storage = FVMStorage::new();
@@ -8793,15 +7998,11 @@ mod tests {
         );
     }
 
-    /// Ported from `system_foo.rs`'s `each_comparison_operator_produces_
-    /// the_right_boolean` (re-read before porting): the whole comparison
-    /// feature, end to end, for all five operators and both outcomes.
-    /// `{a, b, 'op}$`: the brane literal's tail is `'op`, whose settled
-    /// value is the boolean it computed from its two preceding neighbours
-    /// (FOOP-33 §5.0). `compose_program_with_system_resolves_a_comparison`
-    /// (an earlier Phase 5 test) only exercises `'lt` — this ports the
-    /// real test's full 5-operator, both-outcome table, expressed as the
-    /// plain Rust comparison of 1 and 2 so each row states WHY it is what
+    /// The whole comparison feature, end to end, for all five operators and
+    /// both outcomes. `{a, b, 'op}$`: the brane literal's tail is `'op`,
+    /// whose settled value is the boolean it computed from its two
+    /// preceding neighbours (FOOP-33 §5.0). Each row is expressed as the
+    /// plain Rust comparison of 1 and 2, so each row states WHY it is what
     /// it is, not merely what was observed.
     #[test]
     fn each_comparison_operator_produces_the_right_boolean() {
@@ -8851,7 +8052,7 @@ mod tests {
 
     /// Ported from `evaluator.rs`'s `creation_display_name_conversion_tests::
     /// creation_reached_through_search_converts_with_its_own_defining_name`
-    /// (re-read before porting): `b='a` resolves THROUGH a search to the
+    ///: `b='a` resolves THROUGH a search to the
     /// SAME creation `'a` defines (FOOP-33 Gotcha #2) — viewed from `b`'s
     /// statement (a DIFFERENT statement than `'a`'s own), the rendered
     /// output must report `'a`, not `b`, proving identity (not the

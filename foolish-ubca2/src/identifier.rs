@@ -6,16 +6,16 @@
 //! name-searches match against), and `is_nully_characterizing_coordinate_name()`
 //! (whether the slot immediately touching the name is null).
 //!
-//! `Characterizations` is minimal for this FOOP — it only answers whether the
+//! `Characterizations` is intentionally minimal — it only answers whether the
 //! name is null-characterized. Per-`'` component extraction is deferred.
 
 /// The characterization front portion of an `Identifier`, or a standalone brane's
 /// characterization stack (a brane has characterizations but no name — see
 /// [`Characterizations::from_brane_parts`]).
 ///
-/// For this FOOP, the name-touching semantics (`is_nully_characterizing_coordinate_name`)
-/// are minimal — only whether the name is null-characterized. Per-`'` component
-/// extraction is deferred, **except** that the raw canonicalized components are still
+/// The name-touching semantics (`is_nully_characterizing_coordinate_name`) are
+/// intentionally minimal — only whether the name is null-characterized. Per-`'`
+/// component extraction is deferred, **except** that the raw canonicalized components are still
 /// retained (`components()`) because the sequencer must reproduce the original
 /// `a'b'c'` rendering for a characterized brane.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -91,7 +91,7 @@ impl Characterizations {
 
 /// Identifier owns the LHS string of a statement and exposes three projections.
 ///
-/// For this FOOP, it stores three canonical strings (whitespace-stripped):
+/// It stores three canonical strings (whitespace-stripped):
 /// 1. `fully_characterized_name` — the whole LHS (e.g. `"a'b'c'd'e''x"`)
 /// 2. `name` — the bare coordinate name (e.g. `"x"`)
 /// 3. `characterization_string` — the front portion (e.g. `"a'b'c'd'e''"`)
