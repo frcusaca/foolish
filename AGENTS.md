@@ -243,6 +243,19 @@ are permitted to remain non-conformant. These represent known issues that the hu
 inspected and accepted as work-in-progress. They will be fixed as part of the impending
 work tracked in the plan.
 
+**Agents must never mark a Verified-tier test `#[ignore]`.** This means any `einmo_gate_verified`
+test (or equivalent test asserting a `checked/`→`verified/` correspondence) in any crate. The
+`verified/` tier is the project's highest-trust correctness anchor — a human-reviewed,
+cryptographically signed baseline — and an agent quietly ignoring the test that checks against it
+is exactly the kind of shortcut that erodes it. This holds even when the justification looks
+locally obvious (e.g. "`verified/` is empty for this new crate, so there's nothing to check yet").
+If a Verified gate genuinely cannot run yet, stop and ask the human to decide and to add the
+`#[ignore]` themselves (or explicitly direct the agent to add it, in words, in that conversation)
+— it is never an agent's own call to make silently as an implementation convenience. This applies
+retroactively: an existing `#[ignore]` on a Verified-tier test that an agent added without that
+explicit human direction has not been properly authorized and should be raised with the human,
+not treated as settled precedent.
+
 ## How To Write Rust Code
 
 > ## ⛔ STOP — READ `rust_instructions.md` BEFORE TOUCHING ANY RUST ⛔
@@ -807,15 +820,14 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-12
-**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
-**Changes**: Pointed the §Build Commands test sections at the new CENTRAL reference —
-`README.md` §"Running specific tests" (running one test or a subset: unit-test name filters,
-batch filters, `--exact`, and einmo case selection via the einmo CLI). Removed the broken
-`einmo evaluate --command "cat"` examples (cat echoes INPUT as OUTPUT — never a real
-evaluation; the working `foolish-cli run /dev/stdin | head -c -1` form lives in the README
-section) and added the batch-filter example to §Unit Tests. Noted in §FOOP the per-sub-section
-"Establish relevant tests" checkbox discipline (`foop.md` §"Sub-Section Test Subsets").
+**Date**: 2026-09-01
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Added a rule, next to the existing "tests must be manually disabled by human"
+guidance: agents must never mark a Verified-tier test (`einmo_gate_verified` or equivalent)
+`#[ignore]` on their own judgment, even when the justification looks locally obvious (e.g. an
+empty `verified/` for a new crate) — that decision belongs to the human, explicitly, every
+time. Applies retroactively to any existing such `#[ignore]` an agent added without that
+explicit direction (raised with the human directly, in `foolish-ubca2`'s case — see FOOP-16).
 
 ### MISC
 
