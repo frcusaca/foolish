@@ -720,15 +720,15 @@ a following `&`-search can read.
 - **No-no** - The `???` unknown value
 - **Constanic** (say "cons-TAN-nic") - Constant in Context. Any terminal NYES state:
   ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK. Pre-constanic (nigh) = needs more stepping.
-- **Constanew** - a FIR that won't change no matter what: CONSTANT, INDEPENDENT, or NK
-  (constanew ⊂ constanic). A **non-constanew constanic** (ECONSTANIC, WOCONSTANIC) may gain a
+- **Constantew** - CONSTANT EveryWhere. A FIR that won't change no matter what: CONSTANT, INDEPENDENT, or NK
+  (constantew ⊂ constanic). A **non-constantew constanic** (ECONSTANIC, WOCONSTANIC) may gain a
   value when context is recoordinated. See FOOP-62 §Terminology.
-- **Conclusive** (shorthand **conc**) - a FIR whose NYES is CONSTANT or INDEPENDENT: it reached
-  a value. An **inconclusive constanic** has settled WITHOUT reaching one — ECONSTANIC,
-  WOCONSTANIC, or NK. This is a different cut from constanew, and the two differ exactly on
-  **NK**: NK is constanew (nothing will change it) yet inconclusive (it never produced a value).
-  Introduced by FOOP-36 §0, where rendering keys on conclusive while recoordination keys on
-  constanew.
+- **Conclusive** (shorthand **Conc**) - a FIR whose NYES is CONSTANT or INDEPENDENT: it reached
+  a value. An **inconclusive constanic** includes all other pre-constanic and constanic states.
+  - This is a different cut from constantew, and the two differ exactly on **NK**: NK is constantew
+    (nothing will change it) yet inconclusive (it never produced a value).
+  - Introduced by FOOP-36 §0, where rendering keys on conclusive while recoordination keys on constantew.
+  - Often used expression "Inconclusive Constanic" means one of "WOCONSTANIC, ECONSTANIC, NK"
 - **Ordinate** - a name associated with a brane
 - **Coordinate** - brane member names used for relational access
 - **Home brane of a FIR** (synonym: **brane of a FIR**) - the first brane reached by
@@ -883,11 +883,11 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-02
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **Constanew** and **Conclusive** to the Foolish Terminology list. Constanew
+**Changes**: Added **Constantew** and **Conclusive** to the Foolish Terminology list. Constantew
 (CONSTANT/INDEPENDENT/NK — won't change no matter what) is existing vocabulary from FOOP-62
 §Terminology that the list was missing; **conclusive** (CONSTANT/INDEPENDENT — reached a value)
 is introduced by FOOP-36 §0. The two are different cuts and differ exactly on NK, which is
-constanew yet inconclusive. Also added the **"Plan of Execution for Plan"** rule to the FOOP
+constantew yet inconclusive. Also added the **"Plan of Execution for Plan"** rule to the FOOP
 section — every spec
 says which agent executes which phase, planned by complexity (judgment phases to a larger
 model; fixed-target execution phases to a smaller one), with a list of what is never delegated.

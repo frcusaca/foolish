@@ -845,8 +845,8 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
       (FOOP-62.md), code comments, and any FOOP guidance that led to the re-evaluation design.
 
 - [x] **Remove "frozen/freeze" wording from code, docs, and FOOPs.** Replace with the correct
-      Foolish terminology: "constanic" (terminal NYES state), "constanew" (newly constanic),
-      or "non-constanew constanic" (pre-existing constanic). The word "frozen" implies a
+      Foolish terminology: "constanic" (terminal NYES state), "constantew" (newly constanic),
+      or "non-constantew constanic" (pre-existing constanic). The word "frozen" implies a
       mechanical action that doesn't match the NYES-based stepping model.
       (2026-06-23 — all occurrences in ubca source, FOOP-62.md, and FOOP-62.plan.md replaced.
       Added terminology note to FOOP-62.md §Terminology.)

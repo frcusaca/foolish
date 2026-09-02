@@ -72,8 +72,8 @@ but it is settled so it does not block the task queue.
 > **Terminology note (2026-06-23):** The words "freeze" and "frozen" are **deprecated** in
 > this spec and in code. Use instead:
 > - **constanic** — a FIR in any terminal NYES state (wouldn't change unless context changes)
-> - **constanew** — a FIR that won't change no matter what (included in "constanic")
-> - **non-constanew constanic** — a FIR whose value may change when context is recoordinated
+> - **constantew** — a FIR that won't change no matter what (included in "constanic")
+> - **non-constantew constanic** — a FIR whose value may change when context is recoordinated
 > - **"step to constanic"** — when a FIR progresses through stepping
 > - **"set NYES to constanic"** — when NYES is directly assigned
 > - **"clone with constanic NYES"** — when cloning preserves constanic state

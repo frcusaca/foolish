@@ -201,18 +201,18 @@ The three terms, and exactly which NYES states each covers:
 
 - **Constanic** — ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
   *Any terminal state.* (Pre-constanic, or nigh: PREMBRYONIC, EMBRYONIC, BRANING.)
-- **Constanew** — CONSTANT, INDEPENDENT, NK.
-  *Won't change no matter what.* Constanew ⊂ constanic. The rest — ECONSTANIC, WOCONSTANIC —
-  are **non-constanew constanic**: they may gain a value when context is recoordinated.
+- **Constantew** — CONSTANT, INDEPENDENT, NK.
+  *Won't change no matter what.* Constantew ⊂ constanic. The rest — ECONSTANIC, WOCONSTANIC —
+  are **non-constantew constanic**: they may gain a value when context is recoordinated.
 - **Conclusive** (**conc**) — CONSTANT, INDEPENDENT.
   *Reached a value.* **Inconclusive** means neither CONSTANT nor INDEPENDENT; an
   **inconclusive constanic** is therefore ECONSTANIC, WOCONSTANIC, or NK.
 
-Constanic and constanew are existing Foolish vocabulary (FOOP-62 §Terminology); conclusive is
+Constanic and constantew are existing Foolish vocabulary (FOOP-62 §Terminology); conclusive is
 introduced here.
 
-Note that conclusive is **not** the same cut as **constanew** (CONSTANT, INDEPENDENT, NK —
-"constant everywhere"). The two differ exactly on NK: NK is constanew, because nothing will ever
+Note that conclusive is **not** the same cut as **constantew** (CONSTANT, INDEPENDENT, NK —
+"constant everywhere"). The two differ exactly on NK: NK is constantew, because nothing will ever
 change it, but it is *inconclusive*, because it never produced a value. That difference is
 precisely why NK renders as the original expression rather than as a value — see §5.
 
@@ -342,7 +342,7 @@ is conclusive.
 **Why this is right.** A search reverting to its written form is not information withheld from
 the reader — it is the program restated. Handed `b?a.*`, the next compiler performs the search
 itself; handed `nonexistent`, it may resolve it in a *new* context, which is exactly what
-ECONSTANIC promises (§5.1: ECONSTANIC and WOCONSTANIC are **non-constanew** — their values may
+ECONSTANIC promises (§5.1: ECONSTANIC and WOCONSTANIC are **non-constantew** — their values may
 change under recoordination). Collapsing those to a value would freeze an answer the language
 says is still open. A rendered search is never a search that was lost; it is one that will be
 re-coordinated wherever the output is next read.
@@ -679,7 +679,7 @@ the value is unknowable, but because that is what was written.
 Either way the *expression* is identical; only the annotation moves. The einmo corpus is
 rendered with the default, so it is reproducible.
 
-**NK is constanic AND constanew** — see §5.1 for why that matters and what it does not change.
+**NK is constanic AND constantew** — see §5.1 for why that matters and what it does not change.
 
 When on, the reason is drawn from `hs_nk()` and follows §4's placement rule:
 
@@ -689,30 +689,30 @@ When on, the reason is drawn from `hs_nk()` and follows §4's placement rule:
 - Truncated to a stated maximum of **60 characters**, with a trailing `…` when longer. Brief is
   the point; the full alarm text stays available in `Detailed` mode.
 
-#### §5.1 NK is constanew; ECONSTANIC is not
+#### §5.1 NK is constantew; ECONSTANIC is not
 
 FOOP-62 §Terminology (the in-force authority) divides the constanic states:
 
 | Term | States | Meaning |
 |---|---|---|
-| **constanew** | CONSTANT, INDEPENDENT, **NK** | constant *everywhere* — won't change no matter what |
-| **non-constanew constanic** | ECONSTANIC, WOCONSTANIC | value may change when context is recoordinated |
+| **constantew** | CONSTANT, INDEPENDENT, **NK** | constant *everywhere* — won't change no matter what |
+| **non-constantew constanic** | ECONSTANIC, WOCONSTANIC | value may change when context is recoordinated |
 
-FOOP-62 lists `is_constanew()` as a predicate, but **it does not exist in the code** (verified
+FOOP-62 lists `is_constantew()` as a predicate, but **it does not exist in the code** (verified
 2026-09-02): `foolish-core/src/fir.rs` has `is_constanic()` and `is_nnk_constanic()` only. This
 FOOP needs no such predicate — §3 keys on constanic, and §5's NK handling keys on `hs_nk()` —
 so it does not add one. Noted because the gap is easy to trip over when reading FOOP-62.
 
-Constanew and conclusive (§0) are different cuts, and NK is what separates them: NK is
-constanew (nothing will change it) yet inconclusive (it never produced a value). Rendering
-keys on **conclusive**; recoordination keys on **constanew**.
+Constantew and conclusive (§0) are different cuts, and NK is what separates them: NK is
+constantew (nothing will change it) yet inconclusive (it never produced a value). Rendering
+keys on **conclusive**; recoordination keys on **constantew**.
 
 When a rendered **ECONSTANIC** search is re-read in a new context, it may genuinely resolve
-there — that is non-constanew, and it is why rendering the search rather than a value is not
+there — that is non-constantew, and it is why rendering the search rather than a value is not
 merely tidier but *necessary*: collapsing it to a value would freeze an answer the language
 says is still open.
 
-**NK is the opposite: constanew, so re-coordination changes nothing.** `1/0` is NK here and NK
+**NK is the opposite: constantew, so re-coordination changes nothing.** `1/0` is NK here and NK
 anywhere. That makes NK the *easy* case for §2's round trip rather than a hard one — `1/0`
 renders `1/0`, re-parses, re-settles NK, and `R2 == R1`. The reason it still renders as written
 rather than as `???` is not fear of losing an answer; it is simply that `1/0` is the program and
@@ -807,7 +807,7 @@ pass and the test catches it, with nobody predicting the right answer in advance
 The input must **instrument a variety of constanic states**, not only constants: CONSTANT and
 INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC statements; NK
 expressions (`1/0`, an anchored miss); merged and unmerged concatenations; SF and SFF. NK is
-constanew (§5.1) so it re-settles NK and the equality holds; ECONSTANIC is non-constanew and is
+constantew (§5.1) so it re-settles NK and the equality holds; ECONSTANIC is non-constantew and is
 the interesting one to watch. Property 2 is asserted **only** where the FIR is constanic
 (§2.1's table) — for pre-constanic FIR only steps 1–4 apply.
 
@@ -1092,10 +1092,10 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   dispatch — and record the answer, since it fixes how a large family of trailing-use-site
   lines renders across the corpus. Neither answer is a problem; guessing is.
 - **Q8 — RESOLVED (human pointed to the term; FOOP-62 §Terminology confirms it): NK is
-  constanew, so the round trip is straightforward.** The vocabulary recovered: **constanew** =
+  constantew, so the round trip is straightforward.** The vocabulary recovered: **constantew** =
   CONSTANT, INDEPENDENT, NK — constant everywhere, won't change no matter what;
-  **non-constanew constanic** = ECONSTANIC, WOCONSTANIC — may change under recoordination.
-  Since NK is constanew, re-parsing and re-stepping `1/0` settles NK again, so `R2 == R1` holds
+  **non-constantew constanic** = ECONSTANIC, WOCONSTANIC — may change under recoordination.
+  Since NK is constantew, re-parsing and re-stepping `1/0` settles NK again, so `R2 == R1` holds
   and NK sits comfortably in §2.1's "Property 2 required" column. §5.1 records this. An earlier
   draft of §5 asserted the round trip closed without having established why — the claim happened
   to be right, but the reasoning was absent, and the human was right to strike it.
@@ -1133,13 +1133,13 @@ Abstract was rewritten around the one governing rule and no longer contradicts �
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
 *conclusive* (CONSTANT/INDEPENDENT) and *inconclusive constanic* (ECONSTANIC/WOCONSTANIC/NK)
-alongside the existing *constanic* and *constanew*. **§3**: when a result is an inconclusive
+alongside the existing *constanic* and *constantew*. **§3**: when a result is an inconclusive
 constanic, render the original expression — the original search, or the op on its parameters;
 a conclusive result collapses to its value. **§3.1** explains why that loses nothing; **§3.2**
 splits concatenation on whether the merge succeeded. **§4** puts states with no Foolish syntax
 in `!!` comments; **§4.1** makes width configurable, default 108; **§4.2** covers einmo input
 comment style and the per-suite separator. **§5** derives NK's rendering from §3's predicate
-(`1/0`, never `???`), with `comment_nk` as a flag; **§5.1** distinguishes constanew from
+(`1/0`, never `???`), with `comment_nk` as a flag; **§5.1** distinguishes constantew from
 conclusive. **§6** keeps `Detailed` delegating unchanged to `foolish_core::FirSequencer`, so
 `foolish-ubca` cannot regress.
 
@@ -1161,5 +1161,5 @@ less" and "a value changed, not just its rendering" are the failure modes invisi
 green run.
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
-Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constanew).
+Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constantew).
 Open for Phase 1: Q2 (written-form reconstruction) and Q7 (trailing use sites).

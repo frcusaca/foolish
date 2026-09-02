@@ -133,8 +133,8 @@ vs `PREMBRYONIC` in prose.
 - **"Conclusive" / "inconclusive" (§0) is vocabulary this FOOP INTRODUCES** — it does not exist
   in the codebase today (verified 2026-09-02). **Conclusive** = NYES is CONSTANT or
   INDEPENDENT (reached a value). **Inconclusive constanic** = settled without a value —
-  ECONSTANIC, WOCONSTANIC, NK. It is a different cut from FOOP-62's **constanew**
-  (CONSTANT/INDEPENDENT/NK): they differ exactly on NK, which is constanew but inconclusive.
+  ECONSTANIC, WOCONSTANIC, NK. It is a different cut from FOOP-62's **constantew**
+  (CONSTANT/INDEPENDENT/NK): they differ exactly on NK, which is constantew but inconclusive.
   Rendering keys on conclusive. If you add a predicate for it, name it accordingly and keep it
   in `foolish-ubca2` — `foolish-core` is off-limits per the scope guard.
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
@@ -581,9 +581,9 @@ OLD rendering. Nothing here generates a baseline.*
       rendering is stable.
   - [ ] **The T2 input must instrument a VARIETY of constanic states**, not just constants:
         CONSTANT and INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC
-        statements; and NK expressions (`1/0`, an anchored miss). NK is **constanew** (§5.1) so
+        statements; and NK expressions (`1/0`, an anchored miss). NK is **constantew** (§5.1) so
         it re-settles NK on the second pass and `R2 == R1` holds; ECONSTANIC is
-        **non-constanew**, so it is the interesting one to watch — a rendered ECONSTANIC search
+        **non-constantew**, so it is the interesting one to watch — a rendered ECONSTANIC search
         re-read in a new context may resolve differently, and T2 is what proves the rendering
         is nonetheless stable.
 - [ ] **T2b — pre-constanic rendering (§2.1).** Build FIRs stepped a bounded number of steps
