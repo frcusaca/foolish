@@ -213,14 +213,98 @@ excludes them. §3's rule is stated over the narrower phrase, because a FIR's **
 it tests and a result under inspection is constanic; §2.1 covers pre-constanic FIR separately,
 and it renders the same way for the same reason — no value was reached.
 
-**A note on the word "settled".** `foolish-ubca2` uses it heavily as prose for "has reached a
-terminal state" (138 occurrences, and a real `FirPointer::settled_result` accessor), so it is
-idiomatic here and this FOOP uses it that way. It is **not** a predicate you can call: `lib.rs`
-documents `NyesExt::is_settled()` and FOOP-62 §Terminology specifies it, but no such method
-exists in the crate — `nyes_ext.rs` provides `is_constanic()` and `is_nnk_constanic()` only.
-Where precision matters, this FOOP says *constanic* or *conclusive*, which are the words with
-predicates behind them (or, for conclusive, a predicate this FOOP may add in
-`foolish-ubca2`).
+#### §0.1 Survey: what "settled" means in `foolish-ubca2` today
+
+`foolish-ubca2` uses "settled" heavily — **134 lines, 131 of them in `fvm_storage.rs`** — as
+informal prose, never as a callable predicate. **`is_settled()` does not exist** in the crate:
+`lib.rs` line 24 documents `NyesExt` as adding it and FOOP-62 §Terminology specifies it, but
+`nyes_ext.rs` provides only `is_constanic()` and `is_nnk_constanic()`. (FOOP-62's
+`is_constantew()` is likewise unimplemented.) Anything calling `is_settled()` would not compile.
+
+The word is **not used consistently**. Each site means one of the groups from §0, and they
+differ. Classified by what the code actually requires:
+
+**Group 1 — "settled" ≡ constanic.** The gate is literally `is_constanic()`.
+
+| Site | Line | What it requires |
+|---|---|---|
+| `FirPointer::settled_result` | 639 | `is_constanic()` on the OWNER — but see §0.1.1: what the slot can hold is narrower |
+| `FirCursor::settled_result` | 1602 | delegates to the above |
+| `step_to_settled` | 3272 | loops until `is_constanic()`; the error path re-tests the same |
+| duplicate-definition compare | 2589 | "prior definition not yet settled" = `!is_constanic()` |
+| conflicting-redefinition compare | 2702 | "one side not yet settled" = either `!is_constanic()` |
+| `anchor_settled` | 3178 | `is_constanic()` on the anchor |
+
+**Group 2 — "settled" ≡ conclusive.** The gate is `Constant | Independent`, i.e. §0's
+*conclusive*. This is the site that would be wrong if read as "constanic".
+
+| Site | Line | What it requires |
+|---|---|---|
+| `all_settled` (Operator) | 816–819 | `matches!(nyes, Constant \| Independent)` — an operator queues its operands as tasks unless every one is **conclusive**. An ECONSTANIC operand is constanic but NOT enough. |
+| `operator_pushes_tasks_for_unsettled_operands` (test) | 5301 | exercises the rule with PREMBRYONIC operands only, so it does not actually distinguish conclusive from constanic. The distinction rests on line 816 alone — a test worth adding (§Test Plan T1). |
+
+##### §0.1.1 `settled_result` means **constanic**, and the name should say so
+
+The gate at line 639 tests `is_constanic()` on the node owning the slot, and that is also the
+right description of the slot's contents. Two mechanisms push toward something narrower, but
+neither closes the door:
+
+- **`Nyes::transform_for_clone`** (`foolish-core/src/fir.rs`) preserves only CONSTANT,
+  INDEPENDENT and NK — exactly **constantew** — turning ECONSTANIC, WOCONSTANIC and every
+  pre-constanic state into EMBRYONIC. A result arriving by `clone_stmt_result` →
+  `revive_constanic` is therefore constantew or embryonic.
+- **`push_ubc_child`** (line 151) queues a non-constanic child as a task, so an embryonic entry
+  gets stepped onward rather than lingering.
+
+**But ECONSTANIC and WOCONSTANIC do reach the slot**, by a route that bypasses cloning:
+`StayFoolish` "expose[s] EXPR'S OWN resolved value … adopting that value's `Nyes`" (line
+902–904), and the write sites at 932 and 970 pass a found value's NYES straight through. Of the
+~20 slot writes, several are `Nyes::Nk`, one is `Nyes::Constant` (1527), and the remainder
+carry whatever the found value had.
+
+**So the accurate qualifier is `constanic`, not `constantew` or `conclusive`.** A rename to
+**`settled_constanic_result`** would be correct and would state the gate the function already
+applies. (`settled_constantew_result` would be wrong — it would promise something the
+StayFoolish path does not deliver.)
+
+**Consequence for §3.** All three arms of the predicate are genuinely reachable: conclusive
+results (shared or preserved CONSTANT/INDEPENDENT), NK results (many write sites), and
+ECONSTANIC/WOCONSTANIC results (via SF and the found-value paths). No arm is dead code, and the
+`einmo_suite2` cases must cover each. Phase 1 confirms the distribution empirically.
+
+**Group 3 — "settled" = the outcome of a classification, spanning several groups.** Here
+"settled" names *the state being computed*, not a test.
+
+| Site | Line | What it computes |
+|---|---|---|
+| `settled_nyes = nyes_from_found(...)` | 968 | maps a found result's NYES: ECONSTANIC/WOCONSTANIC → WOCONSTANIC, CONSTANT/INDEPENDENT → CONSTANT, NK → NK. Output is constanic; the input need not be. |
+| `let settled = ...decide_nyes_due_to_children(...)` | 1070 | classifies a Braning node from its children — may yield **Braning** (still pre-constanic!) when a child is pre-constanic. So this "settled" is explicitly *not* constanic. |
+
+**Group 4 — prose in doc comments and test names.** The remaining ~120 occurrences. Mostly
+accurate but imprecise; several would read better as "constanic" or "conclusive". Notable:
+`indep_int_stepping_already_settled_is_noop` (5209) means CONSTANT/INDEPENDENT — conclusive;
+`revive_constanic_unwraps_stay_foolish_to_its_settled_result` (5623) means constanic, via
+`settled_result`.
+
+**What this FOOP does about it.** "Settled" is the word every agent reached for and it is
+staying. The problem is not the word but that it is used bare, leaving the reader to work out
+which group is meant. The remedy is a **descriptor**, not a replacement:
+
+| Today | Proposed | Why |
+|---|---|---|
+| `FirPointer::settled_result` (639) | **`settled_constanic_result`** | it gates on `is_constanic()`, and per §0.1.1 that is genuinely what the slot holds — `constantew` would over-promise |
+| `FirCursor::settled_result` (1602) | **`settled_constanic_result`** | delegates to the above |
+| `all_settled` (816) | **`all_conclusive`** | it gates on `Constant \| Independent` — §0's *conclusive* exactly |
+| `step_to_settled` (3272) | **`step_to_constanic`** | it loops until `is_constanic()` |
+
+**These renames are a proposal, not a task this FOOP performs.** `foolish-ubca2` is being
+edited concurrently by FOOP-26 and FOOP-46, and a rename touching ~20 call sites would conflict
+with both. Raise it with the human as a separate, mechanical change to sequence after those
+land. What this FOOP *does* is stop relying on the bare word: §3's rule is stated over
+*conclusive* and *inconclusive constanic*, each naming exactly one group.
+
+**One thing worth fixing in passing** (comment-only, in the plan): `lib.rs` line 24's claim
+that `NyesExt` adds `is_settled()`, which it does not.
 
 ### §1 Two modes, one entry point
 

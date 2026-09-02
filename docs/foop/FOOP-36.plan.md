@@ -251,6 +251,15 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       CONSTANT, no `SearchFir` left; unresolved → the `SearchFir` survives), so **no provenance
       marking, no new accessor, nothing to decide.** §3 was rewritten accordingly.
       (2026-09-02 14:05)
+- [ ] **Confirm §0.1.1 — which NYES states a `settled_result` slot actually holds.** The gate
+      (`fvm_storage.rs:639`) tests `is_constanic()` on the owner, but two mechanisms narrow
+      what lands in the slot: `Nyes::transform_for_clone` preserves only CONSTANT/INDEPENDENT/NK
+      (= **constantew**) and turns everything else EMBRYONIC; and `push_ubc_child` (line 151)
+      queues a non-constanic child as a task so it gets stepped. Instrument a run over the
+      corpus and record the observed distribution of result NYES. **This tells you which arms
+      of §3's predicate the corpus exercises** — if ECONSTANIC/WOCONSTANIC results turn out to
+      be rare or absent, say so, because the `einmo_suite2` cases must then cover them
+      deliberately rather than incidentally.
   - [ ] Confirm §3's dispatch on real FIRs — cheap, and the basis of everything downstream:
         evaluate `misc/search_with_multiple_matches` (`r = b?a.*`, anchored) and
         `misc/undeclared_identifier` (`x = non_existent`, unanchored) and record what reaches
@@ -442,6 +451,12 @@ a fixed, human-authored target.
         on the search's own NYES: **when the result is an inconclusive constanic (§0), render
         the original search**; when it is conclusive, render its value. Cover both sides:
         - result **conclusive** (CONSTANT/INDEPENDENT) → collapses to the value
+        - **Add the test line 816's rule lacks**: an operator with an ECONSTANIC operand must
+          still queue it as a task. The existing
+          `operator_pushes_tasks_for_unsettled_operands` uses PREMBRYONIC operands only, so it
+          does not distinguish conclusive from constanic — and `all_settled` at
+          `fvm_storage.rs:816` gates on `Constant | Independent`, i.e. conclusive (§0.1
+          Group 2). That distinction is currently untested.
         - result ECONSTANIC (unanchored miss) → renders the search
         - result WOCONSTANIC → renders the search
         - result NK (anchored miss) → renders the search, NOT `???`
