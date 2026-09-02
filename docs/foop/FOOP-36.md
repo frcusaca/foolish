@@ -765,6 +765,10 @@ without asserting something the language does not promise.
 
 ## Open Questions
 
+Ordered by number. **Q4 and Q6 are RESOLVED** (human decisions, recorded inline below and
+reflected in the plan); **Q2 and Q5 are for Phase 1 to answer before any rendering code is
+written**; Q1 and Q3 are cosmetic and settle once the first rendered output is visible.
+
 - **Q1.** Should `Foolish` mode be the einmo adapter's rendering *and* the REPL's, or should
   the REPL keep `Detailed`? Leaning: einmo takes `Foolish`; the REPL takes `Foolish` with a
   toggle, since a Foolisher at a REPL is reading values, not FIR.
@@ -772,6 +776,34 @@ without asserting something the language does not promise.
   is one additive default method needed (see §FIR Impact)? Resolve by inspection in Phase 1,
   **before** implementation; if a method is needed, say so in the phase report rather than
   adding it silently.
+- **Q3.** §5's 60-character reason cap and §4's two-space comment gutter are stated so the
+  output is deterministic, but the numbers are chosen, not derived. Confirm with the human
+  once the first rendered baselines are visible.
+- **Q4 — RESOLVED (human, 2026-09-02): FOOP-36 goes first.** FOOP-26 changes SF/SFF mark
+  semantics and makes concatenation an operator, both of which §3 renders; the two FOOPs touch
+  the same cases from opposite sides (meaning vs. rendering). Rendering lands first, so
+  FOOP-26's diffs appear in Foolish rather than FIR-dump vocabulary and its reviewers can
+  predict expected output from its own spec. The argument is §Motivation "Why this should land
+  before FOOP-26"; the cost to FOOP-26 is nil because this FOOP moves no FIR, no step rule and
+  no step count.
+- **Q5.** Can the renderer distinguish a **source-written** FIR from a **substituted** one
+  (§3.1)? **Provisionally yes — confirm in Phase 1, do not re-derive from scratch.** Two
+  findings from inspecting the code as this FOOP was written:
+  - `hs_search()` exposes `anchor` and `result` as **separate slots** on the search node
+    (`foolish-core/src/fir.rs` ~line 749). A resolved search is still a search: its written
+    form is intact and `result` is an extra slot the renderer simply ignores. So "resolved"
+    never destroys written form, which is most of what §3 needs.
+  - `foolish-ubca2` already draws the substitution boundary structurally:
+    `proto_to_core_fir` dispatches into a dedicated `proto_to_core_fir_sff_body` path
+    (`fvm_storage.rs` ~line 3378) that rebuilds an SFF interior's searches as `SearchFir`s
+    carrying pattern and anchoring. Written form inside an SFF body is preserved *by
+    construction*, and the ordinary path handles everything else.
+
+  What Phase 1 must still confirm: that a **trailing use site** (the bare `sff;` in
+  `misc/sff_vs_sf_timing_difference`) arrives at the renderer as the substituted value and not
+  as a search — this is the one place §3.1's rule is actually load-bearing. If it arrives as a
+  search, the timing distinction that case exists to prove would be erased, and that is a
+  **blocking finding** to report before writing rendering code.
 - **Q6. `verified/` is populated — how should the re-signing be handled?** (Verified
   2026-09-02: 179 signed artifacts present, `einmo_gate_verified` green.) This FOOP re-renders
   every one of them, which will break that gate, and only a human key can restore it. The
@@ -796,34 +828,6 @@ without asserting something the language does not promise.
   and this FOOP is exactly the case that rule anticipates), and the human's mass verification
   is **downstream of a real per-case review, not a substitute for one**: it presumes the agent
   has already justified each case, which is the gate's whole point.
-- **Q5.** Can the renderer distinguish a **source-written** FIR from a **substituted** one
-  (§3.1)? **Provisionally yes — confirm in Phase 1, do not re-derive from scratch.** Two
-  findings from inspecting the code as this FOOP was written:
-  - `hs_search()` exposes `anchor` and `result` as **separate slots** on the search node
-    (`foolish-core/src/fir.rs` ~line 749). A resolved search is still a search: its written
-    form is intact and `result` is an extra slot the renderer simply ignores. So "resolved"
-    never destroys written form, which is most of what §3 needs.
-  - `foolish-ubca2` already draws the substitution boundary structurally:
-    `proto_to_core_fir` dispatches into a dedicated `proto_to_core_fir_sff_body` path
-    (`fvm_storage.rs` ~line 3378) that rebuilds an SFF interior's searches as `SearchFir`s
-    carrying pattern and anchoring. Written form inside an SFF body is preserved *by
-    construction*, and the ordinary path handles everything else.
-
-  What Phase 1 must still confirm: that a **trailing use site** (the bare `sff;` in
-  `misc/sff_vs_sf_timing_difference`) arrives at the renderer as the substituted value and not
-  as a search — this is the one place §3.1's rule is actually load-bearing. If it arrives as a
-  search, the timing distinction that case exists to prove would be erased, and that is a
-  **blocking finding** to report before writing rendering code.
-- **Q3.** §5's 60-character reason cap and §4's two-space comment gutter are stated so the
-  output is deterministic, but the numbers are chosen, not derived. Confirm with the human
-  once the first rendered baselines are visible.
-- **Q4 — RESOLVED (human, 2026-09-02): FOOP-36 goes first.** FOOP-26 changes SF/SFF mark
-  semantics and makes concatenation an operator, both of which §3 renders; the two FOOPs touch
-  the same cases from opposite sides (meaning vs. rendering). Rendering lands first, so
-  FOOP-26's diffs appear in Foolish rather than FIR-dump vocabulary and its reviewers can
-  predict expected output from its own spec. The argument is §Motivation "Why this should land
-  before FOOP-26"; the cost to FOOP-26 is nil because this FOOP moves no FIR, no step rule and
-  no step count.
 
 ## References
 

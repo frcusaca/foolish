@@ -55,8 +55,8 @@ FirPointer  (Copy: arena stamp + index + generation)   <- validated handle, neve
 │  foolish_children: Vec<FirPointer> ──┼── tree topology (moved OUT of the payload)
 │  generation: u32                     │
 │                                      │
-│  payload: ArenaFir  ──HAS-A──────────┼──►┌─────────────────────────────────┐
-└──────────────────────────────────────┘   │ ArenaFir                        │
+│  payload: ProtoBrane  ──HAS-A────────┼──►┌─────────────────────────────────┐
+└──────────────────────────────────────┘   │ ProtoBrane   (ubca2's)          │
                                            │  spec: FirSpec ──HAS-A──────────┼──►FirSpec::IndepInt{value}
                                            │                                 │     | FirSpec::Operator{op}
                                            │                                 │     | ...14 variants
@@ -84,9 +84,9 @@ recurses through (see `FOOP-16.md`'s "Stepping does not go through
 - **`foolish-ubca`**: "which kind is this?" is answered by *which Rust type
   you're holding* — `IndepIntFir` **is-a** `Fir`, dispatched through a
   vtable. Kind-polymorphism lives in the type system.
-- **`foolish-ubca2`**: every node is the *same* Rust type (`ArenaFir`, in a
+- **`foolish-ubca2`**: every node is the *same* Rust type (`ProtoBrane`, in a
   `Slot`, behind a `FirPointer`). "Which kind" is answered by *a value* —
-  `ArenaFir` **has-a** `FirSpec`, and code `match`es on its discriminant.
+  `ProtoBrane` **has-a** `FirSpec`, and code `match`es on its discriminant.
   Kind-polymorphism moved from types into data — a closed sum type instead
   of an open trait-object hierarchy (matching `rust_instructions.md`'s
   "types over generics, generics over `dyn`" preference).
@@ -98,9 +98,20 @@ union, not a marker enum.
 
 The has-a container for shared mutable state never went away, because it
 was never the is-a part to begin with — `ProtoBrane` was always
-composition. `ArenaFir` is its direct structural descendant, stripped of
-`Cell`/`RefCell` wrappers, because one global `&mut FVMStorage` borrow now
-provides the exclusivity that used to need per-field interior mutability.
+composition. `foolish-ubca2`'s payload is its direct structural descendant,
+stripped of `Cell`/`RefCell` wrappers, because one global `&mut FVMStorage`
+borrow now provides the exclusivity that used to need per-field interior
+mutability.
+
+**Naming, updated 2026-09-01 (FOOP-26).** That payload was originally called
+`ArenaFir`. Because it is the same container filling the same role, it now
+carries the same name: **`ProtoBrane`**. Both crates therefore have a
+`ProtoBrane`, and they are different Rust types in different crates — one
+built on `Rc`/`RefCell`, one on arena slots — so a bare `ProtoBrane` must be
+read against the crate it appears in. **This addendum has been updated to the
+new name; `FOOP-16.md` and `FOOP-16.plan.md` have not.** Those two are the
+frozen record of what was designed and executed, and this project does not
+rewrite completed FOOPs — read `ArenaFir` there as `ProtoBrane`.
 
 ## One refinement beyond the literal spec sketch
 
@@ -121,3 +132,13 @@ and the parent's child-list happen as one write to arena-owned state, not
 two writes to two different owners that could drift out of sync (exactly
 the boilerplate/consistency risk FOOP-16's Motivation names as the reason
 to migrate away from `Rc::new_cyclic` in the first place).
+
+## Last Updated
+
+**Date**: 2026-09-01
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Renamed this addendum's references to `foolish-ubca2`'s per-node payload from
+`ArenaFir` to **`ProtoBrane`** (the diagram, the IS-A/HAS-A bullet, and the closing paragraph),
+following the code rename landed under FOOP-26. Added a "Naming, updated 2026-09-01" note
+recording that both crates now have a differently-shaped `ProtoBrane`, and that `FOOP-16.md`
+and `FOOP-16.plan.md` are deliberately left saying `ArenaFir` as frozen historical record.
