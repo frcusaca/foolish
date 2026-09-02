@@ -112,6 +112,13 @@ vs `PREMBRYONIC` in prose.
   as `SearchFir`s carrying pattern + anchoring (Phase 1, Q5).
 - `foolish-core/src/sequencer.rs` has **4 pre-existing clippy warnings** (lines 187, 537, 563,
   743). Not yours to fix; the scope guard forbids touching that file.
+- **"Conclusive" / "inconclusive" (§0) is vocabulary this FOOP INTRODUCES** — it does not exist
+  in the codebase today (verified 2026-09-02). **Conclusive** = NYES is CONSTANT or
+  INDEPENDENT (reached a value). **Inconclusive constanic** = settled without a value —
+  ECONSTANIC, WOCONSTANIC, NK. It is a different cut from FOOP-62's **constanew**
+  (CONSTANT/INDEPENDENT/NK): they differ exactly on NK, which is constanew but inconclusive.
+  Rendering keys on conclusive. If you add a predicate for it, name it accordingly and keep it
+  in `foolish-ubca2` — `foolish-core` is off-limits per the scope guard.
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
   `foolish-ubca2/einmo_suite`'s files carry `#einmo 1 encoding=utf-8 separator=①\n`, while the
   older `foolish-ubca/einmo_suite` still carries `separator=!!\n`. **FOOP-92's spec text and
@@ -391,19 +398,18 @@ a fixed, human-authored target.
         plain `a = 1`; an underscore name `my_var = 2` (must render `myˍvar`, U+02CD, and
         re-lex — the round-trip hazard); a Unicode name (Greek/Cyrillic/Chinese per AGENTS.md);
         a characterized brane `a'b'{…}`; a null-characterized name `'k = 1`.
-  - [ ] **`operators_written`** — §3's predicate applied to operators: render the OPERATOR AND
-        ITS PARTS when the result is not found, or constanic but neither CONSTANT nor
-        INDEPENDENT; otherwise render the VALUE. Cover both sides:
-        - `3 + 4` → `7` (result CONSTANT — the operator is spent)
+  - [ ] **`operators_written`** — the same predicate on operators: **when the result is an
+        inconclusive constanic, render the op operating on its parameters**; when it is
+        conclusive, render the VALUE. Cover both sides:
+        - `3 + 4` → `7` (result conclusive — the operator is spent)
         - `a + b` with ECONSTANIC operands → `a + b` (no value was reached)
         - `1/0` → `1/0` with `!! NK: …` (result NK — §5's operator instance)
         Plus: a nested `1 + 2 * 3` (precedence must survive the round trip); unary minus;
         a comparison using `<̲`.
   - [ ] **`searches_written`** — §3's predicate, which keys on the search's **`result()`**, not
-        on the search's own NYES. Render the ORIGINAL SEARCH when `result()` is not found, OR
-        when `result()` is constanic but neither CONSTANT nor INDEPENDENT (ECONSTANIC,
-        WOCONSTANIC, NK). Otherwise render the result's VALUE. Cover both sides:
-        - result CONSTANT → collapses to the value
+        on the search's own NYES: **when the result is an inconclusive constanic (§0), render
+        the original search**; when it is conclusive, render its value. Cover both sides:
+        - result **conclusive** (CONSTANT/INDEPENDENT) → collapses to the value
         - result ECONSTANIC (unanchored miss) → renders the search
         - result WOCONSTANIC → renders the search
         - result NK (anchored miss) → renders the search, NOT `???`
@@ -504,8 +510,8 @@ a fixed, human-authored target.
         `not_found_brane` stay written.
   - [ ] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
         on the **result**, applied to both kinds — render the original expression when the
-        result is absent, ECONSTANIC, WOCONSTANIC or NK; render the value when it is CONSTANT
-        or INDEPENDENT. `hs_search()` and `hs_operator()` each hand you what you need. Do NOT
+        result is absent or an **inconclusive constanic**; render the value when the result is
+        **conclusive**. `hs_search()` and `hs_operator()` each hand you what you need. Do NOT
         key on the node's own NYES — an earlier draft of this FOOP did, and it renders the
         wrong thing for a node whose result is a plain value. Write the predicate ONCE and
         share it between the two arms.

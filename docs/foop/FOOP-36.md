@@ -27,10 +27,11 @@ emitted, which is precisely the thing the test is supposed to be checking.
 
 This FOOP gives `foolish-ubca2` **its own sequencer**, owned by the crate, whose default mode
 renders a FIR — settled **or mid-evaluation** — as **valid Foolish source that parses back
-in**. Constants render as their values. A **search renders as the search that was written**
-unless its result is a genuine value (CONSTANT or INDEPENDENT) — so `r = b?a.*` stays
-`r = b?a.*` when the result is ECONSTANIC, WOCONSTANIC or NK, and collapses to `r = 3` only
-when a real value was produced. That is not an answer withheld: handed the search, the next
+in**. One rule does most of the work: **when a result is an inconclusive constanic — settled
+without reaching a value (ECONSTANIC, WOCONSTANIC, NK; §0) — render the original expression.**
+A search renders as the search, an operator as the op on its parameters. Only a **conclusive**
+result (CONSTANT or INDEPENDENT) collapses to its value, so `r = b?a.*` stays `r = b?a.*`
+unless a real value was produced. That is not an answer withheld: handed the search, the next
 compiler re-coordinates it itself. What disappears is the FIR machinery — `?(pattern='^y$', UNANCHORED)`,
 `Op+(…, WOCONSTANIC)`, the bare NYES tokens.
 `{a=1+2}` renders `a = 3` — the operator is spent and its value is the Foolish. No NYES
@@ -169,6 +170,38 @@ Q4 remains — the human confirms the sequencing.
 
 ## Specification
 
+### §0 Terminology: conclusive and inconclusive
+
+This FOOP introduces one word, because the rule it needs to state has no name today and the
+alternative is the phrase "constanic but neither CONSTANT nor INDEPENDENT" repeated everywhere.
+
+> **Conclusive** (shorthand **conc**) — a FIR whose NYES is **CONSTANT or INDEPENDENT**. It
+> reached a value, and that value is the conclusion.
+>
+> **Inconclusive** — a FIR that is not conclusive. An **inconclusive constanic** is one that has
+> settled (ECONSTANIC, WOCONSTANIC, NK) without reaching a value.
+
+The three terms, and exactly which NYES states each covers:
+
+- **Constanic** — ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
+  *Any terminal state.* (Pre-constanic, or nigh: PREMBRYONIC, EMBRYONIC, BRANING.)
+- **Constanew** — CONSTANT, INDEPENDENT, NK.
+  *Won't change no matter what.* Constanew ⊂ constanic. The rest — ECONSTANIC, WOCONSTANIC —
+  are **non-constanew constanic**: they may gain a value when context is recoordinated.
+- **Conclusive** (**conc**) — CONSTANT, INDEPENDENT.
+  *Reached a value.* **Inconclusive** means neither CONSTANT nor INDEPENDENT; an
+  **inconclusive constanic** is therefore ECONSTANIC, WOCONSTANIC, or NK.
+
+Constanic and constanew are existing Foolish vocabulary (FOOP-62 §Terminology); conclusive is
+introduced here.
+
+Note that conclusive is **not** the same cut as **constanew** (CONSTANT, INDEPENDENT, NK —
+"constant everywhere"). The two differ exactly on NK: NK is constanew, because nothing will ever
+change it, but it is *inconclusive*, because it never produced a value. That difference is
+precisely why NK renders as the original expression rather than as a value — see §5.
+
+Both words describe a FIR's own state. §3's rendering rule applies them to a FIR's **result**.
+
 ### §1 Two modes, one entry point
 
 `foolish-ubca2` gains a module `src/sequencer.rs` exposing:
@@ -261,28 +294,26 @@ statements. Wherever a genuine value exists, the value is the Foolish.
 **The same predicate governs operators and searches alike.** Both are *processes* with a
 result, and both collapse to that result only when it is a genuine value:
 
-> Render the **original expression** — the operator with its operands, or the search with its
-> anchor — when its result is **not found**, or is **constanic but neither CONSTANT nor
-> INDEPENDENT** (ECONSTANIC, WOCONSTANIC, NK). Otherwise render **the result's value**.
+> **When a result is an inconclusive constanic, render the original expression.** For a search
+> that is the original search; for an operator it is the op operating on its parameters. A
+> missing result reads the same way. Otherwise — the result is **conclusive** — render the
+> result's value.
 
-So `3 + 4` renders `7`, but `a + b` whose operands are ECONSTANIC renders `a + b` — operator
-and parts — not a value it never reached. This is one rule with two instances, not two rules;
-the sections below spell out each.
+So `3 + 4` renders `7` (conclusive result), but `a + b` over ECONSTANIC operands renders
+`a + b` — the op on its parameters — because it never reached a value. This is one rule with
+two instances, not two rules; the sections below spell out each.
 
-**A search renders as the original search statement unless its result is a genuine value.** The
-test is on the search's `result()`, not on the search's own NYES:
+**When a search result is an inconclusive constanic, render the original search.** The test is
+on the search's `result()`, not on the search's own NYES:
 
-> Render the **original search** when either:
-> - `result()` is **not found** (no result at all), **or**
-> - `result()` is **constanic but neither CONSTANT nor INDEPENDENT** — i.e. ECONSTANIC,
->   WOCONSTANIC, or NK.
->
-> Otherwise — `result()` is CONSTANT or INDEPENDENT — render **the result's value**.
+> Render the **original search** when `result()` is **not found**, or is an **inconclusive
+> constanic** (ECONSTANIC, WOCONSTANIC, NK). Otherwise — the result is **conclusive** —
+> render the result's value.
 
-The principle: a search collapses to a value only when it actually produced one. CONSTANT and
-INDEPENDENT are values; ECONSTANIC and WOCONSTANIC are "not settled into a value yet, and
-context may still change them"; NK is "no value, and none is coming". In none of those three
-is there a value to print, so the question that was asked is what gets printed.
+The principle: a search collapses to a value only when it actually produced one. ECONSTANIC and
+WOCONSTANIC are "settled, but not into a value, and context may still change them"; NK is "no
+value, and none is coming". In none of those is there a value to print, so the question that
+was asked is what gets printed.
 
 Anchoring decides the *shape* of the rendered search, not whether it renders:
 
@@ -318,12 +349,12 @@ What §3 removes is the **machinery**, never the value or the question: the `?(�
 | Brane | `{ … }` with `;`-separated statements | opener carries **no** state token |
 | Statement | `name = body` | `ˍ` (U+02CD) is a valid ident char (lexer `is_id_sep`), so mangled names round-trip |
 | Characterized brane | `a'b'{ … }` | unchanged from current `chars` handling |
-| Operator, result CONSTANT/INDEPENDENT | its **value** (`3 + 4` → `7`) | it produced a genuine value; the operator is spent |
-| Operator, result missing / ECONSTANIC / WOCONSTANIC / NK | the **operator and its parts** (`a + b`, `1/0`) | same predicate as Search |
-| Search, result CONSTANT/INDEPENDENT | the **result's value** | the search produced a genuine value |
-| Search, result missing / ECONSTANIC / WOCONSTANIC / NK | the **original search** — unanchored `?x`; anchored `b?a.*` (anchor, then search) | no value was produced; §3.1 |
-| Index (`#N` / `^` / `$`) | same predicate on its result: value, else the index with its anchor (`#-1`, `b#0`, `^`, `$`) | as Search |
-| **NK, any kind** | the written expression + `!! NK: …` comment | §5 — NK reverts like every other constanic |
+| Operator, **conclusive** result | its **value** (`3 + 4` → `7`) | the operator is spent |
+| Operator, **inconclusive constanic** result (or none) | the **op on its parameters** (`a + b`, `1/0`) | same predicate as Search; §0 |
+| Search, **conclusive** result | the **result's value** | the search produced a value |
+| Search, **inconclusive constanic** result (or none) | the **original search** — unanchored `?x`; anchored `b?a.*` (anchor, then search) | §0, §3.1 |
+| Index (`#N` / `^` / `$`) | conclusive result → its value; else the index with its anchor (`#-1`, `b#0`, `^`, `$`) | as Search |
+| **NK, any kind** | the written expression + `!! NK: …` comment | §5 — NK is inconclusive, so it reverts |
 | `???` written in source | `???` | the no-no literal is Foolish; source renders as itself |
 | SF `<X>` / SFF `<<X>>` | `<` / `<<` + interior rendered in this same mode + `>` / `>>` | interior is written form, never a NYES dump |
 | Concatenation, **merged** | the merged brane `{…}` | the concatenation succeeded; §3.2 |
@@ -335,8 +366,8 @@ form, since it is Foolish. `=^`/`=$` render as `name =$ value`.
 
 #### §3.1 A rendered search is never a lost search
 
-The rule that a search reverts to its written form — whenever its result is not a genuine
-value — can look like it discards an answer the evaluator worked for. It does not, and the
+The rule that a search reverts to its written form — whenever its result is an inconclusive
+constanic — can look like it discards an answer the evaluator worked for. It does not, and the
 reason is worth stating plainly because it is what makes §2's round-trip meaningful.
 
 A search rendered as a search is one that will be **re-coordinated wherever the output is next
@@ -347,8 +378,8 @@ miss may gain a value by recoordination). So the printed program is not a weaker
 the FIR; it is the same statement, in the language.
 
 This is also why the rule keys on the **result's** state rather than on the search's own. A
-search whose result is ECONSTANIC has *found* something — a statement — but that statement has
-not settled into a value, so there is nothing to print but the question. The result chain
+search whose result is ECONSTANIC has *found* something — a statement — but that statement is
+inconclusive, so there is nothing to print but the question. The result chain
 behind a search, however deep, is the evaluator's working and none of it is printed.
 
 What this rule does NOT do is convert values into searches. A constant that no search produced
@@ -599,9 +630,8 @@ suite does *not* do. The plan corrects it.
 
 ### §5 NK renders as the original Foolish, with the reason in a comment
 
-NK needs no rule of its own — it falls out of §3's predicate. An NK result is "constanic but
-neither CONSTANT nor INDEPENDENT", so **the original expression renders** and the NK-ness goes
-in a `!!` comment. `1/0` is the operator instance of that predicate; an NK search is the search
+NK needs no rule of its own — it falls out of §3's predicate. An NK result is an **inconclusive
+constanic** (§0), so **the original expression renders** and the NK-ness goes in a `!!` comment. `1/0` is the operator instance of that predicate; an NK search is the search
 instance. This section exists only because the current renderer treats NK as the one conclusion
 worth printing, and it is not.
 
@@ -613,9 +643,8 @@ Not `a = ???`. The division is the program; that it is unknowable is the evaluat
 about the program, and findings go in comments. Rendering `???` would additionally substitute
 the *no-no literal* for something the Foolisher never wrote.
 
-**An NK search result renders as the search, not as NK.** This is not a special case — it is
-§3's predicate: an NK result is "constanic but neither CONSTANT nor INDEPENDENT", so the
-original search renders:
+**An NK search result renders as the search, not as NK.** Not a special case — just §3's
+predicate: an NK result is inconclusive, so the original search renders:
 
 ```foolish
 miss = b?nonexistent;   !! NK: anchored miss
@@ -666,10 +695,14 @@ FOOP-62 lists `is_constanew()` as a predicate, but **it does not exist in the co
 FOOP needs no such predicate — §3 keys on constanic, and §5's NK handling keys on `hs_nk()` —
 so it does not add one. Noted because the gap is easy to trip over when reading FOOP-62.
 
-This is the precise version of what §3.1 says loosely. When a rendered **ECONSTANIC** search is
-re-read in a new context, it may genuinely resolve there — that is non-constanew, and it is why
-rendering the search rather than a value is not merely tidier but *necessary*: collapsing it to
-a value would freeze an answer the language says is still open.
+Constanew and conclusive (§0) are different cuts, and NK is what separates them: NK is
+constanew (nothing will change it) yet inconclusive (it never produced a value). Rendering
+keys on **conclusive**; recoordination keys on **constanew**.
+
+When a rendered **ECONSTANIC** search is re-read in a new context, it may genuinely resolve
+there — that is non-constanew, and it is why rendering the search rather than a value is not
+merely tidier but *necessary*: collapsing it to a value would freeze an answer the language
+says is still open.
 
 **NK is the opposite: constanew, so re-coordination changes nothing.** `1/0` is NK here and NK
 anywhere. That makes NK the *easy* case for §2's round trip rather than a hard one — `1/0`
