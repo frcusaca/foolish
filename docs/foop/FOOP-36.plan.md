@@ -182,11 +182,11 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 
 ---
 
-## Phase 1 — Resolve Q2 and Q5 before writing any rendering code
+## Phase 1 — Resolve Q2 before writing any rendering code
 
-*This phase writes no rendering code. It answers the two open questions that could change the
-FOOP's blast radius or invalidate §3.1, BEFORE any code depends on the answers (§Open
-Questions Q2 and Q5).*
+*This phase writes no rendering code. It answers the one remaining open question that could
+change the FOOP's blast radius, BEFORE any code depends on the answer (§Open Questions Q2).
+Q5 was dissolved by the human; the confirmation left below is cheap and worth doing.*
 
 - [ ] (read §3 and §FIR Impact of `FOOP-36.md`)
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
@@ -205,21 +205,32 @@ Questions Q2 and Q5).*
   - [ ] Index written form — `#N` / `^` / `$` from `hs_index`'s offset + anchored
   - [ ] Concatenation written form — juxtaposition from `hs_concatenation`'s elements
   - [ ] SF / SFF written form — `<`/`>`, `<<`/`>>` + interior
-- [ ] **Q5 — source-written vs substituted (§3.1). The sharper question; do this one carefully.**
-      The spec records two findings already made; CONFIRM them rather than re-deriving:
-  - [ ] Confirm `hs_search()` exposes `anchor` and `result` as separate slots
-        (`foolish-core/src/fir.rs` ~749) — i.e. a resolved search still carries its written
-        form and `result` is simply ignored by the renderer
-  - [ ] Confirm `proto_to_core_fir_sff_body` (`foolish-ubca2/src/fvm_storage.rs` ~3378)
-        rebuilds SFF-interior searches as `SearchFir`s carrying pattern + anchoring
-  - [ ] **The load-bearing check:** write a throwaway test evaluating
-        `{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}` and inspect what the two TRAILING
-        statements arrive as. They must arrive as the substituted values (`1` and `10`), NOT
-        as searches. Record what you actually observed.
-  - [ ] If the trailing use sites arrive as searches, §3.1's rule cannot render the timing
-        distinction: **STOP and report to the human** before writing any rendering code.
-- [ ] **Decision point.** If every row reconstructs and Q5 is confirmed: record "Q2 and Q5
-      resolved: no accessor needed" and proceed. If any row does NOT: **stop and report to the
+- [x] **Q5 — DISSOLVED by the human 2026-09-02: "constants should always be rendered in
+      Foolish."** A settled search IS its value, so `result = {y = 1;}?y` rendering `result = 1`
+      is correct and complete — the search disappearing is the evaluator succeeding, not
+      information lost. The FIR already separates the two cases structurally (resolved →
+      CONSTANT, no `SearchFir` left; unresolved → the `SearchFir` survives), so **no provenance
+      marking, no new accessor, nothing to decide.** §3 was rewritten accordingly.
+      (2026-09-02 14:05)
+  - [ ] Confirm §3's dispatch on real FIRs — cheap, and the basis of everything downstream:
+        evaluate `misc/search_with_multiple_matches` (`r = b?a.*`, anchored) and
+        `misc/undeclared_identifier` (`x = non_existent`, unanchored) and record what reaches
+        the sequencer. Under §3 the first renders `r = b?a.*` (anchor, then search) and the
+        second `x = nonˍexistent` (search alone) — both are constanic searches and both revert.
+- [ ] **Q7 — does a trailing use site render its value, or revert to a search?** Evaluate
+      `misc/sff_resolves_on_each_use` (`{a=1; b=2; s=<<a+b>>; a=10; s;}`) and inspect the FIR
+      at the trailing `s;`. If it is a `SearchFir` for `s`, §3 says it renders `s`; if it is
+      the constant `12`, it renders `12`. The committed baseline shows `12` but was produced by
+      the OLD renderer, which collapsed searches to values regardless — so it does not settle
+      the question. **Record the answer in the plan**: it fixes how a whole family of
+      trailing-use-site lines renders across the corpus, and it is the single largest
+      determinant of what the 179 migrated baselines will look like. Neither answer is a
+      problem; guessing is.
+- [ ] **Decision point.** Q5 is already resolved (above). If every §3 written form
+      reconstructs from existing accessors, record "Q2 resolved: no accessor needed" and
+      proceed. If any does NOT: **stop and report to the human** the specific row, what is
+      missing, and the proposed additive `FirQueryable` default method — per the scope guard
+      that is the one sanctioned `foolish-core` change and not an agent's call to make. If any row does NOT: **stop and report to the
       human** the specific row, what is missing, and the proposed additive `FirQueryable`
       default method (returning `Option<…>`, defaulting to `None`) — per the scope guard, this
       is the one sanctioned `foolish-core` change and it is not an agent's call to make
@@ -380,14 +391,26 @@ a fixed, human-authored target.
         plain `a = 1`; an underscore name `my_var = 2` (must render `myˍvar`, U+02CD, and
         re-lex — the round-trip hazard); a Unicode name (Greek/Cyrillic/Chinese per AGENTS.md);
         a characterized brane `a'b'{…}`; a null-characterized name `'k = 1`.
-  - [ ] **`operators_written`** — §3's operator rule, the one most likely coded backwards:
-        `3 + 4` (renders `3 + 4`, **NOT** `7`); `a + b` where both resolve; a nested
-        `1 + 2 * 3` (precedence must survive the round trip); unary minus; a division;
+  - [ ] **`operators_written`** — §3's predicate applied to operators: render the OPERATOR AND
+        ITS PARTS when the result is not found, or constanic but neither CONSTANT nor
+        INDEPENDENT; otherwise render the VALUE. Cover both sides:
+        - `3 + 4` → `7` (result CONSTANT — the operator is spent)
+        - `a + b` with ECONSTANIC operands → `a + b` (no value was reached)
+        - `1/0` → `1/0` with `!! NK: …` (result NK — §5's operator instance)
+        Plus: a nested `1 + 2 * 3` (precedence must survive the round trip); unary minus;
         a comparison using `<̲`.
-  - [ ] **`searches_written`** — §3's search rule, likewise (renders the SEARCH, not the value):
-        unanchored backward `?x`; anchored `b?a.*` against a sub-brane; forward `~y`;
-        dot-deepen `a.field`; the regex-wrapped pattern case (stored `'^a$'` must render `a`);
-        a search with multiple matches (`b?a.*` — renders the search, not `3`).
+  - [ ] **`searches_written`** — §3's predicate, which keys on the search's **`result()`**, not
+        on the search's own NYES. Render the ORIGINAL SEARCH when `result()` is not found, OR
+        when `result()` is constanic but neither CONSTANT nor INDEPENDENT (ECONSTANIC,
+        WOCONSTANIC, NK). Otherwise render the result's VALUE. Cover both sides:
+        - result CONSTANT → collapses to the value
+        - result ECONSTANIC (unanchored miss) → renders the search
+        - result WOCONSTANIC → renders the search
+        - result NK (anchored miss) → renders the search, NOT `???`
+        - result absent → renders the search
+        And both anchoring shapes: unanchored → the search alone (`?x`, `nonexistent`);
+        anchored → anchor then search (`b?a.*`, `a.field`), the anchor rendered by these same
+        rules. Include the regex-unwrap case (stored `'^a$'` must render `a`).
   - [ ] **`indexes_written`** — `#-1`; `#0`; `^`; `$`; the attached form `A =$ B` (FOOP-75 §4).
   - [ ] **`sf_sff`** — §3 + §3.1 together:
         `<x>` and `<<x>>` as NAMED statements (render written forms, delimiters kept);
@@ -405,11 +428,17 @@ a fixed, human-authored target.
         constituent, a non-resolving one, a bare unresolved name, and a second resolving one in
         a single statement; concatenation of empty branes; and `⨃` appearing nowhere in any of
         it.
-  - [ ] **`nk`** — §5, the one conclusion that IS stated:
-        division by zero (with its `DIV-BY-ZERO` alarm code); an anchored miss (`??? ` per
-        FOOP-23: anchored miss ⇒ NK); `4 =$ x` (the "4 is not a brane" reason);
-        a `???` literal in source; an over-length reason (verify the 60-char cap and `…`);
-        a multi-line reason (verify newline and `①` collapse to a space).
+  - [ ] **`nk`** — §5: NK **reverts to the written Foolish**, it is NOT rendered `???`.
+        `1/0` renders `1/0` with `!! NK: DIV-BY-ZERO: …` beside it (flag on). An NK *search*
+        result renders as the SEARCH, not as NK — e.g. an anchored miss renders
+        `miss = b?nonexistent  !! NK: …`. The ONLY `???` in output is where the Foolisher
+        wrote `???` in source (the no-no literal renders as itself). Also cover: `4 =$ x`
+        (the "4 is not a brane" reason); an over-length reason (60-char cap and `…`); a
+        multi-line reason (newline and `①` collapse to a space).
+  - [ ] **`flags`** — `SequenceOptions` (§4.1, §5): `comment_nk` off renders `a = 1/0;` with
+        no annotation, on renders `a = 1/0;  !! NK: …`; a non-default `width` changes where
+        lines break. The expression is identical under both `comment_nk` settings — only the
+        annotation moves.
   - [ ] **`econstanic`** — §4 + FOOP-23: an unanchored miss `x = nonexistent` renders the
         SEARCH with `!! ECONSTANIC`, **not** `???`. This is the pair to the `nk` group and the
         distinction the einmo reviewer most needs to see side by side.
@@ -473,6 +502,13 @@ a fixed, human-authored target.
         in either case; it is not input syntax. The spec's worked case must come out exactly as
         §3.2 shows, including `aa=f` AND `d=f` both resolving to `3` while `notfound` and
         `not_found_brane` stay written.
+  - [ ] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
+        on the **result**, applied to both kinds — render the original expression when the
+        result is absent, ECONSTANIC, WOCONSTANIC or NK; render the value when it is CONSTANT
+        or INDEPENDENT. `hs_search()` and `hs_operator()` each hand you what you need. Do NOT
+        key on the node's own NYES — an earlier draft of this FOOP did, and it renders the
+        wrong thing for a node whose result is a plain value. Write the predicate ONCE and
+        share it between the two arms.
   - [ ] While implementing the `width` group (§4.1): set the budget to **108** and thread it
         as `line_hint`, reduced by indent at each level — mirror
         `foolish-core/src/sequencer.rs`'s existing `line_hint` plumbing rather than inventing
@@ -507,10 +543,25 @@ OLD rendering. Nothing here generates a baseline.*
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-ubca2::sequencer`, `foolish-ubca2::round_trip`; run einmo
       case: `foop/36/rendering_contract` in `einmo_suite2` (must stay green throughout).
-- [ ] **T2 — round-trip properties (§2).** For a curated program set covering every §3 row:
-      assert Property 1 (the rendering parses), then Property 2
-      (`format(eval(format(eval(P)))) == format(eval(P))`). Property 2 is asserted **only**
-      where the FIR is constanic (§2.1's table).
+- [ ] **T2 — round-trip properties (§2).** Write the test as the six literal steps, since that
+      is the shape the human specified and it is what makes the assertion meaningful:
+      1. compile the program; 2. step to finish; 3. output → `R1`; 4. compile `R1` (that it
+      compiles IS Property 1); 5. step to finish; 6. output → `R2`; **assert `R2 == R1`.**
+      Run it over a curated set covering every §3 row. Property 2 (step 6) is asserted **only**
+      where the FIR is constanic (§2.1's table) — a pre-constanic FIR legitimately steps
+      further on the second pass, so only steps 1–4 apply there.
+      This is a stronger check than reading one rendering: a construct that renders to
+      something even slightly different drifts on the second pass and the test catches it,
+      with nobody having to predict the right answer in advance. It also settles §Q7
+      empirically — whichever way a trailing use site renders, `R2 == R1` says whether that
+      rendering is stable.
+  - [ ] **The T2 input must instrument a VARIETY of constanic states**, not just constants:
+        CONSTANT and INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC
+        statements; and NK expressions (`1/0`, an anchored miss). NK is **constanew** (§5.1) so
+        it re-settles NK on the second pass and `R2 == R1` holds; ECONSTANIC is
+        **non-constanew**, so it is the interesting one to watch — a rendered ECONSTANIC search
+        re-read in a new context may resolve differently, and T2 is what proves the rendering
+        is nonetheless stable.
 - [ ] **T2b — pre-constanic rendering (§2.1).** Build FIRs stepped a bounded number of steps
       (not to settlement) and assert: renders, **parses**, contains no NYES token as syntax,
       state appears only inside `!!`. Cover at least one PREMBRYONIC, one EMBRYONIC, one

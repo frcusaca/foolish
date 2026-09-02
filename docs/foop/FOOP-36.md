@@ -27,10 +27,13 @@ emitted, which is precisely the thing the test is supposed to be checking.
 
 This FOOP gives `foolish-ubca2` **its own sequencer**, owned by the crate, whose default mode
 renders a FIR — settled **or mid-evaluation** — as **valid Foolish source that parses back
-in**: the expression as it was *written*, never the evaluator's conclusion about it. A search
-renders as the search (`r = b?a.*`, not `r = 3`); the next compiler re-resolves it and reaches
-constanic on its own.
-`{a=1+2}` renders `{a={3}}`-shaped — the value, and nothing about how it got there. No NYES
+in**. Constants render as their values. A **search renders as the search that was written**
+unless its result is a genuine value (CONSTANT or INDEPENDENT) — so `r = b?a.*` stays
+`r = b?a.*` when the result is ECONSTANIC, WOCONSTANIC or NK, and collapses to `r = 3` only
+when a real value was produced. That is not an answer withheld: handed the search, the next
+compiler re-coordinates it itself. What disappears is the FIR machinery — `?(pattern='^y$', UNANCHORED)`,
+`Op+(…, WOCONSTANIC)`, the bare NYES tokens.
+`{a=1+2}` renders `a = 3` — the operator is spent and its value is the Foolish. No NYES
 tokens, no `Op…(`, no `?(pattern=…)`, no `ANCHORED`. `NK` renders as `???` with a brief
 parenthetical reason. ECONSTANIC and WOCONSTANIC — states that have no Foolish surface syntax
 at all — are rendered as the **value the reader would write**, with the state demoted to a
@@ -96,9 +99,10 @@ misc/undeclared_identifier.foo    INPUT: {x = non_existent;}
 }
 ```
 
-The search is rendered, not its outcome. An unanchored miss is ECONSTANIC — it may still gain
-a value by recoordination (FOOP-23) — so `x` is emphatically *not* `???`, and rendering the
-search is what lets the next compiler discover that for itself.
+The search is rendered, not its outcome — §3's rule for a constanic search, and here the
+search is unanchored so it reverts to the search alone. An unanchored miss is ECONSTANIC, not
+NK: it may still gain a value by recoordination (FOOP-23), so `x` is emphatically not `???`,
+and rendering the search is exactly what lets the next compiler discover that for itself.
 
 ```text
 misc/sff_resolves_on_each_use.foo INPUT: {a=1; b=2; s=<<a+b>>; a=10; s;}
@@ -112,9 +116,15 @@ misc/sff_resolves_on_each_use.foo INPUT: {a=1; b=2; s=<<a+b>>; a=10; s;}
 ```
 
 The second is *the program a Foolisher would write to mean the same thing*. `s = <<a+b>>`
-still holds a deferred sum; `a` is re-stated as 10; the trailing `s` has resolved to 12. A
-reader who knows FOOP-55/FOOP-26's SFF rules can predict every line of it from the INPUT
-without running anything — and can therefore genuinely justify it.
+still holds a deferred sum, and `a` is re-stated as 10 — both plainly right, and both
+predictable from the INPUT by a reader who knows the SFF rules, which is the whole point.
+
+**The trailing line is the one to settle empirically, not by assertion.** It is shown as `12`
+above, but §3's rule says a *constanic search* reverts to the search — so if that use site
+reaches the sequencer as a search for `s`, it renders `s`, not `12`. Which of the two is
+correct depends on what the FIR at that position actually is, and §Open Questions Q7 makes it
+a Phase 1 determination. It is exactly the kind of line this FOOP exists to make writable, so
+getting it right matters more than getting it settled early.
 
 ### Why `foolish-ubca2` should own its sequencer
 
@@ -196,7 +206,9 @@ For any input program `P` that `UbcaEvaluator` settles, let `R = format(eval(P),
 Then:
 
 1. **`R` lexes and parses.** `foolish_parser` accepts `R` with no error.
-2. **`R` is idempotent under re-evaluation:** `format(eval(R), Foolish) == R`.
+2. **`R` is idempotent under re-evaluation:** `format(eval(R), Foolish) == R`. Operationally:
+   compile `P`, step to finish, output `R1`; then compile `R1`, step to finish, output `R2` —
+   and `R2 == R1`. §Test Plan T2 states the six steps as a test writes them.
 
 Property 2, not "R evaluates to the same FIR", is the testable contract. It is strictly
 weaker than semantic identity and strictly stronger than "it parses" — and it is the property
@@ -240,19 +252,64 @@ no Foolish syntax and must not invent any.
 
 ### §3 What each FIR kind renders as
 
-The rule in one sentence: **render the expression as it was written; never render the
-evaluator's conclusion about it.**
+The rule in one sentence: **a constant renders as its value; a constanic search reverts to the
+search statement that was written.**
 
-A Foolish compiler reading this output re-derives every conclusion for itself. `?x` does not
-need to be pre-resolved to `1` — handed `?x`, the next compiler performs the search and
-settles it constanic on its own. Substituting the value in advance is doing the reader's job
-for it, badly: it discards the anchor, the pattern and the operator, so the reader cannot see
-*what was asked*, only what came back. `r = b?a.*` says strictly more than `r = 3`, and re-runs
-to the same answer.
+**Constants always render in Foolish.** An integer renders `7`, a merged brane renders its
+statements. Wherever a genuine value exists, the value is the Foolish.
 
-This is why §2's round-trip is a real property rather than an accident. Rendering the value
-would keep the *text* parseable while losing the FIR's shape — `1` re-parses to a constant,
-not to a search. Rendering the search keeps both.
+**The same predicate governs operators and searches alike.** Both are *processes* with a
+result, and both collapse to that result only when it is a genuine value:
+
+> Render the **original expression** — the operator with its operands, or the search with its
+> anchor — when its result is **not found**, or is **constanic but neither CONSTANT nor
+> INDEPENDENT** (ECONSTANIC, WOCONSTANIC, NK). Otherwise render **the result's value**.
+
+So `3 + 4` renders `7`, but `a + b` whose operands are ECONSTANIC renders `a + b` — operator
+and parts — not a value it never reached. This is one rule with two instances, not two rules;
+the sections below spell out each.
+
+**A search renders as the original search statement unless its result is a genuine value.** The
+test is on the search's `result()`, not on the search's own NYES:
+
+> Render the **original search** when either:
+> - `result()` is **not found** (no result at all), **or**
+> - `result()` is **constanic but neither CONSTANT nor INDEPENDENT** — i.e. ECONSTANIC,
+>   WOCONSTANIC, or NK.
+>
+> Otherwise — `result()` is CONSTANT or INDEPENDENT — render **the result's value**.
+
+The principle: a search collapses to a value only when it actually produced one. CONSTANT and
+INDEPENDENT are values; ECONSTANIC and WOCONSTANIC are "not settled into a value yet, and
+context may still change them"; NK is "no value, and none is coming". In none of those three
+is there a value to print, so the question that was asked is what gets printed.
+
+Anchoring decides the *shape* of the rendered search, not whether it renders:
+
+- **Unanchored** → the search alone: `?x`, `nonexistent`.
+- **Anchored** → the anchor, rendered by these same rules, then the search: `b?a.*`, `a.field`.
+
+Today `r = b?a.*` renders `r=3`, discarding both the anchor and the question. Under this rule
+it renders `r = b?a.*` when the result is not a plain value, and `r = 3` when it is.
+
+**Why this is right.** A search reverting to its written form is not information withheld from
+the reader — it is the program restated. Handed `b?a.*`, the next compiler performs the search
+itself; handed `nonexistent`, it may resolve it in a *new* context, which is exactly what
+ECONSTANIC promises (§5.1: ECONSTANIC and WOCONSTANIC are **non-constanew** — their values may
+change under recoordination). Collapsing those to a value would freeze an answer the language
+says is still open. A rendered search is never a search that was lost; it is one that will be
+re-coordinated wherever the output is next read.
+
+What §3 removes is the **machinery**, never the value or the question: the `?(…)` wrapper, the
+`pattern='^…$'` regex spelling, `ANCHORED`/`UNANCHORED`, the bare NYES tokens, `Op…(`,
+`result=`. Those are FIR-internal vocabulary that no Foolisher would write.
+
+```text
+{b = {a1=1; a2=2; a3=3}; r = b?a.*;}
+
+  today    r=3
+  §3       r = b?a.*
+```
 
 | FIR kind | `Foolish` rendering | Note |
 |---|---|---|
@@ -261,10 +318,13 @@ not to a search. Rendering the search keeps both.
 | Brane | `{ … }` with `;`-separated statements | opener carries **no** state token |
 | Statement | `name = body` | `ˍ` (U+02CD) is a valid ident char (lexer `is_id_sep`), so mangled names round-trip |
 | Characterized brane | `a'b'{ … }` | unchanged from current `chars` handling |
-| Operator, **any state** | its written form (`a + b`, `3 + 4`) | the next compiler recomputes it |
-| Search, **any state except NK** | its written form (`?x`, `b?a.*`, `brn~y`, `a.field`) | the next compiler re-resolves it; §3.1 |
-| Index (`#N` / `^` / `$`), any state except NK | its written form (`#-1`, `^`, `$`) | as Search |
-| Search / Index / operator, NK | `???` + reason in a `!!` comment | §5 — NK is the one conclusion that must be stated |
+| Operator, result CONSTANT/INDEPENDENT | its **value** (`3 + 4` → `7`) | it produced a genuine value; the operator is spent |
+| Operator, result missing / ECONSTANIC / WOCONSTANIC / NK | the **operator and its parts** (`a + b`, `1/0`) | same predicate as Search |
+| Search, result CONSTANT/INDEPENDENT | the **result's value** | the search produced a genuine value |
+| Search, result missing / ECONSTANIC / WOCONSTANIC / NK | the **original search** — unanchored `?x`; anchored `b?a.*` (anchor, then search) | no value was produced; §3.1 |
+| Index (`#N` / `^` / `$`) | same predicate on its result: value, else the index with its anchor (`#-1`, `b#0`, `^`, `$`) | as Search |
+| **NK, any kind** | the written expression + `!! NK: …` comment | §5 — NK reverts like every other constanic |
+| `???` written in source | `???` | the no-no literal is Foolish; source renders as itself |
 | SF `<X>` / SFF `<<X>>` | `<` / `<<` + interior rendered in this same mode + `>` / `>>` | interior is written form, never a NYES dump |
 | Concatenation, **merged** | the merged brane `{…}` | the concatenation succeeded; §3.2 |
 | Concatenation, **unmerged** | `A B` — each constituent rendered recursively | §3.2; `⨃` is never emitted (not input syntax) |
@@ -273,50 +333,27 @@ not to a search. Rendering the search keeps both.
 The `=$` attached-search spelling (FOOP-75 §4) is retained where it is the canonical *input*
 form, since it is Foolish. `=^`/`=$` render as `name =$ value`.
 
-#### §3.1 Written form is a property of position, not of state
+#### §3.1 A rendered search is never a lost search
 
-The rule above is uniform across NYES states — an ECONSTANIC search and a resolved one render
-identically, because both are *the same written search*. What the rule turns on instead is
-**whether the FIR occupies a position that was written in the source.**
+The rule that a search reverts to its written form — whenever its result is not a genuine
+value — can look like it discards an answer the evaluator worked for. It does not, and the
+reason is worth stating plainly because it is what makes §2's round-trip meaningful.
 
-A search FIR that came from source text renders as that text. A FIR that arrived at a position
-by *substitution* — a search result delivered into a use site, an SFF interior instantiated at
-each use — has no source text of its own at that position, and renders as **the value that was
-substituted there**.
+A search rendered as a search is one that will be **re-coordinated wherever the output is next
+read**. Handed `b?a.*`, the next compiler runs the search against `b` and settles it constanic
+exactly as this one did. Handed `nonexistent` — an unanchored miss, ECONSTANIC — it may resolve
+it in a *new* context, which is precisely the promise ECONSTANIC makes (FOOP-23: an unanchored
+miss may gain a value by recoordination). So the printed program is not a weaker statement than
+the FIR; it is the same statement, in the language.
 
-This distinction is load-bearing, and `misc/sff_vs_sf_timing_difference` is the case that
-proves it:
+This is also why the rule keys on the **result's** state rather than on the search's own. A
+search whose result is ECONSTANIC has *found* something — a statement — but that statement has
+not settled into a value, so there is nothing to print but the question. The result chain
+behind a search, however deep, is the evaluator's working and none of it is printed.
 
-```foolish
-{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
-```
-
-The two trailing statements are the bare words `sf` and `sff`. They settle to **different
-values** — `1` and `10` — because `<x>` resolved once at assignment while `<<x>>` re-resolves
-at each use. That difference is the entire content of the test. Rendering each trailing
-statement as its own written form (`sf;` and `sff;`) would erase it: two identical-looking
-lines, no evidence the timing rule exists. So they render:
-
-```foolish
-{
-  x = 1;
-  sf = <x>;
-  sff = <<x>>;
-  x = 10;
-  1;
-  10
-}
-```
-
-The named statements keep their written forms (`<x>`, `<<x>>` — the deferral is the thing
-being declared). The trailing use sites render the substituted values, because at those
-positions there is no source search — only a name whose *resolution* is what the case is about.
-
-**The implementable test** is therefore: does this FIR node correspond to source text at this
-position? A search node built by the compiler from `b?a.*` does; a constanic clone installed
-as a search's result, or an SFF interior instantiated at a use, does not. §FIR Impact records
-that this is the one question the renderer must be able to ask of a FIR, and §Open Questions
-Q5 tracks confirming that it can.
+What this rule does NOT do is convert values into searches. A constant that no search produced
+renders as its value: `3 + 4` is `7`, a merged brane is its statements, an integer is itself.
+Only a search renders as a search.
 
 #### §3.2 Concatenation renders its constituents, each already simplified
 
@@ -415,9 +452,37 @@ informative annotations in noise. Comments are emitted only for the five states 
 
 ### §4.1 Line width — 108 characters
 
-Rendered output targets a maximum line width of **108 characters**, the project's document
-width (AGENTS.md §Code Style). The current sequencer uses `LINE_BUDGET = 128`
-(`foolish-core/src/sequencer.rs` line 14); `Foolish` mode uses **108**.
+Rendered output targets a maximum line width that is **configurable, defaulting to 108
+characters** — the project's document width (AGENTS.md §Code Style). The current sequencer
+hard-codes `LINE_BUDGET = 128` (`foolish-core/src/sequencer.rs` line 14); `Foolish` mode makes
+it a parameter with 108 as the default.
+
+**How it is configured.** The width rides on `SequenceMode`'s companion, not on a global
+constant, so a caller that wants a different width says so at the call site and every nested
+render inherits it:
+
+```rust
+pub struct SequenceOptions {
+    pub mode: SequenceMode,
+    /// Target max line width. Default 108 (AGENTS.md §Code Style).
+    pub width: usize,
+    /// Annotate NK expressions with `!! NK: <reason>` (§5). Default true.
+    /// Turned off, an NK expression renders as bare Foolish with no trace
+    /// of its NK-ness — which is what a caller wanting pure source wants.
+    pub comment_nk: bool,
+}
+
+impl Default for SequenceOptions {
+    fn default() -> Self {
+        Self { mode: SequenceMode::Foolish, width: 108, comment_nk: true }
+    }
+}
+```
+
+`Ubca2Sequencer::format(fir, mode)` stays as the common-case entry point (it builds
+`SequenceOptions::default()` with the given mode); `format_with(fir, &SequenceOptions)` is the
+form that takes an explicit width. The einmo adapter uses the default — **baselines are
+rendered at 108 and nothing else**, or the corpus would not be reproducible.
 
 The budget behaves exactly as the existing one does — it is the **single-line vs multi-line
 decision threshold**, threaded down through nested renders as `line_hint` and reduced by the
@@ -532,22 +597,85 @@ suite "uses the Foolish line-comment separator … set in code via
 `TestConfig::new(...)` and the artifacts carry `separator=①\n`. The comment describes what the
 suite does *not* do. The plan corrects it.
 
-### §5 NK renders with a brief reason
+### §5 NK renders as the original Foolish, with the reason in a comment
 
-NK is the one state that **does** have Foolish surface syntax: `???`. The reason is what a
-reviewer needs and what the current rendering already carries, so it is kept — in a comment:
+NK needs no rule of its own — it falls out of §3's predicate. An NK result is "constanic but
+neither CONSTANT nor INDEPENDENT", so **the original expression renders** and the NK-ness goes
+in a `!!` comment. `1/0` is the operator instance of that predicate; an NK search is the search
+instance. This section exists only because the current renderer treats NK as the one conclusion
+worth printing, and it is not.
 
 ```foolish
-a = ???;                !! division by zero
-d =$ ???;               !! 4 is not a brane
-x = ???;                !! unfound: nonˍexistent
+a = 1/0;                !! NK: DIV-BY-ZERO: division by zero
 ```
 
-Reason strings are the FIR's existing `hs_nk()` reason, **truncated to one line** (newlines
-and the `①` einmo separator replaced by a space) and to a **stated maximum of 60 characters**
-with a trailing `…` when longer. "Brief" is the point: the detailed alarm text stays available
-in `Detailed` mode. When an `Alarm` is present, its `code` is included: `!! DIV-BY-ZERO:
-division by zero`.
+Not `a = ???`. The division is the program; that it is unknowable is the evaluator's finding
+about the program, and findings go in comments. Rendering `???` would additionally substitute
+the *no-no literal* for something the Foolisher never wrote.
+
+**An NK search result renders as the search, not as NK.** This is not a special case — it is
+§3's predicate: an NK result is "constanic but neither CONSTANT nor INDEPENDENT", so the
+original search renders:
+
+```foolish
+miss = b?nonexistent;   !! NK: anchored miss
+```
+
+Not `miss = ???`. This matters because NK's reason for an anchored miss is "the name is
+provably not in *that* brane" — a statement about a specific brane, which the rendered search
+names and a bare `???` does not.
+
+**The one place `???` IS the rendering: where the Foolisher wrote `???`.** The no-no literal
+is Foolish source, and source renders as itself. So `x = ???` renders `x = ???` — not because
+the value is unknowable, but because that is what was written.
+
+#### The reason comment — flagged on or off
+
+**Whether NK is commented at all is a flag**, `SequenceOptions::comment_nk` (§4.1), default
+**on**. The two settings serve different readers:
+
+- **On** (einmo's setting): `a = 1/0;  !! NK: DIV-BY-ZERO: division by zero`. A reviewer sees
+  both the program and the finding, which is what makes a baseline reviewable.
+- **Off**: `a = 1/0;` — pure Foolish, no trace of the evaluator's finding. For a caller that
+  wants source rather than a report.
+
+Either way the *expression* is identical; only the annotation moves. The einmo corpus is
+rendered with the default, so it is reproducible.
+
+**NK is constanic AND constanew** — see §5.1 for why that matters and what it does not change.
+
+When on, the reason is drawn from `hs_nk()` and follows §4's placement rule:
+
+- Prefixed `NK:` so it is distinguishable from a §4 state annotation at a glance.
+- The `Alarm` code included when present: `!! NK: DIV-BY-ZERO: division by zero`.
+- **One line**: newlines and the einmo separator `①` replaced by a space (§4.2).
+- Truncated to a stated maximum of **60 characters**, with a trailing `…` when longer. Brief is
+  the point; the full alarm text stays available in `Detailed` mode.
+
+#### §5.1 NK is constanew; ECONSTANIC is not
+
+FOOP-62 §Terminology (the in-force authority) divides the constanic states:
+
+| Term | States | Meaning |
+|---|---|---|
+| **constanew** | CONSTANT, INDEPENDENT, **NK** | constant *everywhere* — won't change no matter what |
+| **non-constanew constanic** | ECONSTANIC, WOCONSTANIC | value may change when context is recoordinated |
+
+FOOP-62 lists `is_constanew()` as a predicate, but **it does not exist in the code** (verified
+2026-09-02): `foolish-core/src/fir.rs` has `is_constanic()` and `is_nnk_constanic()` only. This
+FOOP needs no such predicate — §3 keys on constanic, and §5's NK handling keys on `hs_nk()` —
+so it does not add one. Noted because the gap is easy to trip over when reading FOOP-62.
+
+This is the precise version of what §3.1 says loosely. When a rendered **ECONSTANIC** search is
+re-read in a new context, it may genuinely resolve there — that is non-constanew, and it is why
+rendering the search rather than a value is not merely tidier but *necessary*: collapsing it to
+a value would freeze an answer the language says is still open.
+
+**NK is the opposite: constanew, so re-coordination changes nothing.** `1/0` is NK here and NK
+anywhere. That makes NK the *easy* case for §2's round trip rather than a hard one — `1/0`
+renders `1/0`, re-parses, re-settles NK, and `R2 == R1`. The reason it still renders as written
+rather than as `???` is not fear of losing an answer; it is simply that `1/0` is the program and
+`???` is a different expression the Foolisher did not write.
 
 ### §6 Nothing is removed
 
@@ -574,15 +702,18 @@ Movement III (the adapter switch) — not discovered at Phase 6.
 ## FIR Impact
 
 **None.** No new FIR variant, no state-machine change, no serialization change. This FOOP
-reads FIR through the existing `FirQueryable` accessors and writes text.
+reads FIR through the existing `FirQueryable` accessors and writes text. (An earlier draft
+feared §3 would require marking FIRs by provenance; §Open Questions Q5 records why it does
+not — the resolved/unresolved distinction is already structural.)
 
 One **read-only** addition may prove necessary: rendering an unsettled search or operator in
 its *written form* (§4) requires the surface spelling. `hs_search()` supplies pattern,
 direction and anchoring; `hs_operator()` supplies the glyph and operands. If any kind turns
 out not to expose enough to reconstruct its written form, the remedy is a **new
 `FirQueryable` default method** returning `Option<String>` — additive, defaulting to `None`,
-breaking no implementor. §Open Questions Q2 tracks this; it is the one place the FOOP could
-grow past its stated blast radius, and it must be reported if it does.
+breaking no implementor. §Open Questions Q2 tracks this; it is now the ONLY way this FOOP could
+grow past its stated blast radius, and **it must be reported to the human before it is made,
+never taken as an implementation convenience.**
 
 ## UBC Step Impact
 
@@ -610,10 +741,27 @@ per FIR kind asserting the exact rendered string, in both modes. `Detailed` test
 byte-equality with `foolish_core::FirSequencer::format` on the same FIR — the delegation
 contract of §1, pinned so it cannot silently drift.
 
-**T2 — Round-trip property tests (§2).** For a curated set of programs covering every §3 row:
-assert `format(eval(P))` parses (Property 1), then assert
-`format(eval(format(eval(P)))) == format(eval(P))` (Property 2, idempotence). These are the
-FOOP's load-bearing tests.
+**T2 — Round-trip property tests (§2).** The FOOP's load-bearing tests. The procedure, stated
+as the six steps a test performs:
+
+1. **Compile** the program `P`.
+2. **Step it to finish** (settled).
+3. **Output it** in `Foolish` mode → call this `R1`.
+4. **Compile `R1`.** That it compiles at all is Property 1; a parse failure fails here.
+5. **Step that to finish.**
+6. **Output again** → `R2`. **Assert `R2 == R1`.**
+
+That equality is Property 2. It is what "the rendering has reached a fixed point" means
+operationally, and it is a far stronger check than eyeballing one rendering: any construct that
+renders to something meaning even slightly different will drift on the second pass and the test
+catches it, without anyone having to predict the right answer in advance.
+
+Run it over a curated set covering every §3 row. Property 2 is asserted **only** where the FIR
+is constanic (§2.1's table) — a pre-constanic FIR legitimately steps further on the second
+pass, so only steps 1–4 apply to it.
+
+This procedure is also how §Open Questions **Q7** gets settled empirically: whichever way a
+trailing use site renders, `R2 == R1` says whether that rendering is stable.
 
 **T2b — Pre-constanic rendering (§2.1).** Take FIRs stepped a bounded number of steps rather
 than to settlement — the crate's stepping entry points make this directly constructible — and
@@ -767,18 +915,20 @@ without asserting something the language does not promise.
 
 Ordered by number. **Q4 and Q6 are RESOLVED** (human decisions, recorded inline below and
 reflected in the plan); **Q2 and Q5 are for Phase 1 to answer before any rendering code is
-written**; Q1 and Q3 are cosmetic and settle once the first rendered output is visible.
+written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the human.
 
-- **Q1.** Should `Foolish` mode be the einmo adapter's rendering *and* the REPL's, or should
-  the REPL keep `Detailed`? Leaning: einmo takes `Foolish`; the REPL takes `Foolish` with a
-  toggle, since a Foolisher at a REPL is reading values, not FIR.
+- **Q1 — RESOLVED (human, 2026-09-02): out of scope. This FOOP targets einmo only.** The
+  einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
+  they are. `Ubca2Sequencer` is additive, so nothing outside the adapter changes behavior
+  unless a later FOOP chooses to move it.
 - **Q2.** Does every §3 written form reconstruct from existing `FirQueryable` accessors, or
   is one additive default method needed (see §FIR Impact)? Resolve by inspection in Phase 1,
   **before** implementation; if a method is needed, say so in the phase report rather than
   adding it silently.
-- **Q3.** §5's 60-character reason cap and §4's two-space comment gutter are stated so the
-  output is deterministic, but the numbers are chosen, not derived. Confirm with the human
-  once the first rendered baselines are visible.
+- **Q3 — RESOLVED (human, 2026-09-02): the output width is CONFIGURABLE, defaulting to 108.**
+  See §4.1. The 60-character NK-reason cap and the two-space comment gutter stay fixed for now
+  — they are not width, and no need to vary them has appeared; raise them again if the first
+  rendered baselines suggest otherwise.
 - **Q4 — RESOLVED (human, 2026-09-02): FOOP-36 goes first.** FOOP-26 changes SF/SFF mark
   semantics and makes concatenation an operator, both of which §3 renders; the two FOOPs touch
   the same cases from opposite sides (meaning vs. rendering). Rendering lands first, so
@@ -786,24 +936,20 @@ written**; Q1 and Q3 are cosmetic and settle once the first rendered output is v
   predict expected output from its own spec. The argument is §Motivation "Why this should land
   before FOOP-26"; the cost to FOOP-26 is nil because this FOOP moves no FIR, no step rule and
   no step count.
-- **Q5.** Can the renderer distinguish a **source-written** FIR from a **substituted** one
-  (§3.1)? **Provisionally yes — confirm in Phase 1, do not re-derive from scratch.** Two
-  findings from inspecting the code as this FOOP was written:
-  - `hs_search()` exposes `anchor` and `result` as **separate slots** on the search node
-    (`foolish-core/src/fir.rs` ~line 749). A resolved search is still a search: its written
-    form is intact and `result` is an extra slot the renderer simply ignores. So "resolved"
-    never destroys written form, which is most of what §3 needs.
-  - `foolish-ubca2` already draws the substitution boundary structurally:
-    `proto_to_core_fir` dispatches into a dedicated `proto_to_core_fir_sff_body` path
-    (`fvm_storage.rs` ~line 3378) that rebuilds an SFF interior's searches as `SearchFir`s
-    carrying pattern and anchoring. Written form inside an SFF body is preserved *by
-    construction*, and the ordinary path handles everything else.
+- **Q5 — RESOLVED (human, 2026-09-02): dissolved, by a sharper statement of §3.** The
+  question asked whether the renderer must distinguish source-written FIRs from substituted
+  ones, and feared that a *consumed* search (`result = {y = 1;}?y` arriving as a bare `1`)
+  made §3 unimplementable. Both concerns fall away under the rule the human gave:
 
-  What Phase 1 must still confirm: that a **trailing use site** (the bare `sff;` in
-  `misc/sff_vs_sf_timing_difference`) arrives at the renderer as the substituted value and not
-  as a search — this is the one place §3.1's rule is actually load-bearing. If it arrives as a
-  search, the timing distinction that case exists to prove would be erased, and that is a
-  **blocking finding** to report before writing rendering code.
+  > **A constanic search reverts to the original search statement** — unanchored ones to the
+  > search alone, anchored ones to the anchor followed by the search. *Constanic* is the
+  > operative word: the state class, not "found" or "unresolved".
+
+  Because a search renders as a search whatever its result chain, there is no case where the
+  renderer must recover a written form that evaluation destroyed, and no need for FIR
+  provenance marking or a new accessor. And because every rendered search is one the next
+  compiler will **re-coordinate**, nothing is lost by printing it — §3.1 states that
+  explicitly. **No FIR change; nothing left for Phase 1 to decide beyond Q2.**
 - **Q6. `verified/` is populated — how should the re-signing be handled?** (Verified
   2026-09-02: 179 signed artifacts present, `einmo_gate_verified` green.) This FOOP re-renders
   every one of them, which will break that gate, and only a human key can restore it. The
@@ -828,6 +974,23 @@ written**; Q1 and Q3 are cosmetic and settle once the first rendered output is v
   and this FOOP is exactly the case that rule anticipates), and the human's mass verification
   is **downstream of a real per-case review, not a substitute for one**: it presumes the agent
   has already justified each case, which is the gate's whole point.
+- **Q7. Does a trailing use site render its value or revert to a search?** §3 says a constanic
+  search reverts to the written search; a constant renders as its value. A bare trailing `s;`
+  (as in `misc/sff_resolves_on_each_use`, `{a=1; b=2; s=<<a+b>>; a=10; s;}`) is one or the
+  other depending on what the FVM leaves at that position — a `SearchFir` for `s`, or the
+  constant `12` it resolved to. The committed baseline shows `12` under the OLD rendering,
+  which does not settle it, because the old renderer collapsed searches to values anyway.
+  **Determine in Phase 1 by inspecting the FIR** — the same inspection that confirms §3's
+  dispatch — and record the answer, since it fixes how a large family of trailing-use-site
+  lines renders across the corpus. Neither answer is a problem; guessing is.
+- **Q8 — RESOLVED (human pointed to the term; FOOP-62 §Terminology confirms it): NK is
+  constanew, so the round trip is straightforward.** The vocabulary recovered: **constanew** =
+  CONSTANT, INDEPENDENT, NK — constant everywhere, won't change no matter what;
+  **non-constanew constanic** = ECONSTANIC, WOCONSTANIC — may change under recoordination.
+  Since NK is constanew, re-parsing and re-stepping `1/0` settles NK again, so `R2 == R1` holds
+  and NK sits comfortably in §2.1's "Property 2 required" column. §5.1 records this. An earlier
+  draft of §5 asserted the round trip closed without having established why — the claim happened
+  to be right, but the reasoning was absent, and the human was right to strike it.
 
 ## References
 
