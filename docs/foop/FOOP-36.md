@@ -294,17 +294,26 @@ which group is meant. The remedy is a **descriptor**, not a replacement:
 |---|---|---|
 | `FirPointer::settled_result` (639) | **`settled_constanic_result`** | it gates on `is_constanic()`, and per §0.1.1 that is genuinely what the slot holds — `constantew` would over-promise |
 | `FirCursor::settled_result` (1602) | **`settled_constanic_result`** | delegates to the above |
-| `all_settled` (816) | **`all_conclusive`** | it gates on `Constant \| Independent` — §0's *conclusive* exactly |
+| `all_settled` (816) | **`all_foolish_children_conclusive`** | a local `bool` (not a function — see below). It iterates `storage.foolish_children(ptr)` and gates on `Constant \| Independent` — §0's *conclusive* exactly. Naming the collection it walks beats "operands", which is an Operator-specific gloss on what is structurally the foolish-children list. |
 | `step_to_settled` (3272) | **`step_to_constanic`** | it loops until `is_constanic()` |
 
-**These renames are a proposal, not a task this FOOP performs.** `foolish-ubca2` is being
-edited concurrently by FOOP-26 and FOOP-46, and a rename touching ~20 call sites would conflict
-with both. Raise it with the human as a separate, mechanical change to sequence after those
-land. What this FOOP *does* is stop relying on the bare word: §3's rule is stated over
-*conclusive* and *inconclusive constanic*, each naming exactly one group.
+**`all_settled` is a local `bool`, not a predicate function.** It is
+`let all_settled = children.iter().all(…)`, consumed by `if !all_settled` on the next line —
+there is nothing to call, so a verb form like `are_all_settled()` does not apply. As a boolean
+binding the idiomatic Rust name is a noun phrase, hence `all_foolish_children_conclusive`.
 
-**One thing worth fixing in passing** (comment-only, in the plan): `lib.rs` line 24's claim
-that `NyesExt` adds `is_settled()`, which it does not.
+**The plan does these renames in Phase 0.5, deliberately placed FIRST and marked fail-early.**
+They are mechanical and behaviour-free, so the phase either lands cleanly and 134/134 still
+passes, or it is cancelled at a stated decision point at no cost to the rest of the FOOP.
+Placing it first is the point: `foolish-ubca2` is being edited concurrently by FOOP-26 and
+FOOP-46, so a ~20-site rename either lands before they diverge or becomes a merge problem.
+
+The same phase corrects `lib.rs` line 24's claim that `NyesExt` adds `is_settled()`, which it
+does not.
+
+Whatever the code ends up calling things, §3's rule is stated over *conclusive* and
+*inconclusive constanic* — each naming exactly one group — so this FOOP does not depend on the
+rename succeeding.
 
 ### §1 Two modes, one entry point
 
@@ -1249,6 +1258,12 @@ old suite, T6 comprehensive, **T10 coverage parity**, **T11 suite integrity**, *
 non-regression across the cut-over**). T10 and T12 exist because "the new suite quietly tests
 less" and "a value changed, not just its rendering" are the failure modes invisible from a
 green run.
+
+§0.1 surveys all 134 uses of "settled" in `foolish-ubca2` and classifies each by NYES group;
+§0.1.1 establishes that `settled_result` means **constanic** (not constantew — the StayFoolish
+path at 902–904 admits ECONSTANIC/WOCONSTANIC), so all three arms of §3's predicate are
+reachable. The renames those sections propose are done in the plan's **Phase 0.5**, placed
+first and explicitly skippable.
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
 Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constantew).

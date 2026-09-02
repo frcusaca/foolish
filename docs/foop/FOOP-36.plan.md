@@ -35,6 +35,7 @@ hand-authored case, before any baseline is generated and before the renderer exi
 
 | | Movement | Phases | What it establishes |
 |---|---|---|---|
+| **0.5** | **Vocabulary fix (fail-fast, skippable)** | 0.5 | Qualify every "settled" in `foolish-ubca2` with its NYES group (§0.1). Mechanical and behaviour-free. **Skip it the moment it stops being mechanical** — nothing later depends on it. |
 | **I** | **New test, written by hand** | 3 | A brand-new `einmo_suite2/` holding ONE case whose expected OUTPUT is **typed from the specification before the renderer is written**. The renderer is then built until it reproduces what was typed. |
 | **II** | **Feature completion** | 4 | The renderer is finished against that fixed target: round-trip properties (§2/§2.1) proven, every §3 row covered, `Detailed` delegation pinned. `einmo_suite/` is untouched and still green on the OLD rendering. |
 | **III** | **Replacement** | 5–7 | `einmo_suite2` **becomes the suite**: the 179 inputs are copied across, rendered under the new sequencer, reviewed case by case, and `cargo test` is pointed at it. `einmo_suite/` is left frozen and still green as the reference to diff against — everything is done EXCEPT removing it. |
@@ -149,8 +150,8 @@ vs `PREMBRYONIC` in prose.
     occurrences, plus a real `FirPointer::settled_result` accessor) but **`is_settled()` does
     not exist** — `lib.rs` line 24 documents it and FOOP-62 §Terminology specifies it; neither
     was implemented. Do not call it. Use `is_constanic()`, or the conclusive predicate you add.
-  - [ ] While you are in `lib.rs` for Phase 2's module registration, **fix that stale line 24
-        doc comment** (it claims `NyesExt` "adds `is_settled()` to `Nyes`"). Comment only.
+  - [ ] (Phase 0.5 fixes `lib.rs` line 24's stale `is_settled()` claim; if that phase was
+        cancelled, fix the comment here instead.)
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
   `foolish-ubca2/einmo_suite`'s files carry `#einmo 1 encoding=utf-8 separator=①\n`, while the
   older `foolish-ubca/einmo_suite` still carries `separator=!!\n`. **FOOP-92's spec text and
@@ -218,6 +219,80 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
       `git worktree add -b foop-36-foolish-rendering-sequencer /yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer`
 - [ ] **All work from here happens in the worktree** — including edits to `docs/foop/`
       (`foop.md` §worktree discipline).
+
+---
+
+## Phase 0.5 — Qualify every "settled" with its NYES group (FAIL-EARLY, may be cancelled)
+
+*A small, self-contained, mechanical change placed first so that if it goes badly it is cheap
+to abandon. It touches no behaviour: every edit is a rename or a comment. Its purpose is to
+make the codebase say which NYES group it means, so that everything after it — and every agent
+reading `foolish-ubca2` afterwards — is working in unambiguous vocabulary.*
+
+> **FAIL FAST. SKIP IF CUMBERSOME.** This phase is a convenience, not a prerequisite: nothing
+> later in this FOOP depends on it, because §3's rule is stated in §0's vocabulary regardless
+> of what the code calls things. **Abandon it the moment it stops being mechanical** — you do
+> not need permission and you do not need to finish what you started. Concretely, stop and skip
+> if: a rename reaches outside `foolish-ubca2/src/`; the crate does not stay 134/134 after a
+> pure rename; a name turns out to be ambiguous enough to need thought rather than lookup; or
+> FOOP-26/FOOP-46 have already touched the same lines. To skip: `git checkout` the phase's
+> changes, mark it `[x] Canceled` per `foop.md`, note why in one line, and go to Phase 1.
+> **A skipped Phase 0.5 costs this FOOP nothing.** Grinding through a cumbersome one costs it
+> a merge conflict.
+
+**Why this is fail-early rather than deferred.** `foolish-ubca2` is being edited concurrently by
+FOOP-26 and FOOP-46. A rename touching ~20 call sites either lands before they diverge or
+becomes a merge problem. Doing it first, verifying, and then deciding is cheaper than either
+carrying the ambiguity through this whole FOOP or discovering the conflict at merge time.
+
+**The classification to apply is `FOOP-36.md` §0.1** — read it before starting. Every "settled"
+in `foolish-ubca2` means exactly one of: constanic, conclusive, constantew, or a computed
+classification that may still be pre-constanic. The qualifier states which.
+
+- [ ] (read `FOOP-36.md` §0, §0.1 and §0.1.1)
+- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+      to run: `cargo test -p foolish-ubca2 --lib` (the whole crate — this is a rename, so
+      EVERYTHING must stay green, all 134). Record the before-count.
+- [ ] **Code renames** in `foolish-ubca2/src/fvm_storage.rs`, mechanical and behaviour-free:
+  - [ ] `FirPointer::settled_result` → `settled_constanic_result` (line ~639). It gates on
+        `is_constanic()`, and §0.1.1 confirms that is genuinely what the slot holds — do NOT
+        use `constantew`, which the StayFoolish path (902–904) would falsify.
+  - [ ] `FirCursor::settled_result` → `settled_constanic_result` (line ~1602)
+  - [ ] `step_to_settled` → `step_to_constanic` (line ~3272, plus its re-export at ~4825 and
+        its caller in `evaluator.rs`)
+  - [ ] `all_settled` → `all_foolish_children_conclusive` (line ~816). **This is the one that carries
+        real information**: it gates on `Constant | Independent`, so an ECONSTANIC operand is
+        constanic but still queued as a task. It is a local `bool`, not a function.
+  - [ ] `let settled = …decide_nyes_due_to_children(…)` (line ~1070) → `let decided_nyes = …`.
+        It can hold **Braning**, so calling it "settled" is actively wrong.
+  - [ ] `settled_nyes = nyes_from_found(…)` (line ~968) → `constanic_nyes` (its output is
+        always constanic; its input need not be).
+  - [ ] `anchor_settled` (line ~3178) → `anchor_constanic`
+  - [ ] Test names: `indep_int_stepping_already_settled_is_noop` → `…_already_conclusive_…`;
+        `operator_pushes_tasks_for_unsettled_operands` → `…_for_inconclusive_operands`;
+        `revive_constanic_unwraps_stay_foolish_to_its_settled_result` → `…_settled_constanic_result`.
+- [ ] **Comment fixes**, no code change:
+  - [ ] `lib.rs` line 24 claims `NyesExt` adds `is_settled()`. **It does not exist** — the trait
+        provides `is_constanic()` and `is_nnk_constanic()` only. Correct the line.
+  - [ ] Doc comments in `fvm_storage.rs` using a bare "settled": qualify each with the group
+        §0.1 assigns it. Where a comment is already unambiguous from context, leave it.
+- [ ] **Verify.** Run `cargo test -p foolish-ubca2 --lib` — must be 134/134, the same as the
+      before-count. A rename changes no behaviour; **any** test movement means something else
+      was changed and must be undone.
+- [ ] `cargo fmt --all`; `cargo clippy -p foolish-ubca2 --all-targets -- -D warnings` clean.
+- [ ] Confirm `foolish-core` and `foolish-ubca` are untouched: `git diff --stat` shows changes
+      only under `foolish-ubca2/src/`.
+- [ ] **DECISION POINT — move on, or cancel.** (If you already skipped per the fail-fast rule
+      above, this is where you record that.) Report to the human:
+  - [ ] the diff size (files, lines, call sites touched);
+  - [ ] whether the crate stayed 134/134;
+  - [ ] any site where §0.1's classification turned out to be wrong when read closely —
+        **that is a finding worth more than the rename**, because it means the survey
+        mis-read the code;
+  - [ ] whether FOOP-26 or FOOP-46 have begun touching the same lines.
+  Then either **move on** (the renames stay) or **cancel** (`git checkout` the changes, mark
+  this phase `[x] Canceled` per `foop.md`, proceed to Phase 1 unchanged). Cancelling is a
+  legitimate outcome, not a failure to report apologetically.
 
 ---
 
@@ -858,6 +933,13 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 spec first, work top to bottom, timestamp each box, stop where told, accumulate doubts and
 report once, treat a failing test as broken code (except Phase 5's intended failure), never
 promote outside the gates.
+
+Adds **Phase 0.5** — a fail-fast, skippable vocabulary fix placed FIRST: qualify every
+"settled" in `foolish-ubca2` with its NYES group per §0.1 (`settled_result` →
+`settled_constanic_result`, `all_settled` → `all_foolish_children_conclusive`,
+`step_to_settled` → `step_to_constanic`, and the rest), plus `lib.rs`'s stale `is_settled()`
+claim. Mechanical and behaviour-free, with an explicit skip rule — abandon it the moment it
+stops being mechanical, since nothing later depends on it.
 
 The plan runs in **three movements**: (I) hand-write the expectations in a new `einmo_suite2/`
 before the renderer exists — the FOOP's own acceptance test; (II) complete the renderer against
