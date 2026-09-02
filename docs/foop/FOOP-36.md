@@ -18,80 +18,59 @@ big-endian sort key preceded by `D` (`foop: D63`, file `FOOP-36.md`, following F
 
 ## Abstract
 
-Today a `foolish-ubca2` einmo OUTPUT is a *debug dump*: `{WOCONSTANIC`, `?(pattern='^x$',
-UNANCHORED, ECONSTANIC)`, `Op+(…, …, WOCONSTANIC)`. It faithfully describes FIR internals, and
-it is **not Foolish** — it cannot be lexed, let alone parsed. That single fact is what makes
-writing an einmo case expensive: a Foolisher can write the INPUT from knowledge of the
-language, but can only obtain the OUTPUT by running the evaluator and reading whatever it
-emitted, which is precisely the thing the test is supposed to be checking.
+This FOOP gives `foolish-ubca2` **its own sequencer**, owned by the crate, whose default
+`Foolish` mode renders a FIR — settled or mid-evaluation — as **valid Foolish source that
+parses back in**. The goal is that a Foolisher can write an einmo case's expected OUTPUT from
+the specification, without running the evaluator.
 
-This FOOP gives `foolish-ubca2` **its own sequencer**, owned by the crate, whose default mode
-renders a FIR — settled **or mid-evaluation** — as **valid Foolish source that parses back
-in**. One rule does most of the work: **when a result is an inconclusive constanic — settled
-without reaching a value (ECONSTANIC, WOCONSTANIC, NK; §0) — render the original expression.**
-A search renders as the search, an operator as the op on its parameters. Only a **conclusive**
-result (CONSTANT or INDEPENDENT) collapses to its value, so `r = b?a.*` stays `r = b?a.*`
-unless a real value was produced. That is not an answer withheld: handed the search, the next
-compiler re-coordinates it itself. What disappears is the FIR machinery — `?(pattern='^y$', UNANCHORED)`,
-`Op+(…, WOCONSTANIC)`, the bare NYES tokens.
-`{a=1+2}` renders `a = 3` — the operator is spent and its value is the Foolish. No NYES
-tokens, no `Op…(`, no `?(pattern=…)`, no `ANCHORED`. `NK` renders as `???` with a brief
-parenthetical reason. ECONSTANIC and WOCONSTANIC — states that have no Foolish surface syntax
-at all — are rendered as the **value the reader would write**, with the state demoted to a
-`!!` comment, which the parser already discards.
+One rule does most of the work:
 
-Rendering pre-constanic FIR is **kept, not dropped**: einmo debugs as well as approves, and a
-half-stepped program must still render as something a Foolisher can read. A pre-constanic node
-renders as the program it still is, with `EMBRYONIC`/`BRANING` in a comment (§2.1). And the
-existing detailed rendering is **not** removed and **not** changed — it becomes a second,
-explicitly-selected mode, for when the FIR's internal shape, rather than its source shape, is
-what is under investigation.
+> **When a result is an *inconclusive constanic* — settled without reaching a value
+> (ECONSTANIC, WOCONSTANIC, NK; §0) — render the original expression.** A search renders as the
+> search; an operator renders as the op on its parameters. Only a **conclusive** result
+> (CONSTANT or INDEPENDENT) collapses to its value.
+
+So `{a=1+2}` renders `a = 3`, while `r = b?a.*` stays `r = b?a.*` unless a real value was
+produced. Nothing is withheld by that: handed the search, the next compiler re-coordinates it
+itself, which is exactly what ECONSTANIC promises.
+
+The rest follows from the same principle:
+
+- **NK is inconclusive**, so it reverts too — `1/0` renders `1/0`, with `!! NK: …` beside it
+  (§5). The only `???` in output is where the Foolisher wrote one.
+- **States with no Foolish syntax** — PREMBRYONIC, EMBRYONIC, BRANING, ECONSTANIC,
+  WOCONSTANIC — are named in `!!` comments, which the parser discards (§4).
+- **Pre-constanic FIR still renders**, because einmo debugs as well as approves: a half-stepped
+  program renders as the program it still is, annotated with how far each part has got (§2.1).
+- **Line width is configurable, defaulting to 108** (§4.1); whether NK carries its reason is a
+  flag (§5).
+
+`Foolish` mode emits no FIR machinery: no `?(…)`, no `Op…(`, no `pattern='^…$'`, no
+`ANCHORED`/`UNANCHORED`, no bare NYES tokens. The existing detailed rendering is neither
+removed nor changed — it becomes `Detailed`, a second explicitly-selected mode that delegates
+unchanged to `foolish_core::FirSequencer`, so `foolish-ubca` cannot regress by construction
+(§1, §6). §7 sets old and new side by side.
 
 ## Motivation
 
-### The concrete cost, in the artifacts we have
+### What is wanted
 
-These are current, committed `foolish-ubca2/einmo_suite/checked/` OUTPUT sections. Each is
-the *expected answer* a human is asked to write, review, and sign:
+**A Foolisher should be able to write an einmo case's expected OUTPUT from the specification,
+without running the evaluator.** That is the whole goal, and everything in this FOOP follows
+from it.
 
-```text
-misc/undeclared_identifier.foo    INPUT: {x = non_existent;}
-{WOCONSTANIC
-  x=?(pattern='^nonˍexistent$', UNANCHORED, ECONSTANIC)
-}
-```
+An einmo case is two halves. The INPUT is Foolish, so anyone who knows the language can write
+it. The OUTPUT should be Foolish too — the same program, evaluated: values where values were
+reached, the original expressions where they were not, and the evaluator's findings in
+comments. Given that, the expected OUTPUT is *derivable*, and a reviewer can check a baseline
+by reading it against the language spec.
 
-```text
-misc/sff_resolves_on_each_use.foo INPUT: {a=1; b=2; s=<<a+b>>; a=10; s;}
-{WOCONSTANIC
-  a=1;
-  b=2;
-  s=<<WOCONSTANIC
-      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-  >>;
-  a=10;
-  12
-}
-```
+This matters beyond convenience. AGENTS.md and `foop.md` require every promoted OUTPUT line to
+be **justified against the specification**, and explicitly forbid "it matches what the
+evaluator printed" as a justification. An OUTPUT written in FIR-internal vocabulary can only
+be checked the forbidden way. An OUTPUT written in Foolish can be checked the required way.
 
-To write that second OUTPUT by hand a Foolisher must know: that `<<a+b>>` keeps its body
-unevaluated and so renders its *interior*, not its value; that the interior's `a` renders as a
-`?(…)` search node rather than `1`; that the search's regex is anchored-in-the-string
-(`'^a$'`) yet reported `UNANCHORED` (a different sense of "anchored"); that the operator node
-prints its own NYES *after* its operands; and that the enclosing brane's opener carries a bare
-`WOCONSTANIC` token. **None of that is Foolish.** All of it is FIR-internal vocabulary, and
-every bit of it is a chance to write the expected answer wrong in a way that looks plausible.
-
-That is the failure mode this FOOP targets, and it is worse than tedium. AGENTS.md and
-`foop.md` require that every promoted OUTPUT line be *justified against the specification* —
-but the current rendering makes the reviewer's job "does this match what the evaluator
-printed?", which is exactly the question the Promotion Review Gate forbids as a justification.
-A rendering the reviewer can independently derive from the language spec changes the gate from
-a matching exercise into a reading one.
-
-### What becomes possible
-
-With Foolish-rendering output, the same two cases read:
+So the target is:
 
 ```text
 misc/undeclared_identifier.foo    INPUT: {x = non_existent;}
@@ -99,11 +78,6 @@ misc/undeclared_identifier.foo    INPUT: {x = non_existent;}
   x = nonˍexistent  !! ECONSTANIC (unfound)
 }
 ```
-
-The search is rendered, not its outcome — §3's rule for a constanic search, and here the
-search is unanchored so it reverts to the search alone. An unanchored miss is ECONSTANIC, not
-NK: it may still gain a value by recoordination (FOOP-23), so `x` is emphatically not `???`,
-and rendering the search is exactly what lets the next compiler discover that for itself.
 
 ```text
 misc/sff_resolves_on_each_use.foo INPUT: {a=1; b=2; s=<<a+b>>; a=10; s;}
@@ -116,16 +90,21 @@ misc/sff_resolves_on_each_use.foo INPUT: {a=1; b=2; s=<<a+b>>; a=10; s;}
 }
 ```
 
-The second is *the program a Foolisher would write to mean the same thing*. `s = <<a+b>>`
-still holds a deferred sum, and `a` is re-stated as 10 — both plainly right, and both
-predictable from the INPUT by a reader who knows the SFF rules, which is the whole point.
+Both are *the program a Foolisher would write to mean the same thing*. In the first, the
+search is rendered rather than its outcome: an unanchored miss is ECONSTANIC, not NK — it may
+still gain a value by recoordination (FOOP-23) — so `x` is emphatically not `???`, and
+rendering the search is what lets the next compiler discover that for itself. In the second,
+`s = <<a+b>>` still holds a deferred sum and `a` is re-stated as 10; a reader who knows the SFF
+rules predicts every line without running anything.
 
-**The trailing line is the one to settle empirically, not by assertion.** It is shown as `12`
-above, but §3's rule says a *constanic search* reverts to the search — so if that use site
-reaches the sequencer as a search for `s`, it renders `s`, not `12`. Which of the two is
-correct depends on what the FIR at that position actually is, and §Open Questions Q7 makes it
-a Phase 1 determination. It is exactly the kind of line this FOOP exists to make writable, so
-getting it right matters more than getting it settled early.
+§7 sets these against what the same cases render as today, in one place.
+
+### A second benefit: the corpus checks itself
+
+Making OUTPUT valid Foolish gives the suite a free invariant: **every case's OUTPUT is a valid
+INPUT.** The whole corpus can be re-fed to the evaluator as a self-check (§2, §Test Plan T3),
+and a rendering that is locally plausible but globally unparseable is caught mechanically
+rather than by eye.
 
 ### Why `foolish-ubca2` should own its sequencer
 
@@ -285,8 +264,8 @@ no Foolish syntax and must not invent any.
 
 ### §3 What each FIR kind renders as
 
-The rule in one sentence: **a constant renders as its value; a constanic search reverts to the
-search statement that was written.**
+The rule in one sentence: **a conclusive result renders as its value; an inconclusive constanic
+result renders as the original expression.**
 
 **Constants always render in Foolish.** An integer renders `7`, a merged brane renders its
 statements. Wherever a genuine value exists, the value is the Foolish.
@@ -320,8 +299,8 @@ Anchoring decides the *shape* of the rendered search, not whether it renders:
 - **Unanchored** → the search alone: `?x`, `nonexistent`.
 - **Anchored** → the anchor, rendered by these same rules, then the search: `b?a.*`, `a.field`.
 
-Today `r = b?a.*` renders `r=3`, discarding both the anchor and the question. Under this rule
-it renders `r = b?a.*` when the result is not a plain value, and `r = 3` when it is.
+So `r = b?a.*` renders `r = b?a.*` when its result is inconclusive, and `r = 3` when the result
+is conclusive.
 
 **Why this is right.** A search reverting to its written form is not information withheld from
 the reader — it is the program restated. Handed `b?a.*`, the next compiler performs the search
@@ -331,16 +310,10 @@ change under recoordination). Collapsing those to a value would freeze an answer
 says is still open. A rendered search is never a search that was lost; it is one that will be
 re-coordinated wherever the output is next read.
 
-What §3 removes is the **machinery**, never the value or the question: the `?(…)` wrapper, the
-`pattern='^…$'` regex spelling, `ANCHORED`/`UNANCHORED`, the bare NYES tokens, `Op…(`,
-`result=`. Those are FIR-internal vocabulary that no Foolisher would write.
-
-```text
-{b = {a1=1; a2=2; a3=3}; r = b?a.*;}
-
-  today    r=3
-  §3       r = b?a.*
-```
+`Foolish` mode emits **no FIR machinery at all**: no `?(…)` wrapper, no `pattern='^…$'` regex
+spelling, no `ANCHORED`/`UNANCHORED`, no bare NYES token, no `Op…(`, no `result=`. Those are
+FIR-internal vocabulary that no Foolisher would write. §7 shows them side by side with what
+replaces them.
 
 | FIR kind | `Foolish` rendering | Note |
 |---|---|---|
@@ -437,8 +410,7 @@ means each constituent gets the same treatment. The only thing §3.2 adds is tha
 `merged`-slot is the signal — `hs_concatenation()` returns `(elements, merged)`, and `merged`
 being `Some` is exactly the question "did it succeed?".
 
-**`⨃` is never emitted in either case.** The current sequencer prefixes concatenations with
-`⨃`, which is not input syntax and would not re-parse.
+**`⨃` is never emitted in either case.** It is not input syntax and would not re-parse.
 
 ### §4 States with no syntax are annotated, never rendered
 
@@ -484,9 +456,8 @@ informative annotations in noise. Comments are emitted only for the five states 
 ### §4.1 Line width — 108 characters
 
 Rendered output targets a maximum line width that is **configurable, defaulting to 108
-characters** — the project's document width (AGENTS.md §Code Style). The current sequencer
-hard-codes `LINE_BUDGET = 128` (`foolish-core/src/sequencer.rs` line 14); `Foolish` mode makes
-it a parameter with 108 as the default.
+characters** — the project's document width (AGENTS.md §Code Style). The width is a parameter
+of the render call, not a global constant.
 
 **How it is configured.** The width rides on `SequenceMode`'s companion, not on a global
 constant, so a caller that wants a different width says so at the call site and every nested
@@ -632,8 +603,8 @@ suite does *not* do. The plan corrects it.
 
 NK needs no rule of its own — it falls out of §3's predicate. An NK result is an **inconclusive
 constanic** (§0), so **the original expression renders** and the NK-ness goes in a `!!` comment. `1/0` is the operator instance of that predicate; an NK search is the search
-instance. This section exists only because the current renderer treats NK as the one conclusion
-worth printing, and it is not.
+instance. It is stated separately here because NK is the case a reader is most likely to expect
+an exception for.
 
 ```foolish
 a = 1/0;                !! NK: DIV-BY-ZERO: division by zero
@@ -735,9 +706,9 @@ Movement III (the adapter switch) — not discovered at Phase 6.
 ## FIR Impact
 
 **None.** No new FIR variant, no state-machine change, no serialization change. This FOOP
-reads FIR through the existing `FirQueryable` accessors and writes text. (An earlier draft
-feared §3 would require marking FIRs by provenance; §Open Questions Q5 records why it does
-not — the resolved/unresolved distinction is already structural.)
+reads FIR through the existing `FirQueryable` accessors and writes text. §Open Questions Q5
+records why no provenance marking is needed: the conclusive/inconclusive distinction is already
+carried by NYES.
 
 One **read-only** addition may prove necessary: rendering an unsettled search or operator in
 its *written form* (§4) requires the surface spelling. `hs_search()` supplies pattern,
@@ -903,6 +874,47 @@ passed":
   taken as an implementation convenience.
 - **Marking any Verified-tier test `#[ignore]`** — never an agent's call (AGENTS.md).
 
+## §7 What changes, in one place
+
+Every before/after comparison in this FOOP lives here; the specification sections above state
+the design forward, without reference to what preceded it.
+
+**A settled search.** `{b = {a1=1; a2=2; a3=3}; r = b?a.*;}`
+
+| | rendering |
+|---|---|
+| today | `r=3` |
+| §3 | `r = b?a.*` when the result is inconclusive; `r = 3` when conclusive |
+
+**An unfound name.** `{x = non_existent;}`
+
+| | rendering |
+|---|---|
+| today | `{WOCONSTANIC` … `x=?(pattern='^nonˍexistent$', UNANCHORED, ECONSTANIC)` |
+| §3, §4 | `x = nonˍexistent  !! ECONSTANIC (unfound)` |
+
+**A deferred sum.** `{a=1; b=2; s=<<a+b>>; a=10; s;}`
+
+| | rendering |
+|---|---|
+| today | `s=<<WOCONSTANIC` / `Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', …), WOCONSTANIC)` / `>>` |
+| §3, §4 | `s = <<a + b>>;` |
+
+**Division by zero.** `{a = 10/0;}`
+
+| | rendering |
+|---|---|
+| today | `a=Op*(??? (division by zero), DIV-BY-ZERO: …, NK)` |
+| §3, §5 | `a = 10/0;  !! NK: DIV-BY-ZERO: division by zero` |
+
+**Summary of what disappears.** The `?(…)` and `Op…(` wrappers; `pattern='^…$'` regex
+spellings; `ANCHORED`/`UNANCHORED` tokens; bare NYES tokens on brane openers and in operand
+lists; `result=` slots; the `⨃` concatenation prefix. What replaces them is the program, plus
+`!!` comments where the evaluator has a finding worth recording.
+
+**What does not change.** `Detailed` mode (§1, §6) reaches byte-identical output to today, and
+`foolish-ubca` is untouched.
+
 ## Rejected Alternatives
 
 ### A. Do nothing — keep the detailed rendering as the only mode
@@ -1050,33 +1062,24 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
 
 **Date**: 2026-09-02
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created FOOP-36 — a `foolish-ubca2`-owned sequencer whose default `Foolish` mode
-renders FIR (settled **or pre-constanic**) as parseable Foolish source. **§3's rule is now
-render-the-expression-as-written, in every NYES state**: a resolved search renders as the
-search (`r = b?a.*`, not `r = 3`), because the next compiler re-resolves it and reaches
-constanic itself — rendering the value would keep the text parseable while losing the FIR's
-shape. §3.1 adds the one exception, which turns on **position, not state**: a FIR substituted
-into a use site renders the substituted value, since it has no source text there
-(`misc/sff_vs_sf_timing_difference` is the case that proves it). NK is the one conclusion
-still stated, with a brief reason; the five states with no Foolish syntax become `!!` comments.
-Round-trip splits into Property 1 (parses — universal) and Property 2 (idempotent — constanic
-only, §2.1), so einmo keeps its debugging role. `Detailed` mode delegates unchanged to
-`foolish_core::FirSequencer`, leaving `foolish-ubca` untouched. Recommends landing before
-FOOP-26. Adds §"Plan of Execution for Plan" (per-phase model selection — judgment phases to a
-larger model, execution-against-fixed-target phases to a smaller one — and the four
-responsibilities that may never be delegated) and **T0**, the hand-written `einmo_suite2`
-rendering contract that is written before the renderer exists and is the FOOP's own acceptance
-test. Adds **§4.1**: output targets **108** characters (AGENTS.md §Code Style), replacing the
-current sequencer's 128 — a soft single-vs-multi-line threshold with three stated exceptions
-(unsplittable atoms, `!!`-annotated lines, echoed over-width source) and no corpus-wide width
-gate; **T7** tests it. Adds **§4.2** (comment style in einmo inputs; the separator is `①` for
-ubca2 suites and `!!` for `foolish-ubca`'s — verified from artifacts, as FOOP-92's text and the
-toml comment were stale) with **T8**. Adds **Q6**, a blocking finding: `verified/` is
-POPULATED (179 signed artifacts, gate green), not empty as FOOP-16 states, so re-rendering
-breaks a frozen tier that only a human key can restore. Adds **§3.2**: concatenation splits on
-whether the merge SUCCEEDED — merged renders the merged brane
-(`{{a=1}{b=2}{c=3}}` → `{{a=1, b=2, c=3}}`), unmerged renders the juxtaposition with each
-constituent recursively simplified (the simplest rendering of `foolish_children`), and `⨃` is
-never emitted. Q4 and Q6 are RESOLVED by the human: FOOP-36 goes first; the human mass-verifies
-`checked`→`verified` after the agent's per-case review, so `einmo_gate_verified` is expected
-red in between.
+**Changes**: Restructured for style, following FOOP-26's shape: every section states the design
+**forward**, and all before/after comparisons are gathered into a single **§7 What changes, in
+one place**. Motivation now opens with §"What is wanted" rather than with what is wrong. The
+Abstract was rewritten around the one governing rule and no longer contradicts §5 on NK.
+
+The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
+mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
+*conclusive* (CONSTANT/INDEPENDENT) and *inconclusive constanic* (ECONSTANIC/WOCONSTANIC/NK)
+alongside the existing *constanic* and *constanew*. **§3**: when a result is an inconclusive
+constanic, render the original expression — the original search, or the op on its parameters;
+a conclusive result collapses to its value. **§3.1** explains why that loses nothing; **§3.2**
+splits concatenation on whether the merge succeeded. **§4** puts states with no Foolish syntax
+in `!!` comments; **§4.1** makes width configurable, default 108; **§4.2** covers einmo input
+comment style and the per-suite separator. **§5** derives NK's rendering from §3's predicate
+(`1/0`, never `???`), with `comment_nk` as a flag; **§5.1** distinguishes constanew from
+conclusive. **§6** keeps `Detailed` delegating unchanged to `foolish_core::FirSequencer`, so
+`foolish-ubca` cannot regress.
+
+Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
+Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constanew).
+Open for Phase 1: Q2 (written-form reconstruction) and Q7 (trailing use sites).

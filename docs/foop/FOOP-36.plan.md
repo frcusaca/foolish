@@ -61,6 +61,24 @@ model selection is **per-phase, not per-FOOP**. Phases 1, 3b–3c, 6 and 7 carry
 fixed target (a smaller model — Sonnata, GPT-terra, or Qwen3.8-27B). That section also lists
 the four things that **must not be delegated** regardless of model size.
 
+### How to work this plan
+
+1. **Read `docs/foop/FOOP-36.md` first.** The plan says what to do; the spec says why, and its
+   §-numbers are cited throughout. You need §0 (terminology), §3 (the rendering rule), and §4
+   before writing any code.
+2. **Work top to bottom.** Phases are ordered by dependency. Do not start a phase whose
+   predecessor's test-gate checkbox is unchecked.
+3. **Check each box as you finish it, with a timestamp on the next indented line** —
+   `(YYYY-MM-DD HH:MM)`. The boxes are the record of what is done.
+4. **When a checkbox says STOP, stop.** Those mark decisions that are the human's, not yours.
+   Report what you found and wait.
+5. **Accumulate doubts; report them once, at the end of a phase**, rather than interrupting per
+   item (AGENTS.md §"The agent is responsible for correctness").
+6. **A failing test is broken code, not a stale baseline.** The one exception is Phase 5, where
+   `einmo_gate_checked` failing is the intended effect and is stated as such.
+7. **Never `einmo promote` outside the Phase 6 and 7 gates**, and never over another FOOP's
+   diverged baseline.
+
 ### Orientation — the facts you need, so you need not go find them
 
 *This plan is written to be executable by an agent with a modest context budget. The
@@ -511,10 +529,10 @@ a fixed, human-authored target.
   - [ ] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
         on the **result**, applied to both kinds — render the original expression when the
         result is absent or an **inconclusive constanic**; render the value when the result is
-        **conclusive**. `hs_search()` and `hs_operator()` each hand you what you need. Do NOT
-        key on the node's own NYES — an earlier draft of this FOOP did, and it renders the
-        wrong thing for a node whose result is a plain value. Write the predicate ONCE and
-        share it between the two arms.
+        **conclusive**. `hs_search()` and `hs_operator()` each hand you what you need.
+        **Key on the RESULT's NYES, never on the node's own** — that is the single easiest
+        mistake to make here, and it renders the wrong thing for any node whose result is a
+        plain value. Write the predicate ONCE and share it between the two arms.
   - [ ] While implementing the `width` group (§4.1): set the budget to **108** and thread it
         as `line_hint`, reduced by indent at each level — mirror
         `foolish-core/src/sequencer.rs`'s existing `line_hint` plumbing rather than inventing
@@ -531,8 +549,8 @@ a fixed, human-authored target.
         multi-line constructs annotate their OPENING line.
   - [ ] **Every difference between the hand-written expectation and real output must be
         accounted for**, one at a time: either the renderer is wrong (fix it) or the
-        prediction was wrong (fix it AND say why the spec misled you — that is a spec defect
-        worth recording in `FOOP-36.md`).
+        prediction was wrong (fix it AND record why the spec misled you — that is a spec
+        defect worth reporting).
 - [ ] T1 unit tests alongside, per §Test Plan T1: exact rendered strings per §3 row, and the
       `Detailed`-delegation byte-equality tests from Phase 2.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -734,20 +752,16 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 
 **Date**: 2026-09-02
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Restructured into **three movements** stated up front — (I) hand-write the
-expectations in a new `einmo_suite2/` before the renderer exists, (II) complete the renderer
-against that fixed target, (III) migrate `einmo_suite/`'s 179 baselines. Phase 3 is now the
-`einmo_suite2` bootstrap with all thirteen case groups enumerated (`leaves`, `names`,
-`operators_written`, `searches_written`, `indexes_written`, `sf_sff`, `substitution`,
-`concatenation`, `nk`, `econstanic`, `woconstanic`, `preconstanic`, `comments`,
-`no_state_tokens`); Phase 4 is feature completion; Phase 5 is the one-line adapter switch that
-moves every baseline. Added an **Orientation** block carrying the verified code facts, file
-sizes, trait shape and command forms inline, so an agent with a modest context budget need not
-re-derive them. Adds a pointer to the spec's new §"Plan of Execution for Plan", which assigns
-models per phase and names what must not be delegated. Threads §4.1's **108-character** line
-budget through the Orientation facts, the Phase 2 skeleton constant, a new `width` case group
-in 3b, its implementation note in 3d, and T7 in Phase 4. Adds §4.2's comment/separator rules
-(AGENTS.md and the ubca2 `einmo.toml` were updated on `jia` ahead of the worktree) and Q6's
-blocking `verified/`-tier finding. Threads §3.2's merged/unmerged concatenation split into the
-`concatenation` case group and 3d's implementation loop. Phase 0's two blocking questions are
-now answered (Q4: FOOP-36 first; Q6: human mass-verifies after review).
+**Changes**: Edited for execution by a smaller agent. Added §"How to work this plan" — read the
+spec first, work top to bottom, timestamp each box, stop where told, accumulate doubts and
+report once, treat a failing test as broken code (except Phase 5's intended failure), never
+promote outside the gates.
+
+The plan runs in **three movements**, stated up front: (I) hand-write the expectations in a new
+`einmo_suite2/` before the renderer exists — the FOOP's own acceptance test; (II) complete the
+renderer against that fixed target; (III) migrate `einmo_suite/`'s 179 baselines, review them
+case by case, then the comprehensive case. Phase 3 enumerates all case groups; the Orientation
+block carries verified code facts, the trait shape, exact commands and the §0 terminology
+inline so a modest-context agent need not re-derive them. Phase 0's two blocking questions are
+already answered (Q4: FOOP-36 first; Q6: the human mass-verifies after the agent's per-case
+review, so `einmo_gate_verified` is expected red in between).
