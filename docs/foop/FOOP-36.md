@@ -25,8 +25,8 @@ the specification, without running the evaluator.
 
 One rule does most of the work:
 
-> **When a result is an *inconclusive constanic* — settled without reaching a value
-> (ECONSTANIC, WOCONSTANIC, NK; §0) — render the original expression.** A search renders as the
+> **When a result is an *inconclusive constanic* — WOCONSTANIC, ECONSTANIC or NK, i.e. settled
+> without reaching a value (§0) — render the original expression.** A search renders as the
 > search; an operator renders as the op on its parameters. Only a **conclusive** result
 > (CONSTANT or INDEPENDENT) collapses to its value.
 
@@ -188,35 +188,39 @@ Q4 remains — the human confirms the sequencing.
 
 ### §0 Terminology: conclusive and inconclusive
 
-This FOOP introduces one word, because the rule it needs to state has no name today and the
-alternative is the phrase "constanic but neither CONSTANT nor INDEPENDENT" repeated everywhere.
+These definitions are **AGENTS.md §Foolish Terminology**, restated here because §3's rendering
+rule is written in them. AGENTS.md is authoritative; if this section and it ever disagree,
+AGENTS.md wins.
 
-> **Conclusive** (shorthand **conc**) — a FIR whose NYES is **CONSTANT or INDEPENDENT**. It
-> reached a value, and that value is the conclusion.
->
-> **Inconclusive** — a FIR that is not conclusive. An **inconclusive constanic** is one that has
-> settled (ECONSTANIC, WOCONSTANIC, NK) without reaching a value.
+- **Constanic** (say "cons-TAN-nic") — Constant in Context. Any terminal NYES state:
+  ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
+  *Pre-constanic* (nigh) = PREMBRYONIC, EMBRYONIC, BRANING — needs more stepping.
+- **Constantew** — CONSTANT EveryWhere. A FIR that won't change no matter what: CONSTANT,
+  INDEPENDENT, NK. Constantew ⊂ constanic. A **non-constantew constanic** (ECONSTANIC,
+  WOCONSTANIC) may gain a value when context is recoordinated.
+- **Conclusive** (shorthand **Conc**) — a FIR whose NYES is CONSTANT or INDEPENDENT: it reached
+  a value. **Inconclusive** is everything else — **all other pre-constanic and constanic
+  states**. The often-used phrase **"inconclusive constanic"** narrows that to the terminal
+  ones: **WOCONSTANIC, ECONSTANIC, NK**.
 
-The three terms, and exactly which NYES states each covers:
+Note the two cuts are different, and differ exactly on **NK**: NK is constantew (nothing will
+change it) yet inconclusive (it never produced a value). **Rendering keys on conclusive;
+recoordination keys on constantew.** That is why NK renders as the original expression rather
+than as a value — see §5.
 
-- **Constanic** — ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
-  *Any terminal state.* (Pre-constanic, or nigh: PREMBRYONIC, EMBRYONIC, BRANING.)
-- **Constantew** — CONSTANT, INDEPENDENT, NK.
-  *Won't change no matter what.* Constantew ⊂ constanic. The rest — ECONSTANIC, WOCONSTANIC —
-  are **non-constantew constanic**: they may gain a value when context is recoordinated.
-- **Conclusive** (**conc**) — CONSTANT, INDEPENDENT.
-  *Reached a value.* **Inconclusive** means neither CONSTANT nor INDEPENDENT; an
-  **inconclusive constanic** is therefore ECONSTANIC, WOCONSTANIC, or NK.
+Note also that *inconclusive* alone spans pre-constanic states, while *inconclusive constanic*
+excludes them. §3's rule is stated over the narrower phrase, because a FIR's **result** is what
+it tests and a result under inspection is constanic; §2.1 covers pre-constanic FIR separately,
+and it renders the same way for the same reason — no value was reached.
 
-Constanic and constantew are existing Foolish vocabulary (FOOP-62 §Terminology); conclusive is
-introduced here.
-
-Note that conclusive is **not** the same cut as **constantew** (CONSTANT, INDEPENDENT, NK —
-"constant everywhere"). The two differ exactly on NK: NK is constantew, because nothing will ever
-change it, but it is *inconclusive*, because it never produced a value. That difference is
-precisely why NK renders as the original expression rather than as a value — see §5.
-
-Both words describe a FIR's own state. §3's rendering rule applies them to a FIR's **result**.
+**A note on the word "settled".** `foolish-ubca2` uses it heavily as prose for "has reached a
+terminal state" (138 occurrences, and a real `FirPointer::settled_result` accessor), so it is
+idiomatic here and this FOOP uses it that way. It is **not** a predicate you can call: `lib.rs`
+documents `NyesExt::is_settled()` and FOOP-62 §Terminology specifies it, but no such method
+exists in the crate — `nyes_ext.rs` provides `is_constanic()` and `is_nnk_constanic()` only.
+Where precision matters, this FOOP says *constanic* or *conclusive*, which are the words with
+predicates behind them (or, for conclusive, a predicate this FOOP may add in
+`foolish-ubca2`).
 
 ### §1 Two modes, one entry point
 
@@ -336,8 +340,8 @@ Anchoring decides the *shape* of the rendered search, not whether it renders:
 - **Unanchored** → the search alone: `?x`, `nonexistent`.
 - **Anchored** → the anchor, rendered by these same rules, then the search: `b?a.*`, `a.field`.
 
-So `r = b?a.*` renders `r = b?a.*` when its result is inconclusive, and `r = 3` when the result
-is conclusive.
+So `r = b?a.*` renders `r = b?a.*` when its result is an inconclusive constanic, and `r = 3`
+when the result is conclusive.
 
 **Why this is right.** A search reverting to its written form is not information withheld from
 the reader — it is the program restated. Handed `b?a.*`, the next compiler performs the search
@@ -652,7 +656,7 @@ about the program, and findings go in comments. Rendering `???` would additional
 the *no-no literal* for something the Foolisher never wrote.
 
 **An NK search result renders as the search, not as NK.** Not a special case — just §3's
-predicate: an NK result is inconclusive, so the original search renders:
+predicate: an NK result is an inconclusive constanic, so the original search renders:
 
 ```foolish
 miss = b?nonexistent;   !! NK: anchored miss
@@ -956,7 +960,7 @@ the design forward, without reference to what preceded it.
 | | rendering |
 |---|---|
 | today | `r=3` |
-| §3 | `r = b?a.*` when the result is inconclusive; `r = 3` when conclusive |
+| §3 | `r = b?a.*` when the result is an inconclusive constanic; `r = 3` when conclusive |
 
 **An unfound name.** `{x = non_existent;}`
 
@@ -1132,8 +1136,10 @@ Abstract was rewritten around the one governing rule and no longer contradicts �
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
-*conclusive* (CONSTANT/INDEPENDENT) and *inconclusive constanic* (ECONSTANIC/WOCONSTANIC/NK)
-alongside the existing *constanic* and *constantew*. **§3**: when a result is an inconclusive
+the terminology from **AGENTS.md §Foolish Terminology** (the authority): *constanic*,
+*constantew* (CONSTANT EveryWhere), and *conclusive* (**Conc**) = CONSTANT/INDEPENDENT.
+*Inconclusive* is everything else INCLUDING pre-constanic states; the phrase *inconclusive
+constanic* narrows to WOCONSTANIC/ECONSTANIC/NK, which is what §3's rule is stated over. **§3**: when a result is an inconclusive
 constanic, render the original expression — the original search, or the op on its parameters;
 a conclusive result collapses to its value. **§3.1** explains why that loses nothing; **§3.2**
 splits concatenation on whether the merge succeeded. **§4** puts states with no Foolish syntax

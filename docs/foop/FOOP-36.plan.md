@@ -130,13 +130,27 @@ vs `PREMBRYONIC` in prose.
   as `SearchFir`s carrying pattern + anchoring (Phase 1, Q5).
 - `foolish-core/src/sequencer.rs` has **4 pre-existing clippy warnings** (lines 187, 537, 563,
   743). Not yours to fix; the scope guard forbids touching that file.
-- **"Conclusive" / "inconclusive" (§0) is vocabulary this FOOP INTRODUCES** — it does not exist
-  in the codebase today (verified 2026-09-02). **Conclusive** = NYES is CONSTANT or
-  INDEPENDENT (reached a value). **Inconclusive constanic** = settled without a value —
-  ECONSTANIC, WOCONSTANIC, NK. It is a different cut from FOOP-62's **constantew**
-  (CONSTANT/INDEPENDENT/NK): they differ exactly on NK, which is constantew but inconclusive.
-  Rendering keys on conclusive. If you add a predicate for it, name it accordingly and keep it
-  in `foolish-ubca2` — `foolish-core` is off-limits per the scope guard.
+- **Terminology — the authority is AGENTS.md §Foolish Terminology**, restated in `FOOP-36.md`
+  §0. Read one of them before writing rendering code.
+  - **Constanic**: any terminal NYES — ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
+    Pre-constanic (nigh): PREMBRYONIC, EMBRYONIC, BRANING.
+  - **Constantew** (CONSTANT EveryWhere): CONSTANT, INDEPENDENT, NK — won't change no matter
+    what. Constantew ⊂ constanic.
+  - **Conclusive** (**Conc**): NYES is CONSTANT or INDEPENDENT — it reached a value.
+    **Inconclusive** is everything else, INCLUDING pre-constanic states. The phrase
+    **"inconclusive constanic"** narrows to the terminal ones: WOCONSTANIC, ECONSTANIC, NK —
+    and that narrower phrase is what §3's rule is stated over.
+  - Conclusive and constantew are different cuts, differing exactly on **NK**: constantew, yet
+    inconclusive. **Rendering keys on conclusive.**
+  - No predicate for conclusive exists in the code (`fir.rs` has `is_constanic()` and
+    `is_nnk_constanic()` only). If you add one, keep it in `foolish-ubca2` — `foolish-core`
+    is off-limits per the scope guard.
+  - **"Settled" is prose, not a predicate.** `foolish-ubca2` uses the word heavily (138
+    occurrences, plus a real `FirPointer::settled_result` accessor) but **`is_settled()` does
+    not exist** — `lib.rs` line 24 documents it and FOOP-62 §Terminology specifies it; neither
+    was implemented. Do not call it. Use `is_constanic()`, or the conclusive predicate you add.
+  - [ ] While you are in `lib.rs` for Phase 2's module registration, **fix that stale line 24
+        doc comment** (it claims `NyesExt` "adds `is_settled()` to `Nyes`"). Comment only.
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
   `foolish-ubca2/einmo_suite`'s files carry `#einmo 1 encoding=utf-8 separator=①\n`, while the
   older `foolish-ubca/einmo_suite` still carries `separator=!!\n`. **FOOP-92's spec text and
