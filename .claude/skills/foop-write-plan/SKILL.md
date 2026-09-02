@@ -1,6 +1,6 @@
 ---
 name: foop-write-plan
-description: "MUST USE when CREATING or PLANNING a FOOP (Foolish Optimization Process) — writing the specification file (FOOP-#.md) and the plan file (FOOP-#.plan.md). Covers: what a FOOP is, the two-file system (spec + plan), little-endian numbering (FOOP-1→FOOP-9→FOOP-01→FOOP-11→FOOP-21...), the foop_check.py helper script (check/get_last/gen_next/list), naming convention (dash in filenames, space in prose), the spec template (frontmatter fields foop/title/status/phase/begun, body sections Abstract/Motivation/Specification/FIR Impact/UBC Step Impact/Test Plan/Rejected Alternatives/Open Questions/References), the D-prefix sort-key rule, plan construction rules (ordered/concrete/trackable, worktree lifecycle checkboxes, sub-tasks, variable expansion, per-sub-section test subsets — the 'Establish relevant tests' checkbox linking to README §Running specific tests), checkbox format (timestamp on next indented line), sub-task splitting, worktree branch tracking (naming, creation, lifecycle checkboxes), comprehensive snapshot tests (input/foop/<NUMBER>/comprehensive.foo), and the minimal plan skeleton. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'create foop', 'new foop', 'write foop', 'foop spec', 'foop plan', 'foop template', 'foop numbering', 'foop frontmatter', 'foop_check gen_next', 'plan a foop', 'foop worktree setup', 'foop comprehensive test', 'foop test subset', 'establish relevant tests'."
+description: "MUST USE when CREATING or PLANNING a FOOP (Foolish Optimization Process) — writing the specification file (FOOP-#.md) and the plan file (FOOP-#.plan.md). Covers: what a FOOP is, the two-file system (spec + plan), little-endian numbering (FOOP-1→FOOP-9→FOOP-01→FOOP-11→FOOP-21...), the foop_check.py helper script (check/get_last/gen_next/list), naming convention (dash in filenames, space in prose), the spec template (frontmatter fields foop/title/status/phase/begun, body sections Abstract/Motivation/Specification/FIR Impact/UBC Step Impact/Test Plan/Plan of Execution for Plan/Rejected Alternatives/Open Questions/References), the D-prefix sort-key rule, plan construction rules (ordered/concrete/trackable, worktree lifecycle checkboxes, sub-tasks, variable expansion, per-sub-section test subsets — the 'Establish relevant tests' checkbox linking to README §Running specific tests), checkbox format (timestamp on next indented line), sub-task splitting, worktree branch tracking (naming, creation, lifecycle checkboxes), comprehensive snapshot tests (input/foop/<NUMBER>/comprehensive.foo), and the minimal plan skeleton. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'create foop', 'new foop', 'write foop', 'foop spec', 'foop plan', 'foop template', 'foop numbering', 'foop frontmatter', 'foop_check gen_next', 'plan a foop', 'foop worktree setup', 'foop comprehensive test', 'foop test subset', 'establish relevant tests', 'plan of execution', 'which model runs which phase'."
 ---
 
 # FOOP — Writing and Planning
@@ -202,6 +202,14 @@ How is this verified?
 
 If a feature can't be cleanly tested, say so explicitly and explain why.
 
+## Plan of Execution for Plan
+
+How this FOOP's plan gets executed, and by whom. **Plan the execution based on
+complexity**: assign each phase to an agent with sufficient capability for it,
+rather than sizing the whole FOOP to one model. A table of phase → character →
+needs, plus what makes the small-model phases safe, plus what must never be
+delegated at any size. See "Planning the execution of the plan" below.
+
 ## Rejected Alternatives
 
 At least one alternative MUST be listed, even if it's just "do nothing" with
@@ -233,6 +241,48 @@ FOOP is `Implementing`, the design is frozen.
 ## Task: Create the Plan File
 
 A FOOP is not actionable without a plan. Write `docs/foop/FOOP-<NUMBER>.plan.md` (lowercase `.plan.md`). **Read `FOOP-<NUMBER>.md` first** — the plan is derived from the specification; the spec exists before the plan, so you can name a concrete `short_description` and decompose the spec into ordered tasks.
+
+### Planning the execution of the plan
+
+Every FOOP spec carries a **"Plan of Execution for Plan"** section (between Test
+Plan and Rejected Alternatives). It answers: *which agent executes which phase?*
+
+**The rule: plan the execution based on complexity.** Phases differ sharply in
+what they demand. Assign each to an agent with sufficient capability for that
+phase — sizing every phase to the hardest one wastes capability on mechanical
+work, and sizing them all to the easiest puts judgment calls in the wrong hands.
+
+Sort phases into two kinds:
+
+- **Judgment phases → a larger model.** The deliverable IS a decision: resolving
+  an open question whose answer changes the design; predicting expected output
+  from the specification; every `output` → `checked` promotion review.
+- **Execution phases → a smaller model.** There is a fixed target to hit: code
+  given verbatim in the plan, a hand-written expectation to match, a mechanical
+  diff to verify. An agent that cannot judge "is this right?" can still answer
+  "does this match the thing a human wrote?" — a different and much easier
+  question.
+
+Harness-specific names as of writing: Claude — Opus / Sonnet for judgment,
+Sonnata for execution; Codex — GPT-terra; local — Qwen3.8-27B.
+
+**Three properties make the small-model phases safe.** Build them into the plan
+deliberately, and say in the section that you have:
+
+1. **Facts inline, not referenced.** Carry trait shapes, verified behavior, file
+   sizes, tuple arities and exact command forms in the plan itself, so an
+   executing agent spends its context on the work rather than on rediscovery.
+   Mark each fact *verify, don't re-derive*.
+2. **A fixed target per phase.** After a hand-written expectation exists, or
+   after an adapter switch, "done" is checkable without judgment.
+3. **Named stop conditions.** Say explicitly what a wrong result looks like and
+   that the answer is to STOP and report. A small model should not have to
+   recognize trouble unaided; it should match a stated condition.
+
+**What must never be delegated**, at any model size (AGENTS.md §"The agent is
+responsible for correctness"): every `output` → `checked` promotion; any
+hand-written expectation the design depends on; any decision to change a crate
+the FOOP promised not to touch; marking any Verified-tier test `#[ignore]`.
 
 ### Plan Construction Rules
 
@@ -456,14 +506,16 @@ git worktree add -b foop-<NUMBER>-<SHORT_DESCRIPTION> \
 
 ## Last Updated
 
-**Date**: 2026-08-12
-**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
-**Changes**: Added **plan-construction rule 11**, **safety invariant 10**, and the skeleton
-checkbox for **per-sub-section test subsets**: every sub-section (and every undivided phase)
-starts with an "Establish relevant tests" checkbox naming the sub-section's small test subset
-— old unit tests and einmo cases the work must not break, plus new tests as they are written —
-linking to the central command reference (`README.md` §"Running specific tests"). The subset
-runs frequently during development; ALL tests run when the sub-section completes; test
-invocations go through subagents in parallel where available. Plans name CASES, never command
-forms, so einmo CLI evolution touches only the README section. Mirrors the new §"Sub-Section
-Test Subsets" in `foop.md`; execution-side guidance lives in the `foop-use-maintain` skill.
+**Date**: 2026-09-02
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added the **"Plan of Execution for Plan"** spec section (between Test Plan and
+Rejected Alternatives) and a new §"Planning the execution of the plan": every FOOP states which
+agent executes which phase, **planned by complexity** rather than sizing the whole FOOP to one
+model. Judgment phases (resolving an open question, predicting expected output from the spec,
+every `output` → `checked` promotion review) go to a larger model; execution phases, which have
+a fixed target to hit, go to a smaller one. Records the three properties that make small-model
+phases safe (facts inline not referenced; a fixed target per phase; named stop conditions) and
+what must never be delegated at any size. Mirrored into `docs/foop/FOOP-template.md` and
+AGENTS.md §FOOP. Prior entry: plan-construction rule 11, safety invariant 10, and the
+per-sub-section "Establish relevant tests" checkbox linking to `README.md` §"Running specific
+tests" — plans name CASES, never command forms.

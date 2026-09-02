@@ -96,6 +96,14 @@ authoritative reference; if a skill and `foop.md` appear to disagree,
 - **Finding, executing, backburnering, cancelling, merging, or cleaning up a
   FOOP** → load the `foop-use-maintain` skill.
 
+Every FOOP spec carries a **"Plan of Execution for Plan"** section: *which agent executes which
+phase.* **Plan the execution based on complexity** — assign each phase to an agent with
+sufficient capability for it, rather than sizing the whole FOOP to one model. Judgment phases
+(resolving an open question, predicting expected output from the spec, every
+`output` → `checked` promotion review) go to a larger model; execution phases, which have a
+fixed target to hit, go to a smaller one. Some things are never delegated at any size — see
+that section in the `foop-write-plan` skill.
+
 Plans install, at the start of every sub-section (and every undivided phase), an **"Establish
 relevant tests" checkbox** naming that sub-section's small test subset — the old unit tests and
 einmo cases its work must not break, plus new tests as they are written — with a link to
@@ -352,6 +360,50 @@ inputs live in `foolish-ubca/einmo_suite/input/`, outputs in `output/`, reviewed
 
 Each `.einmo` file is a signed envelope containing INPUT, OUTPUT, and STAMPS sections. Signatures
 are Ed25519, derived from a passphrase via Argon2id.
+
+#### READ THE SUITE'S `einmo.toml` FIRST
+
+**Before generating, editing, or reviewing any einmo suite, read that suite's own
+`einmo_suite*/einmo.toml`.** Formatting and signing are configured **per suite**, and the
+suites genuinely differ — assuming one suite's conventions apply to another produces files
+that fail to serialize, or baselines signed with the wrong key.
+
+The toml (plus its header comments) is the authority on:
+
+- **The section separator**, and therefore what content is FORBIDDEN. Einmo splits sections on
+  a configured separator string and does a plain substring check on every section body;
+  a match is a **hard error at write time** (`EinmoError::SeparatorCollision` —
+  `einmo/src/format.rs::serialize`), so the file simply does not serialize. The suites are not
+  alike: `foolish-ubca/einmo_suite` separates on `!!` + LF (a Foolish line comment), while
+  `foolish-ubca2/einmo_suite` uses einmo's default `①` (U+2460) + LF. A case copied from one
+  suite into the other must be re-checked against the destination's separator.
+- **Which signing passphrase each stage uses**, and that `verified` is deliberately left
+  unconfigured so a human must type a passphrase (an agent piping `--passphrase ""` gets the
+  well-known computer key, which the merge gate detects).
+- Suite-wide settings such as `walk_depth_limit`.
+
+Confirm the separator against a real artifact too — the `#einmo 1 encoding=… separator=…`
+header line of any `.einmo` file states what was actually used, and beats both the toml
+comments and the FOOP prose when they disagree.
+
+#### Comment style in Foolish einmo inputs
+
+A suite's `.foo` inputs are read by humans far more often than ordinary source — they are the
+*statement of what is being tested*. Write their comments to that standard:
+
+1. **Short inline comments are permitted**, trailing the code they annotate:
+   `brane_operand = {1, {x = 5;}, 'lt}$;    !! a brane is not comparable -> NK`
+2. **Block comments (`!!!` fences) are surrounded by blank lines** — one before AND one after.
+   A fence is a section heading, not a remark about the next line, and the space on both sides
+   is what makes it read that way.
+3. **A full-line comment (a line starting with `!!`) marks the code BELOW it.** Put a blank
+   line **before** it, separating it from preceding content, and **no** blank line after, so it
+   sits tight against the lines it describes. A blank line after orphans the comment — the
+   reader can no longer tell whether it belongs to what follows or what came before. Proximity
+   is the signal.
+
+Whether a bare `!!` line is *legal* depends on the suite's separator (above): harmless where
+the separator is `①`, a serialization error where it is `!!`.
 
 #### Key commands
 
@@ -820,14 +872,22 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-09-01
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added a rule, next to the existing "tests must be manually disabled by human"
-guidance: agents must never mark a Verified-tier test (`einmo_gate_verified` or equivalent)
-`#[ignore]` on their own judgment, even when the justification looks locally obvious (e.g. an
-empty `verified/` for a new crate) — that decision belongs to the human, explicitly, every
-time. Applies retroactively to any existing such `#[ignore]` an agent added without that
-explicit direction (raised with the human directly, in `foolish-ubca2`'s case — see FOOP-16).
+**Date**: 2026-09-02
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added the **"Plan of Execution for Plan"** rule to the FOOP section — every spec
+says which agent executes which phase, planned by complexity (judgment phases to a larger
+model; fixed-target execution phases to a smaller one), with a list of what is never delegated.
+Now a standard section in `docs/foop/FOOP-template.md` and the `foop-write-plan` skill.
+Also added §"READ THE SUITE'S `einmo.toml` FIRST" and §"Comment style in Foolish einmo inputs"
+to the Approval Tests (einmo)
+section: formatting and signing are configured **per suite**, so an agent must read that
+suite's own toml before generating or reviewing einmo files. Names the concrete hazard — the
+section separator differs between suites (`foolish-ubca` uses `!!`+LF, `foolish-ubca2` uses
+einmo's default `①`+LF), content containing it is a hard `SeparatorCollision` error at write
+time, and a real artifact's `#einmo … separator=…` header beats both toml comments and FOOP
+prose when they disagree. Retains the prior entry's rule: agents must never mark a
+Verified-tier test `#[ignore]` on their own judgment — that decision belongs to the human,
+explicitly, every time, and applies retroactively (see FOOP-16 for `foolish-ubca2`'s case).
 
 ### MISC
 

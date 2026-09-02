@@ -21,7 +21,14 @@ passphrase = ""
 passphrase = "foolish-ubca"
 
 [suite]
-# Foolish sources may contain the default separator glyph; the suite uses the
-# Foolish line-comment separator instead (FOOP-92 §4.1).
-# (separator is set in code via TestConfig::foolish_separator())
+# Separator: einmo's DEFAULT — `①` (U+2460) + LF. `ubca_snapshot_tester.rs`
+# constructs the config with plain `TestConfig::new(...)` and does NOT call
+# `TestConfig::foolish_separator()`, so the default applies; the artifacts in
+# this suite carry `separator=①\n` in their header line.
+#
+# `①` is not Foolish syntax, so no input can collide with it (einmo hard-errors
+# at write time on a section body containing the separator — see
+# `einmo/src/format.rs::serialize`). Note this differs from
+# `foolish-ubca/einmo_suite`, which does use the Foolish line-comment separator
+# `!!` + LF; a case copied between the two suites must be re-checked.
 walk_depth_limit = 32

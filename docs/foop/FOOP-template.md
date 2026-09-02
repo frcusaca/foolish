@@ -80,6 +80,41 @@ How is this verified?
 
 If a feature can't be cleanly tested, say so explicitly and explain why.
 
+## Plan of Execution for Plan
+
+**How this FOOP's plan gets executed, and by whom.** Plan the execution based on
+complexity: match each phase to an agent with sufficient capability for it, rather
+than sizing the whole FOOP to one model. Sizing everything to the hardest phase
+wastes capability on mechanical work; sizing everything to the easiest puts
+judgment calls in the wrong hands.
+
+Fill in the table for THIS FOOP's phases. Harness-specific model names as of
+writing: Claude — Opus / Sonnet for judgment, Sonnata for execution; Codex —
+GPT-terra; local — Qwen3.8-27B.
+
+| Phase | Character | Needs |
+|-------|-----------|-------|
+| <N> — <name> | <what kind of work it is> | <larger model / smaller model, and why> |
+
+**Judgment phases** (a larger model) are those where the deliverable IS a
+decision: resolving an open question whose answer changes the design, predicting
+expected output from the specification, and every `output` → `checked` promotion
+review.
+
+**Execution phases** (a smaller model) are those with a fixed target to hit: code
+given in the plan, a hand-written expectation to match, a mechanical diff to
+verify. An agent that cannot judge "is this right?" can still answer "does this
+match the thing a human wrote?"
+
+State what makes the small-model phases safe — inline facts rather than references,
+a fixed target per phase, and named stop conditions ("if X, STOP and report") so
+trouble is matched against a stated condition rather than recognized unaided.
+
+**What must not be delegated**, regardless of model size (AGENTS.md §"The agent is
+responsible for correctness"): every `output` → `checked` promotion; any
+hand-written expectation the FOOP's design depends on; any decision to change a
+crate the FOOP promised not to touch; marking any Verified-tier test `#[ignore]`.
+
 ## Rejected Alternatives
 
 At least one alternative MUST be listed, even if it's just "do nothing" with
