@@ -37,7 +37,7 @@ hand-authored case, before any baseline is generated and before the renderer exi
 |---|---|---|---|
 | **I** | **New test, written by hand** | 3 | A brand-new `einmo_suite2/` holding ONE case whose expected OUTPUT is **typed from the specification before the renderer is written**. The renderer is then built until it reproduces what was typed. |
 | **II** | **Feature completion** | 4 | The renderer is finished against that fixed target: round-trip properties (§2/§2.1) proven, every §3 row covered, `Detailed` delegation pinned. `einmo_suite/` is untouched and still green on the OLD rendering. |
-| **III** | **Migration** | 5–7 | Only now does `einmo_suite/` move: switch its adapter to the new renderer, produce the 179 outputs, review and promote them case by case, then the comprehensive case. |
+| **III** | **Replacement** | 5–7 | `einmo_suite2` **becomes the suite**: the 179 inputs are copied across, rendered under the new sequencer, reviewed case by case, and `cargo test` is pointed at it. `einmo_suite/` is left frozen and still green as the reference to diff against — everything is done EXCEPT removing it. |
 
 Why this order, and not the obvious one:
 
@@ -596,6 +596,10 @@ OLD rendering. Nothing here generates a baseline.*
 - [ ] **T8 — comment style and separator safety (§4.2).** Assert the renderer never emits `①`
       (U+2460) anywhere — chiefly via an NK reason containing one, which §5 collapses to a
       space. Also check the §4.2 layout rules hold across every `.foo` input this FOOP authors.
+- [ ] **T9 — flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation, on
+      renders `a = 1/0;  !! NK: …` — the EXPRESSION identical under both, only the annotation
+      moving. A non-default `width` changes where lines break. Confirm the einmo adapter uses
+      the defaults, so the corpus is reproducible.
 - [ ] **T7 — line width (§4.1).** Unit tests that a construct over 108 chars at its indent
       breaks with its body indented, that nesting reduces the budget by the indent, and that
       the three exceptions (unsplittable atom, annotated line, echoed over-width source) render
@@ -610,44 +614,91 @@ OLD rendering. Nothing here generates a baseline.*
 
 ---
 
-## Phase 5 — Movement III begins: switch `einmo_suite/` to the new renderer
+## Phase 5 — Movement III: `einmo_suite2` becomes the suite
 
-*One small phase, one big effect. Everything before this left `einmo_suite/` alone; this is
-where all 179 baselines move at once. Deliberately isolated so the diff that moves them is a
-one-line adapter change and nothing else.*
+*`einmo_suite2` is not a scratch pad — it is `einmo_suite`'s replacement. This phase moves the
+inputs across, renders their outputs under the new sequencer, and points `cargo test` at the
+new suite. Everything is done EXCEPT removing the old directory, which stays in place,
+untouched and still passing, as the reference to diff against.*
+
+**Why the old suite is kept rather than migrated in place.** Re-rendering `einmo_suite`'s
+baselines would leave the tree with no green record of what the old rendering produced — and
+that record is exactly what a reviewer needs while judging 179 changed outputs. Keeping
+`einmo_suite` frozen and building `einmo_suite2` alongside means both renderings are on disk
+at once, the old gates stay green the whole way, and the `verified/` tier is never disturbed.
+Deleting `einmo_suite` is a separate, later act for the human to authorize.
+
+### 5a — Move the inputs across
 
 - [ ] (read §2 of `FOOP-36.md`; re-read Phase 0's recorded "before" test readings)
+- [ ] Copy every input from `foolish-ubca2/einmo_suite/input/**/*.foo` (179 files) into
+      `foolish-ubca2/einmo_suite2/input/`, preserving the directory structure
+      (`foop/<N>/…`, `misc/…`, `regression/…`). **Copy, do not move** — `einmo_suite/` must
+      remain intact and passing.
+- [ ] Copy `MAPPING.md` too, and add a note at its top recording that this suite's outputs are
+      rendered by `Ubca2Sequencer` in `Foolish` mode (FOOP-36), unlike `einmo_suite/`'s.
+- [ ] **T10 — coverage parity.** Write a test asserting `einmo_suite2/input/` contains an
+      input for EVERY input in `einmo_suite/input/` — same relative paths, same count. Then
+      confirm the total: 179 copied plus `foop/36/rendering_contract.foo` from Phase 3 (and
+      `foop/36/comprehensive.foo` arrives in Phase 7). **This is the failure mode that matters
+      most and is invisible from a green run** — a new suite that quietly tests less than the
+      one it replaces.
 - [ ] **T3 — corpus-wide round-trip.** One unit test walking every
-      `foolish-ubca2/einmo_suite/input/**/*.foo` (179 files): evaluate, render in `Foolish`
-      mode, assert the result **parses**. Property 1 only — not idempotence — so it stays fast
-      and stays correct for the corpus's non-settling cases (§2.1). **Write this BEFORE
-      switching the adapter**: it is the cheapest possible check that the new renderer survives
-      the whole corpus, and it fails loudly without touching a single baseline.
-- [ ] Fix whatever T3 finds. A parse failure here is a renderer bug, never a baseline problem.
-- [ ] Switch `foolish-ubca2/src/ubca_snapshot_tester.rs`'s `UbcaEinmoAdapter::evaluate` from
-      `foolish_core::FirSequencer::format(&fir)` to
-      `Ubca2Sequencer::format(&fir, SequenceMode::Foolish)`. That is the whole change — one
-      call site, in the `.map(|fir_ref| …)` closure.
-- [ ] Resolve §Open Questions Q1 with the human: einmo takes `Foolish` (this switch); does the
-      REPL take it too, or keep `Detailed`?
-- [ ] Run all tests. Expect exactly this, and verify each:
-  - [ ] `einmo_suite2`'s gates: **still pass** (the hand-written contract is unaffected)
-  - [ ] `foolish-ubca2`'s `einmo_gate_checked`: **fails across the suite** — this is the FOOP's
-        intended visible effect, justified and promoted in Phase 6
-  - [ ] `foolish-ubca`'s `einmo_gate_checked`: **still passes**, matching Phase 0's reading.
-        If it does not, the scope guard has been violated — STOP.
+      `einmo_suite2/input/**/*.foo`: evaluate, render in `Foolish` mode, assert the result
+      **parses**. Property 1 only — not idempotence — so it stays fast and stays correct for
+      non-settling cases (§2.1). **Run this BEFORE generating any output**: it is the cheapest
+      check that the renderer survives the whole corpus, and it fails loudly without writing a
+      single baseline.
+- [ ] Fix whatever T3 finds. A parse failure is a renderer bug, never a baseline problem.
+
+### 5b — Generate the outputs and hook up `cargo test`
+
+- [ ] Run `einmo_suite2`'s output gate to render all 180 cases under the new sequencer. The
+      adapter already uses `Ubca2Sequencer::format(…, SequenceMode::Foolish)` (Phase 3d) — no
+      code change is needed here, which is the point of having built the suite that way.
+- [ ] **Point `cargo test` at `einmo_suite2`.** After this checkbox, the crate's default test
+      run exercises the new suite:
+  - [ ] `einmo_suite2_gate_output` and `einmo_suite2_gate_checked` are the gates that must pass
+        for the crate to be considered green.
+  - [ ] `einmo_suite/`'s three gates **remain in place and must still pass**, unchanged, on the
+        OLD rendering. They are the frozen reference. **Do not re-render, re-promote, or
+        `#[ignore]` them.**
+  - [ ] Both suites' gates take the `GATE_LOCK` discipline — they now share a test binary and
+        write to different `output/` directories, but confirm rather than assume (Phase 3d
+        recorded the answer).
+  - [ ] **T11 — suite integrity.** `einmo_suite2` passes einmo's own soundness checks at each
+        level (`results.integrity.is_clean()`), and its `einmo.toml` is configured per §4.2:
+        separator `①`+LF, a `checked` passphrase distinct from `einmo_suite`'s, `verified`
+        left unconfigured so a human must type one.
+- [ ] Run all tests and verify each expectation:
+  - [ ] `einmo_suite2`'s output gate: **passes** — all 180 cases render and self-verify
+  - [ ] `einmo_suite2`'s checked gate: **fails for the 179 newly-copied cases** (no `checked/`
+        baseline exists for them yet) and **passes for `foop/36/rendering_contract`**, whose
+        baseline was hand-written in Phase 3. That split is the expected state going into
+        Phase 6.
+  - [ ] `einmo_suite/`'s three gates: **all still pass**, matching Phase 0's readings exactly.
+        If any has moved, something re-rendered the old suite — STOP.
+  - [ ] `foolish-ubca`'s `einmo_gate_checked`: **still passes**. If not, the scope guard has
+        been violated — STOP.
   - [ ] `foolish-ubca2`'s unit tests: still pass
-  - [ ] `foolish-ubca2`'s `einmo_gate_verified`: **now fails — expected and accepted** per
-        §Q6's resolution (the human mass-verifies after Phase 6's review). Do NOT `#[ignore]`
-        it, and do not treat it as a regression to chase.
+
+**Note what this endgame avoids.** Because `einmo_suite/` is never re-rendered, its
+`verified/` tier is never invalidated, and §Q6's "the gate goes red until the human
+re-attests" does not arise for it. What needs human attestation instead is `einmo_suite2`'s
+own `verified/` tier, which starts empty — a new-suite question, not a broken-tier one. Raise
+it with the human at Phase 6 rather than assuming either answer.
 
 ---
 
-## Phase 6 — Promotion Review Gate: all 179 ubca2 baselines
+## Phase 6 — Promotion Review Gate: `einmo_suite2`'s 179 copied baselines
 
-*Every case in the suite re-renders, so every case must be justified. This is the bulk of the
-work. It is deliberately split by suite subdirectory — `foop.md`: a gate whose boxes are
-checked faster than the cases could be read is a false record.*
+*Every copied case renders for the first time under the new sequencer, so every case must be
+justified before it becomes `einmo_suite2/checked/`. This is the bulk of the work. It is
+deliberately split by suite subdirectory — `foop.md`: a gate whose boxes are checked faster
+than the cases could be read is a false record.*
+
+**All promotion in this phase targets `einmo_suite2`.** `einmo_suite/` is frozen reference and
+is never promoted, re-rendered, or otherwise touched.
 
 **Standing instruction for every sub-block below.** For each case: read the INPUT, read the new
 OUTPUT, and state **in your own words why each rendered line is what §3/§4/§5 require** — not
@@ -658,12 +709,20 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
    settled case that became NK, is **a bug in this FOOP**, not a new baseline. Report it, do
    not promote it.
 
-- [ ] Confirm the rest of the suite is green — no `foolish-ubca` baseline diverges (T5)
-- [ ] **Every `foolish-ubca2` case HAS a `verified/` twin** (179 of them, measured
-      2026-09-02) — the opposite of what FOOP-16 says. Per §Q6's resolution: promote
-      `output` → `checked` here as normal (that is this gate), and **leave
-      `checked` → `verified` entirely to the human**, who mass-verifies after this review is
-      complete. A `verified/` artifact is frozen — never touch one without the human's key.
+- [ ] Confirm the rest of the tree is green — `foolish-ubca`'s gates and `einmo_suite/`'s
+      three gates all still pass, unchanged (T5)
+- [ ] **`einmo_suite2/verified/` is EMPTY** — it is a brand-new suite, so no case here has a
+      frozen twin and nothing is at risk of being overwritten. (Contrast `einmo_suite/`, whose
+      `verified/` holds all 179 human-signed artifacts and which this FOOP does not touch.)
+      Promote `output` → `checked` in `einmo_suite2` as normal; **leave `checked` → `verified`
+      entirely to the human** (§Q6).
+- [ ] **T12 — value non-regression. Diff each case against its `einmo_suite/checked/`
+      counterpart** — the old rendering is still on disk precisely so this is possible. The
+      question for each is not "does this match" (it must not) but **"is this the same program,
+      said in Foolish?"** The rendering changes; the program's meaning must not. A `12` that
+      became a `13`, or a settled case that became NK, is **a bug in this FOOP, not a new
+      baseline** — report it, do not promote it. Mechanise the comparison where the shapes
+      allow and read it where they do not.
 - [ ] Re-read the in-force specifications the cases exercise: `FOOP-36.md` §3/§4/§5, plus
       `README.md` §"The Unknown" and `FOOP-23.md` §Specification for every NK result.
 - [ ] Review `regression/` — 4 cases, each named individually in the sub-boxes
@@ -680,17 +739,18 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 - [ ] **Report ALL accumulated doubts to the human in ONE statement** — or record "no doubts".
       Blocking doubts stop here; non-blocking ones are reported alongside (AGENTS.md
       §"Accumulate doubts; report them once, at the end").
-- [ ] `einmo promote output to checked foolish-ubca2/einmo_suite`
-- [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — must exit 0
+- [ ] `einmo promote output to checked foolish-ubca2/einmo_suite2`
+- [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_suite2_gate_checked` — must exit 0
+- [ ] Re-run `einmo_suite/`'s three gates — all must STILL pass, untouched
 
 ---
 
 ## Phase 7 — Comprehensive case
 
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
-      to run einmo cases: `foop/36/comprehensive`; run unit tests: `foolish-ubca2::sequencer`,
-      `foolish-ubca2::round_trip`.
-- [ ] Write `foolish-ubca2/einmo_suite/input/foop/36/comprehensive.foo` — at least one path
+      to run einmo cases: `foop/36/comprehensive` in `einmo_suite2`; run unit tests:
+      `foolish-ubca2::sequencer`, `foolish-ubca2::round_trip`.
+- [ ] Write `foolish-ubca2/einmo_suite2/input/foop/36/comprehensive.foo` — at least one path
       through **every** §3 row, plus §4's five states and §5's NK forms, plus the comment
       placement rule where several annotated statements sit adjacent. Follow §4.2's comment
       style (fenced headings blank-line-separated both sides; full-line comments tight above
@@ -709,8 +769,8 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
         against the hand-written prediction above
   - [ ] Write the justification summary into this plan or the commit message
   - [ ] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts"
-  - [ ] `einmo promote output to checked foolish-ubca2/einmo_suite`
-  - [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — must exit 0
+  - [ ] `einmo promote output to checked foolish-ubca2/einmo_suite2`
+  - [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_suite2_gate_checked` — must exit 0
 
 ---
 
@@ -720,10 +780,21 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
       `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer` and committed to
       `foop-36-foolish-rendering-sequencer`
 - [ ] Confirm the scope guard held: `git diff jia --stat` shows **no** changes under
-      `foolish-ubca/` and **no** changes to `foolish-core/src/sequencer.rs`. (A `foolish-core/src/fir.rs`
+      `foolish-ubca/`, **no** changes to `foolish-core/src/sequencer.rs`, and **no changes to
+      `foolish-ubca2/einmo_suite/`** beyond the einmo.toml comment fix already on `jia` — the
+      old suite is frozen reference, not a thing this FOOP edits. (A `foolish-core/src/fir.rs`
       change appears only if Phase 1 reported and the human approved an additive accessor.)
 - [ ] **T5 non-regression** — `cargo test -p foolish-ubca --lib -- einmo_gate_checked` passes,
       matching the Phase 0 "before" reading exactly
+- [ ] **`einmo_suite/`'s three gates still pass**, unchanged, on the OLD rendering — including
+      `einmo_gate_verified` against its 179 human-signed artifacts. This FOOP leaves that tier
+      untouched, which is the whole benefit of replacing rather than migrating in place.
+- [ ] **`einmo_suite2` is the suite `cargo test` exercises**, and its `checked/` tier is
+      complete (180 cases). Its `verified/` tier is empty and awaits the human — raise it,
+      do not `#[ignore]` its gate.
+- [ ] **`einmo_suite/` is NOT removed by this FOOP.** Its retirement is a separate act, for the
+      human to authorize once `einmo_suite2` has been trusted for a while. Say so explicitly in
+      the merge report.
 - [ ] `cargo fmt --all` and `cargo clippy -p foolish-ubca2 -- -D warnings` clean.
       **Note:** `foolish-core/src/sequencer.rs` has 4 pre-existing clippy **warnings** (lines
       187, 537, 563, 743 — `iter_next_slice` and friends), which become errors under a
@@ -737,9 +808,11 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
         CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present the human with
           `cd /yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer` and ask
-          them to review the re-rendered snapshots BEFORE checking the parent checkbox. Say
-          plainly that **all 179 ubca2 baselines changed** and that the review question is
-          "is this valid, predictable Foolish?", not "does it match".
+          them to review `einmo_suite2` BEFORE checking the parent checkbox. Say plainly that
+          this FOOP **replaces `einmo_suite` with `einmo_suite2`** — 179 inputs copied across
+          and re-rendered, `cargo test` now pointed at the new suite, the old one left frozen
+          and still green for diffing, and **not** removed. The review question is "is this
+          valid, predictable Foolish?", not "does it match".
   - [ ] Repair ALL tests in `jia` at `/yolo/foolish` if the merge broke any
 - [ ] Cleanup `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer`
   - [ ] Check that this `.plan.md` has all but Cleanup checkboxes completed
@@ -757,11 +830,17 @@ spec first, work top to bottom, timestamp each box, stop where told, accumulate 
 report once, treat a failing test as broken code (except Phase 5's intended failure), never
 promote outside the gates.
 
-The plan runs in **three movements**, stated up front: (I) hand-write the expectations in a new
-`einmo_suite2/` before the renderer exists — the FOOP's own acceptance test; (II) complete the
-renderer against that fixed target; (III) migrate `einmo_suite/`'s 179 baselines, review them
-case by case, then the comprehensive case. Phase 3 enumerates all case groups; the Orientation
-block carries verified code facts, the trait shape, exact commands and the §0 terminology
-inline so a modest-context agent need not re-derive them. Phase 0's two blocking questions are
-already answered (Q4: FOOP-36 first; Q6: the human mass-verifies after the agent's per-case
-review, so `einmo_gate_verified` is expected red in between).
+The plan runs in **three movements**: (I) hand-write the expectations in a new `einmo_suite2/`
+before the renderer exists — the FOOP's own acceptance test; (II) complete the renderer against
+that fixed target; (III) **replace the suite** — copy the 179 inputs into `einmo_suite2`, render
+them, review case by case, and point `cargo test` at the new suite. The **cut-over is at the end
+of the project**, so the development procedure is unchanged until Movement III. `einmo_suite`
+is left frozen and green as the reference to diff against, and is NOT removed.
+
+Phase 3 enumerates all case groups; the Orientation block carries verified code facts, the
+trait shape, exact commands and §0's terminology inline so a modest-context agent need not
+re-derive them. Phase 5 gains **T10** (coverage parity — every old input has a new counterpart)
+and **T11** (suite integrity); Phase 6 gains **T12** (value non-regression: the rendering
+changes, the program's meaning must not). Phase 0's two blocking questions are already answered
+(Q4: FOOP-36 first; Q6: defused for the old suite, which is never re-rendered — the human
+mass-verifies `einmo_suite2`'s new `verified/` tier after the per-case review).

@@ -51,6 +51,11 @@ removed nor changed — it becomes `Detailed`, a second explicitly-selected mode
 unchanged to `foolish_core::FirSequencer`, so `foolish-ubca` cannot regress by construction
 (§1, §6). §7 sets old and new side by side.
 
+The approval suite is **replaced rather than edited**: a new `einmo_suite2` receives the 179
+inputs, renders them under the new sequencer, and becomes what `cargo test` exercises.
+`einmo_suite` is left frozen and still passing as the reference to diff against, and this FOOP
+does everything except remove it.
+
 ## Motivation
 
 ### What is wanted
@@ -98,6 +103,38 @@ rendering the search is what lets the next compiler discover that for itself. In
 rules predicts every line without running anything.
 
 §7 sets these against what the same cases render as today, in one place.
+
+### The suite is replaced, not edited
+
+**`einmo_suite2` is built to replace `einmo_suite`.** It is not a scratch pad for developing
+the renderer and it is not a parallel experiment — it is the readable, editable suite that
+`foolish-ubca2`'s approval testing moves to, and by the end of this FOOP it is what
+`cargo test` exercises.
+
+The replacement is done by **copying inputs across and rendering them anew**, rather than by
+re-rendering `einmo_suite` in place. Three things follow, and each is a reason to prefer it:
+
+1. **Both renderings stay on disk while the 179 cases are reviewed.** Judging a changed
+   baseline means asking "is this the same program, said in Foolish?" — which needs the old
+   output to hand. Migrating in place would delete the very thing the reviewer needs.
+2. **`einmo_suite`'s `verified/` tier is never disturbed.** It holds 179 human-signed
+   artifacts and its gate passes today; leaving the suite frozen means that tier stays valid
+   and no re-attestation is forced by this FOOP. The tier that needs human attention instead is
+   `einmo_suite2`'s own `verified/`, which starts empty — a new-suite question rather than a
+   broken-tier one.
+3. **The tree is green throughout.** `einmo_suite`'s gates keep passing on the old rendering
+   from first commit to merge; `einmo_suite2`'s gates go green as its baselines are reviewed
+   and promoted. There is no window in which `foolish-ubca2` has no working approval suite.
+
+**The cut-over happens at the end of the project.** `cargo test` points at `einmo_suite` for
+the whole of Movements I and II; only in Movement III, once `einmo_suite2` holds every input
+and every baseline has been reviewed, does the crate's approval testing switch over. Up to that
+moment the development procedure is exactly what it is today — same gates, same commands, same
+green tree.
+
+**This FOOP does everything except remove `einmo_suite`.** Retiring it is a separate act for
+the human to authorize, once `einmo_suite2` has been trusted for a while — and until then the
+old suite is useful precisely as the frozen reference that makes the new one auditable.
 
 ### A second benefit: the corpus checks itself
 
@@ -726,88 +763,123 @@ order changes; no NYES transition changes. Step counts in einmo output are unaff
 
 ## Test Plan
 
-**T0 — `einmo_suite2`: the hand-written rendering contract.** A NEW suite,
-`foolish-ubca2/einmo_suite2/`, holding ONE case (`input/foop/36/rendering_contract.foo`) — a
-single brane whose members are sub-branes, one per rendering concern (§3's rows, §3.1's
-substitution rule, §4's five annotated states, §5's NK forms). **Its expected OUTPUT is typed
-by hand from this specification before the renderer is written**, and the renderer is then
-developed until it reproduces what was typed.
+`einmo_suite2` is not a side experiment — it **becomes the approval suite for `foolish-ubca2`**
+(§Motivation "The suite is replaced, not edited"). Everything the old suite guaranteed, the new
+one must guarantee, and the rendering it is written in is itself new and unproven. The tests
+below are therefore in two groups: those that prove the **sequencer** is right, and those that
+prove the **suite** is a fit replacement.
 
-This is listed first because it runs first, and because it is **this FOOP's own acceptance
-test**. The FOOP claims einmo expectations become writable by a person reading the spec; T0 is
-that claim, executed. If it proves impractical, the design is wrong and the right time to
-discover that is on one case — not after 179 have been promoted. It also means the renderer is
-developed against a *human-authored* target rather than its own output, which is the only way
-the later Promotion Review Gate can be more than a matching exercise.
+### Group A — the sequencer
 
-**T1 — Unit tests, `foolish-ubca2/src/sequencer.rs` (tests module).** Per §3 row: one test
-per FIR kind asserting the exact rendered string, in both modes. `Detailed` tests assert
-byte-equality with `foolish_core::FirSequencer::format` on the same FIR — the delegation
-contract of §1, pinned so it cannot silently drift.
+**T0 — the hand-written rendering contract.** `einmo_suite2/input/foop/36/rendering_contract.foo`
+— one brane whose members are sub-branes, one per rendering concern (§3's rows, §3.2's
+concatenation split, §4's annotated states, §4.1's width behaviour, §5's NK forms). **Its
+expected OUTPUT is typed by hand from this specification before the renderer is written**, and
+the renderer is developed until it reproduces what was typed.
 
-**T2 — Round-trip property tests (§2).** The FOOP's load-bearing tests. The procedure, stated
-as the six steps a test performs:
+First because it runs first, and because it is **this FOOP's own acceptance test**: the FOOP
+claims einmo expectations become writable by a person reading the spec, and T0 is that claim
+executed. If it proves impractical, the design is wrong, and one case is a far cheaper place to
+learn that than 179. It also means the renderer is developed against a *human-authored* target
+rather than against its own output — the only way the later Promotion Review Gate is more than
+a matching exercise.
+
+**T1 — Unit tests** (`foolish-ubca2/src/sequencer.rs`, tests module). One test per §3 row
+asserting the exact rendered string. Both sides of §3's predicate for searches, operators and
+indexes: a **conclusive** result collapsing to its value, and each flavour of **inconclusive
+constanic** result (ECONSTANIC, WOCONSTANIC, NK, and result-absent) rendering the original
+expression. `Detailed`-mode tests assert byte-equality with `foolish_core::FirSequencer::format`
+on the same FIR — §1's delegation contract, pinned so it cannot drift.
+
+**T2 — Round-trip properties (§2).** The load-bearing tests, as six literal steps:
 
 1. **Compile** the program `P`.
-2. **Step it to finish** (settled).
-3. **Output it** in `Foolish` mode → call this `R1`.
-4. **Compile `R1`.** That it compiles at all is Property 1; a parse failure fails here.
-5. **Step that to finish.**
-6. **Output again** → `R2`. **Assert `R2 == R1`.**
+2. **Step to finish** (settled).
+3. **Output** in `Foolish` mode → `R1`.
+4. **Compile `R1`** — that it compiles at all is Property 1.
+5. **Step to finish.**
+6. **Output** → `R2`. **Assert `R2 == R1`** (Property 2).
 
-That equality is Property 2. It is what "the rendering has reached a fixed point" means
-operationally, and it is a far stronger check than eyeballing one rendering: any construct that
-renders to something meaning even slightly different will drift on the second pass and the test
-catches it, without anyone having to predict the right answer in advance.
+Property 2 is the fixed point stated operationally, and it is far stronger than reading one
+rendering: a construct that renders to something even slightly different drifts on the second
+pass and the test catches it, with nobody predicting the right answer in advance.
 
-Run it over a curated set covering every §3 row. Property 2 is asserted **only** where the FIR
-is constanic (§2.1's table) — a pre-constanic FIR legitimately steps further on the second
-pass, so only steps 1–4 apply to it.
+The input must **instrument a variety of constanic states**, not only constants: CONSTANT and
+INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC statements; NK
+expressions (`1/0`, an anchored miss); merged and unmerged concatenations; SF and SFF. NK is
+constanew (§5.1) so it re-settles NK and the equality holds; ECONSTANIC is non-constanew and is
+the interesting one to watch. Property 2 is asserted **only** where the FIR is constanic
+(§2.1's table) — for pre-constanic FIR only steps 1–4 apply.
 
-This procedure is also how §Open Questions **Q7** gets settled empirically: whichever way a
-trailing use site renders, `R2 == R1` says whether that rendering is stable.
+This procedure also settles §Open Questions **Q7** empirically.
 
-**T2b — Pre-constanic rendering (§2.1).** Take FIRs stepped a bounded number of steps rather
-than to settlement — the crate's stepping entry points make this directly constructible — and
-assert of each: it renders in `Foolish` mode, the rendering **parses** (Property 1), the
-rendering contains **no NYES token as syntax**, and the state appears **only** inside a `!!`
-comment. Idempotence is deliberately NOT asserted here (§2.1). Cover at least one
-PREMBRYONIC, one EMBRYONIC and one BRANING node, and one case halted by an `ALARM:` mid-step,
-since that is the shape einmo actually captures when debugging.
+**T2b — Pre-constanic rendering (§2.1).** FIRs stepped a bounded number of steps rather than to
+settlement: each renders, **parses**, contains **no NYES token as syntax**, and names its state
+**only** inside a `!!` comment. Idempotence deliberately not asserted (§2.1). Cover at least one
+PREMBRYONIC, one EMBRYONIC and one BRANING node, plus one case halted by an `ALARM:` mid-step —
+the shape einmo actually captures when debugging.
 
-**T3 — Corpus-wide round-trip.** A single unit test that walks every
-`einmo_suite/input/**/*.foo`, evaluates, renders in `Foolish` mode, and asserts the result
-parses. This is §2's Property 1 applied to the whole corpus at once and is the cheapest broad
-guard against a rendering that is locally fine and globally unparseable. It asserts
-parse-ability only — not idempotence — so it stays fast, does not double the suite's
-evaluation cost, and remains correct for whatever pre-constanic nodes the corpus's
-non-settling cases leave behind (§2.1).
+**T7 — Line width (§4.1).** A construct exceeding the configured width at its indent breaks
+across lines with its body indented; nesting reduces the budget by the indent; a non-default
+width changes where breaks fall. Plus §4.1's three exceptions rendering intact rather than
+mangled: an unsplittable long atom, an annotated line pushed over by its `!!`, and echoed
+over-width source. **Not** a corpus-wide width assertion — §4.1 says why.
 
-**T4 — Einmo baselines (migration).** Only after T0–T3 pass: all 179 existing `foolish-ubca2`
-cases re-render. Every one must go through the Promotion Review Gate. **This is the bulk of
-the work and the plan phases it accordingly** (one review sub-phase per suite subdirectory, not
-one 179-item list), because a gate whose boxes are checked faster than the cases could be read
-is a false record — `foop.md` §"Promotion Review Gate".
+**T8 — Separator safety and comment style (§4.2).** The renderer never emits `①` (U+2460)
+anywhere — chiefly via an NK reason containing one, which §5 collapses to a space. Plus a check
+that every `.foo` input this FOOP authors follows §4.2's layout rules (blank line before a
+full-line comment and none after; blank lines both sides of a `!!!` fence).
 
-**T7 — Line width (§4.1).** Unit tests that a construct exceeding 108 characters at its
-indent level breaks across lines with its body indented, and that nesting reduces the budget by
-the indent. Plus the three stated exceptions: an unsplittable long atom, an annotated line, and
-echoed over-width source each render intact rather than mangled. **Not** a corpus-wide width
-assertion — see §4.1.
+**T9 — Flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation and on renders
+`a = 1/0;  !! NK: …`, the *expression* identical under both. A non-default `width` changes line
+breaking. The einmo adapter uses the defaults, so the corpus is reproducible.
 
-**T8 — Comment style and separator safety (§4.2).** A unit test asserting the renderer never
-emits the configured separator `①` (U+2460) anywhere in its output — chiefly via an NK reason
-containing one, which §5 collapses to a space. Plus a check over every `.foo` input this FOOP
-authors that the §4.2 layout rules hold (blank line before a full-line comment and none after;
-blank lines both sides of a `!!!` fence).
+### Group B — the suite as a fit replacement
+
+*These exist because `einmo_suite2` inherits the old suite's job. A rendering bug caught by
+Group A is a bug; a coverage or integrity gap caught here would be a silently weaker test
+suite, which is worse.*
+
+**T3 — Corpus-wide parse.** One test walking every `einmo_suite2/input/**/*.foo`: evaluate,
+render in `Foolish` mode, assert the result **parses**. §2's Property 1 across the whole corpus
+— the cheapest broad guard against a rendering that is locally fine and globally unparseable.
+Parse-ability only, not idempotence, so it stays fast and stays correct for non-settling cases.
+
+**T4 — Baseline review and promotion.** The 179 inputs are copied into `einmo_suite2` and
+rendered under the new sequencer; every one goes through the Promotion Review Gate before
+becoming `einmo_suite2/checked/`. **This is the bulk of the work** and the plan phases it
+accordingly — one review sub-phase per suite subdirectory, never one 179-item list, because a
+gate whose boxes are checked faster than the cases could be read is a false record
+(`foop.md` §"Promotion Review Gate").
 
 **T5 — `foolish-ubca` untouched.** `cargo test -p foolish-ubca --lib -- einmo_gate_checked`
-must pass unchanged, before and after. This is the non-regression invariant, and here it
-should hold *trivially* — if it does not, this FOOP has modified shared code it promised not
-to, and that is a stop-and-report condition.
+passes unchanged, before and after. It should hold *trivially*; if it does not, this FOOP has
+modified shared code it promised not to — stop and report.
 
-**T6 — Comprehensive case.** `foolish-ubca2/einmo_suite/input/foop/36/comprehensive.foo`,
-exercising at least one path through every §3 row plus the §4/§5 annotation rules together.
+**T5b — `einmo_suite` untouched.** The old suite's three gates — including
+`einmo_gate_verified` against its 179 human-signed artifacts — pass unchanged throughout. A
+moved baseline there means something re-rendered the frozen reference.
+
+**T6 — Comprehensive case.** `einmo_suite2/input/foop/36/comprehensive.foo`, exercising at
+least one path through every §3 row plus §3.2, §4, §4.1 and §5 together, with its expected
+output hand-written before running (as T0).
+
+**T10 — Coverage parity.** `einmo_suite2` contains an input for **every** input in
+`einmo_suite` — same relative paths, same count (179), plus this FOOP's own two cases. A
+mechanical check, because "the new suite quietly tests less than the old one" is the failure
+mode that would matter most and is invisible from a green run.
+
+**T11 — Suite integrity.** `einmo_suite2` satisfies einmo's own soundness checks at each
+validation level (`results.integrity.is_clean()`), its gates serialize against `einmo_suite`'s
+under the shared `GATE_LOCK`, and its `einmo.toml` is configured as §4.2 requires — separator
+`①`+LF, distinct `checked` passphrase, `verified` left unconfigured so a human must type one.
+
+**T12 — Value non-regression across the cut-over.** For every one of the 179 cases, the
+*values* in `einmo_suite2`'s output match those in `einmo_suite`'s frozen `checked/`. The
+rendering changes; the program's meaning must not. A `12` that became a `13`, or a settled case
+that became NK, is a bug in this FOOP and not a new baseline. Mechanical where the shapes allow
+and by reading where they do not — this is what the Phase 6 review is *for*, and T12 is its
+statement as a requirement.
 
 ## Plan of Execution for Plan
 
@@ -995,30 +1067,21 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   provenance marking or a new accessor. And because every rendered search is one the next
   compiler will **re-coordinate**, nothing is lost by printing it — §3.1 states that
   explicitly. **No FIR change; nothing left for Phase 1 to decide beyond Q2.**
-- **Q6. `verified/` is populated — how should the re-signing be handled?** (Verified
-  2026-09-02: 179 signed artifacts present, `einmo_gate_verified` green.) This FOOP re-renders
-  every one of them, which will break that gate, and only a human key can restore it. The
-  human must choose, before Movement III:
-  - **(a)** Re-attest after review — the human runs
-    `einmo promote checked to verified foolish-ubca2/einmo_suite --interactive` once the new
-    baselines are reviewed and promoted. Most faithful; costs a human review pass over 179
-    cases.
-  - **(b)** Land the FOOP with `einmo_gate_verified` red, re-attesting later as a separate,
-    scheduled act. Keeps the failure visible and honest, but leaves the tree's highest-trust
-    gate failing for a period — which AGENTS.md's "never start Phase+ work when tests are
-    broken" rule then makes awkward for whatever comes next.
-  - **(c)** Split: re-attest a representative subset immediately, the rest on a schedule.
+- **Q6 — RESOLVED (human, 2026-09-02), and largely defused by the replacement approach.** The
+  original concern: `foolish-ubca2/einmo_suite/verified/` holds 179 human-signed artifacts and
+  its gate passes today (measured 2026-09-02), so re-rendering those baselines in place would
+  break a frozen tier that only a human key could restore.
 
-  **RESOLVED (human, 2026-09-02): option (a) — the human mass-verifies after the agent has
-  reviewed.** The agent works the Promotion Review Gate case by case and promotes
-  `output` → `checked` as normal; the human then re-attests `checked` → `verified` for the
-  whole suite in one pass. So `einmo_gate_verified` is red between Movement III and that
-  re-attestation, and that is expected and accepted.
+  **Building `einmo_suite2` alongside removes that problem entirely** — `einmo_suite`'s
+  `verified/` tier is never touched and its gate keeps passing (§Motivation "The suite is
+  replaced, not edited"; §Test Plan T5b).
 
-  Two things this does NOT license. The agent still may not `#[ignore]` the gate (AGENTS.md —
-  and this FOOP is exactly the case that rule anticipates), and the human's mass verification
-  is **downstream of a real per-case review, not a substitute for one**: it presumes the agent
-  has already justified each case, which is the gate's whole point.
+  What remains is the *new* suite's attestation, which is an ordinary new-suite question:
+  `einmo_suite2/verified/` starts empty. The human's decision stands — **the agent reviews and
+  promotes `output` → `checked` case by case, and the human then mass-verifies
+  `checked` → `verified` in one pass.** Until that pass, `einmo_suite2` has no verified tier.
+  **The agent must not `#[ignore]` a Verified-tier gate** (AGENTS.md), and the human's
+  mass-verify is downstream of a real per-case review, never a substitute for one.
 - **Q7. Does a trailing use site render its value or revert to a search?** §3 says a constanic
   search reverts to the written search; a constant renders as its value. A bare trailing `s;`
   (as in `misc/sff_resolves_on_each_use`, `{a=1; b=2; s=<<a+b>>; a=10; s;}`) is one or the
@@ -1079,6 +1142,23 @@ comment style and the per-suite separator. **§5** derives NK's rendering from �
 (`1/0`, never `???`), with `comment_nk` as a flag; **§5.1** distinguishes constanew from
 conclusive. **§6** keeps `Detailed` delegating unchanged to `foolish_core::FirSequencer`, so
 `foolish-ubca` cannot regress.
+
+**The suite is REPLACED, not edited.** `einmo_suite2` is built to become `foolish-ubca2`'s
+approval suite: the 179 inputs are copied across and rendered anew, and **the cut-over happens
+at the end of the project** — `cargo test` points at the old suite throughout Movements I and
+II, so the development procedure does not change until Movement III. `einmo_suite` is then left
+frozen and still green as the reference to diff against, and this FOOP does everything except
+remove it. That also defuses Q6: the old `verified/` tier is never disturbed.
+
+**The Test Plan is split in two**, because the new suite inherits the old one's job. **Group A**
+proves the sequencer (T0 hand-written contract, T1 per-row units covering both sides of §3's
+predicate, T2 six-step round trip over a variety of constanic states, T2b pre-constanic, T7
+width, T8 separator safety, T9 flags). **Group B** proves the suite is a fit replacement (T3
+corpus-wide parse, T4 baseline review, T5/T5b non-regression for `foolish-ubca` and the frozen
+old suite, T6 comprehensive, **T10 coverage parity**, **T11 suite integrity**, **T12 value
+non-regression across the cut-over**). T10 and T12 exist because "the new suite quietly tests
+less" and "a value changed, not just its rendering" are the failure modes invisible from a
+green run.
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
 Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constanew).
