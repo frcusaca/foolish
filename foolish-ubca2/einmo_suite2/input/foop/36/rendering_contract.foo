@@ -50,6 +50,8 @@
     unanchored_miss = missing;            !! unanchoredˍmiss = missing, ECONSTANIC
     value_hit = base?=5;                 !! valueˍhit = 5
     value_miss = base?=8;                !! valueˍmiss = base?=8, with NK reason
+    woconstanic_base = {y = missing;};
+    woconstanic_hit = woconstanic_base?y; !! woconstanicˍhit = woconstanicˍbase?y, WOCONSTANIC
   };
 
   !!!
@@ -86,6 +88,14 @@
     x = 10;
     sf;                                  !! trailing result = 1
     sff;                                 !! trailing result = 10
+  };
+
+  !! A simpler substitution: a resolved search used at a later position
+  !! renders its captured value, not the search that produced it.
+  simple_substitution = {
+    base = {y = 5;};
+    found = base?y;
+    later = found;                       !! trailing use renders the captured value, 5
   };
 
   !!!

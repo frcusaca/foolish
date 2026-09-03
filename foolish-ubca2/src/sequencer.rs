@@ -979,6 +979,50 @@ mod tests {
         );
     }
 
+    /// T2b's fourth case: a program halted MID-STEP, short of the iteration
+    /// cap that settles it NK (that settled case is covered separately by
+    /// `foolish_iteration_alarm_is_a_parseable_nk_annotation`). A bounded,
+    /// small number of steps on the same self-referential program leaves the
+    /// root pre-constanic — the renderer must still produce parseable
+    /// output with no state token as syntax, and must NOT assert
+    /// idempotence (§2.1 does not require it of pre-constanic FIR).
+    #[test]
+    fn foolish_mid_step_snapshot_renders_without_settling() {
+        let mut storage = FVMStorage::new();
+        let roots = compose_program_with_system(&mut storage, "{\n  f1 = { f1 }\n  stuck = f1;\n}")
+            .expect("source compiles");
+        let root = roots[0];
+
+        for _ in 0..5 {
+            root.step(&mut storage);
+        }
+        assert!(
+            !storage.get_nyes(root).is_constanic(),
+            "a handful of steps on a self-referential program must not have reached the \
+             iteration cap yet — this is a genuine mid-step snapshot, not the settled case"
+        );
+
+        let rendered = Ubca2Sequencer::format(&storage, root, SequenceMode::Foolish);
+        for token in [
+            "PREMBRYONIC",
+            "EMBRYONIC",
+            "BRANING",
+            "ECONSTANIC",
+            "WOCONSTANIC",
+        ] {
+            assert!(
+                !rendered.lines().any(|line| line
+                    .split("  !!")
+                    .next()
+                    .unwrap_or(line)
+                    .contains(token)),
+                "state leaked into source syntax via {token}: {rendered}"
+            );
+        }
+        compose_program_with_system(&mut FVMStorage::new(), &rendered)
+            .expect("mid-step rendering remains parseable Foolish source (Property 1)");
+    }
+
     #[test]
     fn foolish_iteration_alarm_is_a_parseable_nk_annotation() {
         let (storage, roots) = crate::UbcaEvaluator

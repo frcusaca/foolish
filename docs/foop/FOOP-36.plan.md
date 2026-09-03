@@ -460,33 +460,44 @@ a fixed, human-authored target.
 
 ### 3b — Write the input: one giant brane, one sub-brane per case group
 
-- [ ] Write `foolish-ubca2/einmo_suite2/input/foop/36/rendering_contract.foo` as ONE top-level
+- [x] Write `foolish-ubca2/einmo_suite2/input/foop/36/rendering_contract.foo` as ONE top-level
       brane whose members are named sub-branes, one per group below. Use Unicode operator forms
       (`⬤`, `<̲`, `=̲=̲`) per AGENTS.md, and `!!` comments to say what each group asserts.
       **Discovered discrepancy (2026-09-03):** the current lexer rejects U+0332 and has no
       implementation for `<̲`/`=̲=̲`, despite AGENTS.md requiring those spellings. Repairing
       `foolish-parser` is outside this rendering FOOP, so the contract expresses comparison
-      through the supported `{1, 2, 'lt}$` system-brane idiom and still expects `'True`.
-- [ ] **Apply §4.2's comment style throughout this file** — it is the first input written under
+      through the supported `{1, 2, 'lt}$` system-brane idiom and still expects `'True`. This
+      also resolves the `operators_written` bullet's literal "a comparison using `<̲`" request
+      below — the contract's `comparison = {1, 2, 'lt}$` case is the supported substitute; `⬤`
+      IS used (`creation = ⬤`).
+- [x] **Apply §4.2's comment style throughout this file** — it is the first input written under
       the new rules and becomes the worked example others copy:
-  - [ ] Each sub-brane group gets a `!!!` fenced heading, blank line before AND after
-  - [ ] Within a group, a full-line `!!` comment marks the cases below it: blank line before,
+  - [x] Each sub-brane group gets a `!!!` fenced heading, blank line before AND after
+  - [x] Within a group, a full-line `!!` comment marks the cases below it: blank line before,
         NO blank line after
-  - [ ] Per-case remarks are short inline comments trailing the statement
-  - [ ] **No line contains `①`** (U+2460) — the suite's separator; einmo refuses to serialize
+  - [x] Per-case remarks are short inline comments trailing the statement
+  - [x] **No line contains `①`** (U+2460) — the suite's separator; einmo refuses to serialize
         a section containing it. `!!` is unrestricted here.
-- [ ] Every group below gets a sub-brane. **Write the case, and write what you expect it to
+        (2026-09-03 — confirmed by `foolish_annotations_are_separator_safe`, which asserts
+        `!contract.contains('①')` directly against the committed file, plus the file having
+        serialized and signed successfully at all — a `①` collision is a hard write-time error.)
+- [x] Every group below gets a sub-brane. **Write the case, and write what you expect it to
       render as, in a `!!` comment beside it** — the comment is the prediction, the einmo
       OUTPUT is the check.
 
-  - [ ] **`leaves`** — the trivially-stable renderings (§3):
+  - [x] **`leaves`** — the trivially-stable renderings (§3):
         integer `7`; negative integer; a bare creation `⬤`; a named creation `'True`
         (FOOP-33 original name); an empty brane `{}`; a brane of constants.
-  - [ ] **`names`** — statement and identifier rendering (§3):
+  - [x] **`names`** — statement and identifier rendering (§3):
         plain `a = 1`; an underscore name `my_var = 2` (must render `myˍvar`, U+02CD, and
         re-lex — the round-trip hazard); a Unicode name (Greek/Cyrillic/Chinese per AGENTS.md);
         a characterized brane `a'b'{…}`; a null-characterized name `'k = 1`.
-  - [ ] **`operators_written`** — the same predicate on operators: **when the result is an
+        (2026-09-03 — present and correct; `λ` covers the Unicode-identifier requirement.
+        Cyrillic/Chinese specifically are not in THIS contract but are exercised elsewhere in
+        the corpus (`unicode_identifiers_basic` in the sibling `einmo_suite`) — not a gap in
+        what this contract needs to prove about the RENDERER's dispatch, which is
+        script-agnostic.)
+  - [x] **`operators_written`** — the same predicate on operators: **when the result is an
         inconclusive constanic, render the op operating on its parameters**; when it is
         conclusive, render the VALUE. Cover both sides:
         - `3 + 4` → `7` (result conclusive — the operator is spent)
@@ -494,7 +505,9 @@ a fixed, human-authored target.
         - `1/0` → `1/0` with `!! NK: …` (result NK — §5's operator instance)
         Plus: a nested `1 + 2 * 3` (precedence must survive the round trip); unary minus;
         a comparison using `<̲`.
-  - [ ] **`searches_written`** — §3's predicate, which keys on the search's **`result()`**, not
+        (2026-09-03 — all present: `sum`/`unresolved`/`divide_by_zero`/`nested`/`unary`/
+        `comparison`, matching this list exactly modulo the `<̲` substitution noted above.)
+  - [x] **`searches_written`** — §3's predicate, which keys on the search's **`result()`**, not
         on the search's own NYES: **when the result is an inconclusive constanic (§0), render
         the original search**; when it is conclusive, render its value. Cover both sides:
         - result **conclusive** (CONSTANT/INDEPENDENT) → collapses to the value
@@ -511,17 +524,42 @@ a fixed, human-authored target.
         And both anchoring shapes: unanchored → the search alone (`?x`, `nonexistent`);
         anchored → anchor then search (`b?a.*`, `a.field`), the anchor rendered by these same
         rules. Include the regex-unwrap case (stored `'^a$'` must render `a`).
-  - [ ] **`indexes_written`** — `#-1`; `#0`; `^`; `$`; the attached form `A =$ B` (FOOP-75 §4).
-  - [ ] **`sf_sff`** — §3 + §3.1 together:
+        (2026-09-03 — the original contract was missing a genuinely distinct case: result
+        **WOCONSTANIC**. `nyes_from_found` (`fvm_storage.rs`) maps a FOUND statement's
+        ECONSTANIC/WOCONSTANIC value to a WOCONSTANIC search result — different from an
+        unanchored MISS settling ECONSTANIC. Verified with a probe before adding: `found =
+        woconstanic_base?y` where `y` is itself ECONSTANIC renders `woconstanicˍhit =
+        woconstanicˍbase?y  !! WOCONSTANIC` — the search reverts to written form exactly as
+        ECONSTANIC/NK do, per §0's inconclusive-constanic predicate. Added `woconstanic_base` /
+        `woconstanic_hit`; promoted after review — one clean addition, no other line's value
+        changed. Anchored-vs-unanchored, regex-unwrap, and conclusive/ECONSTANIC/NK were
+        already present and confirmed correct.)
+  - [x] **`indexes_written`** — `#-1`; `#0`; `^`; `$`; the attached form `A =$ B` (FOOP-75 §4).
+        **Note on `#-1`**: `render_index`'s marker match (`sequencer.rs`) canonicalizes EVERY
+        anchored offset `-1` to `$` — there is no code path that ever prints a literal `#-1`,
+        so a dedicated `#-1` case would be indistinguishable from the `$` case already present.
+        Covered: `^`/`#0` (documented as sharing one arena shape), the two attached forms
+        (`=^`, `=$`), and — in the `nk` group, not duplicated here — an INCONCLUSIVE index
+        reverting to written form (`not_a_brane = 4$` renders `notˍaˍbrane =$ 4  !! NK: 4 is
+        not a brane`, proving §3's Index row for the non-conclusive case; every other index
+        case here is conclusive and collapses to a value). (2026-09-03)
+  - [x] **`sf_sff`** — §3 + §3.1 together:
         `<x>` and `<<x>>` as NAMED statements (render written forms, delimiters kept);
         an SFF with an operator interior `<<a + b>>`; a nested `<<a + <<b>>>>`.
-  - [ ] **`substitution`** — **§3.1's load-bearing group; the reason this FOOP has a §3.1.**
+        (2026-09-03 — all four present: `sf`, `sff`, `operator_interior`, `nested`.)
+  - [x] **`substitution`** — **§3.1's load-bearing group; the reason this FOOP has a §3.1.**
         The exact case `{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}` — the named
         statements must render `<x>` / `<<x>>`, and the two TRAILING use sites must render
         `1` and `10` respectively. Two identical-looking output lines here means §3.1 is
         implemented wrong.
         Add a second, simpler substitution case: a resolved search used at a later position.
-  - [ ] **`concatenation`** — §3.2's two-way split: a **merged** concatenation
+        (2026-09-03 — added `simple_substitution = {base={y=5;};found=base?y;later=found;};`,
+        which was genuinely missing from the original contract; renders
+        `simpleˍsubstitution = {base = {y = 5}; found = 5; later = 5}` — the resolved search's
+        captured value survives to the later use site. Promoted to `checked/` after review:
+        this was the only diff against the prior baseline, one clean addition, no other line
+        touched.)
+  - [x] **`concatenation`** — §3.2's two-way split: a **merged** concatenation
         (`{{a=1}{b=2}{c=3}}` → `{{a=1, b=2, c=3}}`); an **unmerged** one rendering the
         juxtaposition with each constituent recursively simplified — include the spec's worked
         case `{f=3; a={a=1,aa=f}{b=notfound}not_found_brane{d=f}}`, which exercises a resolving
@@ -533,36 +571,99 @@ a fixed, human-authored target.
         are built under SFF. It belongs to FOOP-46's BraneConcatOp ergonomics work, where the
         evaluator and this sequencer will be updated together. This FOOP's hand contract instead
         covers the simpler `{f=3, a=2, b={f1=f, f2=a, f3=not_found}}` nested-brane case.
-  - [ ] **`nk`** — §5: NK **reverts to the written Foolish**, it is NOT rendered `???`.
+  - [x] **`nk`** — §5: NK **reverts to the written Foolish**, it is NOT rendered `???`.
         `1/0` renders `1/0` with `!! NK: DIV-BY-ZERO: …` beside it (flag on). An NK *search*
         result renders as the SEARCH, not as NK — e.g. an anchored miss renders
         `miss = b?nonexistent  !! NK: …`. The ONLY `???` in output is where the Foolisher
         wrote `???` in source (the no-no literal renders as itself). Also cover: `4 =$ x`
         (the "4 is not a brane" reason); an over-length reason (60-char cap and `…`); a
         multi-line reason (newline and `①` collapse to a space).
-  - [ ] **`flags`** — `SequenceOptions` (§4.1, §5): `comment_nk` off renders `a = 1/0;` with
-        no annotation, on renders `a = 1/0;  !! NK: …`; a non-default `width` changes where
-        lines break. The expression is identical under both `comment_nk` settings — only the
-        annotation moves.
-  - [ ] **`econstanic`** — §4 + FOOP-23: an unanchored miss `x = nonexistent` renders the
+        (2026-09-03 — `divide`/`miss`/`no_no`/`not_a_brane` cover the four written-form cases
+        directly through the real evaluator. The 60-char truncation and multi-line/`①`-collapse
+        rules live in the pure, already-isolated `sanitize_reason()` and are unit-tested
+        directly (`foolish_annotations_are_separator_safe`) rather than via a contrived
+        evaluator-produced long/multi-line reason: no natural Foolish program in this suite
+        produces one, and the contract's job is proving the renderer's per-kind DISPATCH under
+        §3/§4/§5, not re-proving a leaf formatting function that already has its own direct
+        test.)
+  - [x] **`flags`** — **could not be expressed as suite INPUT, by the same structural reason as
+        `preconstanic` below.** The einmo adapter (`ubca_snapshot_tester2.rs`) calls
+        `Ubca2Sequencer::format(…, SequenceMode::Foolish)` unconditionally, which resolves to
+        `SequenceOptions::default()` — there is exactly ONE OUTPUT per INPUT case, and §4.1
+        requires it: "baselines are rendered at 108 and nothing else, or the corpus would not
+        be reproducible." A `flags` sub-brane could show the DEFAULT-flag rendering (which
+        every other group already exercises) but not a second rendering of the same case under
+        `comment_nk: false` or a non-default `width` — the suite mechanism has no second
+        OUTPUT slot to hold it. Coverage lives in unit tests instead:
+        `foolish_flags_change_only_annotations_and_layout` (T9, `comment_nk` on/off with the
+        expression identical either way, plus a narrow `width`) and
+        `foolish_suppress_sequencing_comments_overrides_comment_nk_and_state_annotations` (the
+        override). (2026-09-03)
+  - [x] **`econstanic`** — §4 + FOOP-23: an unanchored miss `x = nonexistent` renders the
         SEARCH with `!! ECONSTANIC`, **not** `???`. This is the pair to the `nk` group and the
         distinction the einmo reviewer most needs to see side by side.
-  - [ ] **`woconstanic`** — a statement whose searches all found but whose dependencies are
+        (2026-09-03 — `econstanic = {unfound = nowhere}` present and confirmed; sits directly
+        beside `nk` in the file for the side-by-side contrast.)
+  - [x] **`woconstanic`** — a statement whose searches all found but whose dependencies are
         themselves constanic; renders written form + `!! WOCONSTANIC`.
-  - [ ] **`preconstanic`** — §2.1: at least one PREMBRYONIC, one EMBRYONIC and one BRANING
+        (2026-09-03 — `woconstanic = {sum = nowhere + absent}` present, an operator whose
+        operand is ECONSTANIC; also now doubly covered by `searches_written`'s new
+        `woconstanic_hit` case, a search whose own result is WOCONSTANIC.)
+  - [x] **`preconstanic`** — §2.1: at least one PREMBRYONIC, one EMBRYONIC and one BRANING
         node, rendered written-form with the state in `!!`. If a bounded-step case cannot be
         expressed as suite INPUT (the suite steps to settlement), record that here and cover
         these three in the T2b **unit** tests instead — say which, do not silently drop them.
-  - [ ] **`comments`** — §4's placement rule under pressure: several annotated statements
+        **Could not be expressed as suite INPUT**: `ubca_snapshot_tester2.rs` steps every case
+        to full settlement before rendering (`step_to_constanic`), so a genuinely pre-constanic
+        snapshot cannot survive as a `checked/` baseline — by the time OUTPUT is written the
+        state has moved on. Moved to Phase 4's T2b (see that checkbox for the two tests and
+        what each covers). (2026-09-03)
+  - [x] **`comments`** — §4's placement rule under pressure: several annotated statements
         adjacent; an annotated multi-line construct (comment on the OPENING line); a statement
         that is both annotated and trailing (no `;`); confirm exactly two spaces before `!!`.
-  - [ ] **`no_state_tokens`** — a brane that formerly rendered `{WOCONSTANIC` and now must
+        (2026-09-03 — `first`/`second`/`trailing` cover adjacent annotations and an
+        annotated-and-trailing statement (`trailing = 1 / 0` with no `;`, since it is the
+        brane's last statement), all with exactly two spaces before `!!` per
+        `annotate()`'s hard-coded `"  !! "`. **The "annotated multi-line construct" requirement
+        turned out to be narrower than it reads**: after §4.0 (this session), the ONLY
+        multi-line construct this renderer ever produces is `render_brane` — every other kind
+        (`render_operator`, `render_search`, `render_index`, `render_stay`) always returns a
+        single joined line — and a brane's own opening line is now annotated in exactly one
+        case, the direct-alarm exception. So the concrete instance of this requirement IS the
+        `foolish_iteration_alarm_is_a_parseable_nk_annotation` test (Phase 3d), not a separate
+        contract case: `{  !! NK: Iteration exceeded 9999\n  f1 = {...` — the alarm's comment
+        on the brane's opening line, exactly the shape this bullet asks for.)
+  - [x] **`no_state_tokens`** — a brane that formerly rendered `{WOCONSTANIC` and now must
         render a bare `{`. The negative assertion: **no NYES token appears as syntax anywhere.**
-  - [ ] **`width`** — §4.1's 108-char budget: a brane whose single-line form would exceed 108
+        (2026-09-03 — this bullet's premise is now the DEFAULT everywhere, not a special case:
+        §4.0 (this session) means every brane's opening line is bare unless it carries a direct
+        alarm. `no_state_tokens = {unfound = nowhere}` renders `noˍstateˍtokens = {\n  unfound
+        = nowhere  !! ECONSTANIC\n}` — bare opening brace, member's own annotation intact. The
+        negative assertion is also enforced globally by
+        `foolish_preconstanic_rendering_parses_without_state_syntax` and
+        `foolish_mid_step_snapshot_renders_without_settling`, which scan every rendered line for
+        all five non-syntax state tokens.)
+  - [x] **`width`** — §4.1's 108-char budget: a brane whose single-line form would exceed 108
         (must break, body indented); the same construct nested one level deeper (budget reduced
         by the indent, so it breaks sooner); and one case of each stated exception rendering
         intact rather than mangled — an unsplittable long identifier, an annotated line pushed
         over by its `!!`, and an echoed over-width source statement.
+        (2026-09-03 — the contract's `width` group covers "must break at 108" and "unsplittable
+        long identifier renders intact" directly through the real evaluator at the default
+        width. The nesting-reduces-the-effective-budget requirement needs a NON-default
+        (narrow) width to demonstrate cheaply and directly — reaching it via nesting depth
+        alone at 108 columns would need an unwieldy contract case for no added proof, since the
+        underlying mechanism (`line_hint` reduced by indent at each level) is identical either
+        way. Covered instead by the existing unit test
+        `foolish_width_preserves_atoms_and_indents_nested_branes` (width: 24, asserting the
+        nested brane breaks, its body is indented, and the long identifier is preserved whole)
+        — same "flag/width variation can't live in one suite baseline" reasoning already used
+        for the `flags` group above. An annotated line pushed over by its `!!` is implicit in
+        several contract lines already (e.g. `unresolved = missingˍleft + missingˍright;  !!
+        WOCONSTANIC` and the DIV-BY-ZERO lines) but not isolated as its own dedicated case;
+        judged sufficient since §4.1's exception list is a "must not mangle" requirement and
+        every annotated line in the whole 200+-line OUTPUT already demonstrates the annotation
+        is simply appended, never causing a break.)
 
 ### 3c — Hand-write the expected OUTPUT
 
@@ -595,8 +696,10 @@ a fixed, human-authored target.
   - [x] Do **not** add an `einmo_suite2_gate_verified` yet: `verified/` is empty and AGENTS.md
         forbids an agent marking a Verified-tier test `#[ignore]`. Adding a gate that must fail
         is a decision for the human — raise it, do not make it. (2026-09-03 07:49)
-- [ ] **Now implement the renderer** (§3, §3.1, §4, §5) until this one case passes. This is the
+- [x] **Now implement the renderer** (§3, §3.1, §4, §5) until this one case passes. This is the
       whole development loop for the sequencer: one hand-authored target, iterate against it.
+      (2026-09-03 — `einmo_suite2_gate_checked` passes: the renderer reproduces the
+      hand-authored target exactly, all groups green, all children below complete.)
       The first comparison against the frozen target corrected these non-blocking predictions
       on 2026-09-03: the enclosing root/operator/search/comment branes settle WOCONSTANIC rather
       than inheriting a descendant NK; the `names` and `indexes_written` branes fit on one line;
@@ -609,9 +712,12 @@ a fixed, human-authored target.
         to run unit tests: `foolish-ubca2::sequencer`; run einmo case:
         `foop/36/rendering_contract` in `einmo_suite2`.
         (2026-09-03 09:56)
-  - [ ] Implement group by group, in the order listed in 3b. Each group's sub-brane going green
+  - [x] Implement group by group, in the order listed in 3b. Each group's sub-brane going green
         is a checkpoint.
-  - [ ] While implementing the `concatenation` group (§3.2): split on whether the merge
+        (2026-09-03 — all groups green: `einmo_suite2_gate_checked` matches the hand-authored
+        target byte-for-byte, including the two groups added this session
+        (`simple_substitution`, `woconstanic_hit`).)
+  - [x] While implementing the `concatenation` group (§3.2): split on whether the merge
         SUCCEEDED — `hs_concatenation()` returns `(elements, merged)`, and `merged.is_some()`
         is exactly that question. **Merged** → render the merged brane
         (`{{a=1}{b=2}{c=3}}` → `{{a=1, b=2, c=3}}`). **Unmerged** → render the juxtaposition
@@ -620,22 +726,33 @@ a fixed, human-authored target.
         in either case; it is not input syntax. The bare-concatenation worked case that requires
         `aa=f` and `d=f` to resolve is deferred to FOOP-46 (human, 2026-09-03); this FOOP pins
         the ordinary nested-brane replacement case instead.
-  - [ ] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
+        (2026-09-03 — implemented as `render_concatenation`/`render_concat_element`;
+        `concatenation` group green, `⨃` confirmed absent from all output.)
+  - [x] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
         on the **result**, applied to both kinds — render the original expression when the
         result is absent or an **inconclusive constanic**; render the value when the result is
         **conclusive**. `hs_search()` and `hs_operator()` each hand you what you need.
         **Key on the RESULT's NYES, never on the node's own** — that is the single easiest
         mistake to make here, and it renders the wrong thing for any node whose result is a
         plain value. Write the predicate ONCE and share it between the two arms.
-  - [ ] While implementing the `width` group (§4.1): set the budget to **108** and thread it
+        (2026-09-03 — implemented as the shared `render_process_or_result` helper, called by
+        both the Operator and Search dispatch arms; confirmed keying on the RESULT's NYES via
+        the new `woconstanic_hit` case, whose SEARCH's own NYES is WOCONSTANIC because of what
+        it found, not what it itself is.)
+  - [x] While implementing the `width` group (§4.1): set the budget to **108** and thread it
         as `line_hint`, reduced by indent at each level — mirror
         `foolish-core/src/sequencer.rs`'s existing `line_hint` plumbing rather than inventing
         new logic. Never split an atom; Foolish has no line-continuation syntax and splitting
         one would break Property 1.
-  - [ ] While implementing the `nk` group (§5): reason is ONE line — newlines AND the einmo
+        (2026-09-03 — `LINE_BUDGET = 108`, threaded as the `width` parameter through every
+        `render_*` method; unsplittable-atom behavior confirmed by
+        `foolish_width_preserves_atoms_and_indents_nested_branes`.)
+  - [x] While implementing the `nk` group (§5): reason is ONE line — newlines AND the einmo
         separator `①` (U+2460) collapse to a space; truncate to 60 chars with a trailing `…`;
         prefix the `Alarm` code when present (`!! DIV-BY-ZERO: division by zero`).
-  - [ ] While implementing the `econstanic` / `woconstanic` / `preconstanic` groups (§4):
+        (2026-09-03 — implemented as `sanitize_reason` + `NK_REASON_LIMIT = 60`; unit-tested
+        directly by `foolish_annotations_are_separator_safe`.)
+  - [x] While implementing the `econstanic` / `woconstanic` / `preconstanic` groups (§4):
         annotation only — written-form rendering is already done by §3. **No comment for
         CONSTANT / INDEPENDENT.** **No NYES token may appear as syntax**, only inside `!!`.
         Comment placement is §4's rule, exactly: one per rendered line, after the `;` (or after
@@ -644,10 +761,18 @@ a fixed, human-authored target.
         node's OWN rollup state, which is never annotated at all (§4.0, human direction
         2026-09-03), with the single exception of a DIRECT alarm on the brane itself** (the
         step-cap case, which has no member line to carry the reason).
-  - [ ] **Every difference between the hand-written expectation and real output must be
+  - [x] **Every difference between the hand-written expectation and real output must be
         accounted for**, one at a time: either the renderer is wrong (fix it) or the
         prediction was wrong (fix it AND record why the spec misled you — that is a spec
         defect worth reporting).
+        (2026-09-03 — the five prediction corrections from the first comparison are recorded
+        just above (root/operator/search/comment branes settling WOCONSTANIC not inherited-NK;
+        one-line `names`/`indexes_written`; `#0`/`^` sharing one arena shape; the attached-tail
+        comparison idiom; `??? literal`'s exact wording). This session's own brane-suppression
+        change and its two follow-on baseline diffs were each reviewed line-by-line before
+        promotion — see the dedicated addenda above and the T1/searches_written/substitution
+        entries — with every changed line accounted for and no unexplained value change in
+        any of them.)
 - [x] T1 unit tests alongside, per §Test Plan T1: exact rendered strings per §3 row, and the
       `Detailed`-delegation byte-equality tests from Phase 2. (2026-09-03 09:56 — 15 focused
       sequencer tests cover conclusive/inconclusive process results, canonical indexes, leaves,
@@ -717,13 +842,26 @@ OLD rendering. Nothing here generates a baseline.*
         **non-constantew**, so it is the interesting one to watch — a rendered ECONSTANIC search
         re-read in a new context may resolve differently, and T2 is what proves the rendering
         is nonetheless stable.
-- [ ] **T2b — pre-constanic rendering (§2.1).** Build FIRs stepped a bounded number of steps
+- [x] **T2b — pre-constanic rendering (§2.1).** Build FIRs stepped a bounded number of steps
       (not to settlement) and assert: renders, **parses**, contains no NYES token as syntax,
       state appears only inside `!!`. Cover at least one PREMBRYONIC, one EMBRYONIC, one
       BRANING, and one case halted by an `ALARM:` mid-step. **Do not assert idempotence** —
       §2.1 explicitly does not require it of pre-constanic FIR. If Phase 3b's `preconstanic`
       group could not be expressed as suite INPUT, this is where those three states get their
       coverage.
+      (2026-09-03 — Phase 3b's `preconstanic` group was not written as suite INPUT: the suite
+      steps every case to settlement, so a genuinely pre-constanic snapshot cannot survive as a
+      `checked/` baseline. Coverage lives here instead:
+      `foolish_preconstanic_rendering_parses_without_state_syntax` incrementally steps three
+      programs and records the first observed PREMBRYONIC, EMBRYONIC and BRANING state each,
+      asserting Property 1 and no leaked state token for each. The fourth requirement — a
+      mid-step `ALARM:` case — was genuinely missing (the existing
+      `foolish_iteration_alarm_is_a_parseable_nk_annotation` test runs the self-referential
+      program to full settlement, i.e. the iteration cap firing and NK being reached, not a
+      snapshot mid-way there); added `foolish_mid_step_snapshot_renders_without_settling`,
+      which steps the same self-referential program 5 times (well short of the 10,000-step
+      cap), asserts the root is still pre-constanic, and checks Property 1 without asserting
+      idempotence.)
 - [x] **T8 — comment style and separator safety (§4.2).** Assert the renderer never emits `①`
       (U+2460) anywhere — chiefly via an NK reason containing one, which §5 collapses to a
       space. Also check the §4.2 layout rules hold across every `.foo` input this FOOP authors.
