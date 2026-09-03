@@ -660,7 +660,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{AstnCompilerExt, ANON_STMT_NAME};
+    use super::{ANON_STMT_NAME, AstnCompilerExt};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
