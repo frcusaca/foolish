@@ -892,7 +892,18 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Extended §MISC "Concluding Paragraphs Are an Index, Not a Summary" with a SECOND
+**Changes**: Added §MISC "Bold Marks a Short Span — Use a Bolded Separator, Not a Bolded
+Paragraph", placed after "Concluding Paragraphs Are an Index…" and before "When in Doubt", since
+it governs the VISUAL FORMATTING of the same reports those two subsections describe. Bold marks a
+SHORT span the eye should land on — a header, a label, a key phrase — and is not a way to raise
+the volume of a paragraph. A multi-line bolded paragraph is difficult to read: bold loses its
+emphasis applied to a whole block, and the block becomes heavier and harder to scan than plain
+text. This applies squarely to the **orienting introduction** of the "Lead With the Most Important
+Information" subsection — write it in PLAIN prose, and set it off with a short bolded separator
+line (`----`) instead, which marks the boundary without a wall of bold. Section headers, by
+contrast, SHOULD be bolded, one line, sentence-capitalized (not Title Case, not ALL CAPS), per the
+human's own worked example: **A — The sequencer is built and green**. Prior entry: extended §MISC
+"Concluding Paragraphs Are an Index, Not a Summary" with a SECOND
 kind of marker and renamed the heading to "… — Logical Labels and Positional Markers". A brief
 lead-in now distinguishes the two: **logical labels** (A, B, C, D) mark sections the agent
 DELIBERATELY structured, knowing in advance what it needed to discuss; **positional markers**
@@ -1136,6 +1147,26 @@ SESSION's reference; they need not be globally consistent, nor resumable across 
 is the same "rare, distinctive sequential strings" requirement as above, for the same reason: a
 marker that also occurs in ordinary prose or in the code under discussion cannot be scrolled
 back to, because the reader's eye and their terminal search both land on the wrong thing.
+
+#### Bold Marks a Short Span — Use a Bolded Separator, Not a Bolded Paragraph
+
+**Bold marks a SHORT span the eye should land on** — a header, a label, a key phrase. It is not
+a way to raise the volume of a paragraph.
+
+**Never bold a multi-line paragraph.** Several lines of bold text are difficult to read: bold
+loses its emphasis when it is applied to a whole block, and the block becomes visually heavy and
+harder to scan than plain text would have been. This applies squarely to the **orienting
+introduction** of §"Lead With the Most Important Information" — write that introduction in
+PLAIN prose.
+
+**To set the introduction off, use a short bolded separator line instead** — a small rule, `----`,
+bolded. The separator does the visual work of marking the boundary without making the reader
+wade through a wall of bold.
+
+**Section headers SHOULD be bolded, on one line, and sentence-capitalized** — not Title Case, not
+ALL CAPS. The worked example, exactly right:
+
+> **A — The sequencer is built and green**
 
 #### When in Doubt
 
