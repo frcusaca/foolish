@@ -273,58 +273,26 @@ results (shared or preserved CONSTANT/INDEPENDENT), NK results (many write sites
 ECONSTANIC/WOCONSTANIC results (via SF and the found-value paths). No arm is dead code, and the
 `einmo_suite2` cases must cover each. Phase 1 confirms the distribution empirically.
 
-##### §0.1.2 One predicate per group, so call sites stop hand-rolling `matches!`
+##### §0.1.2 The predicates — see FOOP-56
 
-§0 names four NYES groups. Three already have predicates; **conclusive does not**, and its
-absence shows: `foolish-ubca2/src/fvm_storage.rs` hand-rolls
-`matches!(nyes, Nyes::Constant | Nyes::Independent)` at **five** sites — 818, 2007, 3739, 3810
-and 3950 — each one a conclusive test written longhand, each one a place a reader must decode
-the state list rather than read a name.
+§0's four groups each have a predicate on `foolish-ubca2`'s `NyesExt`:
 
-Current state, verified 2026-09-02:
+| Group | Predicate |
+|---|---|
+| Pre-constanic | `is_preconstanic()`, with **`is_nye()`** as an alias |
+| Constanic | `is_constanic()` |
+| Constantew | `is_constantew()` |
+| Conclusive | `is_conclusive()` |
 
-| Group | Predicate | Where | Status |
-|---|---|---|---|
-| Pre-constanic | **`is_preconstanic()`**, with `is_nye()` as an alias | `NyesExt` (added by this FOOP) | `foolish-core::Nyes::is_nye()` exists at `fir.rs:143` but has **zero callers** |
-| Constanic | `is_constanic()` | `fir.rs:136`, and `NyesExt` | exists |
-| Constantew | `is_constantew()` | `NyesExt` (`nyes_ext.rs:29`) | exists |
-| **Conclusive** | **`is_conclusive()`** | `NyesExt` (added by this FOOP) | **missing today** |
-| (constanic, not NK) | `is_nnk_constanic()` | `fir.rs:148`, and `NyesExt` | exists — a refinement, not one of the four |
+**`is_preconstanic()` and `is_conclusive()` are added by [FOOP-56](FOOP-56.md)**, which is
+scheduled to land **before** this FOOP. That FOOP also replaces the five hand-rolled
+`matches!(nyes, Nyes::Constant | Nyes::Independent)` conclusive tests in `fvm_storage.rs`
+(lines 818, 2007, 3739, 3810, 3950) with named calls, and qualifies every bare "settled" with
+its group — the survey in §0.1 above is what it works from.
 
-So the work is two methods on **`NyesExt`** (`foolish-ubca2/src/nyes_ext.rs`), beside the
-existing `is_constanic()` and `is_constantew()` — not in `foolish-core`, which the scope guard
-puts off-limits:
-
-```rust
-/// Pre-constanic (nigh): PREMBRYONIC, EMBRYONIC, BRANING — still stepping.
-fn is_preconstanic(&self) -> bool {
-    !self.is_constanic()
-}
-
-/// Not Yet Evaluated — the older name for the same group. An alias, kept so
-/// the traditional Foolish vocabulary still reads.
-fn is_nye(&self) -> bool {
-    self.is_preconstanic()
-}
-
-/// Conclusive: the FIR reached a value — CONSTANT or INDEPENDENT (FOOP-36 §0).
-/// Distinct from `is_constantew()`, which also admits NK: NK is constant
-/// everywhere yet never produced a value.
-fn is_conclusive(&self) -> bool {
-    matches!(self, Nyes::Constant | Nyes::Independent)
-}
-```
-
-**`is_preconstanic` is the primary; `is_nye` delegates to it**, so the four groups read
-uniformly (`is_preconstanic` / `is_constanic` / `is_constantew` / `is_conclusive`) while the
-traditional name still works. This costs nothing at existing call sites:
-`foolish_core::Nyes::is_nye()` has **zero callers anywhere in the workspace** (verified
-2026-09-02), so `NyesExt`'s method shadows nothing in practice and `foolish-core` need not be
-touched.
-
-The five hand-rolled sites then become `.is_conclusive()` calls, which is what makes line 818's
-rule legible: an operator queues its foolish children unless every one is **conclusive** —
-saying so in a word rather than in a state list.
+This FOOP's renderer should **use those predicates** rather than hand-rolling state lists. If
+FOOP-56 has not landed, §3's rule still stands — it is stated in §0's vocabulary, which is
+independent of what the code calls things.
 
 **Group 3 — "settled" = the outcome of a classification**Group 3 — "settled" = the outcome of a classification, spanning several groups.** Here
 "settled" names *the state being computed*, not a test.
@@ -356,18 +324,15 @@ which group is meant. The remedy is a **descriptor**, not a replacement:
 there is nothing to call, so a verb form like `are_all_settled()` does not apply. As a boolean
 binding the idiomatic Rust name is a noun phrase, hence `all_foolish_children_conclusive`.
 
-**The plan does these renames in Phase 0.5, deliberately placed FIRST and marked fail-early.**
-They are mechanical and behaviour-free, so the phase either lands cleanly and 134/134 still
-passes, or it is cancelled at a stated decision point at no cost to the rest of the FOOP.
-Placing it first is the point: `foolish-ubca2` is being edited concurrently by FOOP-26 and
-FOOP-46, so a ~20-site rename either lands before they diverge or becomes a merge problem.
-
-The same phase corrects `lib.rs` line 24's claim that `NyesExt` adds `is_settled()`, which it
-does not.
+**[FOOP-56](FOOP-56.md) does these renames**, along with adding the two missing predicates
+(§0.1.2) and correcting `lib.rs` line 24's claim that `NyesExt` adds `is_settled()`. It is
+scheduled to land **before** this FOOP, so that the vocabulary exists in the code this FOOP
+describes — and because `foolish-ubca2` is edited concurrently by FOOP-26 and FOOP-46, so a
+~20-site rename is far cheaper before they diverge.
 
 Whatever the code ends up calling things, §3's rule is stated over *conclusive* and
-*inconclusive constanic* — each naming exactly one group — so this FOOP does not depend on the
-rename succeeding.
+*inconclusive constanic* — each naming exactly one group — so this FOOP does not depend on
+FOOP-56 landing first.
 
 ### §1 Two modes, one entry point
 
@@ -1316,11 +1281,8 @@ green run.
 §0.1 surveys all 134 uses of "settled" in `foolish-ubca2` and classifies each by NYES group;
 §0.1.1 establishes that `settled_result` means **constanic** (not constantew — the StayFoolish
 path at 902–904 admits ECONSTANIC/WOCONSTANIC), so all three arms of §3's predicate are
-reachable. §0.1.2 completes the predicate set: all four groups get a `NyesExt` method
-(`is_preconstanic` with `is_nye` as an alias, and the new `is_conclusive`), so the five
-hand-rolled `Constant | Independent` matches in `fvm_storage.rs` become named calls. The
-renames and predicates are done in the plan's **Phase 0.5**, placed first and explicitly
-skippable.
+reachable. §0.1.2 lists the predicate per group; the two missing ones and all the renames were split into
+**FOOP-56**, scheduled to land before this FOOP.
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
 Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constantew).

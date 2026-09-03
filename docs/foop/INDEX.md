@@ -72,6 +72,10 @@ ls | rev | sort -V | rev
 | [FOOP-85](FOOP-85.md) | The einmo Foolish separator collides with Foolish block comments | Draft | meta | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-95](FOOP-95.md) | Add Embryonic and Resequencing EINMO Sections | Draft | phase-2 | 2026-08-08 | Sisyphus / claude-opus-5 |
 | [FOOP-16](FOOP-16.md) | foolish-ubca2 — arena-backed FIR storage via copy-migration | Draft | phase-2 | 2026-08-30 | Claude Code / claude-sonnet-5 |
+| [FOOP-26](FOOP-26.md) | Carrying FOOP-55's semantics onto foolish-ubca2 — marks, concatenation-as-operator, and the three-beat step | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
+| [FOOP-36](FOOP-36.md) | A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
+| [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
+| [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 
 ---
 
@@ -248,7 +252,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md)
 
 ### phase-5
 
@@ -354,6 +358,31 @@ parallel worktrees will merge with friction (see P4). Order and why:
    tracks: a search *prefilter* (Track 2's engine) plus clone/recoordination machinery
    (Track 3), and it consumes 93's `EconstanicReason::Detached`. Schedule after both tracks'
    cores merge.
+
+### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26.
+
+All three edit `foolish-ubca2`, most of it the same file (`fvm_storage.rs`), so they cannot run
+in parallel worktrees. The order is dependency-driven, not preference:
+
+1. **FOOP-56** — NYES groups: one predicate per group (`is_preconstanic` with `is_nye` as its
+   alias, `is_constanic`, `is_constantew`, `is_conclusive`) and every bare "settled" qualified
+   with the group it means. **First because it is vocabulary the other two are written in**,
+   and because it is a ~20-site rename that is far cheaper before the others diverge from
+   `jia`. No behaviour change; the crate is 134/134 either side.
+2. **FOOP-36** — the Foolish-rendering sequencer: `foolish-ubca2` gets its own sequencer whose
+   default mode renders FIR as parseable Foolish, and `einmo_suite2` replaces `einmo_suite` as
+   the crate's approval suite. **After 56** because its central rule is stated over
+   *conclusive* and *inconclusive constanic*. **Before 26** because 26 moves the same 179
+   baselines for *semantic* reasons: with rendering already in Foolish, 26's diffs are readable
+   as language rather than as FIR dumps, and its reviewers can predict expected output from its
+   own spec. FOOP-36 moves no FIR, no step rule and no step count, so it costs 26 nothing.
+3. **FOOP-26** — marks, concatenation-as-operator, the three-beat step. Last: it is the only
+   one of the three that changes what programs *mean*, so it should land onto a suite that is
+   already readable and a vocabulary that is already settled.
+
+**FOOP-46** (BraneConcatOp) overlaps FOOP-26's concatenation work and FOOP-36 §3.2's
+concatenation *rendering*; sequence it against this track rather than in parallel — see its own
+references.
 
 ### Track 4 — independent, parallel with Tracks 2/3.
 
@@ -467,335 +496,15 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-08-30
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added **FOOP-16** — *foolish-ubca2 — arena-backed FIR storage via copy-migration*:
-proposes a new `foolish-ubca2` crate, copy-migrated from `foolish-ubca` and moved onto a
-`u32`-indexed arena (`FVMStorage`/`FirPointer`) in place of `Rc<RefCell<dyn Fir>>`/`Weak`,
-validated case-by-case against `foolish-ubca`'s existing (untouched) einmo `checked/` baselines
-via the crate-agnostic `einmo::Evaluator` trait. Noted in passing: **FOOP-06** (sort key 60,
-`Generate to output.gen...`) predates this entry but was never added to this index — a
-pre-existing gap, left unfixed here since it is out of this edit's scope.
-**Foolish Resequencer** emitting **parsable** Foolish from the FIR tree (**RESEQUENCED**) plus
-a new **normalization**, checked by two equalities (fidelity to the normalized input;
-idempotence of resequence∘parse), which turns the whole corpus into a round-trip property test
-of the parser/FIR-gen phases. Creation *identity* (`⬤`) is explicitly outside what a
-round-trip can restore. It also repairs a real defect found while specifying it:
-`ConcatenationFir::stmt_count` **mutates** (it forces the concatenation join), disagreeing
-with its own `stmt_at`/`_search_brane` siblings which both guard and decline — split into a
-pure `stmt_count` and an explicit `ensure_joined_stmt_count`, ~20 call sites classified
-individually. Section order becomes `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT,
-COMMENTS, STAMPS`; the new sections MUST join `einmo/src/compare.rs`'s always-compared set or
-they are written but never diffed. Rewrites every baseline behind two human-gated inspections.
-
-Added a new **## Ergonomics** section to the roadmap, grouping the
-surface-syntax / developer-experience FOOPs that share the lexer-parser-sequencer layer rather
-than the FIR machinery: **FOOP-65** (tail concatenator), **FOOP-75** (assignment attached
-searches), **FOOP-95**. Records the ordering (95 → 65; 75 independent) and the token-addition
-coordination between 65 and 75.
-
-**Revised FOOP-65's entry**: the separate `TailConcatenationFir` is **withdrawn** in favour of
-a `ConcatProvenance` flag on the existing `ConcatenationFir` (the separate-FIR design became
-Rejected Alternative C); precedence and the reversal resolve in `build_fir`; the flag affects
-**sequencing only, never evaluation**, rendering backtick form only while all constituents are
-embryonic. FOOP-65 now depends on FOOP-95. Added FOOP-75 and FOOP-95 to the phase-2 list
-(FOOP-75 had been missing).
-
-**Date**: 2026-07-29
-**Updated By**: Claude Code (Opus 5)
-**Changes**: **Resolved a FOOP-84 number collision** discovered while merging `origin/jia` into
-`jia`. Two unrelated specifications had independently claimed FOOP-84: **Search Engine Refactor**
-(Atlas, `foop: 48`, present at the merge-base and cited as FOOP-84 by 44 references across
-FOOP-04/14/24/93 on both sides) and **Deadbrane** (Hephaestus, `foop: D48`), which landed on
-`origin/jia` and overwrote the file — leaving those 44 cross-references dangling on that branch.
-Search Engine Refactor **keeps FOOP-84** as the incumbent; Deadbrane is **renumbered to FOOP-45**
-(`foop: D54`, per `foop_check.py gen_next`) in new `FOOP-45.md` / `FOOP-45.plan.md`. Deadbrane's
-plan had not begun (no checkboxes checked), so its worktree metadata was also brought to current
-convention: branch `foop-45-deadbrane` (bare, no `foop/` prefix) and origin/merge target `jia`
-rather than `alpha`. Updated the referring FOOP-94 reference, the main table, and the Draft list.
-Also merged both sides' additive Draft-section entries (ours: the explicit search-engine
-sub-batch order; theirs: FOOP-05/15/25/35/94) and set FOOP-43's row to **Superseded (merged into
-FOOP-93)** — matching the banner in FOOP-43.md itself — while keeping its newer, more accurate
-title.
-
-**Date**: 2026-07-28 (4)
-**Updated By**: Claude Code (Opus 5)
-**Changes**: **FOOP-85 withdrawn; coordination detachment stays in FOOP-24.** The 2026-07-28 (2)
-revision reserved a separate FOOP-85 for implementing what FOOP-24 already specifies. That was
-wrong on two counts: (a) coordination detachment **is** FOOP-24's feature — FOOP-84 Part 3 renamed
-it, it did not fork a new one — so reserving a second number split a live feature from its own
-specification and demoted FOOP-24 to a "historical" document while its semantics, cross-tabulation
-table, pattern types, and test plan all remained current; (b) 85 is not a valid next number under
-little-endian numbering — `foop_check.py gen_next` yields **FOOP-94** (sort key 49). Removed the
-FOOP-85 bullet, folded its content into a rewritten FOOP-24 entry (retitled "Coordination
-detachment"), and redirected every live FOOP-85 reference across FOOP-84, FOOP-93, FOOP-43, and
-this index to FOOP-24. What FOOP-84 supersedes in FOOP-24 is **mechanism only** (the Phase A
-`_ab_search`-override design and the scan-loop prefilter locus), not the feature. FOOP-94 remains
-free for genuinely new work.
-
-**Date**: 2026-07-28 (3)
-**Updated By**: Claude Code (Opus 5)
-**Changes**: Propagated three FOOP-43/FOOP-84 corrections settled with Atlas this session.
-(1) **FOOP-43's rule changed**: anchored miss stays **NK** (not ECONSTANIC as its prior draft
-proposed); unanchored miss stays ECONSTANIC; the real change is **SFF-marked searches →
-ECONSTANIC regardless of anchoring**, plus the NK-propagation fix for deepens on unresolved
-anchors. Retitled FOOP-43 and rewrote both index entries. (2) **FOOP-84's behavior-preserving
-claim split**: Part 1 + §2.2 preserve behavior (no snapshot may change), §2.3–§2.5 are a
-deliberate semantic change with expected SF/SFF churn; upgraded its FOOP-43 dependency from
-"relies on, does not modify" to a hard dependency (§2.4.1 now needs `EconstanicReason::Detached`).
-(3) **Marker scope rule** (FOOP-84 §0.6/§2.2.4) recorded on the FOOP-84 and FOOP-85 entries: a marker
-affects only backward/ancestral searches originating inside it, only at the outward boundary
-crossing — never contexted (`&`) searches, never locally-resolving ones. Corrected FOOP-85's
-prerequisite description to name the SFF-marked rule rather than anchored-miss recoordination.
-
-**Date**: 2026-07-28 (2)
-**Updated By**: Claude Code (Sonnet 5)
-**Changes**: Documented the correct implementation order for the search-engine sub-batch now that
-FOOP-84 (added earlier the same day) is a load-bearing prerequisite for FOOP-93/FOOP-04/FOOP-14/
-FOOP-85, not a peer alongside them. Rewrote the Draft-status listing for this batch with explicit
-"Needs FOOP-84" annotations on FOOP-93/FOOP-04/FOOP-14, added a **FOOP-85 (reserved, not yet
-created)** entry documenting what it must build (the `Detachment` struct/parser on top of FOOP-84
-Part 2, plus FOOP-84 Part 3's terminology), and added a short explicit numbered order
-(FOOP-43 → FOOP-84 → {FOOP-93, FOOP-04, FOOP-14, FOOP-85 in any order/parallel} → FOOP-34) at the
-end of the Draft section. Corrected the FOOP-84 changelog entry below: `CopyMode` is a two-variant
-type (`Normal`/`SfCopy`) that only ever reaches the scan loop for yielded candidates — `Detach` is
-a pre-yield filter internal to the Navigator's own iteration (`next_candidate()` simply never
-returns a Detached candidate), not a third value riding the same channel as originally described
-here; see FOOP-84 §2.3's own Last-Updated entry for the full correction. Also updated FOOP-93,
-FOOP-04, and FOOP-14 in place with "Builds on FOOP-84" banners and redirected references (FOOP-93
-additionally corrected a stale claim that it "shares a locus" with detachment — it doesn't, per
-FOOP-84 §2.3, since detachment now acts in the Navigator, not the Predicate).
-
-**Date**: 2026-07-19
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Added FOOP-35 (ship einmo as library + cargo command: `einmo test` verb, own repo via
-filter-repo, crates.io registration walkthrough, Rust testing battery; plans target `jia`). Also
-FOOP-25 plan origin confirmed as `jia`. Earlier same day: added FOOP-25 (EinmoReview session object —
-thread-safe review state with a separate `Signer` for individual-or-batch signing, review server,
-thin poor_einmo.sh client, dhtml frontend; the session layer for FOOP-15). Both Draft, `begun: [ ]`.
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: FOOP-64 scope extension (Atlas): added the **two-tier signing gate** (development
-tier = einmo **checked**-stage correspondence, mandated in AGENTS.md/foop.md/skills; PR-merge
-tier = einmo **verified**-stage correspondence via `einmo_verified_gate` + GitHub workflow +
-human-enabled branch protection — same `einmo_suite/` directory, different requirements and
-public keys, with computer-key-bypass scan), the mandatory human verified-signing session, and
-the hard completion criterion: FOOP-64 is not complete until the repo is securely off insta —
-`foolish-parser`/`foolish-core` insta tests migrated too, `.snap` corpora deleted (human act),
-`insta` gone from all Cargo.tomls (`cargo tree -i insta` empty). Track 0 deliverables updated.
-Second extension same session: **foolish-core's snapshot_tests migrate to a corresponding
-`foolish-core/einmo_suite/` as part of this FOOP** (same hierarchy/placement/dual-home rules,
-own MAPPING.md, stale-input flagging via `einmo flag`), and both suites are covered by both
-tiers — named the **feature-complete test suite** (checked) and the **merge-ready test suite**
-(verified); the human signing session covers both corpora.
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Roadmap round 2 (Atlas corrections). **Fruit-picker `$*` FOOP withdrawn** before
-commit; its number reissued: **FOOP-05 is now the fir module decomposition** (Track 1, right
-after FOOP-64: `fir_base.rs` / `fir_ref.rs` / `fir_search_base.rs` / one `firs/<kind>_fir.rs`
-per kind; move-only; unblocks Tracks 2 ∥ 3 — P4 resolved). Step-budget parked with corrected
-design recorded in Track 2: two-dimensional control (budget AND `MAX_DEPTH`, kept separately);
-exhaustion → FIRs remain BRANING, FVM returns **incomplete status** (never NK). **FOOP-74
-(FIRID) scheduled by itself; FOOP-84 (Deadbrane) stripped of its FirID dependency** (banner in
-file; FirID cloning semantics deferred). **New FOOP-15** — secured interactive einmo review
-(re-homes FOOP-92's deferred serve/SPA + MCP + perspective rendering; phased R1–R4; build-up
-goal). Track 0 (FOOP-64) confirmed P0 — dispatched for immediate execution; no interim insta
-re-sign.
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Backlog reorganization (Atlas-directed). Added the **Implementation Roadmap**
-section: Track 0 (FOOP-64 einmo migration — required before anything else; absorbs FOOP-92's
-gates + console-review), Track 2 (search family, sequential: 93 → 04 → 14 → 53 → 05), Track 3
-(state machine: 94 → 74 → 84 → 24), Track 4 (13-B + 82 triage, parallel), Track 5 (33 → 83 →
-73 → 63), parked research, problems P1–P7, and the provenance-calibration rule (modern FOOPs
-reliable; early UBC-era FOOPs not citable). **FOOP-92 → Complete** (as it stands; remnants
-re-homed/deferred per its plan note). **FOOP-43 → Superseded** (merged into FOOP-93 as
-43-C1/C2/C3; C2 packaging is an agent decision vetoable at BDFL review). **FOOP-3/6/7/8 →
-Superseded** and **FOOP-41 → Deprecated** (early-era; per-file banners state what UBCa
-realized). **New FOOP-05** — fruit picker `$*` + mature flowing step-budget (sort key 50).
-Roadmap notes added to FOOP-04/14/53; FOOP-64 gained the Track-0 banner and absorbed scope.
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Completion audit of FOOPs 23/13/52/92 against code and tests. **FOOP-23 → Complete**
-(one-engine search fully merged; plan checkboxes were never maintained — completion attested by
-code + approved corpus). **FOOP-52 → Superseded** by FOOP-62 (plan targets the retired UBC
-engine; substance realized in UBCa). FOOP-13 remains Brewing (Phase A ConcatBrane merged; the
-title feature — Phase B MAX_BRANE_SIZE auto-sizing/`UbcaConfig` — is unimplemented). FOOP-92
-remains open pending re-homing of post-MVP remnants (gates/console-review/serve/MCP/algorithm
-corpus). Audit also found `approval_all` structurally red: all 161 UBCa snaps diverge
-signature-only (embedded `generated:` wall-clock + key drift `eb9604b1…`→`dc5f586c…`); content
-byte-identical — motivates prioritizing FOOP-64 (einmo migration).
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Added **FOOP-94** — brane NK only when ALL constituents are NK: flip the shared
-`_decide_nyes_due_to_children` cascade so a settled brane with mixed NK/value members classifies
-CONSTANT instead of NK (all-NK still → NK; empty brane still → CONSTANT; operator NK propagation
-`5 + NK → NK` and all search semantics untouched and pinned by new tests). Quick
-investigate-and-flip FOOP; ~34 approved snapshots carry brane-level NK and the mixed-content
-subset will need human re-review. Fills sort key 49. Added to main table, By-Status (Draft),
-By-Phase (phase-2).
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Registered **FOOP-54** (previously unindexed) as **Complete** — the mimo-opencode
-comparison arm of FOOP-92 (identical spec, two agents, both under two hours; neutral-agent
-analysis in FOOP-54.md chose FOOP-92 for hardening + merge). Added to main table, new By-Status
-(Complete) section, and By-Phase (meta). Its plan is closed with `[-]` cancellations; sole open
-item is folding the §9 Best Practices Review into `rust_instructions.md`.
-
-**Date**: 2026-07-14
-**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
-**Changes**: Added **FOOP-84** — Deadbrane (useless-element detection: directly useless, transitively useless, fixed-point algorithm) + FirID cloning semantics refinement (pins Constant/Independent → Rc::clone identity-sharing, non-constanic → new FIRID). Added to main table, By-Status (Draft), and By-Phase (phase-2).
-
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Added **FOOP-64** — migrate the 162 flat UBCa insta snapshots to a new hierarchical
-einmo suite at `foolish-ubca/einmo_suite/` (`foop/<NUMBER>/…` incl. `comprehensive.foo`,
-`lang/<category>/…`, `lang/usecases/…`, `regression/…`), signed `.einmo` format per FOOP-92,
-dual-home rule for near-identical tests, cross-validation against approved `.snap` RESULTs,
-comprehensive-test path re-homed to `einmo_suite/input/foop/<N>/comprehensive.foo`, and nine
-proposed feature-combination tests. Fills the deliberate sort-key-46 gap left by FOOP-74, so
-`foop_check.py check` passes again. Added to main table, By-Status (Draft), and By-Phase (meta).
-
-**Date**: 2026-07-11
-**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 5
-**Changes**: Added **FOOP-74** — FIRID (atomic per-Fir instance counter on `ProtoBrane`) +
-thread-local in-flight clone stack + `eprintln!` alarm when `constanic_clone_at` re-enters an
-already-in-progress FIRID. Diagnostic tooling only (no semantic/evaluation change), written
-directly from a FOOP-13 triage session that found a genuine constanic-clone cycle by hand
-(`concat_sf_f_more.foo`'s `f1`: `a`'s search for `"b"` clones `f1.b`; the clone's revived
-`<<b + c>>` search finds the same original `f1.b` again, nesting without bound). Numbered 74
-(sort key 47) at Atlas's explicit request, deliberately leaving a gap at sort key 46 — noted in
-the FOOP itself as accepted, not an error. Added to main table, By-Status (Draft), and By-Phase
-(phase-2).
-
-**Date**: 2026-07-09
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: Added **11 new Draft FOOPs** (a coherent language-feature batch built on FOOP-33),
-flushed from `docs/foop/NOTES-creation-lineage-and-search-family.md`: FOOP-43 (search miss →
-ECONSTANIC — the keystone), 53 (inverse `!`), 63 (detachment = parameterized SF/SFF marker),
-73 (all-results `~~`/`??`), 83 (boolean operators), 93 (Recursion Upgrades), 04 (macros research),
-14 (computed index `#${...}`), 24 (beefy search `&&`/`||`/`|`), 34 (integer math `**`/comparisons),
-44 (Primitive Characterization `i'`/`s'`/`f'`). Dependency graph verified acyclic (FOOP-43 is the
-keystone; 63/24/44/93 depend on it; 83/34/44 need FOOP-33). Added to main table, By-Status (Draft),
-and By-Phase (phase-2/4/5/6). Numbering consecutive 1–44.
-
-**Date**: 2026-07-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: FOOP-33 status Draft → **Final** (design frozen, ready to implement) after several
-review rounds with Atlas. Moved its By-Status entry Draft → Final and refreshed the summary
-(three-valued equality, `Identifier`, null-const `get_value()`→NK, `system.foo` as built-in root).
-
-**Date**: 2026-07-07
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: Added FOOP-33 (The Creation Postulate — `⬤`, universal characterizations, and
-Booleans), Draft, phase-4, with plan (FOOP-33.plan.md). Adds `⬤` creation with a global identity
-map, referential equality via value search, a first-class `Characterizations` struct with
-null-characterized name constants (enforced at brane step and concatenation), and `system.foo` as
-the ancestral prelude defining `'True`/`'False`. Added to main table, By-Status (Draft), and a new
-By-Phase phase-4 section.
-
-**Date**: 2026-07-05
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: Retitled FOOP-23 to "Value search and contexted (`&`-prefixed) search" after design
-revision: search now splits into a contextless family (existing `.` `?` `~` `#` `^` `$` + value
-`~=`/`?=` — deepen, demand a brane) and a contexted family (`&`-prefixed twins — navigate from a
-statement's position within its home brane). Updated the main-table title and By-Status entry.
-
-**Date**: 2026-07-04
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: Added FOOP-23 (Value search — `~=`/`?=` operator family with six forms, expression
-patterns, chained-search sequencing, and search-anchored `#`/`?`/`~` via the new `FoolRefFir`
-strong original-statement reference), Draft, phase-2, with implementation plan
-(FOOP-23.plan.md). Added to main table, By Status (Draft), and By Phase (phase-2).
-
-**Date**: 2026-07-03
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: FOOP-13 status Draft → Brewing (design converged; ready for BDFL review). Moved its
-By Status bullet from Draft to Brewing.
-
-**Date**: 2026-07-03
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: Deprecated 12 FOOPs at user request: FOOP-9, FOOP-01, FOOP-11, FOOP-21, FOOP-31,
-FOOP-51, FOOP-61, FOOP-71, FOOP-91, FOOP-02, FOOP-42 (status → Deprecated, canceled as they
-stand, to be later respecified and reimplemented), and FOOP-22 (status → Deprecated, superseded
-by FOOP-92). Added a Deprecation Notice to each spec's body and canceled every outstanding
-checkbox in each `.plan.md` (already-completed checkboxes left untouched as a record of prior
-progress). Added missing FOOP-02 row to the main table (previously absent). Added new
-"Deprecated" subsection under By Status; removed the 12 FOOPs from Draft/Brewing/Implementing.
-
-**Date**: 2026-07-03
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: Added FOOP-13 (MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane), Draft,
-phase-2. Updated By Status (Draft) and By Phase (phase-2) sections. Later same day: retitled
-after design revision (two phases: ConcatBrane upgrade with hidden k-ary storage tree, then the
-MAX_BRANE_SIZE limit with iterative chunk grouping).
-
-**Date**: 2026-07-03
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: FOOP-62 CLOSED — status Brewing (backburnered) → **Final** in both the main table
-and the By Status list. UBC retired; UBCa is the sole reference engine; merged to `jia`
-(`e691b472`).
-
-**Date**: 2026-07-02
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: FOOP-03 cleanup — added the 8 FOOPs missing from this index
-(FOOP-81, FOOP-91, FOOP-42, FOOP-62, FOOP-72, FOOP-82, FOOP-92, FOOP-03) to
-the main table, By Status, and By Phase sections (added a new `phase-0`
-subsection for FOOP-72; added a `Withdrawn / Rejected / Superseded` entry
-for FOOP-81). Noted FOOP-62 as backburnered and FOOP-03 as blocked on it.
-
-**Date**: 2026-06-06
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added FOOP-52 (repair FVM evaluation bugs round 2). Added
-to main index table, Draft status section, and phase-2 section.
-
-**Date**: 2026-06-03
-**Updated By**: opencode / xiaomi/mimo-v2.5
-**Changes**: Promoted FOOP-32 from Draft to Final (all bugs fixed).
-
-**Date**: 2026-06-01
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added FOOP-22 (multi-signer snapshot signatures) and FOOP-32
-(repair rudimentary FVM evaluation and Sequencer formatting bugs). Added
-to main index table, Draft status section, and respective phase sections.
-
-**Date**: 2026-05-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
-**Changes**: Cleaned up FOOP numbering inconsistencies. Deleted
-duplicate FOOP012.md (kept canonical FOOP-21.md as the alarms FOOP).
-Identifier convention: filenames ARE the FOOP identifiers (FOOP-21,
-FOOP-31, FOOP-41, etc. — written in little-endian digits per
-AGENTS.md), and the `foop:` frontmatter is a numeric sort key (the
-digits reversed to decimal). Fixed FOOP-31 (SPA1) sort key from
-foop:31 to foop:13, matching the FOOP-01/11/21 → foop:10/11/12
-pattern. Fixed FOOP-41 (UBCb) sort key from foop:32 to foop:14.
-Updated INDEX entries to use identifier form (FOOP-21 not FOOP-12,
-FOOP-01 not FOOP-10). Added FOOP-51 (AB list, name resolution,
-search_result, short-circuit accumulation; sort key foop:15). Noted
-FOOP-7 major revision in this session.
-
-**Date**: 2026-05-08
-**Updated By**: cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Promoted FOOP-9 and FOOP-21 from Brewing to Implementing status.
-
-**Date**: 2026-05-07
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added FOOP-31 (SPA1 — UBC reference milestone) and FOOP-41
-(UBCb — message-passing variant parity plan). Added Draft status section.
-
-**Date**: 2026-05-04
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Added FOOP-21 (alarm system — diagnostic levels emitted by
-compiler and evaluator, INFO/WARN/MILD/PANIC). Earlier same-day:
-FOOPs 9-11 added; FOOP-3 retitled and rephased to phase-3.
-
-**Date**: 2026-05-06
-**Updated By**: Claude Code; cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Renamed all FOOP-*.md files. Updated all internal
-references from FOOP= to FOOP-. Added ls|rev|sort -V|rev sort command.
+**Date**: 2026-09-02
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **FOOP-26**, **FOOP-36**, **FOOP-46** and **FOOP-56** to the table and the
+phase-4 list, and added **Track 6 — the `foolish-ubca2` chain**, strictly sequential
+**56 → 36 → 26**. FOOP-56 (NYES groups: one predicate per group, every bare "settled"
+qualified) goes first because it is the vocabulary the other two are written in and is a
+~20-site rename best done before they diverge. FOOP-36 (the Foolish-rendering sequencer, and
+`einmo_suite2` replacing `einmo_suite`) goes before FOOP-26 so that FOOP-26's baseline diffs
+read as language rather than FIR dumps; FOOP-36 moves no FIR, step rule or step count, so it
+costs FOOP-26 nothing. FOOP-46 (BraneConcatOp) overlaps both and should be sequenced against
+the track rather than run in parallel. Prior entry: added FOOP-16 (foolish-ubca2 — arena-backed
+FIR storage via copy-migration).

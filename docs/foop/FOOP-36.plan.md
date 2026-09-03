@@ -35,7 +35,7 @@ hand-authored case, before any baseline is generated and before the renderer exi
 
 | | Movement | Phases | What it establishes |
 |---|---|---|---|
-| **0.5** | **Vocabulary fix (fail-fast, skippable)** | 0.5 | Qualify every "settled" in `foolish-ubca2` with its NYES group (§0.1). Mechanical and behaviour-free. **Skip it the moment it stops being mechanical** — nothing later depends on it. |
+| **0.5** | **(moved to FOOP-56)** | 0.5 | The NYES-group vocabulary work became its own FOOP, scheduled BEFORE this one. Phase 0.5 now just confirms it landed. |
 | **I** | **New test, written by hand** | 3 | A brand-new `einmo_suite2/` holding ONE case whose expected OUTPUT is **typed from the specification before the renderer is written**. The renderer is then built until it reproduces what was typed. |
 | **II** | **Feature completion** | 4 | The renderer is finished against that fixed target: round-trip properties (§2/§2.1) proven, every §3 row covered, `Detailed` delegation pinned. `einmo_suite/` is untouched and still green on the OLD rendering. |
 | **III** | **Replacement** | 5–7 | `einmo_suite2` **becomes the suite**: the 179 inputs are copied across, rendered under the new sequencer, reviewed case by case, and `cargo test` is pointed at it. `einmo_suite/` is left frozen and still green as the reference to diff against — everything is done EXCEPT removing it. |
@@ -143,13 +143,13 @@ vs `PREMBRYONIC` in prose.
     and that narrower phrase is what §3's rule is stated over.
   - Conclusive and constantew are different cuts, differing exactly on **NK**: constantew, yet
     inconclusive. **Rendering keys on conclusive.**
-  - No predicate for conclusive exists in the code (`fir.rs` has `is_constanic()` and
-    `is_nnk_constanic()` only). If you add one, keep it in `foolish-ubca2` — `foolish-core`
-    is off-limits per the scope guard.
-  - **"Settled" is prose, not a predicate.** `foolish-ubca2` uses the word heavily (138
-    occurrences, plus a real `FirPointer::settled_result` accessor) but **`is_settled()` does
-    not exist** — `lib.rs` line 24 documents it and FOOP-62 §Terminology specifies it; neither
-    was implemented. Do not call it. Use `is_constanic()`, or the conclusive predicate you add.
+  - **Predicates** (added by FOOP-56, which lands before this FOOP): `is_preconstanic()` with
+    `is_nye()` as its alias, `is_constanic()`, `is_constantew()`, `is_conclusive()` — all on
+    `foolish-ubca2`'s `NyesExt`. Use them; do not hand-roll
+    `matches!(…, Nyes::Constant | Nyes::Independent)`.
+  - **"Settled" is prose, not a predicate** — `is_settled()` does not exist despite `lib.rs`
+    and FOOP-62 claiming it. After FOOP-56 the uses are qualified: `settled_constanic_result`,
+    `step_to_constanic`, `all_foolish_children_conclusive`, and so on.
   - [ ] (Phase 0.5 fixes `lib.rs` line 24's stale `is_settled()` claim; if that phase was
         cancelled, fix the comment here instead.)
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
@@ -222,123 +222,19 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 
 ---
 
-## Phase 0.5 — Qualify every "settled" with its NYES group (FAIL-EARLY, may be cancelled)
+## Phase 0.5 — (moved to FOOP-56)
 
-*A small, self-contained, mechanical change placed first so that if it goes badly it is cheap
-to abandon. It touches no behaviour: every edit is a rename or a comment. Its purpose is to
-make the codebase say which NYES group it means, so that everything after it — and every agent
-reading `foolish-ubca2` afterwards — is working in unambiguous vocabulary.*
+*This phase was the NYES-group vocabulary work: the four predicates, the five hand-rolled
+`matches!` replacements, and qualifying every bare "settled". It became its own FOOP —
+**FOOP-56**, scheduled to land **before** this one.*
 
-> **FAIL FAST. SKIP IF CUMBERSOME.** This phase is a convenience, not a prerequisite: nothing
-> later in this FOOP depends on it, because §3's rule is stated in §0's vocabulary regardless
-> of what the code calls things. **Abandon it the moment it stops being mechanical** — you do
-> not need permission and you do not need to finish what you started. Concretely, stop and skip
-> if: a rename reaches outside `foolish-ubca2/src/`; the crate does not stay 134/134 after a
-> pure rename; a name turns out to be ambiguous enough to need thought rather than lookup; or
-> FOOP-26/FOOP-46 have already touched the same lines. To skip: `git checkout` the phase's
-> changes, mark it `[x] Canceled` per `foop.md`, note why in one line, and go to Phase 1.
-> **A skipped Phase 0.5 costs this FOOP nothing.** Grinding through a cumbersome one costs it
-> a merge conflict.
-
-**Why this is fail-early rather than deferred.** `foolish-ubca2` is being edited concurrently by
-FOOP-26 and FOOP-46. A rename touching ~20 call sites either lands before they diverge or
-becomes a merge problem. Doing it first, verifying, and then deciding is cheaper than either
-carrying the ambiguity through this whole FOOP or discovering the conflict at merge time.
-
-**The classification to apply is `FOOP-36.md` §0.1** — read it before starting. Every "settled"
-in `foolish-ubca2` means exactly one of: constanic, conclusive, constantew, or a computed
-classification that may still be pre-constanic. The qualifier states which.
-
-- [ ] (read `FOOP-36.md` §0, §0.1 and §0.1.1)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
-      to run: `cargo test -p foolish-ubca2 --lib` (the whole crate — this is a rename, so
-      EVERYTHING must stay green, all 134). Record the before-count.
-- [ ] **Give all four §0 groups a predicate on `NyesExt`** (`foolish-ubca2/src/nyes_ext.rs`),
-      beside the existing `is_constanic()` and `is_constantew()` — §0.1.2. Conclusive has none
-      today, which is why five sites hand-roll the state list; pre-constanic has one only in
-      `foolish-core`, under the older name, with zero callers.
-  - [ ] ```rust
-        /// Pre-constanic (nigh): PREMBRYONIC, EMBRYONIC, BRANING — still stepping.
-        fn is_preconstanic(&self) -> bool {
-            !self.is_constanic()
-        }
-
-        /// Not Yet Evaluated — the older name for the same group. An alias, kept
-        /// so the traditional Foolish vocabulary still reads.
-        fn is_nye(&self) -> bool {
-            self.is_preconstanic()
-        }
-
-        /// Conclusive: the FIR reached a value — CONSTANT or INDEPENDENT (FOOP-36 §0).
-        /// Distinct from `is_constantew()`, which also admits NK: NK is constant
-        /// everywhere yet never produced a value.
-        fn is_conclusive(&self) -> bool {
-            matches!(self, Nyes::Constant | Nyes::Independent)
-        }
-        ```
-        **`is_preconstanic` is primary and `is_nye` delegates to it**, so the four read
-        uniformly while the traditional name keeps working.
-  - [ ] This does not touch `foolish-core`. `foolish_core::Nyes::is_nye()` exists at
-        `fir.rs:143` with **zero callers workspace-wide** (verify this still holds), so the
-        `NyesExt` method shadows nothing in practice. **Do not edit `foolish-core`** — the
-        scope guard forbids it.
-  - [ ] Unit tests in that module's `tests`, in the same shape as the existing
-        `constantew_states()` — assert over `ALL_NYES`:
-    - [ ] `conclusive_states()` and `preconstanic_states()`
-    - [ ] `is_nye_is_alias_for_preconstanic()` — the two agree on every state
-    - [ ] `conclusive_is_subset_of_constantew()`, mirroring
-          `constantew_is_subset_of_constanic()`
-    - [ ] `conclusive_and_constantew_differ_exactly_on_nk()` — §0's load-bearing
-          distinction, worth pinning explicitly
-    - [ ] `preconstanic_is_complement_of_constanic()` — every state is exactly one
-  - [ ] Update the module doc comment at the top of `nyes_ext.rs`: it lists "Three categories"
-        and omits conclusive entirely.
-- [ ] **Replace the five hand-rolled conclusive matches** with `.is_conclusive()`:
-      `fvm_storage.rs` lines **818, 2007, 3739, 3810, 3950** (each is
-      `matches!(…, Nyes::Constant | Nyes::Independent)`). Verify each really is a conclusive
-      test and not an accident of the same two states appearing together — read it, do not
-      sed it blindly. Line 1375 (`nyes_from_found`'s match arm) is a mapping, not a test;
-      leave it.
-- [ ] **Code renames** in `foolish-ubca2/src/fvm_storage.rs`, mechanical and behaviour-free:
-  - [ ] `FirPointer::settled_result` → `settled_constanic_result` (line ~639). It gates on
-        `is_constanic()`, and §0.1.1 confirms that is genuinely what the slot holds — do NOT
-        use `constantew`, which the StayFoolish path (902–904) would falsify.
-  - [ ] `FirCursor::settled_result` → `settled_constanic_result` (line ~1602)
-  - [ ] `step_to_settled` → `step_to_constanic` (line ~3272, plus its re-export at ~4825 and
-        its caller in `evaluator.rs`)
-  - [ ] `all_settled` → `all_foolish_children_conclusive` (line ~816). **This is the one that carries
-        real information**: it gates on `Constant | Independent`, so an ECONSTANIC operand is
-        constanic but still queued as a task. It is a local `bool`, not a function.
-  - [ ] `let settled = …decide_nyes_due_to_children(…)` (line ~1070) → `let decided_nyes = …`.
-        It can hold **Braning**, so calling it "settled" is actively wrong.
-  - [ ] `settled_nyes = nyes_from_found(…)` (line ~968) → `constanic_nyes` (its output is
-        always constanic; its input need not be).
-  - [ ] `anchor_settled` (line ~3178) → `anchor_constanic`
-  - [ ] Test names: `indep_int_stepping_already_settled_is_noop` → `…_already_conclusive_…`;
-        `operator_pushes_tasks_for_unsettled_operands` → `…_for_inconclusive_operands`;
-        `revive_constanic_unwraps_stay_foolish_to_its_settled_result` → `…_settled_constanic_result`.
-- [ ] **Comment fixes**, no code change:
-  - [ ] `lib.rs` line 24 claims `NyesExt` adds `is_settled()`. **It does not exist** — the trait
-        provides `is_constanic()` and `is_nnk_constanic()` only. Correct the line.
-  - [ ] Doc comments in `fvm_storage.rs` using a bare "settled": qualify each with the group
-        §0.1 assigns it. Where a comment is already unambiguous from context, leave it.
-- [ ] **Verify.** Run `cargo test -p foolish-ubca2 --lib` — must be 134/134, the same as the
-      before-count. A rename changes no behaviour; **any** test movement means something else
-      was changed and must be undone.
-- [ ] `cargo fmt --all`; `cargo clippy -p foolish-ubca2 --all-targets -- -D warnings` clean.
-- [ ] Confirm `foolish-core` and `foolish-ubca` are untouched: `git diff --stat` shows changes
-      only under `foolish-ubca2/src/`.
-- [ ] **DECISION POINT — move on, or cancel.** (If you already skipped per the fail-fast rule
-      above, this is where you record that.) Report to the human:
-  - [ ] the diff size (files, lines, call sites touched);
-  - [ ] whether the crate stayed 134/134;
-  - [ ] any site where §0.1's classification turned out to be wrong when read closely —
-        **that is a finding worth more than the rename**, because it means the survey
-        mis-read the code;
-  - [ ] whether FOOP-26 or FOOP-46 have begun touching the same lines.
-  Then either **move on** (the renames stay) or **cancel** (`git checkout` the changes, mark
-  this phase `[x] Canceled` per `foop.md`, proceed to Phase 1 unchanged). Cancelling is a
-  legitimate outcome, not a failure to report apologetically.
+- [ ] Confirm FOOP-56 has merged, and that `foolish-ubca2` therefore provides
+      `NyesExt::is_preconstanic()` (with `is_nye()` as its alias), `is_constanic()`,
+      `is_constantew()` and `is_conclusive()`. §3's rule is written in that vocabulary; use the
+      predicates rather than hand-rolling `matches!(…, Nyes::Constant | Nyes::Independent)`.
+- [ ] If FOOP-56 has **not** merged, this FOOP still works — §3's rule is stated in §0's
+      vocabulary regardless of what the code calls things. Note it and proceed; do not do
+      FOOP-56's work here.
 
 ---
 
