@@ -1,0 +1,7 @@
+{
+	x = 3;
+	tag'x = 7;
+	plain = ?x;
+	quoted = ?tag'x;
+	nope = ?nonexistent;
+}

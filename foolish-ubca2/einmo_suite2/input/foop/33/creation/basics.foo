@@ -1,0 +1,11 @@
+{
+	!! Creation basics: ⬤ and {*} produce unique values.
+	bare = ⬤;
+	ascii = {*};
+	orig = ⬤;
+	ref = orig;
+	same_ref = ref~=orig;
+	x = ⬤;
+	y = ⬤;
+	diff = x~=y;
+}

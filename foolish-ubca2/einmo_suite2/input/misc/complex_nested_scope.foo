@@ -1,0 +1,1 @@
+{a = 10; b = 20; outer = {c = 30; ac = a + c; inner = {a = 40; abc = a + b + c}; ab = a + b};}

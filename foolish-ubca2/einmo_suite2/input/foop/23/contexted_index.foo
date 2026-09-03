@@ -1,0 +1,13 @@
+{
+	recipe = {
+		steps = {
+			prep_var = 7;
+			step_1 = 40;
+			bake = 9;
+		};
+	};
+	stage = recipe.steps~step_1;
+	self = recipe.steps~step_1&#0;
+	after = recipe.steps~step_1&#1;
+	oob = recipe.steps~step_1&#5;
+}

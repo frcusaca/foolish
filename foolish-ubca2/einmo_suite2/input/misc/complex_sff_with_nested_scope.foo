@@ -1,0 +1,1 @@
+{x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}

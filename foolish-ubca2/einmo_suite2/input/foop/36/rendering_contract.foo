@@ -74,7 +74,7 @@
     sf = <x>;                            !! sf = <x>
     sff = <<x>>;                         !! sff = <<x>>
     operator_interior = <<x + missing>>; !! operatorˍinterior = <<x + missing>>
-    nested = <<x + <<missing>>>>;        !! nested = <<x + <<missing>>>>
+    nested = <<x + <<missing>>>>;        !! nested = <<x + <<missing>> >>, spaced to avoid delimiter fusion
   };
 
   !!!

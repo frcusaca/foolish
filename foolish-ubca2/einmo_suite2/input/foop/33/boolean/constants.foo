@@ -1,0 +1,13 @@
+{
+	!! FOOP-33 §4: 'True and 'False resolve as ordinary ancestral (sibling)
+	!! lookups into system.foo -- composed as the implicit root ancestor of
+	!! every program. Note the LEADING QUOTE is required: a bare True (no
+	!! quote) can never match the null-characterized 'True (searchable_name
+	!! comparison is unconditional -- see FOOP-33.md §3 "quote-bearing
+	!! search").
+	!! FOOP-33 Phase 9: t1/t2/f1 now render as 'True/'True/'False (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	t1 = 'True;
+	t2 = 'True;
+	f1 = 'False;
+}

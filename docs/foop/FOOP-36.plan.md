@@ -934,26 +934,77 @@ Deleting `einmo_suite` is a separate, later act for the human to authorize.
 
 ### 5a — Move the inputs across
 
-- [ ] (read §2 of `FOOP-36.md`; re-read Phase 0's recorded "before" test readings)
-- [ ] Copy every input from `foolish-ubca2/einmo_suite/input/**/*.foo` (179 files) into
+- [x] (read §2 of `FOOP-36.md`; re-read Phase 0's recorded "before" test readings)
+      (2026-09-03 — Phase 0's readings: `einmo_gate_checked` 1/1 on `foolish-ubca`;
+      `einmo_gate_verified` on `foolish-ubca2` 1/1, all 179 cases signed; whole crate 134/134
+      at that time.)
+- [x] Copy every input from `foolish-ubca2/einmo_suite/input/**/*.foo` (179 files) into
       `foolish-ubca2/einmo_suite2/input/`, preserving the directory structure
       (`foop/<N>/…`, `misc/…`, `regression/…`). **Copy, do not move** — `einmo_suite/` must
       remain intact and passing.
-- [ ] Copy `MAPPING.md` too, and add a note at its top recording that this suite's outputs are
+      (2026-09-03 — copied via `cp`, preserving structure; `einmo_suite/input/` re-counted at
+      179 afterward, unchanged. `einmo_suite2/input/` now holds 180: the 179 copies plus
+      `foop/36/rendering_contract.foo`.)
+- [x] Copy `MAPPING.md` too, and add a note at its top recording that this suite's outputs are
       rendered by `Ubca2Sequencer` in `Foolish` mode (FOOP-36), unlike `einmo_suite/`'s.
-- [ ] **T10 — coverage parity.** Write a test asserting `einmo_suite2/input/` contains an
+      (2026-09-03)
+- [x] **T10 — coverage parity.** Write a test asserting `einmo_suite2/input/` contains an
       input for EVERY input in `einmo_suite/input/` — same relative paths, same count. Then
       confirm the total: 179 copied plus `foop/36/rendering_contract.foo` from Phase 3 (and
       `foop/36/comprehensive.foo` arrives in Phase 7). **This is the failure mode that matters
       most and is invisible from a green run** — a new suite that quietly tests less than the
       one it replaces.
-- [ ] **T3 — corpus-wide round-trip.** One unit test walking every
+      (2026-09-03 — `einmo_suite2_has_every_einmo_suite_input`
+      (`ubca_snapshot_tester2.rs`): walks both `input/` trees, asserts set difference is empty,
+      and pins the exact counts (179 / 180). Passes.)
+- [x] **T3 — corpus-wide round-trip.** One unit test walking every
       `einmo_suite2/input/**/*.foo`: evaluate, render in `Foolish` mode, assert the result
       **parses**. Property 1 only — not idempotence — so it stays fast and stays correct for
       non-settling cases (§2.1). **Run this BEFORE generating any output**: it is the cheapest
       check that the renderer survives the whole corpus, and it fails loudly without writing a
       single baseline.
-- [ ] Fix whatever T3 finds. A parse failure is a renderer bug, never a baseline problem.
+      (2026-09-03 — `einmo_suite2_corpus_wide_foolish_rendering_parses`
+      (`ubca_snapshot_tester2.rs`): walks the raw `.foo` files directly with `std::fs`, not
+      through einmo's signed-output machinery, so it runs before any output exists. Found 6
+      genuine Property 1 violations on first run — see next checkbox.)
+- [x] Fix whatever T3 finds. A parse failure is a renderer bug, never a baseline problem.
+      (2026-09-03 — 6 failures on first run: `foop/33/boolean/comparison_non_integer.foo`,
+      `foop/33/comprehensive.foo`, `foop/42/humanizing_sequencer_formatting_exhaustive_aka_hfs.foo`,
+      `foop/62/anchored_search_suite.foo`, `misc/concat_sf_f_more.foo`,
+      `misc/unanchored_seek_with_head_tail.foo`. Delegated diagnosis+fix to a subagent, which
+      found two shared root causes plus two single-case ones — multi-line inline operands
+      swallowing a `!!` comment mid-line (`render_inline`/`render_written_operand_inline` now
+      strip per-line comments before joining), FOOP-75 §6's attached-form ambiguity for
+      unanchored value-search/index anchors (`is_safe_attached_anchor` falls back to postfix),
+      SF/SFF delimiter fusion at nested `<`/`>` boundaries (a disambiguating space), and a
+      double-wrapped already-parenthesized regex pattern (FOOP-75 §6.1: the parser stores
+      parens in `pattern` itself). Verified independently: read the actual diff, confirmed the
+      FOOP-75 §6.1 claim against `docs/foop/FOOP-75.md` line 487 directly, re-ran all 5 new
+      regression tests plus the full sequencer suite (26/26) and corpus-wide parse test
+      (0 failures). Sibling `foolish-ubca` and `einmo_suite`'s own three gates reconfirmed
+      unmoved.
+      **Own follow-up finding:** attempted to tighten the SF/SFF space to only the
+      cases that actually need it (odd-length delimiter run at the boundary) instead of the
+      subagent's unconditional-whenever-adjacent rule; this broke a real case
+      (`b = <1 + <<b>> + <c>>`) because safety depends on what an ENCLOSING wrapper appends
+      afterward, which a single `render_stay` call cannot see. Reverted to the subagent's
+      original (safe) unconditional rule, with a doc comment recording why the narrower
+      version is unsound so nobody re-attempts it without re-deriving this.
+      **Process incident, corrected in-session:** while re-promoting `foop/36/rendering_contract`
+      after this revert, ran `einmo promote output->checked foolish-ubca2/einmo_suite2` with
+      NO `--filter`, wrongly assuming it would only touch the one file with a real diff — it
+      promoted all 180 cases, including the 179 real corpus cases Phase 6 requires reviewing
+      case-by-case before any promotion. Caught immediately (before anything was `git add`ed or
+      committed) by checking `find .../checked -name '*.einmo' | wc -l` against expectations.
+      Reverted by removing the 179 newly-created `checked/` files (all untracked, so a clean
+      `rm -rf` of the specific new directories fully undid it) and reconfirmed
+      `einmo_suite2_gate_checked` fails again for the correct reason (179 genuinely missing
+      baselines). **Lesson recorded here rather than left implicit: `einmo promote` with no
+      `--filter` acts on the WHOLE suite; always pass `--filter <glob>` naming the exact
+      case(s) reviewed, never rely on "only the diffed file will move."** This checkbox is
+      complete: `einmo_suite2_corpus_wide_foolish_rendering_parses` is green, and
+      `einmo_suite2/checked/` correctly holds only `foop/36/rendering_contract` (Phase 3's
+      own case) — zero of the 179 corpus cases were left promoted.)
 
 ### 5b — Generate the outputs and hook up `cargo test`
 

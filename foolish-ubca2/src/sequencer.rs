@@ -184,10 +184,7 @@ impl<'a> Renderer<'a> {
         let operands: Vec<String> = cursor
             .foolish_children()
             .iter()
-            .map(|&child| {
-                self.render_expr(child, width, current_stmt, false)
-                    .join(" ")
-            })
+            .map(|&child| self.render_inline(child, width, current_stmt))
             .collect();
         let text = match operands.as_slice() {
             [only] => format!("{op}{only}"),
@@ -215,10 +212,8 @@ impl<'a> Renderer<'a> {
             unreachable!()
         };
         let children = cursor.foolish_children();
-        let anchor = anchored.then(|| {
-            self.render_written_operand(children[0], width, current_stmt)
-                .join(" ")
-        });
+        let anchor =
+            anchored.then(|| self.render_written_operand_inline(children[0], width, current_stmt));
         let marker = if *forward { "~" } else { "?" };
         let context = if *contexted { "&" } else { "" };
 
@@ -226,10 +221,7 @@ impl<'a> Renderer<'a> {
             let value_index = usize::from(*anchored);
             let value = children
                 .get(value_index)
-                .map(|&child| {
-                    self.render_expr(child, width, current_stmt, false)
-                        .join(" ")
-                })
+                .map(|&child| self.render_inline(child, width, current_stmt))
                 .unwrap_or_else(|| "???".to_string());
             let name = canonical_name_pattern(pattern)
                 .map(|name| name.to_string())
@@ -242,7 +234,24 @@ impl<'a> Renderer<'a> {
                 name.to_string()
             }
         } else {
-            format!("{context}{marker}({pattern})")
+            // FOOP-75 §6.1 (current, unimplemented §6.2): the parser's
+            // `parse_regexp_pattern` absorbs a parenthesized run VERBATIM,
+            // parens included, into `pattern` itself — `B~(x)` stores
+            // pattern `"(x)"`, not `"x"`. So a pattern that already reads as
+            // parenthesized must be written back exactly as stored; wrapping
+            // it in another layer (`?((ho))`) is not disambiguation, it is a
+            // literal extra `(`/`)` pair the parser then reads as PART OF
+            // the pattern text, which is never what was evaluated (verified:
+            // `hw?(ho)` renders back as `hw?((ho))`, which fails to parse —
+            // "expected primary expression, found RParen" — because the
+            // outer `?(` opens a paren run whose matching `)` is consumed
+            // mid-pattern, leaving a stray `)` behind).
+            let wrapped = pattern.starts_with('(') && pattern.ends_with(')');
+            if wrapped {
+                format!("{context}{marker}{pattern}")
+            } else {
+                format!("{context}{marker}({pattern})")
+            }
         };
 
         vec![match anchor {
@@ -276,10 +285,7 @@ impl<'a> Renderer<'a> {
             let anchor = cursor
                 .foolish_children()
                 .first()
-                .map(|&child| {
-                    self.render_written_operand(child, width, current_stmt)
-                        .join(" ")
-                })
+                .map(|&child| self.render_written_operand_inline(child, width, current_stmt))
                 .unwrap_or_else(|| "???".to_string());
             vec![format!("{anchor}{context}{marker}")]
         } else {
@@ -299,15 +305,40 @@ impl<'a> Renderer<'a> {
             .foolish_children()
             .first()
             .map(|&child| {
-                self.render_written_operand(child, width.saturating_sub(4), current_stmt)
-                    .join(" ")
+                self.render_written_operand_inline(child, width.saturating_sub(4), current_stmt)
             })
             .unwrap_or_else(|| "???".to_string());
-        if fully {
-            vec![format!("<<{inner}>>")]
-        } else {
-            vec![format!("<{inner}>")]
-        }
+        // A `<`/`<<` wrapper must not let its content's own leading/trailing
+        // `<`/`>` fuse with this wrapper's delimiter: the lexer greedily
+        // pairs adjacent `<`/`>` characters two-at-a-time into `LtLt`/`GtGt`
+        // tokens (`foolish-parser/src/lexer.rs`), left to right, so a run of
+        // delimiter characters at a boundary mis-lexes whenever the pairing
+        // does not land where THIS wrapper's own close is expected.
+        //
+        // Whether a given boundary is safe depends on the FULL run length at
+        // that point in the fully-rendered string, not just on this call's
+        // own `inner` and `close` — a boundary that looks even in isolation
+        // (this wrapper's own trailing `>` count plus its own close) can
+        // still mis-lex once an ENCLOSING wrapper's delimiter is appended
+        // immediately afterward (verified by trying to narrow this check to
+        // "only when the immediate run is odd": `b = <1 + <<b>> + <c>>` — the
+        // outer SF's own boundary looked even considered alone, but the
+        // enclosing statement's context still fused it). Determining safety
+        // correctly would require the caller to know what follows, which
+        // `render_stay` does not have. A single space unconditionally
+        // whenever the content touches this wrapper's own delimiter
+        // character is therefore the only reliably safe choice — it costs
+        // a small amount of "clean output" in the (harmless) case where the
+        // narrower check would also have been safe, in exchange for never
+        // being wrong. `misc/concat_sf_f_more.foo`'s original source uses
+        // exactly this separation (`<c> >`) for the same reason.
+        let needs_space_after = inner.starts_with('<');
+        let needs_space_before = inner.ends_with('>');
+        let open = if fully { "<<" } else { "<" };
+        let close = if fully { ">>" } else { ">" };
+        let sep_after = if needs_space_after { " " } else { "" };
+        let sep_before = if needs_space_before { " " } else { "" };
+        vec![format!("{open}{sep_after}{inner}{sep_before}{close}")]
     }
 
     fn render_concatenation(
@@ -353,13 +384,36 @@ impl<'a> Renderer<'a> {
             return cursor
                 .foolish_children()
                 .first()
-                .map(|&inner| {
-                    self.render_written_operand(inner, width, current_stmt)
-                        .join(" ")
-                })
+                .map(|&inner| self.render_written_operand_inline(inner, width, current_stmt))
                 .unwrap_or_else(|| "???".to_string());
         }
-        self.render_expr(child, width, current_stmt, false)
+        self.render_inline(child, width, current_stmt)
+            .replace("{ ", "{")
+            .replace(" }", "}")
+    }
+
+    /// Renders `fir` and safely collapses it to ONE line, for use as an
+    /// inline operand (an operator's operand, a search/index anchor, an SF
+    /// wrapper's interior, a concatenation element).
+    ///
+    /// A naive `render_expr(..).join(" ")` is unsafe here: when `fir`
+    /// renders to several lines (e.g. a brane too wide to inline, each
+    /// member on its own line with its own `!!` annotation), joining those
+    /// lines with plain spaces puts a `!!` comment — which the lexer reads
+    /// to end-of-line — in the MIDDLE of the resulting single line, silently
+    /// swallowing everything rendered after it (verified:
+    /// `foop/33/boolean/comparison_non_integer.foo`'s `{1, {x=5;}, 'lt}$`
+    /// anchor, whose inner statement's `!! NK: ...` annotation ate the
+    /// closing `}` and the outer `;`). Each line's own annotation is
+    /// dropped before joining — annotations are per-line commentary, never
+    /// part of the written form an inline context needs.
+    fn render_inline(
+        &self,
+        fir: FirPointer,
+        width: usize,
+        current_stmt: Option<FirPointer>,
+    ) -> String {
+        self.render_expr(fir, width, current_stmt, false)
             .into_iter()
             .map(|line| {
                 line.split("  !!")
@@ -370,8 +424,29 @@ impl<'a> Renderer<'a> {
             })
             .collect::<Vec<_>>()
             .join(" ")
-            .replace("{ ", "{")
-            .replace(" }", "}")
+    }
+
+    /// [`Self::render_inline`], routed through [`Self::render_written_operand`]
+    /// so a Search/Index anchor keeps its written form rather than collapsing
+    /// early to a conclusive result (the same distinction
+    /// `render_written_operand` already draws for multi-line callers).
+    fn render_written_operand_inline(
+        &self,
+        fir: FirPointer,
+        width: usize,
+        current_stmt: Option<FirPointer>,
+    ) -> String {
+        self.render_written_operand(fir, width, current_stmt)
+            .into_iter()
+            .map(|line| {
+                line.split("  !!")
+                    .next()
+                    .unwrap_or(&line)
+                    .trim()
+                    .to_string()
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     fn render_written_operand(
@@ -452,17 +527,22 @@ impl<'a> Renderer<'a> {
                 offset,
                 anchored: true,
                 ..
-            } if matches!(offset, 0 | -1) && name.is_some() => Some(*offset),
+            } if matches!(offset, 0 | -1)
+                && name.is_some()
+                && body_cursor
+                    .foolish_children()
+                    .first()
+                    .is_some_and(|&anchor| self.is_safe_attached_anchor(anchor)) =>
+            {
+                Some(*offset)
+            }
             _ => None,
         };
         let mut lines = if let Some(offset) = attached {
             let anchor = body_cursor
                 .foolish_children()
                 .first()
-                .map(|&child| {
-                    self.render_written_operand(child, width, Some(statement))
-                        .join(" ")
-                })
+                .map(|&child| self.render_written_operand_inline(child, width, Some(statement)))
                 .unwrap_or_else(|| "???".to_string());
             let marker = if offset == 0 { "^" } else { "$" };
             let mut attached = vec![format!("{} ={marker} {anchor}", name.unwrap())];
@@ -484,6 +564,50 @@ impl<'a> Renderer<'a> {
             append_before_comment(lines.last_mut().expect("statement has a line"), ";");
         }
         lines
+    }
+
+    /// Whether `anchor` is safe to write as the RHS of an attached-search
+    /// statement (`name =$ anchor` / `name =^ anchor`, FOOP-75 §4).
+    ///
+    /// The attached spelling is defined as `name =SPEC RHS` meaning
+    /// `name = RHS SPEC` (FOOP-75 §1/§2): the parser records the adjacent
+    /// `=$`/`=^` run, parses the REST of the line as an ordinary RHS
+    /// expression, then replays the recorded suffix against it. That replay
+    /// requires the RHS to parse as a complete, self-contained primary
+    /// expression on its own — which fails whenever the anchor RENDERS with
+    /// a leading search-operator marker (`?`, `~`, `#`, `^`, bare `$`) and no
+    /// grounding identifier/brane before it, since a bare marker is not a
+    /// valid standalone primary outside this same attached path (verified
+    /// live: `d =$ #-1` and `same =$ ?=1` both fail with FOOP-75 §6's
+    /// "attached search specification is ambiguous", while `d = #-1$` and
+    /// `same = (?=1)$` both parse).
+    ///
+    /// This is NOT simply "the anchor's own `anchored` flag": an unanchored
+    /// NAME search with a canonical pattern (a bare identifier reference
+    /// like `b`) renders as plain `b` — no marker at all — via
+    /// [`render_search`]'s `canonical_name_pattern` branch, and is exactly
+    /// FOOP-75's own canonical example (`tail_of_b =$ b;`). Only the cases
+    /// that keep a marker in their rendering are unsafe: an unanchored value
+    /// search (always `?=`/`~=`-prefixed), an unanchored search whose
+    /// pattern is not a bare name (`?(...)`), or any unanchored index/seek
+    /// (`#N`, `^`, `$`, all marker-only with no anchor to ground them).
+    fn is_safe_attached_anchor(&self, anchor: FirPointer) -> bool {
+        match FirCursor::new(anchor, self.storage).node() {
+            FirSpec::Search { anchored: true, .. } => true,
+            FirSpec::Search {
+                anchored: false,
+                is_value_search: false,
+                pattern,
+                ..
+            } => canonical_name_pattern(pattern).is_some(),
+            FirSpec::Search {
+                anchored: false,
+                is_value_search: true,
+                ..
+            } => false,
+            FirSpec::Index { anchored, .. } => *anchored,
+            _ => true,
+        }
     }
 
     fn annotate(&self, fir: FirPointer, lines: &mut [String]) {
@@ -1112,5 +1236,118 @@ mod tests {
         );
         compose_program_with_system(&mut FVMStorage::new(), &rendered)
             .expect("alarm rendering remains Foolish source");
+    }
+
+    /// Corpus bug (`foop/33/boolean/comparison_non_integer.foo`): an attached
+    /// (`=$`/`=^`) anchor, or any inline operand, that renders MULTI-LINE
+    /// (a brane too wide to inline, each member on its own `!!`-annotated
+    /// line) must not be collapsed with a naive `.join(" ")` — the first
+    /// line's trailing `!!` comment reads to end-of-line and swallows every
+    /// line joined after it, including the anchor's own closing `}` and the
+    /// statement's `;`. `render_inline`/`render_written_operand_inline`
+    /// strip each line's own annotation before joining instead.
+    #[test]
+    fn foolish_multiline_inline_operands_drop_line_comments_before_joining() {
+        let source = "{brane_operand = {1, {x = 5;}, 'lt}$;}";
+        let (storage, program) = evaluated_program(source);
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains("}  !! NK:") || rendered.trim_end().ends_with('}'),
+            "an inner statement's `!!` comment must not appear ahead of the anchor's own \
+             closing brace: {rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
+            panic!("multi-line attached anchor must remain parseable: {e:?}\n{rendered}")
+        });
+    }
+
+    /// Corpus bugs (`foop/33/comprehensive.foo`,
+    /// `misc/unanchored_seek_with_head_tail.foo`): the attached spelling
+    /// (`name =$ anchor`) is only safe when the anchor renders WITHOUT a
+    /// leading bare search-operator marker. An unanchored value search
+    /// (`?=1`) or an unanchored seek (`#-1`) both render with a leading
+    /// marker and no grounding identifier — `is_safe_attached_anchor` must
+    /// refuse the attached spelling for those and fall back to the ordinary
+    /// postfix form, which parses unambiguously either way.
+    #[test]
+    fn foolish_attached_form_falls_back_to_postfix_for_unanchored_anchors() {
+        for source in ["{a=1;same = ?=a&#-1;}", "{a=1;same = ?=1;}"] {
+            let (storage, program) = evaluated_program(source);
+            let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+            compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
+                panic!("unanchored-anchor statement must not use an ambiguous attached form: {e:?}\n{rendered}")
+            });
+        }
+
+        let (storage, program) =
+            evaluated_program("{a = 1; b = {10; 20; 30}; c = {10; 20; 30}; d = #-1$;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains("=$ #-1") && !rendered.contains("=$ #"),
+            "an unanchored seek anchor must not be written in the attached spelling, which is \
+             ambiguous per FOOP-75 §6: {rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
+            panic!(
+                "unanchored seek anchor must render as parseable postfix form: {e:?}\n{rendered}"
+            )
+        });
+    }
+
+    /// FOOP-75's own canonical case must still use the attached spelling: a
+    /// bare identifier reference (an unanchored NAME search with a canonical
+    /// pattern) is safe and is exactly what `foolish_standardizes_attached_indexes`
+    /// pins. This test guards the OTHER direction of the same fix — that
+    /// tightening the safety check didn't overreach into refusing the safe case.
+    #[test]
+    fn foolish_attached_form_still_used_for_simple_identifier_anchor() {
+        let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{b = {x = 3}; A =$ b}"
+        );
+    }
+
+    /// Corpus bug (`misc/concat_sf_f_more.foo`): an SF (`<...>`) whose
+    /// interior itself starts or ends with `<`/`>` (from a directly nested
+    /// `<<...>>` or `<...>`) must not let its own delimiter fuse with the
+    /// interior's — the lexer greedily reads two adjacent `>` characters as
+    /// one `GtGt` token (and two adjacent `<` as one `LtLt`), which breaks
+    /// whichever wrapper expected a single-character close. A single space
+    /// at the boundary prevents the fusion without changing what either
+    /// wrapper reads as.
+    #[test]
+    fn foolish_stay_wrappers_insert_a_space_to_avoid_delimiter_fusion() {
+        let source = "{a=1;b=2;c=3; f2={b= <a + <<b>> + <c> >;}; }";
+        let (storage, program) = evaluated_program(source);
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains(">>>") && !rendered.contains("<<<"),
+            "adjacent SF/SFF delimiters must never fuse into a longer run: {rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
+            panic!("nested SF/SFF wrappers must remain parseable: {e:?}\n{rendered}")
+        });
+    }
+
+    /// Corpus bugs (`foop/42/…hfs.foo`, `foop/62/anchored_search_suite.foo`):
+    /// per FOOP-75 §6.1 (current, unimplemented §6.2), a parenthesized
+    /// regexp pattern like `~(x)` is stored by the PARSER with its parens
+    /// included (`pattern == "(x)"`), not stripped. Rendering must write
+    /// that pattern back exactly as stored — wrapping it in a SECOND layer
+    /// of parens (`?((x))`) is not disambiguation, it produces a stray
+    /// unmatched `)` the parser cannot place.
+    #[test]
+    fn foolish_search_does_not_double_wrap_an_already_parenthesized_pattern() {
+        let source = "{hw = {hello=1;world=2;};how_is_not = hw?(ho);}";
+        let (storage, program) = evaluated_program(source);
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains("?((") && !rendered.contains("~(("),
+            "an already-parenthesized pattern must not gain a second wrapping layer: {rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
+            panic!("a parenthesized-pattern search must remain parseable: {e:?}\n{rendered}")
+        });
     }
 }

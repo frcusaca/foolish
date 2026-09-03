@@ -1,0 +1,23 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: misc/sff_vs_sf_timing_difference.foo
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 9decd559
+producer-diff: sha256:9e778bd8959e3b0500af32d4417f3512f6da128e4716c0fd9cfc82e1108c9a4e
+generated: 2026-09-03T18:53:08.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
+①
+{
+  x = 1;
+  sf = <x>;
+  sff = <<x>>;  !! WOCONSTANIC
+  x = 10;
+  1;
+  10
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:53:08.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:53:08.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"1Fqu7pHl5pMZThklQqmo+QBXzDKO1FJZARZtDgTXgdKxkHADP527FLJVumgTM04wRo21cv/eTelSKWfFGo32BQ==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:53:08.000000000Z"}
