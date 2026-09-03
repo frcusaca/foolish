@@ -71,7 +71,7 @@ ls | rev | sort -V | rev
 | [FOOP-75](FOOP-75.md) | Assignment Attached Searches — `LHS =SEARCH_SPEC RHS` as sugar for `LHS = RHS SEARCH_SPEC` | Draft | phase-2 | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-85](FOOP-85.md) | The einmo Foolish separator collides with Foolish block comments | Draft | meta | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-95](FOOP-95.md) | Add Embryonic and Resequencing EINMO Sections | Draft | phase-2 | 2026-08-08 | Sisyphus / claude-opus-5 |
-| [FOOP-16](FOOP-16.md) | foolish-ubca2 — arena-backed FIR storage via copy-migration | Draft | phase-2 | 2026-08-30 | Claude Code / claude-sonnet-5 |
+| [FOOP-16](FOOP-16.md) | foolish-ubca2 — arena-backed FIR storage via copy-migration | complete | phase-2 | 2026-08-30 | Claude Code / claude-sonnet-5 |
 | [FOOP-26](FOOP-26.md) | Carrying FOOP-55's semantics onto foolish-ubca2 — marks, concatenation-as-operator, and the three-beat step | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
 | [FOOP-36](FOOP-36.md) | A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
 | [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
@@ -359,30 +359,44 @@ parallel worktrees will merge with friction (see P4). Order and why:
    (Track 3), and it consumes 93's `EconstanicReason::Detached`. Schedule after both tracks'
    cores merge.
 
-### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26.
+### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26 → 46.
 
-All three edit `foolish-ubca2`, most of it the same file (`fvm_storage.rs`), so they cannot run
-in parallel worktrees. The order is dependency-driven, not preference:
+**Foundation (already landed):** **FOOP-16** built `foolish-ubca2` — arena-backed FIR storage
+via copy-migration. Status `complete`; the crate is 134/134 with all three einmo gates passing.
+Everything below builds on it.
+
+All four FOOPs below edit `foolish-ubca2`, most of it the same file (`fvm_storage.rs`), so they
+cannot run in parallel worktrees. The order is dependency-driven, not preference:
 
 1. **FOOP-56** — NYES groups: one predicate per group (`is_preconstanic` with `is_nye` as its
    alias, `is_constanic`, `is_constantew`, `is_conclusive`) and every bare "settled" qualified
-   with the group it means. **First because it is vocabulary the other two are written in**,
-   and because it is a ~20-site rename that is far cheaper before the others diverge from
-   `jia`. No behaviour change; the crate is 134/134 either side.
+   with the group it means. **First because it is the vocabulary the others are written in**,
+   and because it is a ~20-site rename far cheaper before the others diverge from `jia`. It
+   also brings every ubca2 document (16, 26, 36, 46 and AGENTS.md's terminology) onto that
+   vocabulary in one pass. No behaviour change; the crate is 134/134 either side.
 2. **FOOP-36** — the Foolish-rendering sequencer: `foolish-ubca2` gets its own sequencer whose
    default mode renders FIR as parseable Foolish, and `einmo_suite2` replaces `einmo_suite` as
-   the crate's approval suite. **After 56** because its central rule is stated over
-   *conclusive* and *inconclusive constanic*. **Before 26** because 26 moves the same 179
-   baselines for *semantic* reasons: with rendering already in Foolish, 26's diffs are readable
-   as language rather than as FIR dumps, and its reviewers can predict expected output from its
-   own spec. FOOP-36 moves no FIR, no step rule and no step count, so it costs 26 nothing.
-3. **FOOP-26** — marks, concatenation-as-operator, the three-beat step. Last: it is the only
-   one of the three that changes what programs *mean*, so it should land onto a suite that is
-   already readable and a vocabulary that is already settled.
+   the crate's approval suite (cut-over at the end of that FOOP). **After 56** because its
+   central rule is stated over *conclusive* and *inconclusive constanic*. **Before 26** because
+   26 moves the same 179 baselines for *semantic* reasons: with rendering already in Foolish,
+   26's diffs read as language rather than as FIR dumps, and its reviewers can predict expected
+   output from its own spec. FOOP-36 moves no FIR, no step rule and no step count, so it costs
+   26 nothing.
+3. **FOOP-26** — marks (SF/SFF as a counter), concatenation-as-operator, the three-beat step.
+   The only one of the four that changes what programs *mean*, so it should land onto a suite
+   that is already readable and a vocabulary that is already settled.
+4. **FOOP-46** — `BraneConcatOp`, a rewritten concatenation operator with phased search
+   resolution. **Split out of FOOP-26, and implements FOOP-26 §4** — its own spec states
+   "Dependencies: FOOP-26. Order: after it." FOOP-26 lands the operator's *contract* against
+   the existing implementation; 46 rewrites the implementation underneath it. If 26's changes
+   prove sufficient in practice, 46 may be reduced or dropped — decide after 26 merges, not
+   before.
 
-**FOOP-46** (BraneConcatOp) overlaps FOOP-26's concatenation work and FOOP-36 §3.2's
-concatenation *rendering*; sequence it against this track rather than in parallel — see its own
-references.
+**Interaction to watch:** FOOP-36 §3.2 specifies how concatenation *renders* (merged → the
+merged brane; unmerged → the juxtaposition with each constituent recursively simplified),
+keyed on `hs_concatenation()`'s `merged` slot being `Some`. FOOP-26 and FOOP-46 change what
+concatenation *means*. If either changes **when** that slot is populated, §3.2's rendering
+follows automatically; if either changes the slot's **shape**, §3.2 needs revisiting.
 
 ### Track 4 — independent, parallel with Tracks 2/3.
 
@@ -500,11 +514,13 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 **Updated By**: Claude Code / claude-opus-5
 **Changes**: Added **FOOP-26**, **FOOP-36**, **FOOP-46** and **FOOP-56** to the table and the
 phase-4 list, and added **Track 6 — the `foolish-ubca2` chain**, strictly sequential
-**56 → 36 → 26**. FOOP-56 (NYES groups: one predicate per group, every bare "settled"
+**56 → 36 → 26 → 46**, on the foundation of the already-complete FOOP-16. Also corrected
+FOOP-16's row from `Draft` to `complete`, matching its own frontmatter. FOOP-56 (NYES groups: one predicate per group, every bare "settled"
 qualified) goes first because it is the vocabulary the other two are written in and is a
 ~20-site rename best done before they diverge. FOOP-36 (the Foolish-rendering sequencer, and
 `einmo_suite2` replacing `einmo_suite`) goes before FOOP-26 so that FOOP-26's baseline diffs
 read as language rather than FIR dumps; FOOP-36 moves no FIR, step rule or step count, so it
-costs FOOP-26 nothing. FOOP-46 (BraneConcatOp) overlaps both and should be sequenced against
-the track rather than run in parallel. Prior entry: added FOOP-16 (foolish-ubca2 — arena-backed
+costs FOOP-26 nothing. FOOP-46 (BraneConcatOp) is fourth, not a parallel item: its own spec states
+"Dependencies: FOOP-26. Order: after it" — it implements FOOP-26 §4, and may be reduced or
+dropped if 26's changes prove sufficient. Prior entry: added FOOP-16 (foolish-ubca2 — arena-backed
 FIR storage via copy-migration).
