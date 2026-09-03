@@ -21,9 +21,8 @@ and rewrites `foolish-ubca2`'s einmo baselines. It **does not modify**:
 - any `foolish-ubca/einmo_suite/**` baseline.
 
 If a task appears to require touching one of those, **stop and report** — it means the design
-has been misread or §FIR Impact Q2 has bitten. The only sanctioned exception is an **additive
-default method** on `FirQueryable` (§FIR Impact), which is a `foolish-core/src/fir.rs` change,
-must be reported before it is made, and must break no implementor.
+has been misread. Foolish mode renders directly from ubca2's arena; `foolish-core` is used only
+for `Detailed` conversion and delegation (§1, §FIR Impact).
 
 ---
 
@@ -91,24 +90,21 @@ code facts below were established while the FOOP was written; they are current a
 | Path | Role | Size |
 |---|---|---|
 | `foolish-ubca2/src/sequencer.rs` | **you create this** — the new renderer | — |
+| `foolish-ubca2/src/evaluator.rs` | retain the arena through Foolish sequencing | 59 lines |
+| `foolish-ubca2/src/fvm_storage.rs` | **READ ONLY** — arena FIR queried by the renderer | ~8200 lines |
 | `foolish-ubca2/src/lib.rs` | register the module | 36 lines |
 | `foolish-ubca2/src/ubca_snapshot_tester.rs` | the einmo adapter; ONE call site changes in Phase 5 | 236 lines |
 | `foolish-ubca2/einmo_suite2/` | **you create this** — Movement I's hand-written suite | — |
 | `foolish-core/src/sequencer.rs` | **READ ONLY** — `Detailed` delegates to it; never edit | 814 lines |
-| `foolish-core/src/fir.rs` | **READ ONLY** — `FirQueryable` accessors, `Nyes` | 2663 lines |
+| `foolish-core/src/fir.rs` | **READ ONLY** — `Nyes` and Detailed compatibility FIR | 2663 lines |
 
-**The trait you render from** — `FirQueryable` in `foolish-core/src/fir.rs` (~line 570).
-Every accessor is `hs_*` and returns `Option`, so rendering is a dispatch chain:
-`hs_constant_int`, `hs_nk`, `hs_operator`, `hs_search`, `hs_index`, `hs_stay_foolish`,
-`hs_stay_fully_foolish`, `hs_concatenation`, `hs_brane`, `hs_creation` / `hs_creation_name`,
-`hs_alarm`, `hs_is_tail_concatenation`, plus `hs_state() -> Nyes` and `hs_variant()`.
-`foolish-core/src/sequencer.rs`'s `render_fir` is the worked example of that dispatch — read
-it once; your `Foolish` mode is the same dispatch with different bodies.
-
-**`hs_search` returns a 7-tuple** (`SearchQuery`, `fir.rs` ~749):
-`(pattern, direction, anchored, anchor, result, is_value, value)`. For §3 you use
-`pattern` + `direction` + `anchored` + `anchor` and **ignore `result`** — that is the
-evaluator's conclusion. `hs_index` returns `(offset, anchored, anchor, result)`; same rule.
+**The FIR you render from** — `FVMStorage` + `FirPointer`, read through `FirCursor` in
+`foolish-ubca2/src/fvm_storage.rs`. Dispatch on `FirCursor::node() -> &FirSpec`; read written
+children from `foolish_children()`, produced results from `ubc_children()`, and NYES from
+`get_nyes()`. `FirSpec::Search` itself retains `pattern`, `anchored`, `forward`,
+`is_value_search`, and `contexted`; its written anchor/value operands remain in
+`foolish_children` even after an anchored miss. Do not route Foolish mode through
+`proto_to_core_fir`, which omits some of that metadata.
 
 **`Nyes`** (`fir.rs` ~115) has 8 variants: `Prembrionic`, `Embryonic`, `Braning` (pre-constanic);
 `Econstanic`, `Woconstanic`, `Constant`, `Independent`, `Nk` (constanic). Helpers:
@@ -124,10 +120,13 @@ vs `PREMBRYONIC` in prose.
   So `myˍvar` round-trips. This is why output shows `nonˍexistent`.
 - `!!` line comments and `!!!` block comments are lexed and discarded
   (`lexer.rs` lines 121–124, 327, 361). This is what makes §4's annotations free.
-- Search patterns are stored **regex-wrapped**: `?x` becomes `pattern='^x$'`. Rendering the
-  written form means un-wrapping `^…$`. Confirm the un-wrapping is total (Phase 1, Q2).
-- `hs_search` exposes `anchor` and `result` as **separate slots**, so a resolved search still
-  carries its written form (Phase 1, Q5).
+- Search patterns are stored **regex-wrapped**: identifier `x` becomes `pattern='^x$'`, while
+  explicit regex searches retain their regex. Equivalent spellings are standardized rather
+  than recovered byte-for-byte (human decision 2026-09-03); e.g. postfix `A = B$` renders as
+  attached `A =$ B`.
+- Arena searches expose written operands and produced results as separate slots:
+  `foolish_children` holds anchor/value operands; `ubc_children[0]`, when present, is the
+  produced result (Phase 1, Q5).
 - `foolish-ubca2/src/fvm_storage.rs` (~3368) has `proto_to_core_fir`, which dispatches into a
   separate `proto_to_core_fir_sff_body` (~3378) for SFF interiors — that path rebuilds searches
   as `SearchFir`s carrying pattern + anchoring (Phase 1, Q5).
@@ -252,9 +251,8 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 
 ## Phase 1 — Resolve Q2 before writing any rendering code
 
-*This phase writes no rendering code. It answers the one remaining open question that could
-change the FOOP's blast radius, BEFORE any code depends on the answer (§Open Questions Q2).
-Q5 was dissolved by the human; the confirmation left below is cheap and worth doing.*
+*This phase writes no rendering code. It confirms that every written form can be reconstructed
+directly from ubca2's arena, before any lossy compatibility conversion (§Open Questions Q2).*
 
 - [x] (read §3 and §FIR Impact of `FOOP-36.md`)
       (2026-09-02 20:51)
@@ -262,24 +260,17 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       to run unit tests: `foolish-core::sequencer_tests`, `foolish-ubca2::identifier`. No einmo
       cases yet — this phase adds no rendering.
       (2026-09-02 20:51 — 28 `sequencer_tests` and 15 `identifier`-filtered tests passed.)
-- [ ] For each §3 table row, inspect the `FirQueryable` accessors in
-      `foolish-core/src/fir.rs` (`hs_search`, `hs_operator`, `hs_index`, `hs_concatenation`,
-      `hs_stay_foolish`, `hs_stay_fully_foolish`, `hs_brane`, `hs_creation_name`) and record in
-      this plan, one line per row: **can the written form be reconstructed from what is
-      exposed?**
+- [x] For each §3 table row, inspect `FirSpec`, `FirCursor`, `foolish_children`, and
+      `ubc_children` in `foolish-ubca2/src/fvm_storage.rs` and record in this plan, one line per
+      row: **can the canonical written form be reconstructed from the arena?**
+      (2026-09-03 07:30 — yes; Q2 resolved without any `foolish-core` change.)
   - [x] Operator written form — glyph + operands from `hs_operator`
         (2026-09-02 20:51 — reconstructible.)
-  - [ ] Search written form — `?` / `~` / `.` / `&`-forms from `hs_search`'s pattern +
-        direction + anchored triple. **Note the known hazard:** the pattern is stored
-        regex-wrapped (`'^a$'`), so the written name must be recovered from it — confirm the
-        unwrapping is total and unambiguous, or report it as needing an accessor.
-        **BLOCKED (2026-09-02 20:51):** `SearchQuery` exposes direction, anchor, and value-search
-        data, but `foolish-ubca2/src/fvm_storage.rs::proto_to_core_fir_inner` constructs its
-        `SearchFirBuilder`s without `.direction(...)` and does not carry `FirSpec::Search`'s
-        `contexted` bit. Thus `?=` and `~=` become indistinguishable in the FIR sent to a
-        sequencer, and no `&` form can be recovered. In addition, `^x$` is ambiguous between
-        an identifier/dot search's compiler wrapper and an explicit regex. This violates §3's
-        requirement to render the original valid Foolish search.
+  - [x] Search written form — `?` / `~` / `.` / `&`-forms from `FirSpec::Search`'s pattern,
+        `forward`, `anchored`, `is_value_search`, and `contexted`, plus its written children.
+        (2026-09-03 07:30 — reconstructible. An anchored value-search miss such as `B?=5`
+        retains `B` and `5` in `foolish_children` with no `ubc_children` result. Equivalent
+        spellings are canonicalized; the renderer does not use `proto_to_core_fir`.)
   - [x] Index written form — `#N` / `^` / `$` from `hs_index`'s offset + anchored
         (2026-09-02 20:51 — reconstructible; `offset` and optional anchor suffice.)
   - [x] Concatenation written form — juxtaposition from `hs_concatenation`'s elements
@@ -293,7 +284,7 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       CONSTANT, no `SearchFir` left; unresolved → the `SearchFir` survives), so **no provenance
       marking, no new accessor, nothing to decide.** §3 was rewritten accordingly.
       (2026-09-02 14:05)
-- [ ] **Confirm §0.1.1 — which NYES states a `settled_constanic_result` slot actually holds.** The gate
+- [x] **Confirm §0.1.1 — which NYES states a `settled_constanic_result` slot actually holds.** The gate
       (`fvm_storage.rs:639`) tests `is_constanic()` on the owner, but two mechanisms narrow
       what lands in the slot: `Nyes::transform_for_clone` preserves only CONSTANT/INDEPENDENT/NK
       (= **constantew**) and turns everything else EMBRYONIC; and `push_ubc_child` (line 151)
@@ -302,12 +293,18 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       of §3's predicate the corpus exercises** — if ECONSTANIC/WOCONSTANIC results turn out to
       be rare or absent, say so, because the `einmo_suite2` cases must then cover them
       deliberately rather than incidentally.
-  - [ ] Confirm §3's dispatch on real FIRs — cheap, and the basis of everything downstream:
+      (2026-09-03 07:31 — across all 179 inputs: Independent 839, Constant 424,
+      Woconstanic 51, Nk 43, Prembrionic 22, Econstanic 19, Embryonic 4. No Braning result
+      slot was observed. The corpus exercises both inconclusive constanic states directly;
+      explicit Phase 3 cases still cover every state.)
+  - [x] Confirm §3's dispatch on real FIRs — cheap, and the basis of everything downstream:
         evaluate `misc/search_with_multiple_matches` (`r = b?a.*`, anchored) and
         `misc/undeclared_identifier` (`x = non_existent`, unanchored) and record what reaches
-        the sequencer. Under §3 the first renders `r = b?a.*` (anchor, then search) and the
-        second `x = nonˍexistent` (search alone) — both are constanic searches and both revert.
-- [ ] **Q7 — does a trailing use site render its value, or revert to a search?** Evaluate
+        the sequencer.
+        (2026-09-03 07:31 — `b?a.*` is a Constant search with result `3`, so it renders
+        `r = 3`; `nonˍexistent` is an Econstanic search with no result, so it renders the
+        canonical search. This corrects the stale pre-clarification expectation above.)
+- [x] **Q7 — does a trailing use site render its value, or revert to a search?** Evaluate
       `misc/sff_resolves_on_each_use` (`{a=1; b=2; s=<<a+b>>; a=10; s;}`) and inspect the FIR
       at the trailing `s;`. If it is a `SearchFir` for `s`, §3 says it renders `s`; if it is
       the constant `12`, it renders `12`. The committed baseline shows `12` but was produced by
@@ -316,16 +313,15 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       trailing-use-site lines renders across the corpus, and it is the single largest
       determinant of what the 179 migrated baselines will look like. Neither answer is a
       problem; guessing is.
-- [ ] **Decision point.** Q5 is already resolved (above). If every §3 written form
-      reconstructs from existing accessors, record "Q2 resolved: no accessor needed" and
-      proceed. If any does NOT: **stop and report to the human** the specific row, what is
-      missing, and the proposed additive `FirQueryable` default method — per the scope guard
-      that is the one sanctioned `foolish-core` change and not an agent's call to make. If any row does NOT: **stop and report to the
-      human** the specific row, what is missing, and the proposed additive `FirQueryable`
-      default method (returning `Option<…>`, defaulting to `None`) — per the scope guard, this
-      is the one sanctioned `foolish-core` change and it is not an agent's call to make
-      silently.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-03 07:31 — the trailing anonymous body is a Constant `Search("^s$")` whose
+      first UBC child is the Constant `+` result, value 12. It therefore renders `12`.)
+- [x] **Decision point. Q2 resolved: no accessor needed.** The human directed canonical
+      standardization on 2026-09-03. Foolish mode renders directly from the complete arena;
+      the lossy core-FIR conversion is downstream and used only by `Detailed` mode.
+      (2026-09-03 07:30)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-03 07:37 — `cargo test --workspace` passed; sibling
+      `einmo_gate_checked` passed. No doubts.)
 
 ---
 
@@ -333,16 +329,16 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
 
 *Smallest thing that compiles and proves the delegation contract. No `Foolish` rendering yet.*
 
-- [ ] (read §1 and §6 of `FOOP-36.md`)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] (read §1 and §6 of `FOOP-36.md`) (2026-09-03 07:41)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-ubca2::sequencer`. Run this subset frequently while
-      implementing; add new tests to this list as they are written.
-- [ ] Create `foolish-ubca2/src/sequencer.rs` with `SequenceMode` (`Foolish` default,
-      `Detailed`) and `Ubca2Sequencer::format(&dyn FirQueryable, SequenceMode) -> String`,
+      implementing; add new tests to this list as they are written. (2026-09-03 07:41)
+- [x] Create `foolish-ubca2/src/sequencer.rs` with `SequenceMode` (`Foolish` default,
+      `Detailed`) and `Ubca2Sequencer::format(&FVMStorage, FirPointer, SequenceMode) -> String`,
       exactly as §1 gives the signature. The whole of Phase 2 is this much code:
 
       ```rust
-      use foolish_core::fir::FirQueryable;
+      use crate::fvm_storage::{FVMStorage, FirPointer, proto_to_core_fir};
 
       /// Max line width (AGENTS.md §Code Style: 108-char documents).
       /// The single-vs-multi-line threshold, reduced by indent at each
@@ -359,35 +355,39 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
       pub struct Ubca2Sequencer;
 
       impl Ubca2Sequencer {
-          pub fn format(fir: &dyn FirQueryable, mode: SequenceMode) -> String {
+          pub fn format(storage: &FVMStorage, fir: FirPointer, mode: SequenceMode) -> String {
               match mode {
                   // Phase 2: Foolish temporarily delegates too, so the crate
                   // compiles and every baseline still passes. Phase 3 replaces
                   // this arm with the real renderer.
-                  SequenceMode::Foolish => Self::format_detailed(fir),
-                  SequenceMode::Detailed => Self::format_detailed(fir),
+                  SequenceMode::Foolish => Self::format_detailed(storage, fir),
+                  SequenceMode::Detailed => Self::format_detailed(storage, fir),
               }
           }
 
-          fn format_detailed(fir: &dyn FirQueryable) -> String {
-              foolish_core::FirSequencer::format(&foolish_core::clone_steppable(fir))
+          fn format_detailed(storage: &FVMStorage, fir: FirPointer) -> String {
+              let core_fir = proto_to_core_fir(storage, fir);
+              foolish_core::FirSequencer::format(&core_fir)
           }
       }
       ```
 
-      Note `clone_steppable` — `FirSequencer::format` takes `&Fir`, not `&dyn FirQueryable`;
-      `ubca_snapshot_tester.rs` line ~92 shows the same conversion in use.
-- [ ] Register the module in `foolish-ubca2/src/lib.rs` (`pub mod sequencer;` plus the
-      `pub use`), matching the existing module-doc style of that file.
-- [ ] Implement `SequenceMode::Detailed` as **pure delegation** to
-      `foolish_core::FirSequencer::format`. Not a reimplementation.
-- [ ] Implement `SequenceMode::Foolish` as a temporary delegation to `Detailed`, so the crate
-      compiles and every existing baseline still passes while Phase 3 fills it in.
-- [ ] **T1 (delegation half)** — unit tests asserting `format(fir, Detailed)` is byte-equal to
-      `foolish_core::FirSequencer::format(fir)` for at least: an int, a brane, an operator, a
-      resolved search, an NK. This pins §1's contract so it cannot silently drift.
-- [ ] Run all tests — old and new — and make sure they all pass correctly. **No einmo baseline
+      `Detailed` deliberately uses the existing compatibility conversion; `Foolish` replaces
+      that arm in Phase 3 and never goes through it. (2026-09-03 07:41)
+- [x] Register the module in `foolish-ubca2/src/lib.rs` (`pub mod sequencer;` plus the
+      `pub use`), matching the existing module-doc style of that file. (2026-09-03 07:41)
+- [x] Implement `SequenceMode::Detailed` as **pure delegation** to
+      `foolish_core::FirSequencer::format`. Not a reimplementation. (2026-09-03 07:41)
+- [x] Implement `SequenceMode::Foolish` as a temporary delegation to `Detailed`, so the crate
+      compiles and every existing baseline still passes while Phase 3 fills it in. (2026-09-03 07:41)
+- [x] **T1 (delegation half)** — unit tests asserting `format(storage, fir, Detailed)` is
+      byte-equal to formatting `proto_to_core_fir(storage, fir)` with
+      `foolish_core::FirSequencer` for at least: an int, a brane, an operator, a resolved
+      search, an NK. This pins §1's contract so it cannot silently drift. (2026-09-03 07:41)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **No einmo baseline
       may move in this phase** — if one does, `Detailed` is not pure delegation.
+      (2026-09-03 07:41 — `cargo test --workspace` passed; sibling `einmo_gate_checked`
+      passed independently. No einmo baseline moved; no doubts.)
 
 ---
 

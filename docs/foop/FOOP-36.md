@@ -349,20 +349,29 @@ pub enum SequenceMode {
 pub struct Ubca2Sequencer;
 
 impl Ubca2Sequencer {
-    pub fn format(fir: &dyn FirQueryable, mode: SequenceMode) -> String;
+    pub fn format(storage: &FVMStorage, fir: FirPointer, mode: SequenceMode) -> String;
 }
 ```
 
-`Detailed` **delegates to `foolish_core::FirSequencer::format`** — it is not a reimplementation
-and it is not permitted to drift. This is what keeps the FOOP's blast radius at zero for
-existing debugging workflows and for `foolish-ubca`.
+`Foolish` reads `foolish-ubca2`'s arena FIR directly, through `FVMStorage`, `FirPointer`, and
+`FirCursor`. That is the evaluator's complete representation: a search still carries its
+`pattern`, `anchored`, `forward`, `is_value_search`, and `contexted` fields, its written anchor
+and value operand remain in `foolish_children`, and any produced value is in `ubc_children`.
+Rendering before `proto_to_core_fir` is load-bearing because that compatibility conversion
+does not preserve every surface-relevant arena field.
+
+`Detailed` converts the selected arena node with `proto_to_core_fir`, then **delegates to
+`foolish_core::FirSequencer::format`**. It is not a reimplementation and is not permitted to
+drift. This keeps existing debugging output byte-compatible without making the new Foolish
+renderer depend on the lossy compatibility representation.
 
 `Foolish` is the new renderer, specified below. It is the default because it is what the einmo
 adapter and the REPL should show; a caller that wants internals asks for them by name.
 
 ### §2 The round-trip property (the definition of correct)
 
-For any input program `P` that `UbcaEvaluator` settles, let `R = format(eval(P), Foolish)`.
+For any input program `P` that `UbcaEvaluator` settles in its arena, let
+`R = format(storage, program_fir, Foolish)`.
 Then:
 
 1. **`R` lexes and parses.** `foolish_parser` accepts `R` with no error.
@@ -667,10 +676,11 @@ impl Default for SequenceOptions {
 }
 ```
 
-`Ubca2Sequencer::format(fir, mode)` stays as the common-case entry point (it builds
-`SequenceOptions::default()` with the given mode); `format_with(fir, &SequenceOptions)` is the
-form that takes an explicit width. The einmo adapter uses the default — **baselines are
-rendered at 108 and nothing else**, or the corpus would not be reproducible.
+`Ubca2Sequencer::format(storage, fir, mode)` stays as the common-case entry point (it builds
+`SequenceOptions::default()` with the given mode);
+`format_with(storage, fir, &SequenceOptions)` is the form that takes an explicit width. The
+einmo adapter uses the default — **baselines are rendered at 108 and nothing else**, or the
+corpus would not be reproducible.
 
 The budget behaves exactly as the existing one does — it is the **single-line vs multi-line
 decision threshold**, threaded down through nested renders as `line_hint` and reduced by the
@@ -891,19 +901,11 @@ Movement III (the adapter switch) — not discovered at Phase 6.
 
 ## FIR Impact
 
-**None.** No new FIR variant, no state-machine change, no serialization change. This FOOP
-reads FIR through the existing `FirQueryable` accessors and writes text. §Open Questions Q5
-records why no provenance marking is needed: the conclusive/inconclusive distinction is already
-carried by NYES.
-
-One **read-only** addition may prove necessary: rendering a pre-constanic search or operator in
-its *written form* (§4) requires the surface spelling. `hs_search()` supplies pattern,
-direction and anchoring; `hs_operator()` supplies the glyph and operands. If any kind turns
-out not to expose enough to reconstruct its written form, the remedy is a **new
-`FirQueryable` default method** returning `Option<String>` — additive, defaulting to `None`,
-breaking no implementor. §Open Questions Q2 tracks this; it is now the ONLY way this FOOP could
-grow past its stated blast radius, and **it must be reported to the human before it is made,
-never taken as an implementation convenience.**
+**None.** No new FIR variant, no state-machine change, no serialization change. This FOOP reads
+`foolish-ubca2`'s existing arena FIR through `FVMStorage`/`FirCursor` and writes text. The arena
+already retains every field needed by §3, including search direction and contexting. The
+legacy `proto_to_core_fir` representation is used only by `Detailed` mode and the existing
+`foolish_core::Evaluator` compatibility API; Foolish rendering occurs before that conversion.
 
 ## UBC Step Impact
 
@@ -1187,10 +1189,15 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
   they are. `Ubca2Sequencer` is additive, so nothing outside the adapter changes behavior
   unless a later FOOP chooses to move it.
-- **Q2.** Does every §3 written form reconstruct from existing `FirQueryable` accessors, or
-  is one additive default method needed (see §FIR Impact)? Resolve by inspection in Phase 1,
-  **before** implementation; if a method is needed, say so in the phase report rather than
-  adding it silently.
+- **Q2 — RESOLVED (human, 2026-09-03): render directly from ubca2's arena and standardize
+  equivalent source spellings.** `FirSpec::Search` retains the pattern, anchoring, direction,
+  value-search flag, and contexted flag; its `foolish_children` retain the anchor and value
+  operand even when a search misses. A hit renders its conclusive value; a miss therefore has
+  enough information to render the canonical search. Surface-equivalent spellings normalize:
+  for example, postfix `A = B$` renders as attached `A =$ B`. The lossy
+  `proto_to_core_fir` compatibility conversion is downstream of Foolish rendering and is used
+  only for `Detailed` delegation and the existing shared evaluator API. No `foolish-core`
+  accessor or FIR change is needed.
 - **Q3 — RESOLVED (human, 2026-09-02): the output width is CONFIGURABLE, defaulting to 108.**
   See §4.1. The 60-character NK-reason cap and the two-space comment gutter stay fixed for now
   — they are not width, and no need to vary them has appeared; raise them again if the first
@@ -1202,20 +1209,12 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   predict expected output from its own spec. The argument is §Motivation "Why this should land
   before FOOP-26"; the cost to FOOP-26 is nil because this FOOP moves no FIR, no step rule and
   no step count.
-- **Q5 — RESOLVED (human, 2026-09-02): dissolved, by a sharper statement of §3.** The
-  question asked whether the renderer must distinguish source-written FIRs from substituted
-  ones, and feared that a *consumed* search (`result = {y = 1;}?y` arriving as a bare `1`)
-  made §3 unimplementable. Both concerns fall away under the rule the human gave:
-
-  > **A constanic search reverts to the original search statement** — unanchored ones to the
-  > search alone, anchored ones to the anchor followed by the search. *Constanic* is the
-  > operative word: the state class, not "found" or "unresolved".
-
-  Because a search renders as a search whatever its result chain, there is no case where the
-  renderer must recover a written form that evaluation destroyed, and no need for FIR
-  provenance marking or a new accessor. And because every rendered search is one the next
-  compiler will **re-coordinate**, nothing is lost by printing it — §3.1 states that
-  explicitly. **No FIR change; nothing left for Phase 1 to decide beyond Q2.**
+- **Q5 — RESOLVED (human, 2026-09-02, clarified 2026-09-03): conclusive searches render their
+  value; inconclusive searches render the canonical search.** Thus `{A=B?=5}` renders `{A=5}`
+  when B contains a matching value. If B is constanic but has no match, the arena search is NK,
+  has no `ubc_children` result, and still retains B and 5 in `foolish_children`, so it renders
+  `{A=B?=5}` with the NK annotation. No provenance marking is needed: the arena preserves the
+  search node and its result slot distinguishes success from miss.
 - **Q6 — RESOLVED (human, 2026-09-02), and largely defused by the replacement approach.** The
   original concern: `foolish-ubca2/einmo_suite/verified/` holds 179 human-signed artifacts and
   its gate passes today (measured 2026-09-02), so re-rendering those baselines in place would
@@ -1231,15 +1230,11 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   `checked` → `verified` in one pass.** Until that pass, `einmo_suite2` has no verified tier.
   **The agent must not `#[ignore]` a Verified-tier gate** (AGENTS.md), and the human's
   mass-verify is downstream of a real per-case review, never a substitute for one.
-- **Q7. Does a trailing use site render its value or revert to a search?** §3 says a constanic
-  search reverts to the written search; a constant renders as its value. A bare trailing `s;`
-  (as in `misc/sff_resolves_on_each_use`, `{a=1; b=2; s=<<a+b>>; a=10; s;}`) is one or the
-  other depending on what the FVM leaves at that position — a `SearchFir` for `s`, or the
-  constant `12` it resolved to. The committed baseline shows `12` under the OLD rendering,
-  which does not settle it, because the old renderer collapsed searches to values anyway.
-  **Determine in Phase 1 by inspecting the FIR** — the same inspection that confirms §3's
-  dispatch — and record the answer, since it fixes how a large family of trailing-use-site
-  lines renders across the corpus. Neither answer is a problem; guessing is.
+- **Q7 — RESOLVED (inspection, 2026-09-03): a conclusive trailing use renders its value.** In
+  `misc/sff_resolves_on_each_use`, the trailing anonymous body remains a `Search("^s$")` in
+  the arena, but it is CONSTANT and its first UBC child is the CONSTANT `+` result with value
+  12. Under §3 it therefore renders `12`. An inconclusive trailing search would retain its
+  canonical written search instead.
 - **Q8 — RESOLVED (human pointed to the term; FOOP-62 §Terminology confirms it): NK is
   constantew, so the round trip is straightforward.** The vocabulary recovered: **constantew** =
   CONSTANT, INDEPENDENT, NK — constant everywhere, won't change no matter what;
@@ -1324,4 +1319,5 @@ Phase 6.5), so the agreement is on the record in all three places. §0.1.2 lists
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
 Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constantew).
-Open for Phase 1: Q2 (written-form reconstruction) and Q7 (trailing use sites).
+Phase 1 resolved Q2 (render directly from the arena) and Q7 (a conclusive trailing use renders
+its value) on 2026-09-03.
