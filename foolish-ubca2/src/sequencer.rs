@@ -748,6 +748,34 @@ mod tests {
         );
     }
 
+    /// §3's Creation and Characterized-brane rows: a bare creation renders
+    /// `⬤`; a NAMED creation (FOOP-33's null-characterized statement)
+    /// renders its original name; a characterized brane keeps its `a'b'`
+    /// prefix. Previously exercised only end-to-end via the einmo contract,
+    /// not by a direct unit test.
+    #[test]
+    fn foolish_renders_creations_and_characterized_branes() {
+        // A bare creation renders `⬤`, whether anonymous or the RHS of the
+        // null-characterized statement that names it (FOOP-33) — naming
+        // does not change what the DEFINING statement's own RHS renders as.
+        assert_foolish_body("{x=⬤;}", 0, "⬤");
+        assert_foolish_body("{'k=⬤;}", 0, "⬤");
+
+        // A statement that REFERENCES an already-named creation elsewhere
+        // renders that creation's original name, not `⬤`.
+        let (storage, program) = evaluated_program("{'k=⬤;j='k;}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{'k = ⬤; j = 'k}"
+        );
+
+        let (storage, program) = evaluated_program("{characterized=a'b'{v=1};}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{characterized = a'b'{v = 1}}"
+        );
+    }
+
     #[test]
     fn foolish_flags_change_only_annotations_and_layout() {
         let (storage, program) = evaluated_program("{x=1/0;}");
@@ -859,6 +887,49 @@ mod tests {
         assert!(
             rendered.contains("\n    alpha = 2;"),
             "nested body was not indented: {rendered}"
+        );
+    }
+
+    /// T7's remaining two width exceptions (§4.1): an annotation pushing a
+    /// line over budget must not be split or otherwise mangled — it is
+    /// appended AFTER the width-aware line-breaking decision, never
+    /// influencing it (`render_statement` calls `annotate` on the already-
+    /// rendered lines) — and a genuinely over-width echoed source statement
+    /// must render exactly as written, since Foolish has no
+    /// line-continuation syntax to break it with.
+    #[test]
+    fn foolish_width_exceptions_render_intact_not_mangled() {
+        // A narrow width so a short expression's own annotation alone pushes
+        // the line over budget, while the expression itself would easily fit.
+        let (storage, program) = evaluated_program("{x=1/0;}");
+        let annotated = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                width: 8,
+                ..SequenceOptions::default()
+            },
+        );
+        assert!(
+            annotated.contains("x = 1 / 0  !! NK: DIV-BY-ZERO: division by zero"),
+            "an annotation pushing a line over a narrow budget must render intact, not be \
+             split across lines or truncated by the WIDTH logic (only the reason's own 60-char \
+             cap applies, and this reason is under that): {annotated}"
+        );
+
+        // An identifier long enough to exceed even the default 108-column
+        // budget on its own, echoed as written source (an operand, not a
+        // statement name) rather than broken.
+        let long_ident = "an_identifier_that_is_deliberately_constructed_to_exceed_even_the_default_one_hundred_and_eight_column_budget_all_by_itself";
+        assert!(long_ident.len() > 108);
+        let source = format!("{{sum={long_ident}+1;}}");
+        let (storage, program) = evaluated_program(&source);
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        let expected_operand = long_ident.replace('_', "ˍ");
+        assert!(
+            rendered.contains(&expected_operand),
+            "an over-width echoed operand must render whole, not truncated or split \
+             (Foolish has no line-continuation syntax): {rendered}"
         );
     }
 

@@ -818,9 +818,11 @@ properties the whole design rests on — while `einmo_suite/` remains untouched 
 OLD rendering. Nothing here generates a baseline.*
 
 - [x] (read §2 and §2.1 of `FOOP-36.md`) (2026-09-03 09:56)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-ubca2::sequencer`, `foolish-ubca2::round_trip`; run einmo
       case: `foop/36/rendering_contract` in `einmo_suite2` (must stay green throughout).
+      (2026-09-03 — `cargo test -p foolish-ubca2 --lib -- sequencer` run repeatedly through
+      this phase's work; `einmo_suite2_gate_checked` reconfirmed green throughout.)
 - [x] **T2 — round-trip properties (§2).** Write the test as the six literal steps, since that
       is the shape the human specified and it is what makes the assertion meaningful:
       1. compile the program; 2. step to finish; 3. output → `R1`; 4. compile `R1` (that it
@@ -835,13 +837,19 @@ OLD rendering. Nothing here generates a baseline.*
       rendering is stable.
       (2026-09-03 09:56 — `foolish_rendering_round_trips_constanic_programs` covers constants,
       ECONSTANIC/WOCONSTANIC, NK, searches, indexes, SF/SFF, and both concatenation forms.)
-  - [ ] **The T2 input must instrument a VARIETY of constanic states**, not just constants:
+  - [x] **The T2 input must instrument a VARIETY of constanic states**, not just constants:
         CONSTANT and INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC
         statements; and NK expressions (`1/0`, an anchored miss). NK is **constantew** (§5.1) so
         it re-settles NK on the second pass and `R2 == R1` holds; ECONSTANIC is
         **non-constantew**, so it is the interesting one to watch — a rendered ECONSTANIC search
         re-read in a new context may resolve differently, and T2 is what proves the rendering
         is nonetheless stable.
+        (2026-09-03 — verified via probe against the ten T2 sources' root NYES: CONSTANT
+        (`{x=3+4;}`), INDEPENDENT (`{x={a=1}{b=2};}` — a self-contained merged concatenation),
+        WOCONSTANIC (`{r=missing;}`, the SF/SFF case, the nested-brane concatenation case), NK
+        (`{x=1/0;}`, `{x=???;}`, the anchored-miss case). `{r=missing;}`'s `missing` member is
+        itself the ECONSTANIC (non-constantew) case the sub-bullet is most concerned with, and
+        `R2 == R1` holding for it is exactly the empirical proof the sub-bullet asks for.)
 - [x] **T2b — pre-constanic rendering (§2.1).** Build FIRs stepped a bounded number of steps
       (not to settlement) and assert: renders, **parses**, contains no NYES token as syntax,
       state appears only inside `!!`. Cover at least one PREMBRYONIC, one EMBRYONIC, one
@@ -872,17 +880,41 @@ OLD rendering. Nothing here generates a baseline.*
       the defaults, so the corpus is reproducible.
       (2026-09-03 09:56 — direct `SequenceOptions` coverage; the suite adapter calls
       `SequenceMode::Foolish`.)
-- [ ] **T7 — line width (§4.1).** Unit tests that a construct over 108 chars at its indent
+- [x] **T7 — line width (§4.1).** Unit tests that a construct over 108 chars at its indent
       breaks with its body indented, that nesting reduces the budget by the indent, and that
       the three exceptions (unsplittable atom, annotated line, echoed over-width source) render
       intact. **Not** a corpus-wide width assertion.
-- [ ] Confirm every §3 table row has at least one T1 unit test and one `einmo_suite2` group.
+      (2026-09-03 — `foolish_width_preserves_atoms_and_indents_nested_branes` covers breaking
+      + nested-indent-reduces-budget + the unsplittable-atom exception. The remaining two
+      exceptions were genuinely untested (only structurally guaranteed by `render_statement`
+      calling `annotate` AFTER the width-aware line-breaking decision, never influencing it) —
+      added `foolish_width_exceptions_render_intact_not_mangled`, proving directly that a
+      narrow-width annotation renders intact rather than split/truncated, and that a
+      128-character echoed identifier operand (exceeding even the default 108) renders whole.
+      Neither is a corpus-wide assertion — both are single-construct unit tests.)
+- [x] Confirm every §3 table row has at least one T1 unit test and one `einmo_suite2` group.
       Name any row that does not, and close the gap.
-- [ ] Confirm the `Detailed`-delegation byte-equality tests from Phase 2 still pass — the
+      (2026-09-03 — checked all 13 rows against the actual test file and contract. 11 rows
+      already had both. Two rows — **Creation** and **Characterized brane** — had an
+      `einmo_suite2` group (`leaves`/`names`) but NO direct T1 unit test; they were exercised
+      only end-to-end through the contract. Added
+      `foolish_renders_creations_and_characterized_branes`, which also verifies a detail the
+      contract alone does not isolate: a creation's DEFINING statement (`'k = ⬤`) still renders
+      `⬤` on its own RHS, while a separate statement REFERENCING that named creation elsewhere
+      (`j = 'k`) renders its original name — probed against real evaluation before writing the
+      assertion. All 13 rows now have both forms of coverage.)
+- [x] Confirm the `Detailed`-delegation byte-equality tests from Phase 2 still pass — the
       renderer's growth must not have perturbed the delegating mode.
-- [ ] Run all tests — old and new — and make sure they all pass correctly. **`einmo_suite/`'s
+      (2026-09-03 — `detailed_delegates_for_integer`/`_brane`/`_operator`/`_resolved_search`/
+      `_nk`, all still passing, confirmed in this session's every `cargo test -p foolish-ubca2
+      --lib -- sequencer` run.)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **`einmo_suite/`'s
       three gates must STILL PASS on the old rendering** — if one has moved, the adapter was
       switched early and Movement III has begun by accident.
+      (2026-09-03 — `cargo test -p foolish-ubca2 --lib`: 164/164 (both einmo_suite2 gates and
+      all three einmo_suite gates green). `cargo test -p foolish-ubca --lib --
+      einmo_gate_checked`: still passes, unchanged — sibling scope guard honored. Phase 4
+      complete.)
 
 ---
 
