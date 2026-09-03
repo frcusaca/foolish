@@ -1,0 +1,142 @@
+{
+
+  !!!
+  Leaves: literal values and branes stay Foolish.
+  !!!
+
+  leaves = {
+    integer = 7;                         !! integer = 7
+    negative = -8;                       !! negative = -8
+    creation = ⬤;                        !! creation = ⬤
+    named_creation = 'True;              !! namedˍcreation = 'True
+    empty = {};                           !! empty = {}
+    constants = {a = 1; b = 2};          !! constants = {a = 1; b = 2}
+  };
+
+  !!!
+  Names: identifiers normalize, while characterizations remain syntax.
+  !!!
+
+  names = {
+    plain = 1;                           !! plain = 1
+    my_var = 2;                          !! myˍvar = 2
+    λ = 3;                               !! λ = 3
+    characterized = a'b'{v = 1};        !! characterized = a'b'{v = 1}
+    'k = 1;                              !! 'k = 1
+  };
+
+  !!!
+  Operators: values collapse; inconclusive and NK operations stay written.
+  !!!
+
+  operators_written = {
+    sum = 3 + 4;                         !! sum = 7
+    unresolved = missing_left + missing_right; !! unresolved = missingˍleft + missingˍright
+    divide_by_zero = 1 / 0;              !! divideˍbyˍzero = 1 / 0, with NK reason
+    nested = 1 + 2 * 3;                  !! nested = 7
+    unary = -8;                          !! unary = -8
+    comparison = {1, 2, 'lt}$;           !! comparison =$ {1; 2; 'True}; canonical attached tail
+  };
+
+  !!!
+  Searches: conclusive results become values; misses remain canonical searches.
+  !!!
+
+  searches_written = {
+    base = {a = 1; b = 5};
+    hit = base?a;                        !! hit = 1
+    regex_hit = base?(a.*);              !! regexˍhit = 1
+    anchored_miss = base?missing;        !! anchoredˍmiss = base?missing, with NK reason
+    unanchored_miss = missing;            !! unanchoredˍmiss = missing, ECONSTANIC
+    value_hit = base?=5;                 !! valueˍhit = 5
+    value_miss = base?=8;                !! valueˍmiss = base?=8, with NK reason
+  };
+
+  !!!
+  Indexes: ordinary results collapse; head and tail statements attach canonically.
+  !!!
+
+  indexes_written = {
+    base = {a = 1; b = 2};
+    indexed = base#0;                    !! indexed =^ base; #0 and ^ share one arena shape
+    from_postfix = base$;                !! fromˍpostfix =$ base
+    from_attached =$ base;               !! fromˍattached =$ base
+  };
+
+  !!!
+  SF and SFF: named definitions retain their delimiters.
+  !!!
+
+  sf_sff = {
+    x = 1;
+    sf = <x>;                            !! sf = <x>
+    sff = <<x>>;                         !! sff = <<x>>
+    operator_interior = <<x + missing>>; !! operatorˍinterior = <<x + missing>>
+    nested = <<x + <<missing>>>>;        !! nested = <<x + <<missing>>>>
+  };
+
+  !!!
+  Substitution: definitions stay written, while later uses show captured values.
+  !!!
+
+  substitution = {
+    x = 1;
+    sf = <x>;
+    sff = <<x>>;
+    x = 10;
+    sf;                                  !! trailing result = 1
+    sff;                                 !! trailing result = 10
+  };
+
+  !!!
+  Concatenation: a success is one brane; a failure is simplified juxtaposition.
+  !!!
+
+  concatenation = {
+    merged = {a = 1}{b = 2}{c = 3};     !! merged = {a = 1; b = 2; c = 3}
+    f = 3;
+    unmerged = {a = 1; aa = f}{b = notfound}not_found_brane{d = f};
+    empty = {}{};                         !! empty = {}
+  };
+
+  !!!
+  NK and state annotations remain comments; only a written no-no stays ???.
+  !!!
+
+  nk = {
+    divide = 1 / 0;                      !! divide = 1 / 0, with NK reason
+    b = {a = 1};
+    miss = b?nonexistent;                !! miss = b?nonexistent, with NK reason
+    no_no = ???;                         !! noˍno = ???
+    not_a_brane = 4$;                    !! notˍaˍbrane =$ 4, with NK reason
+  };
+
+  !!!
+  ECONSTANIC and WOCONSTANIC are annotations, never source tokens.
+  !!!
+
+  econstanic = {unfound = nowhere};      !! unfound stays nowhere
+  woconstanic = {sum = nowhere + absent}; !! sum stays nowhere + absent
+  no_state_tokens = {unfound = nowhere}; !! opening brace carries no state token
+
+  !!!
+  Comments attach to statements with exactly two spaces before the marker.
+  !!!
+
+  comments = {
+    first = nowhere;
+    second = absent;
+    trailing = 1 / 0
+  };
+
+  !!!
+  Width: the default 108-column budget breaks this brane, never its atoms.
+  !!!
+
+  width = {
+    an_unsplittable_identifier_that_is_deliberately_longer_than_the_normal_budget_abcdefghijklmnopqrstuvwxyz = 1;
+    alpha = 2;
+    beta = 3;
+    gamma = 4;
+  }
+}

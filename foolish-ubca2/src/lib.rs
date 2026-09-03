@@ -35,7 +35,9 @@ pub mod system_foo;
 
 pub use evaluator::UbcaEvaluator;
 pub use nyes_ext::NyesExt;
-pub use sequencer::{SequenceMode, Ubca2Sequencer};
+pub use sequencer::{SequenceMode, SequenceOptions, Ubca2Sequencer};
 
 #[cfg(test)]
 mod ubca_snapshot_tester;
+#[cfg(test)]
+mod ubca_snapshot_tester2;

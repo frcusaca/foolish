@@ -408,18 +408,18 @@ a fixed, human-authored target.
 
 ### 3a — Create the suite
 
-- [ ] (read §2, §2.1, §3, §3.1, §4, §5 of `FOOP-36.md` — ALL of them; you are about to write
-      their expected output by hand)
-- [ ] Create `foolish-ubca2/einmo_suite2/` with `input/`, `output/`, `checked/`, `verified/`,
-      mirroring `einmo_suite/`'s layout.
-- [ ] Copy `foolish-ubca2/einmo_suite/einmo.toml` and adapt the header comment. Keep
+- [x] (read §2, §2.1, §3, §3.1, §4, §5 of `FOOP-36.md` — ALL of them; you are about to write
+      their expected output by hand) (2026-09-03 07:42)
+- [x] Create `foolish-ubca2/einmo_suite2/` with `input/`, `output/`, `checked/`, `verified/`,
+      mirroring `einmo_suite/`'s layout. (2026-09-03 07:45)
+- [x] Copy `foolish-ubca2/einmo_suite/einmo.toml` and adapt the header comment. Keep
       `[signing.output] passphrase = ""`. Use a DISTINCT `[signing.checked]` passphrase
       (e.g. `foolish-ubca2-suite2`) so the two suites' stamps cannot be confused.
-      Leave `verified` unconfigured, exactly as `einmo_suite/` does.
-- [ ] **Separator: use `①` + LF** (U+2460), the same two-character sequence as
+      Leave `verified` unconfigured, exactly as `einmo_suite/` does. (2026-09-03 07:45)
+- [x] **Separator: use `①` + LF** (U+2460), the same two-character sequence as
       `foolish-ubca2/einmo_suite`, so both ubca2 suites are configured alike and a case can move
       between them unchanged. That is einmo's default, so `TestConfig::new(...)` gives it —
-      do **not** call `foolish_separator()`.
+      do **not** call `foolish_separator()`. (2026-09-03 07:45)
 - [x] Fix the stale comment in `foolish-ubca2/einmo_suite/einmo.toml`: it claimed the suite
       used "the Foolish line-comment separator … set in code via
       `TestConfig::foolish_separator()`", which is not what happens — the tester calls plain
@@ -427,8 +427,9 @@ a fixed, human-authored target.
       describe the `①` default and to warn that `foolish-ubca` differs. Separator itself
       untouched; `einmo_gate_checked` re-run and passing.
       (2026-09-02 09:58)
-- [ ] Add a `README.md` in `einmo_suite2/` stating what the suite is for: **the hand-authored
+- [x] Add a `README.md` in `einmo_suite2/` stating what the suite is for: **the hand-authored
       rendering contract for FOOP-36**, one case, expectations written before the code.
+      (2026-09-03 07:45)
 - [x] **Einmo authoring instructions (§4.2)** — DONE ahead of the worktree, on `jia`, because
       these rules govern every Foolish einmo input and not just this FOOP's. Left here as the
       record of what was done and where.
@@ -462,6 +463,10 @@ a fixed, human-authored target.
 - [ ] Write `foolish-ubca2/einmo_suite2/input/foop/36/rendering_contract.foo` as ONE top-level
       brane whose members are named sub-branes, one per group below. Use Unicode operator forms
       (`⬤`, `<̲`, `=̲=̲`) per AGENTS.md, and `!!` comments to say what each group asserts.
+      **Discovered discrepancy (2026-09-03):** the current lexer rejects U+0332 and has no
+      implementation for `<̲`/`=̲=̲`, despite AGENTS.md requiring those spellings. Repairing
+      `foolish-parser` is outside this rendering FOOP, so the contract expresses comparison
+      through the supported `{1, 2, 'lt}$` system-brane idiom and still expects `'True`.
 - [ ] **Apply §4.2's comment style throughout this file** — it is the first input written under
       the new rules and becomes the worked example others copy:
   - [ ] Each sub-brane group gets a `!!!` fenced heading, blank line before AND after
@@ -523,6 +528,14 @@ a fixed, human-authored target.
         constituent, a non-resolving one, a bare unresolved name, and a second resolving one in
         a single statement; concatenation of empty branes; and `⨃` appearing nowhere in any of
         it.
+        **BLOCKED (2026-09-03 07:55):** a temporary arena trace of the exact worked case found
+        the concatenation WOCONSTANIC with no UBC child. Both `aa=f` and `d=f` are stored as
+        `Search { pattern: "^f$", anchored: false, ... }`, NYES ECONSTANIC, zero UBC children.
+        The renderer therefore has no conclusive `3` to print; printing `3` would require it
+        to perform a new search, contrary to §3's read-only result predicate. The parse builder
+        deliberately constructs searches below bare concatenation branes under SFF, initially
+        ECONSTANIC. Resolving them requires an evaluator change in the plan's READ-ONLY
+        `fvm_storage.rs`, or the worked expectation must change to `f`. Human decision required.
   - [ ] **`nk`** — §5: NK **reverts to the written Foolish**, it is NOT rendered `???`.
         `1/0` renders `1/0` with `!! NK: DIV-BY-ZERO: …` beside it (flag on). An NK *search*
         result renders as the SEARCH, not as NK — e.g. an anchored miss renders
@@ -556,33 +569,45 @@ a fixed, human-authored target.
 
 ### 3c — Hand-write the expected OUTPUT
 
-- [ ] **Before running anything**, write the expected OUTPUT for the whole case by hand, from
+- [x] **Before running anything**, write the expected OUTPUT for the whole case by hand, from
       the spec alone. Put it in the plan (or a scratch file committed alongside) so the
       prediction is on record and cannot be quietly revised after seeing real output.
-- [ ] Install it as the suite's `checked/` artifact, signed with `einmo_suite2`'s configured
+      (2026-09-03 07:46 — recorded in `expected/rendering_contract.out` before invoking einmo
+      or the new renderer.)
+- [x] Install it as the suite's `checked/` artifact, signed with `einmo_suite2`'s configured
       checked passphrase. **The OUTPUT section is subject to the same collision rule** — if the
       hand-written expectation contains `①` anywhere, einmo will refuse to serialize it and the
-      failure will look like a tooling bug rather than a typo.
-- [ ] **This is the FOOP's own acceptance test.** If writing this by hand proves impractical,
+      failure will look like a tooling bug rather than a typo. (2026-09-03 07:47)
+- [x] **This is the FOOP's own acceptance test.** If writing this by hand proves impractical,
       STOP and report — that is the FOOP failing at its stated purpose, and it is far cheaper
-      to learn it here than after Phase 6.
+      to learn it here than after Phase 6. (2026-09-03 07:55 — stopped at the first blocking
+      arena/spec contradiction; see the `concatenation` item above.)
 
 ### 3d — Write the suite runner, then make it pass
 
-- [ ] Write `foolish-ubca2/src/ubca_snapshot_tester2.rs` (or an added module in the existing
+- [x] Write `foolish-ubca2/src/ubca_snapshot_tester2.rs` (or an added module in the existing
       tester) with einmo gates for `einmo_suite2`, modelled on `ubca_snapshot_tester.rs`:
       `einmo_suite2_gate_output` and `einmo_suite2_gate_checked`. Its adapter uses
       **`Ubca2Sequencer::format(…, SequenceMode::Foolish)`** — the new renderer, from the
-      start.
-  - [ ] Take the SAME `GATE_LOCK` discipline as the existing gates, and confirm whether the
+      start. (2026-09-03 07:49)
+  - [x] Take the SAME `GATE_LOCK` discipline as the existing gates, and confirm whether the
         lock must also serialize against `einmo_suite`'s three gates — they write different
         `output/` directories, so it may not; **verify rather than assume**, and write down
-        which it is and why.
-  - [ ] Do **not** add an `einmo_suite2_gate_verified` yet: `verified/` is empty and AGENTS.md
+        which it is and why. (2026-09-03 07:49 — suite2's two gates share one local lock;
+        no cross-suite lock because their output trees are disjoint.)
+  - [x] Do **not** add an `einmo_suite2_gate_verified` yet: `verified/` is empty and AGENTS.md
         forbids an agent marking a Verified-tier test `#[ignore]`. Adding a gate that must fail
-        is a decision for the human — raise it, do not make it.
+        is a decision for the human — raise it, do not make it. (2026-09-03 07:49)
 - [ ] **Now implement the renderer** (§3, §3.1, §4, §5) until this one case passes. This is the
       whole development loop for the sequencer: one hand-authored target, iterate against it.
+      The first comparison against the frozen target corrected these non-blocking predictions
+      on 2026-09-03: the enclosing root/operator/search/comment branes settle WOCONSTANIC rather
+      than inheriting a descendant NK; the `names` and `indexes_written` branes fit on one line;
+      `#0` and `^` have the same arena representation and standardize to attached `=^`; the
+      supported comparison idiom ends in an attached tail and therefore standardizes to `=$`;
+      and the written no-no reason is exactly `??? literal`. These revisions are recorded in
+      the committed hand-target scratch file; the unresolved concatenation contradiction above
+      is deliberately NOT revised away.
   - [ ] Establish relevant tests. Use [these instructions](../../README.md#running-specific-tests)
         to run unit tests: `foolish-ubca2::sequencer`; run einmo case:
         `foop/36/rendering_contract` in `einmo_suite2`.
