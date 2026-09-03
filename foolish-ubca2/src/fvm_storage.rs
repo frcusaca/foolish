@@ -310,8 +310,8 @@ impl FirSpec {
     /// `Creation` and `IndepInt` are fully determined the moment they're
     /// written — a literal integer or a creation mark needs no children and
     /// no computation to know its value — so they start `Independent`
-    /// (already settled). Every other kind depends on stepping (its own
-    /// computation, or its children's) to reach a settled value, so it
+    /// (already conclusive). Every other kind depends on stepping (its own
+    /// computation, or its children's) to reach a conclusive value, so it
     /// starts `Prembrionic`.
     fn initial_nyes(&self) -> Nyes {
         match self {
@@ -377,7 +377,7 @@ impl FVMStorage {
     /// Retrieve this pointer's NF (Not Foolish) reason, if any (FOOP-33 §4).
     /// `None` for every kind other than `FirSpec::Statement`, and `None`
     /// there too unless a null-characterized-name rule has refused this
-    /// statement. Consulted by [`FirPointer::settled_result`] to substitute
+    /// statement. Consulted by [`FirPointer::settled_constanic_result`] to substitute
     /// the refusal NK in place of the written body — see that method's doc
     /// comment.
     pub fn nf_reason(&self, ptr: FirPointer) -> Option<&str> {
@@ -631,12 +631,12 @@ impl FirPointer {
         }
     }
 
-    /// The settled result this pointer resolves to, if any. Applies the
+    /// The constanic result this pointer resolves to, if any. Applies the
     /// constanic gate itself — pre-constanic always answers `None`.
     /// `pub(crate)`: also called directly by
     /// `search_fir_dispatch::statement_value_for_comparison`, a nested
     /// module.
-    pub(crate) fn settled_result(self, storage: &FVMStorage) -> Option<FirPointer> {
+    pub(crate) fn settled_constanic_result(self, storage: &FVMStorage) -> Option<FirPointer> {
         if !storage.get_nyes(self).is_constanic() {
             return None;
         }
@@ -644,10 +644,10 @@ impl FirPointer {
         storage.slots[index].payload.ubc_children().first().copied()
     }
 
-    /// Recursively unwraps through `settled_result`, returning `self` when
+    /// Recursively unwraps through `settled_constanic_result`, returning `self` when
     /// there is none.
     pub fn value(self, storage: &FVMStorage) -> FirPointer {
-        match self.settled_result(storage) {
+        match self.settled_constanic_result(storage) {
             Some(child) => child.value(storage),
             None => self,
         }
@@ -813,10 +813,10 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
-                let all_settled = children
+                let all_foolish_children_conclusive = children
                     .iter()
                     .all(|&c| storage.get_nyes(c).is_conclusive());
-                if !all_settled {
+                if !all_foolish_children_conclusive {
                     for child in children {
                         storage.with_mut(ptr, |fir| fir.push_task(child));
                     }
@@ -939,7 +939,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
         // Same value-unwrap shape as `StayFoolish`, with two differences:
         // (1) SFF always moves to `Braning` and pushes tasks
         // unconditionally — there is no empty-children short-circuit; (2)
-        // the settled `Nyes` goes through `nyes_from_found`: an SFF wrapper
+        // the constanic `Nyes` goes through `nyes_from_found`: an SFF wrapper
         // can never itself be Econstanic — an Econstanic result means SFF is
         // still WAITING on it (Woconstanic), while the pushed result keeps
         // its own Econstanic unchanged.
@@ -965,10 +965,10 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         Some(r) => (r, storage.get_nyes(r)),
                         None => (expr, expr_nyes),
                     };
-                    let settled_nyes = nyes_from_found(result_nyes);
+                    let constanic_nyes = nyes_from_found(result_nyes);
                     let me = storage.get_mut(ptr);
                     me.push_ubc_child(result, result_nyes);
-                    me.set_nyes(settled_nyes);
+                    me.set_nyes(constanic_nyes);
                 }
             }
             _ => {}
@@ -1067,12 +1067,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 } else {
                     let helpers: Vec<FirPointer> =
                         FirCursor::new(ptr, storage).ubc_children().to_vec();
-                    let settled = if helpers.is_empty() {
+                    let decided_nyes = if helpers.is_empty() {
                         Nyes::Constant
                     } else {
                         decide_nyes_due_to_children(storage, &helpers).unwrap_or(Nyes::Constant)
                     };
-                    storage.with_mut(ptr, |fir| fir.set_nyes(settled));
+                    storage.with_mut(ptr, |fir| fir.set_nyes(decided_nyes));
                 }
             }
             _ => {}
@@ -1104,7 +1104,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 }
 
                 // Read each operand THROUGH its SFF wrapper: `.value()`
-                // follows the settled chain to whatever the recoordinated
+                // follows the constanic chain to whatever the recoordinated
                 // index landed on.
                 let values: Vec<Option<i64>> = operands
                     .iter()
@@ -1378,10 +1378,11 @@ fn nyes_from_found(found: Nyes) -> Nyes {
     }
 }
 
-/// Classifies a Braning node's settled state from its children's states, in
+/// Classifies a Braning node's decided `Nyes` from its children's states, in
 /// priority order: all-Independent → Independent; all-Constant (nothing
-/// pending) → Constant; any pre-constanic child → Braning (keep waiting);
-/// else any Econstanic/Woconstanic → Woconstanic; else any Nk → Nk.
+/// pending) → Constant; any pre-constanic child → Braning (keep waiting —
+/// this is the one outcome that is NOT constanic); else any Econstanic/
+/// Woconstanic → Woconstanic; else any Nk → Nk.
 fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) -> Option<Nyes> {
     let mut all_constant = true;
     let mut all_independent = true;
@@ -1599,19 +1600,19 @@ impl<'s> FirCursor<'s> {
 
     /// Applies the constanic gate itself: `None` unless this node is
     /// constanic.
-    pub fn settled_result(&self) -> Option<FirCursor<'s>> {
+    pub fn settled_constanic_result(&self) -> Option<FirCursor<'s>> {
         self.ptr
-            .settled_result(self.storage)
+            .settled_constanic_result(self.storage)
             .map(|p| FirCursor::new(p, self.storage))
     }
 
     /// `IndepInt` reports its own value directly; every other kind falls
-    /// through to its settled result. A kind with no settled result answers
-    /// `None`.
+    /// through to its constanic result. A kind with no constanic result
+    /// answers `None`.
     pub fn as_i64(&self) -> Option<i64> {
         match self.node() {
             FirSpec::IndepInt { value } => Some(*value),
-            _ => self.settled_result().and_then(|c| c.as_i64()),
+            _ => self.settled_constanic_result().and_then(|c| c.as_i64()),
         }
     }
 
@@ -1919,12 +1920,12 @@ macro_rules! temporary_release {
 impl FVMStorage {
     /// Also known as **"constanic clone."** "Revival" is the right word for
     /// what this does: it makes a
-    /// copy of an already-constanic (settled) FIR for use in a new context
+    /// copy of an already-constanic FIR for use in a new context
     /// (AB/IB recoordination — a named brane referenced elsewhere and
     /// detached/recloned into that new site), and the copy is given an
-    /// EARLIER `Nyes` than the original whenever the original's settledness
-    /// was *context-dependent* rather than self-contained: an `Econstanic`/
-    /// `Woconstanic` node (typically a settled search result) is regressed
+    /// EARLIER `Nyes` than the original whenever the original's constanic
+    /// state was *context-dependent* rather than self-contained: an `Econstanic`/
+    /// `Woconstanic` node (typically a constanic search result) is regressed
     /// back to `Embryonic` in the copy — brought back to an earlier point in
     /// its own lifecycle — so it re-settles fresh against its new home
     /// rather than carrying over an answer that was only ever valid in the
@@ -1943,7 +1944,7 @@ impl FVMStorage {
     ///    original-statement reference genuinely shared, and a named
     ///    creation's identity intact.
     /// 2. **`StayFoolish`/`StayFullyFoolish` unwrapping** — checked FIRST,
-    ///    before the share-not-clone check. `StayFoolish` tries its settled
+    ///    before the share-not-clone check. `StayFoolish` tries its constanic
     ///    `ubc_children[0]` first; either kind falls through to its first
     ///    `foolish_children` entry; if both are empty, an `eprintln!` ALARM
     ///    fires and the wrapper clones as-is.
@@ -1969,7 +1970,7 @@ impl FVMStorage {
     ) -> FirPointer {
         // StayFoolish/StayFullyFoolish unwrapping — checked FIRST, before
         // the share-not-clone check below. Only `StayFoolish` (not
-        // `StayFullyFoolish`) tries its settled `ubc_children[0]` first;
+        // `StayFullyFoolish`) tries its constanic `ubc_children[0]` first;
         // either kind falls through to its first `foolish_children` entry;
         // if BOTH are empty, this logs an ALARM and falls through to clone
         // the wrapper as-is via the normal share/rebuild logic below.
@@ -2083,7 +2084,7 @@ pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) 
             Equality::NotEqual
         };
     }
-    // Resolve through to the settled value (e.g. a search reference to a
+    // Resolve through to the constanic value (e.g. a search reference to a
     // creation resolves to the CreationFir it found) before comparing kinds.
     // `.value()` is a no-op for FIRs that are already their own value.
     let a_resolved = a.value(storage);
@@ -2297,9 +2298,9 @@ pub(crate) mod search_engine {
         /// Like [`Self::matches`] but skips the body-NYES gate.
         ///
         /// For positional/name-only predicates (Index, Head, Tail, Name) the
-        /// candidate's body settling state is irrelevant — the caller decides
+        /// candidate's body constanic state is irrelevant — the caller decides
         /// what to do. Value/NameValue predicates delegate to [`Self::matches`]
-        /// because they need the body settled to compare values.
+        /// because they need the body constanic to compare values.
         pub(crate) fn matches_no_body_check(
             &self,
             storage: &FVMStorage,
@@ -2345,7 +2346,7 @@ pub(crate) mod search_engine {
                         MatchOutcome::Reject
                     }
                 }
-                // Value/NameValue need body settled for comparison.
+                // Value/NameValue need body constanic for comparison.
                 _ => self.matches(storage, candidate, ctx),
             }
         }
@@ -2508,7 +2509,7 @@ mod search_fir_dispatch {
 
     /// The statement a search found presents its NF-substitution value if
     /// it's been refused (`nf_reason` set: a fresh, already-`Nk` node
-    /// instead of cloning its written RHS — `settled_result`'s own contract
+    /// instead of cloning its written RHS — `settled_constanic_result`'s own contract
     /// requires the presented value already BE constanic, which a
     /// `Prembrionic`-starting `FirSpec::Nk` node would not be), otherwise
     /// its written body, cloned via `revive_constanic`.
@@ -2545,7 +2546,7 @@ mod search_fir_dispatch {
         cursor.set_nyes(Nyes::Braning);
     }
 
-    /// The value a statement PRESENTS: its `settled_result()` (the
+    /// The value a statement PRESENTS: its `settled_constanic_result()` (the
     /// NF-refusal NK, if already refused) if set, else the raw written
     /// body. Used by the two NF-refusal checks below, which must compare
     /// against what a PRIOR statement already presents, not its raw RHS —
@@ -2554,7 +2555,7 @@ mod search_fir_dispatch {
         storage: &FVMStorage,
         stmt: FirPointer,
     ) -> Option<FirPointer> {
-        stmt.settled_result(storage)
+        stmt.settled_constanic_result(storage)
             .or_else(|| storage.foolish_children(stmt).first().copied())
     }
 
@@ -2586,7 +2587,7 @@ mod search_fir_dispatch {
             return;
         };
         if !storage.get_nyes(prior_body).is_constanic() {
-            return; // prior definition not yet settled -- nothing to compare yet.
+            return; // prior definition not yet constanic -- nothing to compare yet.
         }
         if super::default_equal(storage, body, prior_body) != super::Equality::Equal {
             let name = match storage.get(stmt) {
@@ -2600,11 +2601,11 @@ mod search_fir_dispatch {
     /// Shared write path for both NF-refusal rules below: sets `nf_reason`
     /// AND materializes the refusal as a fresh, already-`Nk` node pushed to
     /// `stmt`'s `ubc_children`. This second step is required: `FirPointer::
-    /// settled_result`'s generic `ubc_children().first()` read (used
+    /// settled_constanic_result`'s generic `ubc_children().first()` read (used
     /// pervasively, including by read-only output serialization, which
     /// cannot itself allocate a node on demand) must find something there to
     /// answer `Some(nk)` for a refused statement — setting `nf_reason` alone
-    /// would leave `ubc_children` empty and `settled_result` would fall
+    /// would leave `ubc_children` empty and `settled_constanic_result` would fall
     /// through to the raw, unrefused written body instead.
     fn refuse_statement(storage: &mut FVMStorage, stmt: FirPointer, reason: String) {
         storage.set_nf_reason(stmt, reason.clone());
@@ -2667,7 +2668,7 @@ mod search_fir_dispatch {
     /// already merged BEFORE `new_stmt`. `already_merged` is searched in
     /// REVERSE (nearest-first) so a same-name chain compares each new one
     /// against the NEAREST prior, transitively carrying any earlier refusal
-    /// forward via `statement_value_for_comparison`'s settled-result-first
+    /// forward via `statement_value_for_comparison`'s constanic-result-first
     /// read.
     pub(super) fn apply_null_const_rule_to_merged_stmt(
         storage: &mut FVMStorage,
@@ -2699,7 +2700,7 @@ mod search_fir_dispatch {
         if !storage.get_nyes(new_body).is_constanic()
             || !storage.get_nyes(prior_body).is_constanic()
         {
-            return; // one side not yet settled -- nothing to compare yet.
+            return; // one side not yet constanic -- nothing to compare yet.
         }
         if super::default_equal(storage, new_body, prior_body) != super::Equality::Equal {
             let name = match storage.get(new_stmt) {
@@ -3175,14 +3176,14 @@ mod search_fir_dispatch {
                 let predicate = build_value_predicate(storage, ptr).expect("checked ready");
                 let scan_outcome = if contexted && anchored {
                     let anchor = storage.foolish_children(ptr)[0];
-                    let anchor_settled = storage.get_nyes(anchor).is_constanic();
+                    let anchor_constanic = storage.get_nyes(anchor).is_constanic();
                     match contexted_search_from_anchor(storage, ptr, forward) {
                         Some((stmt, _nyes)) => {
                             handle_found(storage, ptr, stmt, has_ancestral_sfm);
                             return;
                         }
                         None => {
-                            if !anchor_settled {
+                            if !anchor_constanic {
                                 return;
                             }
                             ScanOutcome::Miss
@@ -3269,7 +3270,10 @@ mod core_fir_conversion {
     /// within a single iteration.
     const MAX_STEPS: usize = 10_000;
 
-    pub(crate) fn step_to_settled(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
+    pub(crate) fn step_to_constanic(
+        storage: &mut FVMStorage,
+        ptr: FirPointer,
+    ) -> Result<(), String> {
         let mut last_step = 0;
         for step in 0..MAX_STEPS {
             ptr.step(storage);
@@ -3316,7 +3320,7 @@ mod core_fir_conversion {
             }
             if storage.get_nyes(ptr).is_constanic() {
                 return Err(format!(
-                    "FVM settled (nyes={:?}) before condition was met at step {step}",
+                    "FVM went constanic (nyes={:?}) before condition was met at step {step}",
                     storage.get_nyes(ptr)
                 ));
             }
@@ -3591,7 +3595,7 @@ mod core_fir_conversion {
             FirSpec::Statement { .. } => {
                 let name =
                     display_stmt_name(cursor.as_stmt_identifier().map(|id| id.searchable_name()));
-                // Prefer settled_result() (the NF-refusal NK, if this
+                // Prefer settled_constanic_result() (the NF-refusal NK, if this
                 // statement was refused) over the raw written body (FOOP-33
                 // §4) — without this, a refusal is enforced internally but
                 // never rendered: `'True = 3` would still SHOW `3` instead
@@ -3615,7 +3619,7 @@ mod core_fir_conversion {
                         let name = display_stmt_name(
                             c_cursor.as_stmt_identifier().map(|id| id.searchable_name()),
                         );
-                        // Prefer settled_result() over the raw written body —
+                        // Prefer settled_constanic_result() over the raw written body —
                         // see the `Statement` arm above.
                         let body_fir =
                             search_fir_dispatch::statement_value_for_comparison(storage, c)
@@ -3666,7 +3670,7 @@ mod core_fir_conversion {
                 if state.is_constanic()
                     && let Some(&result) = cursor.ubc_children().first()
                 {
-                    // When the ubc_child is a settled search whose own
+                    // When the ubc_child is a constanic search whose own
                     // ubc_child is a complex type (Brane, Operator, SF,
                     // SFF), this search came from unwrapping an SF
                     // value. UBC preserves the search wrapper in this
@@ -3836,7 +3840,7 @@ mod core_fir_conversion {
             }
             FirSpec::StayFoolish => {
                 let inner_ref = cursor.foolish_children().first().copied();
-                // When the inner expression is itself a settled Search
+                // When the inner expression is itself a constanic Search
                 // whose OWN result is a "complex" kind (Brane/Operator/SF/
                 // SFF), the search wrapper is preserved and rendered
                 // UNWRAPPED — the outer `<...>` SF marker is NOT shown at
@@ -4797,7 +4801,7 @@ mod arena_compiler {
     /// LAST statement of the composite brane (FOOP-33 §4). Structural
     /// access (`stmt_count`/`stmt_at`), never a Foolish search. `.value()`
     /// on the STATEMENT itself would just return the statement (a plain
-    /// `Statement` has no settled result in the common case), so this
+    /// `Statement` has no constanic result in the common case), so this
     /// resolves through `foolish_children().first()` (the written body)
     /// first, THEN `.value()`.
     pub(crate) fn program_result(
@@ -4819,7 +4823,7 @@ mod arena_compiler {
 /// only the exact functions `evaluate`'s body needs are re-exported, not
 /// the modules' full surface.
 pub(crate) use arena_compiler::{compose_program_with_system, program_result};
-pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_settled};
+pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_constanic};
 
 #[cfg(test)]
 mod tests {
@@ -4955,7 +4959,7 @@ mod tests {
         // itself. `root` is where the climb terminates, since its own
         // parent is itself.
         assert_eq!(cursor.statement().ptr, root);
-        assert!(cursor.settled_result().is_none()); // IndepInt never has a settled_result body
+        assert!(cursor.settled_constanic_result().is_none()); // IndepInt never has a settled_constanic_result body
     }
 
     /// `FirCursorMut::push_ubc_child` keeps the two-part contract exactly:
@@ -5201,9 +5205,9 @@ mod tests {
         assert_eq!(FirCursor::new(node, &storage).as_i64(), Some(42));
     }
 
-    /// Stepping an already-settled `IndepInt` repeatedly is a no-op.
+    /// Stepping an already-conclusive `IndepInt` repeatedly is a no-op.
     #[test]
-    fn indep_int_stepping_already_settled_is_noop() {
+    fn indep_int_stepping_already_conclusive_is_noop() {
         let mut storage = FVMStorage::new();
         let node = storage.make_root(FirSpec::IndepInt { value: 1 });
         node.step(&mut storage);
@@ -5284,18 +5288,18 @@ mod tests {
         assert_eq!(storage.get_nyes(op), Nyes::Nk);
         assert_eq!(
             FirCursor::new(op, &storage)
-                .settled_result()
+                .settled_constanic_result()
                 .and_then(|c| c.as_nk_reason().map(str::to_string)),
             Some("division by zero".to_string())
         );
     }
 
     /// An `Operator` with a pre-constanic (not-yet-settled) operand pushes
-    /// tasks for its unsettled operands and moves to `Braning` — mirrors
+    /// tasks for its inconclusive operands and moves to `Braning` — mirrors
     /// `impl Fir for OperatorFir`'s `Prembrionic`/`Embryonic` branch exactly
     /// (`if !self.operands_all_settled() { push tasks }`).
     #[test]
-    fn operator_pushes_tasks_for_unsettled_operands() {
+    fn operator_pushes_tasks_for_inconclusive_operands() {
         let mut storage = FVMStorage::new();
         let op = storage.make_root(FirSpec::Operator {
             op: "+".to_string(),
@@ -5327,7 +5331,7 @@ mod tests {
     /// An `Operator` with an ECONSTANIC operand still pushes a task for it:
     /// ECONSTANIC is constanic but not conclusive, and line 818's rule
     /// (`all_foolish_children_conclusive`) gates on conclusive, not constanic.
-    /// `operator_pushes_tasks_for_unsettled_operands` only exercises
+    /// `operator_pushes_tasks_for_inconclusive_operands` only exercises
     /// PREMBRYONIC operands, so it cannot tell the two apart — this does.
     #[test]
     fn operator_pushes_tasks_for_econstanic_operand() {
@@ -5578,7 +5582,7 @@ mod tests {
             Some(referent),
             "the FoolRef's referent is the ORIGINAL found statement, genuinely shared"
         );
-        // `settled_result` (used by `.value()`) reads [0] only — [1] stays
+        // `settled_constanic_result` (used by `.value()`) reads [0] only — [1] stays
         // invisible. Its contract applies the constanic gate itself, so
         // `root` must be constanic first (a real search FIR would already
         // be constanic by the time it pushes a result; this test sets it
@@ -5586,7 +5590,7 @@ mod tests {
         storage.with_mut(root, |fir| fir.set_nyes(Nyes::Constant));
         assert_eq!(
             FirCursor::new(root, &storage)
-                .settled_result()
+                .settled_constanic_result()
                 .map(|c| c.ptr),
             Some(result)
         );
@@ -5614,7 +5618,7 @@ mod tests {
         assert_eq!(
             FirCursor::new(sf, &storage).ubc_children().first(),
             Some(&expr),
-            "SF unwraps to the inner expr itself, since it has no settled result of its own"
+            "SF unwraps to the inner expr itself, since it has no constanic result of its own"
         );
     }
 
@@ -5641,12 +5645,12 @@ mod tests {
         );
     }
 
-    /// `revive_constanic`'s SF/SFF unwrap: a `StayFoolish` with a settled
+    /// `revive_constanic`'s SF/SFF unwrap: a `StayFoolish` with a constanic
     /// result unwraps to that result (recursing through `revive_constanic`
     /// again on it), never producing a cloned SF wrapper node — mirrors
     /// `constanic_clone_at`'s own first branch exactly.
     #[test]
-    fn revive_constanic_unwraps_stay_foolish_to_its_settled_result() {
+    fn revive_constanic_unwraps_stay_foolish_to_its_settled_constanic_result() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let sf = root.create_child(&mut storage, FirSpec::StayFoolish);
         let inner = sf.create_child(&mut storage, FirSpec::IndepInt { value: 7 });
@@ -5664,7 +5668,7 @@ mod tests {
         // unwrap recurses into it and the share-rule then returns it as-is.
         assert_eq!(
             cloned, inner,
-            "SF unwraps through to its settled result, which then shares"
+            "SF unwraps through to its constanic result, which then shares"
         );
         assert!(
             storage.foolish_children(other_root).is_empty()
@@ -5674,7 +5678,7 @@ mod tests {
     }
 
     /// `revive_constanic`'s SF/SFF unwrap falls through to the first foolish
-    /// child when there is no settled result yet (or for `StayFullyFoolish`,
+    /// child when there is no constanic result yet (or for `StayFullyFoolish`,
     /// which never tries `ubc_children` first at all).
     #[test]
     fn revive_constanic_unwraps_stay_fully_foolish_to_first_foolish_child() {
@@ -5739,7 +5743,7 @@ mod tests {
     /// ONLY (see this kind's `fir_op_step` arm doc comment — helper
     /// population/merging is deferred, same NF-mechanism dependency already
     /// deferred at `StatementFir`). This test proves the type-check path: a
-    /// concatenation of two settled, brane-like elements is join-ready and
+    /// concatenation of two constanic, brane-like elements is join-ready and
     /// settles `Woconstanic` (an HONEST incomplete-implementation result,
     /// NOT `Constant` — `concatenation_nyes_transitions` in `fir_kinds.rs`
     /// expects `Constant` from the REAL, fully-merging implementation; this
@@ -5766,7 +5770,7 @@ mod tests {
         );
         storage.with_mut(brane2, |fir| fir.set_nyes(Nyes::Constant));
 
-        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
 
         // Both elements are EMPTY branes -- zero lines to merge, so the
         // real `populate_concat_helpers` pushes no helper at all, and the
@@ -5787,7 +5791,7 @@ mod tests {
         );
     }
 
-    /// A concatenation with a genuinely non-brane, settled element (an
+    /// A concatenation with a genuinely non-brane, constanic element (an
     /// `IndepInt`) settles `Nk` with the exact reason format the real
     /// `fir_op_step` produces — mirrors the type-error branch exactly.
     #[test]
@@ -5815,7 +5819,7 @@ mod tests {
 
         assert_eq!(storage.get_nyes(cat), Nyes::Nk);
         let reason = FirCursor::new(cat, &storage)
-            .settled_result()
+            .settled_constanic_result()
             .and_then(|c| c.as_nk_reason().map(str::to_string));
         assert_eq!(
             reason,
@@ -6039,7 +6043,7 @@ mod tests {
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
 
         assert_eq!(
             storage.get_nyes(cmp),
@@ -6143,7 +6147,7 @@ mod tests {
         assert!(nav.next_candidate().is_none());
     }
 
-    /// `SearchPredicate::Name` approves an exact match on a settled
+    /// `SearchPredicate::Name` approves an exact match on a constanic
     /// candidate.
     #[test]
     fn search_predicate_name_approves_exact_match() {
@@ -6453,7 +6457,7 @@ mod tests {
     /// shape: an anchored search whose FIRST child (the anchor) IS the
     /// brane to scan directly (`.value()` on an already-`Constant` `Brane`
     /// is a no-op — `Brane` never populates its own `ubc_children`, so
-    /// `settled_result`/`.value()` return the brane itself unchanged).
+    /// `settled_constanic_result`/`.value()` return the brane itself unchanged).
     #[test]
     fn search_fir_anchored_finds_statement_in_resolved_brane() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
@@ -6688,32 +6692,32 @@ mod tests {
 
     // ── Stepping loop / core-FIR conversion tests ───────────────────
 
-    use core_fir_conversion::{proto_to_core_fir, step_to_settled};
+    use core_fir_conversion::{proto_to_core_fir, step_to_constanic};
     use foolish_core::fir::FirQueryable;
 
-    /// `step_to_settled`'s happy path: an `IndepInt` settles within budget.
+    /// `step_to_constanic`'s happy path: an `IndepInt` settles within budget.
     #[test]
-    fn step_to_settled_settles_a_simple_fir() {
+    fn step_to_constanic_settles_a_simple_fir() {
         let mut storage = FVMStorage::new();
         let ptr = storage.make_root(FirSpec::IndepInt { value: 7 });
-        assert!(step_to_settled(&mut storage, ptr).is_ok());
+        assert!(step_to_constanic(&mut storage, ptr).is_ok());
         assert_eq!(storage.get_nyes(ptr), Nyes::Independent);
     }
 
-    /// `proto_to_core_fir` on a settled `IndepInt` produces a
+    /// `proto_to_core_fir` on a constanic `IndepInt` produces a
     /// `hs_constant_int` matching the value.
     #[test]
     fn proto_to_core_fir_renders_constant_int() {
         let mut storage = FVMStorage::new();
         let ptr = storage.make_root(FirSpec::IndepInt { value: 42 });
-        step_to_settled(&mut storage, ptr).unwrap();
+        step_to_constanic(&mut storage, ptr).unwrap();
 
         let rendered = proto_to_core_fir(&storage, ptr);
         assert_eq!(rendered.hs_constant_int(), Some(42));
         assert_eq!(rendered.hs_state(), Nyes::Independent);
     }
 
-    /// `proto_to_core_fir` on a settled `Nk` produces `hs_nk` with the
+    /// `proto_to_core_fir` on a constanic `Nk` produces `hs_nk` with the
     /// reason string — mirrors the `FirKind::Nk` arm.
     #[test]
     fn proto_to_core_fir_renders_nk_with_reason() {
@@ -6721,7 +6725,7 @@ mod tests {
         let ptr = storage.make_root(FirSpec::Nk {
             reason: "unbound name".to_string(),
         });
-        step_to_settled(&mut storage, ptr).unwrap();
+        step_to_constanic(&mut storage, ptr).unwrap();
 
         let rendered = proto_to_core_fir(&storage, ptr);
         let (reason, alarm) = rendered.hs_nk().expect("should render as Nk");
@@ -6737,7 +6741,7 @@ mod tests {
         let ptr = storage.make_root(FirSpec::Nk {
             reason: "division by zero".to_string(),
         });
-        step_to_settled(&mut storage, ptr).unwrap();
+        step_to_constanic(&mut storage, ptr).unwrap();
 
         let rendered = proto_to_core_fir(&storage, ptr);
         let (_, alarm) = rendered.hs_nk().unwrap();
@@ -6745,7 +6749,7 @@ mod tests {
         assert_eq!(alarm.code, "DIV-BY-ZERO");
     }
 
-    /// `proto_to_core_fir` on a settled `Brane` of settled statements
+    /// `proto_to_core_fir` on a constanic `Brane` of constanic statements
     /// produces `hs_brane` with the right statement count and names —
     /// mirrors the `FirKind::Brane` arm, including the display-name
     /// suppression for `compiler::ANON_STMT_NAME`-equivalent anonymous
@@ -6779,7 +6783,7 @@ mod tests {
         assert_eq!(statements.len(), 1);
     }
 
-    /// `proto_to_core_fir` on a settled `Operator` unwraps to its computed
+    /// `proto_to_core_fir` on a `Constant` `Operator` unwraps to its computed
     /// result (an `IndepInt`), not the operator wrapper — mirrors the
     /// `FirKind::Operator` arm's `state == Nyes::Constant` unwrap branch.
     #[test]
@@ -6804,7 +6808,7 @@ mod tests {
         assert_eq!(
             rendered.hs_constant_int(),
             Some(5),
-            "settled operator renders as its unwrapped result, not the wrapper"
+            "a Constant operator renders as its unwrapped result, not the wrapper"
         );
     }
 
@@ -7146,7 +7150,7 @@ mod tests {
     #[test]
     fn index_fir_finds_element_at_offset_in_anchor_brane() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(1, true);
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage)
             .ubc_children()
@@ -7154,7 +7158,7 @@ mod tests {
             .copied();
         assert!(
             result.is_some(),
-            "settled Index must have a ubc_children result"
+            "constanic Index must have a ubc_children result"
         );
         assert_eq!(
             FirCursor::new(result.unwrap().value(&storage), &storage).as_i64(),
@@ -7167,7 +7171,7 @@ mod tests {
     #[test]
     fn index_fir_out_of_bounds_is_nk() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(5, true);
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         assert!(FirCursor::new(idx, &storage).ubc_children().is_empty());
     }
@@ -7177,7 +7181,7 @@ mod tests {
     #[test]
     fn index_fir_negative_offset_from_back() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(-1, true);
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage)
             .ubc_children()
@@ -7227,7 +7231,7 @@ mod tests {
             },
         );
 
-        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage)
             .ubc_children()
@@ -7266,7 +7270,7 @@ mod tests {
             },
         );
 
-        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert_eq!(
             storage.get_nyes(idx),
             Nyes::Nk,
@@ -7288,7 +7292,7 @@ mod tests {
         });
         idx.create_child(&mut storage, FirSpec::IndepInt { value: 4 });
 
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         let reason = storage.alarm_reason(idx).map(str::to_owned);
         assert_eq!(
@@ -7329,7 +7333,7 @@ mod tests {
         );
         storage.with_mut(anchor, |fir| fir.set_nyes(Nyes::Nk));
 
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         assert_eq!(
             storage.alarm_reason(idx),
@@ -7370,7 +7374,7 @@ mod tests {
         }
 
         // idx: a contexted, anchored Index(offset=1) whose own foolish
-        // child (the anchor) is a Search already manually settled as
+        // child (the anchor) is a Search already manually made constanic as
         // having found home_stmts[0] ("a") via push_search_result_pair —
         // exactly the two-child invariant a real prior search leaves
         // behind, which the contexted branch reads via
@@ -7397,7 +7401,7 @@ mod tests {
             cursor.set_nyes(Nyes::Constant);
         }
 
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage)
             .ubc_children()
@@ -7449,7 +7453,7 @@ mod tests {
             cursor.set_nyes(Nyes::Constant);
         }
 
-        core_fir_conversion::step_to_settled(&mut storage, idx).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
     }
 
@@ -7457,7 +7461,7 @@ mod tests {
 
     /// A null-characterized statement redefining an existing same-name
     /// null-characterized constant with a DIFFERENT value is refused: its
-    /// presented value (`nf_reason`, read via `settled_result` in the real
+    /// presented value (`nf_reason`, read via `settled_constanic_result` in the real
     /// code — here checked directly) becomes a fresh NK, not its written
     /// RHS.
     #[test]
@@ -7483,7 +7487,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
             storage.nf_reason(second).is_some(),
             "redefining a null-characterized constant with a DIFFERENT value must be refused"
@@ -7520,7 +7524,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
-        core_fir_conversion::step_to_settled(&mut storage, brane).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
             storage.nf_reason(second).is_none(),
             "restating the SAME value must be permitted, not refused"
@@ -7569,7 +7573,7 @@ mod tests {
         );
         b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
         assert_eq!(storage.get_nyes(cat), Nyes::Independent);
 
         let helpers = FirCursor::new(cat, &storage).ubc_children().to_vec();
@@ -7643,7 +7647,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_settled(&mut storage, cat).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
 
         let helper = FirCursor::new(cat, &storage)
             .ubc_children()
@@ -7670,7 +7674,7 @@ mod tests {
         assert_eq!(roots.len(), 1);
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root)
             .expect("program_result must find the user's program member");
@@ -7701,7 +7705,7 @@ mod tests {
                 .unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let r_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
@@ -7740,7 +7744,7 @@ mod tests {
         let outer = storage.foolish_children(stmt)[0];
         assert_eq!(storage.foolish_children(outer).len(), 2);
 
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
 
         assert_eq!(storage.get_nyes(outer), Nyes::Nk);
         assert_eq!(
@@ -7770,7 +7774,7 @@ mod tests {
             arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let true_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
@@ -7796,7 +7800,7 @@ mod tests {
         .unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let second_true_stmt = FirCursor::new(program, &storage).stmt_at(3).unwrap();
@@ -7817,18 +7821,18 @@ mod tests {
     /// divergence: `check_null_const_conflict`/`check_rename_of_named_
     /// creation`/`apply_null_const_rule_to_merged_stmt` all correctly SET
     /// `nf_reason` on a refused statement, but nothing ever surfaced that
-    /// refusal through `FirPointer::settled_result`'s READ path (used by
+    /// refusal through `FirPointer::settled_constanic_result`'s READ path (used by
     /// `statement_value_for_comparison`, which output serialization and
-    /// `default_equal` both depend on) -- `settled_result` is generic
+    /// `default_equal` both depend on) -- `settled_constanic_result` is generic
     /// across all kinds and reads `ubc_children().first()`, but the NF
     /// write path never pushed anything there, so a refused statement's
-    /// `settled_result()` answered `None` and every reader silently fell
+    /// `settled_constanic_result()` answered `None` and every reader silently fell
     /// through to the raw (unrefused) written body. `'True = 3` rendered as
     /// plain `3` even though `nf_reason` was genuinely `Some("'True
     /// not-foolish")` on the very same pointer. Fixed by having the NF
     /// write path (`refuse_statement`, the new shared helper both call
     /// sites now use) also push a fresh, already-`Nk` node to
-    /// `ubc_children` -- exactly what `settled_result`'s generic read
+    /// `ubc_children` -- exactly what `settled_constanic_result`'s generic read
     /// already expects to find there.
     ///
     /// This test uses `UbcaEvaluator::evaluate` itself (not a hand-called
@@ -7883,7 +7887,7 @@ mod tests {
         )
         .unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
 
         let stmts = storage.foolish_children(root).to_vec();
         let sf_body = storage.foolish_children(stmts[3])[0]; // sf's SF wrapper
@@ -7892,7 +7896,7 @@ mod tests {
             .ubc_children()
             .first()
             .copied()
-            .expect("sf's search must have settled with a result");
+            .expect("sf's search must have gone constanic with a result");
 
         assert_eq!(
             storage.get_nyes(clone),
@@ -7995,7 +7999,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compile(&mut storage, "{k=1; k=2;}").unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
         let stmts = storage.foolish_children(root).to_vec();
         assert!(
             storage.nf_reason(stmts[0]).is_none(),
@@ -8016,7 +8020,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compile(&mut storage, "{A={}; B={'a=1;}; C = A B;}").unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
         let stmts = storage.foolish_children(root).to_vec();
         let c_body = storage.foolish_children(stmts[2])[0];
         let c_value = c_body.value(&storage);
@@ -8030,7 +8034,7 @@ mod tests {
 
     /// The whole comparison feature, end to end, for all five operators and
     /// both outcomes. `{a, b, 'op}$`: the brane literal's tail is `'op`,
-    /// whose settled value is the boolean it computed from its two
+    /// whose conclusive value is the boolean it computed from its two
     /// preceding neighbours (FOOP-33 §5.0). Each row is expressed as the
     /// plain Rust comparison of 1 and 2, so each row states WHY it is what
     /// it is, not merely what was observed.
@@ -8047,7 +8051,7 @@ mod tests {
             let source = format!("{{r = {{1, 2, {op}}}$;}}");
             let roots = arena_compiler::compose_program_with_system(&mut storage, &source).unwrap();
             let composed_root = roots[0];
-            core_fir_conversion::step_to_settled(&mut storage, composed_root).unwrap();
+            core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
             let program = arena_compiler::program_result(&storage, composed_root).unwrap();
             let stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
             let body = storage.foolish_children(stmt)[0];
@@ -8097,7 +8101,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compile(&mut storage, "{'a=⬤; b='a;}").unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_settled(&mut storage, root).unwrap();
+        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
         let rendered_root = core_fir_conversion::proto_to_core_fir(&storage, root);
         let rendered = format!("{rendered_root:?}");
         assert!(

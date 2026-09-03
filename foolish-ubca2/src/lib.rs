@@ -21,7 +21,10 @@
 //!   `FirPointer` it minted.
 //! - **`FirSpec`**: one variant per FIR kind, dispatched on by `fir_op_step`
 //!   (enum dispatch, not `dyn Fir` — rust_instructions.md §7).
-//! - **`NyesExt`**: adds `is_settled()` to `Nyes` (`is_constanic() || == Nk`).
+//! - **`NyesExt`**: adds the four NYES-group predicates to `Nyes` —
+//!   `is_preconstanic()`/`is_nye()`, `is_constanic()`, `is_constantew()`,
+//!   `is_conclusive()`. No `is_settled()` — "settled" is qualified with its
+//!   group everywhere in this crate rather than named as its own predicate.
 
 pub mod evaluator;
 pub mod fvm_storage;

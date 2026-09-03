@@ -56,7 +56,7 @@ impl ComparisonOp {
     }
 
     /// Recover an operator from the name [`ComparisonOp::searchable_name`]
-    /// produced. Used when constanic-cloning, where only the settled node's
+    /// produced. Used when constanic-cloning, where only the constanic node's
     /// own `op` field string is reachable.
     #[must_use]
     pub(crate) fn from_searchable_name(name: &str) -> Option<ComparisonOp> {

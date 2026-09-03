@@ -196,33 +196,90 @@ If a change seems to require editing `foolish-core`, stop and report — it does
 
 ## Phase 3 — Qualify every "settled"
 
-- [ ] (read §2 and §2.1 of `FOOP-56.md`)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] (read §2 and §2.1 of `FOOP-56.md`)
+      (2026-09-02 18:21)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run: `cargo test -p foolish-ubca2 --lib`. A rename that misses a call site fails to
       compile, which is the fast signal here.
-- [ ] Renames in `foolish-ubca2/src/fvm_storage.rs` (plus their call sites):
-  - [ ] `FirPointer::settled_result` → `settled_constanic_result` (~639). **Not
+      (2026-09-02 18:21)
+- [x] Renames in `foolish-ubca2/src/fvm_storage.rs` (plus their call sites):
+      (2026-09-02 18:21)
+  - [x] `FirPointer::settled_result` → `settled_constanic_result` (~639). **Not
         `constantew`** — §2.1: the StayFoolish path admits ECONSTANIC/WOCONSTANIC.
-  - [ ] `FirCursor::settled_result` → `settled_constanic_result` (~1602)
-  - [ ] `step_to_settled` → `step_to_constanic` (~3272, its re-export ~4825, and its caller in
+        (2026-09-02 18:21)
+  - [x] `FirCursor::settled_result` → `settled_constanic_result` (~1602)
+        (2026-09-02 18:21)
+  - [x] `step_to_settled` → `step_to_constanic` (~3272, its re-export ~4825, and its caller in
         `evaluator.rs`)
-  - [ ] `all_settled` → `all_foolish_children_conclusive` (~816) — it iterates
+        (2026-09-02 18:21)
+  - [x] `all_settled` → `all_foolish_children_conclusive` (~816) — it iterates
         `foolish_children`, so name that rather than "operands"
-  - [ ] `let settled = …decide_nyes_due_to_children(…)` → `let decided_nyes = …` (~1070). It
+        (2026-09-02 18:21)
+  - [x] `let settled = …decide_nyes_due_to_children(…)` → `let decided_nyes = …` (~1070). It
         can hold **BRANING**, so "settled" is wrong rather than merely vague.
-  - [ ] `settled_nyes = nyes_from_found(…)` → `constanic_nyes` (~968)
-  - [ ] `anchor_settled` → `anchor_constanic` (~3178)
-- [ ] Test renames:
-  - [ ] `indep_int_stepping_already_settled_is_noop` → `…_already_conclusive_…`
-  - [ ] `operator_pushes_tasks_for_unsettled_operands` → `…_for_inconclusive_operands`
-  - [ ] `revive_constanic_unwraps_stay_foolish_to_its_settled_result` →
-        `…_settled_constanic_result`
-- [ ] Doc comments: qualify each bare "settled" with its group. **Leave alone** any comment
+        (2026-09-02 18:21)
+  - [x] `settled_nyes = nyes_from_found(…)` → `constanic_nyes` (~968)
+        (2026-09-02 18:21)
+  - [x] `anchor_settled` → `anchor_constanic` (~3178)
+        (2026-09-02 18:21)
+- [x] Test renames:
+      (2026-09-02 18:21)
+  - [x] `indep_int_stepping_already_settled_is_noop` → `…_already_conclusive_…`
+        (2026-09-02 18:21)
+  - [x] `operator_pushes_tasks_for_unsettled_operands` → `…_for_inconclusive_operands`
+        (2026-09-02 18:21)
+  - [x] `revive_constanic_unwraps_stay_foolish_to_its_settled_result` →
+        `…_settled_constanic_result`. **Done in Phase 1's global sed pass** (it matched the
+        `settled_result` → `settled_constanic_result` substring rename, since the test name
+        contains that exact substring); confirmed present.
+        (2026-09-02 18:21)
+- [x] Doc comments: qualify each bare "settled" with its group. **Leave alone** any comment
       already unambiguous from context — this is clarification, not a sweep.
-- [ ] Fix `lib.rs` line 24: it claims `NyesExt` "adds `is_settled()` to `Nyes`". No such method
+      Delegated the `fvm_storage.rs`/`system_foo.rs` sweep to a sub-agent (fork); its report
+      reviewed and accepted. `nyes_ext.rs`'s own doc comment was already updated in Phase 1.
+      `initial_nyes`'s doc comment (~lines 308-315) qualified manually before dispatching.
+      Qualified ~30 occurrences (constanic in most cases — gated by `.is_constanic()`,
+      `.value()`'s chain through `settled_constanic_result`, or `step_to_constanic`; a smaller
+      number resolved to conclusive, e.g. the `proto_to_core_fir` Operator-unwrap test, which
+      is literally `state == Nyes::Constant`). Left ~24 unchanged: ~13 directly adjacent to the
+      renamed `settled_constanic_result` identifier (unambiguous by proximity), ~7 local test
+      variables literally named `settled`/`unsettled` set via `set_nyes(Nyes::Constant)` two
+      lines below (unambiguous from immediate context), 1 ("exact settled state" in
+      `statement_settles_to_its_bodys_nyes`'s doc — already stronger than any group name since
+      a statement mirrors its body's Nyes exactly, whatever state that is), 1 ("settled NK" —
+      already names the specific terminal state), 1 assertion string redundant with the doc
+      comment directly above it. **No genuinely ambiguous occurrence surfaced** — every case
+      traced to a single clear gate (`is_constanic()`/`is_conclusive()`/`is_constantew()`/an
+      explicit `Nyes::X` match) in the surrounding code. Nothing to escalate to the human from
+      this pass.
+      (2026-09-02 18:21)
+      **Parent-session review pass, before commit:** read the sub-agent's full diff
+      statement by statement rather than trusting the summary. Found and fixed 5 rough spots
+      it left behind: (1) `step_until`'s error string became the redundant/ungrammatical
+      "FVM settled constanic" — reworded to "FVM went constanic" (this is a `no production
+      caller` debugger-only string with no test asserting its exact text, confirmed by grep);
+      (2) three occurrences of the redundant phrase "settled constanic result" (doc comments at
+      ~634/4800 and one assertion message at ~5618) — trimmed to "constanic result" since the
+      renamed method name already carries "constanic"; (3) `as_i64`'s doc comment (~1609) still
+      said "settled result" although it directly documents a call through
+      `settled_constanic_result()` — missed by the sub-agent's sweep, now says "constanic
+      result"; (4) `decide_nyes_due_to_children`'s doc (~1384) said "NOT settled" for the
+      Braning outcome — tightened to "NOT constanic" to use this FOOP's own vocabulary since
+      the comment is specifically about the NYES-group distinction; (5) the
+      `proto_to_core_fir_unwraps_settled_operator_to_its_result` test's assertion message said
+      "settled operator" while its own doc comment (correctly qualified by the sub-agent) says
+      `Constant` `Operator` — reworded the assertion to match ("a Constant operator") for
+      internal consistency. Spot-checked the sub-agent's group choices (constanic vs.
+      conclusive) against the code they document; all read correct. Rebuilt and reran
+      `cargo test -p foolish-ubca2 --lib` after each fix: **141/141, unchanged**.
+      (2026-09-02 18:21)
+- [x] Fix `lib.rs` line 24: it claims `NyesExt` "adds `is_settled()` to `Nyes`". No such method
       exists; describe what the trait actually provides.
-- [ ] Run all tests — old and new — and make sure they all pass correctly. **Still 134/134 plus
-      Phase 1–2's new tests.**
+      (2026-09-02 18:21)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Still 134/134 plus
+      Phase 1–2's new tests.** **Actual: 141 passed; 0 failed**, unchanged from end of Phase 2 —
+      this phase touched only comments/doc-strings plus the already-verified identifier renames.
+      (2026-09-02 18:21)
 
 ---
 
