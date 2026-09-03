@@ -256,9 +256,33 @@ impl<'a> Renderer<'a> {
                 .get(value_index)
                 .map(|&child| self.render_inline(child, width, current_stmt))
                 .unwrap_or_else(|| "???".to_string());
+            // A combined name-and-value search (`a~tmp_.*=10`) is an ATOMIC
+            // CONJUNCTIVE operator — AGENTS.md §Searches: the name gate and
+            // value gate are tested TOGETHER on each candidate — so dropping
+            // the name half does not merely lose detail, it renders a
+            // DIFFERENT search. `canonical_name_pattern` returns None for a
+            // pattern with regexp metacharacters, and this used to
+            // `.unwrap_or_default()` that None into an empty string, silently
+            // turning `a~tmp_.*=10` into `a~=10`. Fall back to the stored
+            // pattern instead; only a genuinely absent name (a pure value
+            // search, whose pattern is the empty-matching default) renders
+            // with no name at all.
             let name = canonical_name_pattern(pattern)
-                .map(|name| name.to_string())
-                .unwrap_or_default();
+                .map(str::to_string)
+                .unwrap_or_else(|| {
+                    let unwrapped = pattern
+                        .strip_prefix('^')
+                        .and_then(|inner| inner.strip_suffix('$'))
+                        .unwrap_or(pattern);
+                    // `.*` (or an empty pattern) is the "no name gate" form a
+                    // pure value search stores; anything else is a real name
+                    // pattern the reader needs to see.
+                    if unwrapped.is_empty() || unwrapped == ".*" {
+                        String::new()
+                    } else {
+                        unwrapped.to_string()
+                    }
+                });
             format!("{context}{marker}{name}={value}")
         } else if let Some(name) = canonical_name_pattern(pattern) {
             if *anchored {
@@ -1525,6 +1549,39 @@ mod tests {
         );
         // A SCALAR NK still reverts — the written form is the information.
         assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
+    }
+
+    /// A combined NAME-AND-VALUE search (`a~tmp_.*=10`) is an atomic
+    /// conjunctive operator (AGENTS.md §Searches: both gates tested together
+    /// on each candidate), so the name half must survive rendering. It did
+    /// not: `canonical_name_pattern` returns None for a pattern containing
+    /// regexp metacharacters, and the value-search branch turned that None
+    /// into an empty string, silently rendering `a~tmp_.*=10` as `a~=10` — a
+    /// DIFFERENT search. Caught reviewing foop/23/value_search_name_and_value
+    /// against its old-suite baseline.
+    #[test]
+    fn foolish_name_and_value_search_keeps_its_regexp_name_pattern() {
+        let (storage, program) =
+            evaluated_program("{a = {tmp_a = 4; size = 10; tmp_b = 7;}; none = a~tmp_.*=10;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("a~tmpˍ.*=10"),
+            "the name half of a name-and-value search must survive: {rendered}"
+        );
+        assert!(
+            !rendered.contains("a~=10"),
+            "dropping the name gate renders a different search: {rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered)
+            .expect("name-and-value rendering remains parseable Foolish");
+
+        // A PURE value search still renders with no name gate.
+        let (storage, program) = evaluated_program("{b = {x = 5;}; hit = b?=5;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains("?.*="),
+            "a pure value search must not gain a spurious `.*` name gate: {rendered}"
+        );
     }
 
     /// §5.3: BRANING always reverts to its written form — the §5.2 brane
