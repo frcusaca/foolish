@@ -533,6 +533,21 @@ impl<'a> Renderer<'a> {
         };
 
         let body_cursor = FirCursor::new(body, self.storage);
+        // FOOP-75 §4.1, "transparency when settled": the attached form
+        // applies ONLY to statements that still SHOW their search structure —
+        // unsettled, or settled NK. A head/tail index that already resolved
+        // renders as the value it found, exactly as `z = b$` renders `z=3`.
+        // Without this guard the attached branch fires on the body's SHAPE
+        // (an anchored index at offset 0/-1) before `render_process_or_result`
+        // can collapse a conclusive result, so `first = data#0` rendered
+        // `first =^ data` while the adjacent `second = data#1` rendered `20` —
+        // two identical, both-resolved statements rendering in different
+        // shapes, and the `10` lost entirely. Caught reviewing
+        // `foop/41/offset_access_forward` against its old-suite baseline.
+        let body_is_conclusive = body_cursor
+            .ubc_children()
+            .first()
+            .is_some_and(|&result| self.storage.get_nyes(result).is_conclusive());
         let attached = match body_cursor.node() {
             FirSpec::Index {
                 offset,
@@ -540,6 +555,7 @@ impl<'a> Renderer<'a> {
                 ..
             } if matches!(offset, 0 | -1)
                 && name.is_some()
+                && !body_is_conclusive
                 && body_cursor
                     .foolish_children()
                     .first()
@@ -861,10 +877,14 @@ mod tests {
 
     #[test]
     fn foolish_standardizes_attached_indexes() {
-        let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
+        // An UNSETTLED head/tail keeps the attached spelling — a settled one
+        // renders its value instead (FOOP-75 §4.1; see
+        // `foolish_settled_head_tail_renders_its_value_not_the_attached_form`).
+        // `{}` has no head, so this index cannot settle.
+        let (storage, program) = evaluated_program("{b={};A=b$;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{\n  b = {\n    x = 3\n  };\n  A =$ b\n}"
+            "{\n  b = {};\n  A =$ b  !! NK: anchored index found no match\n}"
         );
     }
 
@@ -1323,10 +1343,15 @@ mod tests {
     /// tightening the safety check didn't overreach into refusing the safe case.
     #[test]
     fn foolish_attached_form_still_used_for_simple_identifier_anchor() {
-        let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
-        assert_eq!(
-            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{\n  b = {\n    x = 3\n  };\n  A =$ b\n}"
+        // Unsettled (an empty brane has no tail), so the search structure is
+        // still shown and the attached spelling applies — with a plain
+        // identifier anchor, which `is_safe_attached_anchor` must keep
+        // accepting.
+        let (storage, program) = evaluated_program("{b={};A=b$;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("A =$ b"),
+            "a plain identifier anchor must keep the attached spelling: {rendered}"
         );
     }
 
@@ -1371,5 +1396,36 @@ mod tests {
         compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
             panic!("a parenthesized-pattern search must remain parseable: {e:?}\n{rendered}")
         });
+    }
+
+    /// FOOP-75 §4.1 "transparency when settled", enforced for the ATTACHED
+    /// form too. `first = data#0` and `second = data#1` are the same shape of
+    /// statement and both resolve, so both must render their VALUE. The
+    /// attached branch used to fire on the body's shape alone, rendering
+    /// `first =^ data` — an unresolved-looking search for a statement that
+    /// had in fact settled Constant, losing the `10`, while its neighbour
+    /// rendered `20`. Caught reviewing `foop/41/offset_access_forward`
+    /// against its old-suite baseline, which had `first=10`.
+    #[test]
+    fn foolish_settled_head_tail_renders_its_value_not_the_attached_form() {
+        let (storage, program) =
+            evaluated_program("{data = {a=10; b=20; c=30}; first = data#0; second = data#1;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("first = 10") && rendered.contains("second = 20"),
+            "both resolved index statements must render their values: {rendered}"
+        );
+        assert!(
+            !rendered.contains("=^ data"),
+            "a settled head index must NOT render in the attached search form: {rendered}"
+        );
+
+        // The attached form is still correct where the search did NOT settle.
+        let (storage, program) = evaluated_program("{empty = {}; result = empty#0;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("result =^ empty"),
+            "an UNsettled head index keeps the attached form: {rendered}"
+        );
     }
 }

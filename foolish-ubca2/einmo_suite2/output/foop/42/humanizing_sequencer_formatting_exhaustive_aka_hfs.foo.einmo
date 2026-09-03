@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/42/humanizing_sequencer_formatting_exhaustive_aka_hfs.foo
 suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 63046e20
-producer-diff: sha256:0e6557fd69dfafeb7f8ed1b1735ff8cdad6c811448650d6ea1c37f86e68b57c4
-generated: 2026-09-03T19:53:41.000000000Z
+producer: 88c0e53c
+producer-diff: sha256:a31e0abf1cd90ae4adc64efb06b6af3b2eaffcec08a29e62e0d4abc3f63632e4
+generated: 2026-09-03T19:57:36.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -117,8 +117,8 @@ win={w_in={in_in={in_in_in=101010}}};
     name = 7;
     final = 0
   };
-  headˍofˍflat =^ flatˍthree;
-  tailˍofˍflat =$ flatˍthree;
+  headˍofˍflat = 42;
+  tailˍofˍflat = 0;
   headˍofˍempty =^ flatˍempty;  !! NK: anchored index found no match
   tailˍofˍempty =$ flatˍempty;  !! NK: anchored index found no match
   indexˍbrane = {
@@ -127,8 +127,8 @@ win={w_in={in_in={in_in_in=101010}}};
     third = 30;
     fourth = 40
   };
-  indexˍfirst =^ indexˍbrane;
-  indexˍlast =$ indexˍbrane;
+  indexˍfirst = 10;
+  indexˍlast = 40;
   indexˍoutˍofˍbounds = indexˍbrane#99;  !! NK: anchored index found no match
   seekˍunanchored = 40;
   sfˍtarget = {
@@ -250,6 +250,6 @@ win={w_in={in_in={in_in_in=101010}}};
   }
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:ca0aa662e9c4e84b7222ad42e52e8ed21bf22619330922a730194498b6f0c418","timestamp":"2026-09-03T19:53:41.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:ca0aa662e9c4e84b7222ad42e52e8ed21bf22619330922a730194498b6f0c418","timestamp":"2026-09-03T19:53:41.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"RxQADoC8HTpJM1dshr5TBPT+UsoVxCiWQGZTppKlcjVsvSHmirE5FYVw93Q1sJ8QTu164MgMUxDDvvljRlN4Cw==","produced_by":"einmo 0.1.0 sha256:ca0aa662e9c4e84b7222ad42e52e8ed21bf22619330922a730194498b6f0c418","timestamp":"2026-09-03T19:53:41.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"0yBVq57Mu7ENdaeMuICzXX7ib/VJm9D9yiR3lEqNSu6JXVA/+Luab5O7e6sPdr/+zuzkXzEB0A+JTScYzE7bAA==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
