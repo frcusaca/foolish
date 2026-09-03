@@ -689,7 +689,7 @@ otherwise forbids), the brane's opening line DOES get `!! NK: <reason>`. This ma
 the evaluator's step-cap (`ITERATION-EXCEEDED`) alarm is set only on the **composed root**,
 which is a brane, and no member of that brane carries the reason — suppressing it
 unconditionally would silently discard the one piece of information nowhere else in the output,
-defeating §2.1's whole debugging purpose. `comment_nk` (§4.1) still governs whether this
+defeating §2.1's whole debugging purpose. `warn_iteration_excess` (§4.1) still governs whether this
 exception fires; `suppress_sequencing_comments` (§4.1) overrides it like everything else.
 
 ```foolish
@@ -718,52 +718,86 @@ constant, so a caller that wants a different width says so at the call site and 
 render inherits it:
 
 ```rust
-pub struct SequenceOptions {
-    pub mode: SequenceMode,
-    /// Target max line width. Default 108 (AGENTS.md §Code Style).
-    pub width: usize,
-    /// Annotate NK expressions with `!! NK: <reason>` (§5). Default true.
-    /// Turned off, an NK expression renders as bare Foolish with no trace
-    /// of its NK-ness — which is what a caller wanting pure source wants.
-    pub comment_nk: bool,
-    /// Overrides `comment_nk` AND every §4 state annotation: when true, the
-    /// sequencer emits no `!!` comment of its own at all, on any line, for
-    /// any reason. Default false. Named "sequencing comments" — rather than
-    /// just "comments" — to distinguish annotations THIS renderer generates
-    /// from any comment a future sequencer feature might echo through from
-    /// source instead of generate.
-    pub suppress_sequencing_comments: bool,
+/// Which evaluator findings the sequencer announces in `!!` comments.
+/// One switch per warning kind; the default warns about what is ABNORMAL
+/// or UNKNOWABLE and stays quiet about what is ORDINARY.
+pub struct SequenceWarnings {
+    /// An NK whose result is NOT a brane (`1/0`, an anchored miss). Default ON.
+    pub warn_nk: bool,
+    /// A brane that is itself NK. Default OFF — a rollup its member lines
+    /// already explain (§4.0, §5.2).
+    pub warn_brane_nk: bool,
+    /// Default OFF — ordinary: dependencies settled without a value.
+    pub warn_woconstanic: bool,
+    /// Default OFF — ordinary: an unanchored miss, which may yet recoordinate.
+    pub warn_econstanic: bool,
+    /// Pre-constanic (BRANING, PREMBRYONIC, EMBRYONIC). Default ON — abnormal;
+    /// sequencing normally runs on settled FIR (§5.3).
+    pub warn_braning: bool,
+    /// The step cap's banner (§4.4). Default ON — nothing else says so.
+    pub warn_iteration_excess: bool,
 }
 
-impl Default for SequenceOptions {
-    fn default() -> Self {
-        Self {
-            mode: SequenceMode::Foolish,
-            width: 108,
-            comment_nk: true,
-            suppress_sequencing_comments: false,
-        }
-    }
+pub struct SequenceOptions {
+    pub mode: SequenceMode,
+    /// Advisory target only; nothing enforces it (§4.1.1).
+    pub width: usize,
+    pub warnings: SequenceWarnings,
+    /// Overrides EVERY warning above: no `!!` comment of any kind.
+    pub suppress_sequencing_comments: bool,
 }
 ```
 
-**`suppress_sequencing_comments` is an override, not a peer flag.** It sits one level above
-`comment_nk`: `comment_nk` decides only whether NK gets a reason comment, while
-`suppress_sequencing_comments` silences every `!!` annotation this renderer emits — the five
-state comments of this section as well as NK's — regardless of what `comment_nk` says. A caller
-wanting the closest thing to a plain pretty-printer (no evaluator commentary of any kind,
-whatever the FIR's state) sets this rather than trying to enumerate every annotation kind
-individually.
+`SequenceWarnings::silent()` turns everything off; `::verbose()` turns everything on, which is
+how a debugger sees the ordinary states the default hides.
 
-**One switch for now; a configuration object later if it earns one** (human, 2026-09-03). The
-renderer emits several distinguishable kinds of commentary — "show BRANING warning", "show NK
-warning", "show NK detail", "show iteration-excess warning" — and it is easy to imagine wanting
-them independently. It is **deliberately not** built that way yet: today there is
-`comment_nk` plus the single `suppress_sequencing_comments` override, and every annotation kind
-answers to that override. **If these grow numerous enough that callers genuinely need per-kind
-control, the right move is a dedicated configuration object**, not another few booleans bolted
-onto `SequenceOptions`. Until a caller actually needs it, the single on/off switch is the whole
-interface.
+**Why these defaults.** ECONSTANIC and WOCONSTANIC are the *routine* outcomes of ordinary
+programs — an unanchored name that did not resolve here is not news, and FOOP-23 says it may
+still resolve elsewhere. Annotating every one buries the findings that do matter. A non-brane
+NK is the opposite: `1/0` is unknowable and the reader must be told. A brane's own NK is a
+rollup its members already explain (§4.0, §5.2), so it is off; BRANING and the step cap are
+abnormal, so they are on.
+
+**One object, not a pile of booleans on `SequenceOptions`** (human, 2026-09-03). The knobs
+earned their own type once there were more than two; `suppress_sequencing_comments` stays on
+`SequenceOptions` because it is an override of the whole set, not a member of it.
+
+### §4.4 The step-cap banner sits above the program
+
+When the evaluator's step cap fires, the finding is about the **whole Foolish program**, not
+about the brace it would otherwise trail. It therefore renders on **its own line, above the
+program**:
+
+```foolish
+!! This Foolish program did not complete stepping within the limit of 9999 steps !!
+{
+  f1 = {
+    f1
+  };
+  stuck = f1  !! BRANING
+}
+```
+
+This follows §4.2's own rule that a full-line `!!` comment marks the code BELOW it, and it is
+phrased for a human reader rather than as the raw `Iteration exceeded 9999` alarm text. The
+root brane is the **Foolish program**, which is what the banner names.
+
+**Only the step-cap alarm gets this treatment, and only on a brane.** Other alarms — a value
+search's `VALUE-SEARCH-UNSUPPORTED-PATTERN`, say — sit on ordinary expression nodes
+mid-statement, where a full-line comment above the node would split the statement in two and
+fail to re-parse (caught by §T3 on `foop/23/value_search_pattern_error`). Those keep the
+ordinary trailing-comment form:
+
+```foolish
+  bad = a~={q = 1};  !! NK: VALUE-SEARCH-UNSUPPORTED-PATTERN: pattern is neither intege…
+```
+
+**`suppress_sequencing_comments` is an override, not a peer flag.** It sits one level above the
+whole `SequenceWarnings` set: each `warn_*` switch decides whether its own finding is
+announced, while `suppress_sequencing_comments` silences **every** `!!` annotation this
+renderer emits regardless of what any of them say. A caller wanting the closest thing to a
+plain pretty-printer sets this rather than enumerating every warning kind — though
+`SequenceWarnings::silent()` reaches the same output through the set itself.
 
 `Ubca2Sequencer::format(storage, fir, mode)` stays as the common-case entry point (it builds
 `SequenceOptions::default()` with the given mode);
@@ -1004,7 +1038,7 @@ the value is unknowable, but because that is what was written.
 
 #### The reason comment — flagged on or off
 
-**Whether NK is commented at all is a flag**, `SequenceOptions::comment_nk` (§4.1), default
+**Whether NK is commented at all is a flag**, `SequenceWarnings::warn_nk` (§4.1), default
 **on**. The two settings serve different readers:
 
 - **On** (einmo's setting): `a = 1/0;  !! NK: DIV-BY-ZERO: division by zero`. A reviewer sees
@@ -1015,9 +1049,9 @@ the value is unknowable, but because that is what was written.
 Either way the *expression* is identical; only the annotation moves. The einmo corpus is
 rendered with the default, so it is reproducible.
 
-**`SequenceOptions::suppress_sequencing_comments` (§4.1) overrides `comment_nk`.** Setting it
-silences NK's reason comment regardless of `comment_nk`, along with every §4 state comment — a
-caller wanting zero evaluator commentary sets this one flag rather than `comment_nk: false` plus
+**`SequenceOptions::suppress_sequencing_comments` (§4.1) overrides every warning.** Setting it
+silences NK's reason comment regardless of `warn_nk`, along with every other annotation — a
+caller wanting zero evaluator commentary sets this one flag rather than `warn_nk: false` plus
 some hypothetical state-comment equivalent that does not otherwise exist.
 
 **NK is constanic AND constantew** — see §5.1 for why that matters and what it does not change.
@@ -1213,10 +1247,10 @@ anywhere — chiefly via an NK reason containing one, which §5 collapses to a s
 that every `.foo` input this FOOP authors follows §4.2's layout rules (blank line before a
 full-line comment and none after; blank lines both sides of a `!!!` fence).
 
-**T9 — Flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation and on renders
+**T9 — Flags (§4.1, §5).** `warn_nk` off renders `a = 1/0;` with no annotation and on renders
 `a = 1/0;  !! NK: …`, the *expression* identical under both. A non-default `width` changes line
 breaking. `suppress_sequencing_comments` on silences both NK's reason comment and every §4 state
-comment, overriding `comment_nk` even when the latter explicitly asks for annotations. The einmo
+comment, overriding every `warn_*` switch even when they explicitly ask for annotations. The einmo
 adapter uses the defaults, so the corpus is reproducible.
 
 ### Group B — the suite as a fit replacement
@@ -1576,23 +1610,22 @@ belong with it.
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Foolish Standard Formatting** rules settled with the human and written in as
-spec. New **§4.0**: a brane's own derived (rollup) state is never annotated on its opening
-brace — the one exception being a DIRECT alarm on the brane itself, which no member line
-carries. Rewritten **§4.1.1**: ONE STATEMENT PER LINE, always, and **no wrapping within a
-line** — Foolish has no EOL continuation syntax yet, so `width` no longer drives any layout
-decision and long lines are correct output. New **§4.3**, the canonical spellings: **§4.3.1**
-the attached search form `A = B SEARCH` → `A =SEARCH B` (operator right of the `=`), with only
-`^`/`$` ever attaching and `#0`/`#-1` canonicalizing to them first; **§4.3.2** marker runs —
-opening runs must be unambiguous, closing runs decode greedily against the open-marker nesting
-(stated as a language rule for later FOOPs), with **§4.3.2.1** recording why this FOOP's
-closing-side space is still unconditional; **§4.3.3** no needless parentheses. New
-**§Proposed Next Steps**: **N1** instrument an additional element on the FIR to aid rendering
-(populated from the original compiler or from stepping) — the general finding behind **N2**,
-the deferred anchored dot form, and **N3**, wrapping once EOL continuation exists. Prior entry:
-FOOP-56 vocabulary pass: converted §0.1 into a pre-FOOP-56 survey and recorded the implemented
-predicates, renamed identifiers, and ECONSTANIC regression test; updated current references
-from `settled_result` to `settled_constanic_result`.
+**Changes**: **Warning configuration and the NK/BRANING brane rules.** New
+**`SequenceWarnings`** object (§4.1) replaces the single `comment_nk` boolean with one switch
+per warning kind — `warn_nk`, `warn_brane_nk`, `warn_woconstanic`, `warn_econstanic`,
+`warn_braning`, `warn_iteration_excess` — plus `silent()`/`verbose()` presets. The
+**conventional default warns about what is abnormal or unknowable and stays quiet about what is
+ordinary**: non-brane NK, BRANING and the step cap are ON; WOCONSTANIC, ECONSTANIC and a
+brane's own rollup NK are OFF. New **§4.4**: the step-cap alarm renders as a banner on its own
+line ABOVE the program (`!! This Foolish program did not complete stepping within the limit of
+9999 steps !!`) rather than trailing the root brace — and ONLY the step-cap alarm, only on a
+brane, since other alarms sit mid-statement where a full-line comment would not re-parse. New
+**§5.2**: NK reverts to the written expression EXCEPT when the result is a brane, which renders
+its contents so every member keeps its own state. New **§5.3**: BRANING always reverts (a
+BRANING brane may be self-referential and unroll) but carries `!! BRANING`. Earlier the same
+day: **§4.0** brane rollups are not annotated; **§4.1.1** one statement per line with no
+wrapping; **§4.3** canonical spellings (attached `^`/`$` only, marker runs, no needless
+parens); **§Proposed Next Steps** N1–N3.
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
@@ -1605,7 +1638,7 @@ a conclusive result collapses to its value. **§3.1** explains why that loses no
 splits concatenation on whether the merge succeeded. **§4** puts states with no Foolish syntax
 in `!!` comments; **§4.1** makes width configurable, default 108; **§4.2** covers einmo input
 comment style and the per-suite separator. **§5** derives NK's rendering from §3's predicate
-(`1/0`, never `???`), with `comment_nk` as a flag; **§5.1** distinguishes constantew from
+(`1/0`, never `???`), with `warn_nk` as a flag; **§5.1** distinguishes constantew from
 conclusive. **§6** keeps `Detailed` delegating unchanged to `foolish_core::FirSequencer`, so
 `foolish-ubca` cannot regress.
 

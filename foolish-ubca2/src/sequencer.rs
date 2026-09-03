@@ -21,19 +21,102 @@ pub enum SequenceMode {
     Detailed,
 }
 
+/// Which evaluator findings the sequencer announces in `!!` comments.
+///
+/// One switch per warning kind (FOOP-36 §4.1.1). The conventional default
+/// warns about what is **abnormal or unknowable** and stays quiet about what
+/// is **ordinary**:
+///
+/// | Warning | Default | Why |
+/// |---|---|---|
+/// | [`Self::warn_nk`] (non-brane) | **on** | `1/0` is unknowable; the reader must be told |
+/// | [`Self::warn_brane_nk`] | off | a brane's NK is a rollup its member lines already explain (§4.0, §5.2) |
+/// | [`Self::warn_woconstanic`] | off | ordinary: dependencies settled without a value |
+/// | [`Self::warn_econstanic`] | off | ordinary: an unanchored miss, which may yet recoordinate |
+/// | [`Self::warn_braning`] | **on** | abnormal — sequencing normally runs on settled FIR (§5.3) |
+/// | [`Self::warn_iteration_excess`] | **on** | the step cap fired; nothing else in the output says so |
+///
+/// PREMBRYONIC and EMBRYONIC follow `warn_braning`: like it, they mean
+/// evaluation has not finished, which is the abnormal case worth flagging.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SequenceWarnings {
+    /// Annotate an NK expression whose result is NOT a brane — `1/0`, an
+    /// anchored miss — with `!! NK: <reason>`.
+    pub warn_nk: bool,
+    /// Annotate a brane that is itself NK. Off by default: the state is a
+    /// rollup of the members, each of which carries its own annotation on its
+    /// own line, so repeating it on the opening brace is an echo (§4.0).
+    pub warn_brane_nk: bool,
+    /// Annotate WOCONSTANIC. Off by default — an ordinary outcome.
+    pub warn_woconstanic: bool,
+    /// Annotate ECONSTANIC. Off by default — an unanchored miss is routine,
+    /// and FOOP-23 says it may still gain a value by recoordination.
+    pub warn_econstanic: bool,
+    /// Annotate a pre-constanic node (BRANING, and likewise PREMBRYONIC /
+    /// EMBRYONIC). On by default: reaching the sequencer unsettled is
+    /// abnormal and the reader would want to know (§5.3).
+    pub warn_braning: bool,
+    /// Annotate a direct alarm on a node — chiefly the step cap's
+    /// `Iteration exceeded N`, which is set only on the composed root and
+    /// which no member line carries. On by default.
+    pub warn_iteration_excess: bool,
+}
+
+impl Default for SequenceWarnings {
+    fn default() -> Self {
+        Self {
+            warn_nk: true,
+            warn_brane_nk: false,
+            warn_woconstanic: false,
+            warn_econstanic: false,
+            warn_braning: true,
+            warn_iteration_excess: true,
+        }
+    }
+}
+
+impl SequenceWarnings {
+    /// Every warning off — the pure pretty-printer setting.
+    #[must_use]
+    pub fn silent() -> Self {
+        Self {
+            warn_nk: false,
+            warn_brane_nk: false,
+            warn_woconstanic: false,
+            warn_econstanic: false,
+            warn_braning: false,
+            warn_iteration_excess: false,
+        }
+    }
+
+    /// Every warning on — the debugging setting, which shows the ordinary
+    /// states the default hides.
+    #[must_use]
+    pub fn verbose() -> Self {
+        Self {
+            warn_nk: true,
+            warn_brane_nk: true,
+            warn_woconstanic: true,
+            warn_econstanic: true,
+            warn_braning: true,
+            warn_iteration_excess: true,
+        }
+    }
+}
+
 /// Configures Foolish sequencing without changing evaluator state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SequenceOptions {
     pub mode: SequenceMode,
     /// Soft maximum line width. Atoms and trailing annotations are not split.
     pub width: usize,
-    /// Whether NK findings are appended as Foolish line comments.
-    pub comment_nk: bool,
-    /// Overrides `comment_nk` and every state annotation: when true, the
-    /// sequencer emits no `!!` comments of its own at all. Named
-    /// "sequencing comments" to distinguish this renderer's own annotations
-    /// from any comment the sequencer may in future echo through from
-    /// source rather than generate itself.
+    /// Which evaluator findings are announced in `!!` comments.
+    pub warnings: SequenceWarnings,
+    /// Overrides every warning in [`Self::warnings`]: when true, the
+    /// sequencer emits no `!!` comment of its own at all. Named "sequencing
+    /// comments" to distinguish this renderer's own annotations from any
+    /// comment the sequencer may in future echo through from source rather
+    /// than generate itself.
     pub suppress_sequencing_comments: bool,
 }
 
@@ -42,7 +125,7 @@ impl Default for SequenceOptions {
         Self {
             mode: SequenceMode::Foolish,
             width: LINE_BUDGET,
-            comment_nk: true,
+            warnings: SequenceWarnings::default(),
             suppress_sequencing_comments: false,
         }
     }
@@ -150,8 +233,68 @@ impl<'a> Renderer<'a> {
 
         if annotate {
             self.annotate(fir, &mut lines);
+            self.prepend_alarm_line(fir, &mut lines);
         }
         lines
+    }
+
+    /// Puts a DIRECT alarm (the step cap's `Iteration exceeded N`) on its own
+    /// line ABOVE the construct it belongs to, rather than trailing its
+    /// opening brace (human, 2026-09-03).
+    ///
+    /// It is a whole-program finding — evaluation did not finish — not a
+    /// remark about the `{` it would otherwise share a line with, and §4.2's
+    /// own rule for a full-line `!!` comment is that it marks the code BELOW
+    /// it. The alarm is set only on the composed root, so in practice this
+    /// prepends one line to the whole output.
+    ///
+    /// Lives here rather than in [`Self::annotate`] because only this level
+    /// owns the `Vec` and may grow it; `annotate` may edit existing lines.
+    fn prepend_alarm_line(&self, fir: FirPointer, lines: &mut Vec<String>) {
+        if !self.options.warnings.warn_iteration_excess {
+            return;
+        }
+        let Some(reason) = self.storage.alarm_reason(fir) else {
+            return;
+        };
+        // ONLY the step-cap alarm gets the banner treatment, and only on a
+        // BRANE. Other alarms (e.g. a value search's
+        // `VALUE-SEARCH-UNSUPPORTED-PATTERN`) sit on ordinary expression
+        // nodes mid-statement, where injecting a full-line comment above the
+        // node splits the statement in two and does not re-parse — caught by
+        // the corpus-wide Property 1 check on
+        // `foop/23/value_search_pattern_error`, which rendered
+        // `bad = !! … !!` with the expression stranded on the next line.
+        // Those keep the ordinary trailing-comment form via `annotate`.
+        if step_limit_of(reason).is_none()
+            || !matches!(
+                FirCursor::new(fir, self.storage).node(),
+                FirSpec::Brane { .. } | FirSpec::ConcatHelper
+            )
+        {
+            return;
+        }
+        let indent: String = lines
+            .first()
+            .map(|first| {
+                first
+                    .chars()
+                    .take_while(|c| c.is_whitespace())
+                    .collect::<String>()
+            })
+            .unwrap_or_default();
+        // Spelled for a human reader rather than as the raw alarm string
+        // (human, 2026-09-03). The step cap's reason is `Iteration exceeded
+        // N`; what that MEANS to someone reading the output is that this
+        // brane never finished. Bracketed `!!` on both ends so it reads as a
+        // banner over the program rather than as a remark trailing off.
+        let message = match step_limit_of(reason) {
+            Some(limit) => format!(
+                "!! This Foolish program did not complete stepping within the limit of {limit} steps !!"
+            ),
+            None => format!("!! {} !!", sanitize_reason(reason)),
+        };
+        lines.insert(0, format!("{indent}{message}"));
     }
 
     fn render_process_or_result<F>(
@@ -737,42 +880,56 @@ impl<'a> Renderer<'a> {
                             FirSpec::Brane { .. }
                         )
                     }));
+        let warnings = &self.options.warnings;
+        let state = self.storage.get_nyes(fir);
         if renders_as_brane {
-            if self.options.comment_nk
-                && let Some(reason) = self.storage.alarm_reason(fir)
-            {
-                let annotation = format!("NK: {}", sanitize_reason(reason));
+            // A DIRECT alarm on the brane (the step cap's `Iteration exceeded
+            // N`, set only on the composed root) is the one finding no member
+            // line carries, so it is governed by its own switch rather than
+            // by `warn_brane_nk`.
+            if warnings.warn_iteration_excess && self.storage.alarm_reason(fir).is_some() {
+                // Emitted on its OWN LINE, BEFORE the brane's opener (human,
+                // 2026-09-03) rather than trailing the `{`. This is a
+                // whole-program finding — evaluation did not finish — not a
+                // remark about the brace it would otherwise sit on, and a
+                // full-line comment above the construct is how §4.2 says such
+                // a comment marks what follows it. `render_expr`'s caller
+                // prepends it (see `prepend_alarm_line`), because `annotate`
+                // only has the right to touch existing lines.
+            } else if state == Nyes::Nk && warnings.warn_brane_nk {
+                let annotation = format!("NK: {}", self.nk_reason(fir));
                 if let Some(first) = lines.first_mut() {
                     first.push_str("  !! ");
                     first.push_str(&annotation);
                 }
-            } else if self.storage.get_nyes(fir) == Nyes::Braning {
-                // BRANING is the one rollup state a brane DOES advertise
-                // (human, 2026-09-03). Reaching the sequencer still BRANING is
-                // abnormal — sequencing normally runs on settled FIR — so
-                // unlike an NK rollup (which the member lines already explain)
-                // this one is worth alarming the reader about, precisely
-                // BECAUSE it is not normal.
-                //
-                // Still governed by `suppress_sequencing_comments`, which
-                // returned at the top of this function before we got here:
-                // that flag silences EVERY comment this renderer emits, with
-                // no exceptions, and this alarm is not one.
+            } else if state == Nyes::Braning && warnings.warn_braning {
+                // BRANING is the one rollup state a brane advertises by
+                // default (human, 2026-09-03). Reaching the sequencer still
+                // BRANING is abnormal — sequencing normally runs on settled
+                // FIR — so unlike an NK rollup (which the member lines already
+                // explain, hence `warn_brane_nk` defaulting off) this one is
+                // worth alarming the reader about, precisely BECAUSE it is
+                // not normal.
                 if let Some(first) = lines.first_mut() {
                     first.push_str("  !! BRANING");
                 }
             }
             return;
         }
-        let state = self.storage.get_nyes(fir);
         let annotation = match state {
-            Nyes::Prembrionic
-            | Nyes::Embryonic
-            | Nyes::Braning
-            | Nyes::Econstanic
-            | Nyes::Woconstanic => Some(state.to_string()),
-            Nyes::Nk if self.options.comment_nk => Some(format!("NK: {}", self.nk_reason(fir))),
-            Nyes::Constant | Nyes::Independent | Nyes::Nk => None,
+            // Pre-constanic: evaluation did not finish. Shares `warn_braning`
+            // because it is the same abnormality BRANING reports.
+            Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning if warnings.warn_braning => {
+                Some(state.to_string())
+            }
+            // ECONSTANIC and WOCONSTANIC are ORDINARY outcomes — an unanchored
+            // miss that may still recoordinate (FOOP-23), and dependencies
+            // that settled without a value. Off by default: annotating every
+            // one buries the findings that matter.
+            Nyes::Econstanic if warnings.warn_econstanic => Some(state.to_string()),
+            Nyes::Woconstanic if warnings.warn_woconstanic => Some(state.to_string()),
+            Nyes::Nk if warnings.warn_nk => Some(format!("NK: {}", self.nk_reason(fir))),
+            _ => None,
         };
         if let (Some(annotation), Some(first)) = (annotation, lines.first_mut()) {
             first.push_str("  !! ");
@@ -850,6 +1007,16 @@ fn tighten_braces(text: &str) -> String {
     text.replace("{ ", "{").replace(" }", "}")
 }
 
+/// The step count from a step-cap alarm reason (`Iteration exceeded 9999`),
+/// used to phrase the banner in `prepend_alarm_line` for a human reader.
+/// `None` for any other alarm, which then prints its own text verbatim.
+fn step_limit_of(reason: &str) -> Option<&str> {
+    reason
+        .strip_prefix("Iteration exceeded ")
+        .map(str::trim)
+        .filter(|rest| !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()))
+}
+
 fn sanitize_reason(reason: &str) -> String {
     let one_line = reason
         .replace(['\n', '\r', '①'], " ")
@@ -869,7 +1036,7 @@ fn sanitize_reason(reason: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{SequenceMode, SequenceOptions, Ubca2Sequencer, sanitize_reason};
+    use super::{SequenceMode, SequenceOptions, SequenceWarnings, Ubca2Sequencer, sanitize_reason};
     use crate::fvm_storage::{
         FVMStorage, FirCursor, FirPointer, FirSpec, compose_program_with_system, program_result,
         proto_to_core_fir, step_to_constanic,
@@ -956,7 +1123,7 @@ mod tests {
     #[test]
     fn foolish_retains_inconclusive_processes_as_source() {
         assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
-        assert_foolish_body("{r=missing;}", 0, "missing  !! ECONSTANIC");
+        assert_foolish_body("{r=missing;}", 0, "missing");
         assert_foolish_body(
             "{b={x=3;};r=b?missing;}",
             1,
@@ -967,7 +1134,7 @@ mod tests {
     #[test]
     fn foolish_preserves_stay_wrappers() {
         assert_foolish_body("{x=1;sf=<x>;sff=<<x>>;}", 1, "<x>");
-        assert_foolish_body("{x=1;sf=<x>;sff=<<x>>;}", 2, "<<x>>  !! WOCONSTANIC");
+        assert_foolish_body("{x=1;sf=<x>;sff=<<x>>;}", 2, "<<x>>");
     }
 
     #[test]
@@ -989,7 +1156,7 @@ mod tests {
         let (storage, program) = evaluated_program("{f=3;a=2;b={f1=f;f2=a;f3=not_found;};}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{\n  f = 3;\n  a = 2;\n  b = {\n    f1 = 3;\n    f2 = 2;\n    f3 = notˍfound  !! ECONSTANIC\n  }\n}",
+            "{\n  f = 3;\n  a = 2;\n  b = {\n    f1 = 3;\n    f2 = 2;\n    f3 = notˍfound\n  }\n}",
             "a brane's own derived state is a rollup of its members and must not repeat as a \
              comment on its opening brace — each member already carries its own accurate \
              annotation, so the outer and inner brace lines here stay bare"
@@ -1045,7 +1212,10 @@ mod tests {
             &storage,
             program,
             &SequenceOptions {
-                comment_nk: false,
+                warnings: SequenceWarnings {
+                    warn_nk: false,
+                    ..SequenceWarnings::default()
+                },
                 ..SequenceOptions::default()
             },
         );
@@ -1084,24 +1254,24 @@ mod tests {
         );
         assert_eq!(
             suppressed_nk, "{\n  x = 1 / 0\n}",
-            "the override must silence NK's annotation just as comment_nk: false does"
+            "the override must silence NK's annotation just as warn_nk: false does"
         );
         let suppressed_nk_even_when_comment_nk_true = Ubca2Sequencer::format_with(
             &storage,
             program,
             &SequenceOptions {
-                comment_nk: true,
+                warnings: SequenceWarnings::verbose(),
                 suppress_sequencing_comments: true,
                 ..SequenceOptions::default()
             },
         );
         assert_eq!(
             suppressed_nk_even_when_comment_nk_true, "{\n  x = 1 / 0\n}",
-            "suppress_sequencing_comments must win even when comment_nk explicitly asks for \
-             NK annotations — it is an override, not a peer flag"
+            "suppress_sequencing_comments must win even when EVERY warning is switched on — \
+             it is an override, not a peer flag"
         );
 
-        // A WOCONSTANIC state comment is unconditional under comment_nk (§4) but must still
+        // A WOCONSTANIC state comment (verbose only, since it is off by default) must also
         // be silenced by the override, proving it is not NK-specific.
         let (storage, program) = evaluated_program("{b={x=3;};r=b?missing;}");
         let annotated = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
@@ -1363,7 +1533,7 @@ mod tests {
         let rendered = Ubca2Sequencer::format(&storage, roots[0], SequenceMode::Foolish);
         assert_eq!(
             rendered,
-            "{  !! NK: Iteration exceeded 9999\n  f1 = {\n    f1  !! ECONSTANIC\n  };\n  stuck = f1  !! BRANING\n}",
+            "!! This Foolish program did not complete stepping within the limit of 9999 steps !!\n{\n  f1 = {\n    f1\n  };\n  stuck = f1  !! BRANING\n}",
             "the alarm is set DIRECTLY on the composed root (system_foo.rs's \
              non_settling_program_renders_nk_with_iteration_alarm regression guard) — the one \
              case where a brane's own annotation is not a redundant rollup of its members, \
@@ -1581,6 +1751,89 @@ mod tests {
         assert!(
             !rendered.contains("?.*="),
             "a pure value search must not gain a spurious `.*` name gate: {rendered}"
+        );
+    }
+
+    /// The warning configuration (§4.1.1) and its conventional default:
+    /// warn about what is ABNORMAL or UNKNOWABLE, stay quiet about what is
+    /// ORDINARY. A non-brane NK is announced; WOCONSTANIC, ECONSTANIC and a
+    /// brane's own rollup NK are not, unless asked for.
+    #[test]
+    fn foolish_warning_switches_govern_each_annotation_kind() {
+        let verbose = SequenceOptions {
+            warnings: SequenceWarnings::verbose(),
+            ..SequenceOptions::default()
+        };
+        let silent = SequenceOptions {
+            warnings: SequenceWarnings::silent(),
+            ..SequenceOptions::default()
+        };
+
+        // ECONSTANIC: ordinary, so quiet by default and shown when asked.
+        let (storage, program) = evaluated_program("{r=missing;}");
+        assert!(
+            !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
+                .contains("ECONSTANIC"),
+            "ECONSTANIC is ordinary and must be quiet by default"
+        );
+        assert!(
+            Ubca2Sequencer::format_with(&storage, program, &verbose).contains("ECONSTANIC"),
+            "verbose must show ECONSTANIC"
+        );
+
+        // Non-brane NK: unknowable, so announced by default.
+        let (storage, program) = evaluated_program("{x=1/0;}");
+        assert!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
+                .contains("!! NK: DIV-BY-ZERO"),
+            "a non-brane NK must be announced by default"
+        );
+        assert!(
+            !Ubca2Sequencer::format_with(&storage, program, &silent).contains("!!"),
+            "silent must emit no warning at all"
+        );
+
+        // A brane's own rollup NK: quiet by default (§4.0/§5.2), since the
+        // member lines already carry it; shown under verbose.
+        let (storage, program) =
+            evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
+        assert!(
+            !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish).contains("f = {  !!"),
+            "a brane's rollup NK is quiet by default"
+        );
+        assert!(
+            Ubca2Sequencer::format_with(&storage, program, &verbose).contains("f = {  !! NK:"),
+            "verbose must show a brane's rollup NK"
+        );
+    }
+
+    /// The step-cap alarm is a WHOLE-PROGRAM finding, so it goes on its own
+    /// line ABOVE the program (human, 2026-09-03) rather than trailing the
+    /// root brane's `{`, and is phrased for a human reader rather than as the
+    /// raw `Iteration exceeded N` alarm string.
+    #[test]
+    fn foolish_iteration_excess_is_a_banner_line_above_the_program() {
+        let (storage, roots) = crate::UbcaEvaluator
+            .evaluate_arena("{\n  f1 = { f1 }\n  stuck = f1;\n}")
+            .expect("evaluation returns an alarm-bearing FIR");
+        let rendered = Ubca2Sequencer::format(&storage, roots[0], SequenceMode::Foolish);
+        assert!(
+            rendered.starts_with(
+                "!! This Foolish program did not complete stepping within the limit of 9999 steps !!\n{"
+            ),
+            "the alarm must be its own line above the program: {rendered}"
+        );
+
+        let silent = SequenceOptions {
+            warnings: SequenceWarnings {
+                warn_iteration_excess: false,
+                ..SequenceWarnings::default()
+            },
+            ..SequenceOptions::default()
+        };
+        assert!(
+            !Ubca2Sequencer::format_with(&storage, roots[0], &silent).contains("did not complete"),
+            "warn_iteration_excess: false must drop the banner"
         );
     }
 

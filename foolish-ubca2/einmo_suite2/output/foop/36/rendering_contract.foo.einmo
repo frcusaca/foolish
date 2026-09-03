@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/36/rendering_contract.foo
 suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 88c0e53c
-producer-diff: sha256:124aba6545568c945e204c32236384a5ae3da667c1a1448bd7f003087d2b060f
-generated: 2026-09-03T19:57:36.000000000Z
+producer: 5d5637c3
+producer-diff: sha256:0cebacde76f700e7507ef1e869eed1e82660af613d04da629c5455eecd3c792a
+generated: 2026-09-03T22:12:03.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -44,7 +44,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     divide_by_zero = 1 / 0;              !! divideˍbyˍzero = 1 / 0, with NK reason
     nested = 1 + 2 * 3;                  !! nested = 7
     unary = -8;                          !! unary = -8
-    comparison = {1, 2, 'lt}$;           !! comparison =$ {1; 2; 'True}; canonical attached tail
+    comparison = {1, 2, 'lt}$;           !! comparison = 'True; settled tail renders its value
   };
 
   !!!
@@ -56,22 +56,34 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     hit = base?a;                        !! hit = 1
     regex_hit = base?(a.*);              !! regexˍhit = 1
     anchored_miss = base?missing;        !! anchoredˍmiss = base?missing, with NK reason
-    unanchored_miss = missing;            !! unanchoredˍmiss = missing, ECONSTANIC
+    unanchored_miss = missing;            !! unanchoredˍmiss = missing (ECONSTANIC: quiet by default)
     value_hit = base?=5;                 !! valueˍhit = 5
     value_miss = base?=8;                !! valueˍmiss = base?=8, with NK reason
     woconstanic_base = {y = missing;};
-    woconstanic_hit = woconstanic_base?y; !! woconstanicˍhit = woconstanicˍbase?y, WOCONSTANIC
+    woconstanic_hit = woconstanic_base?y; !! woconstanicˍhit = woconstanicˍbase?y (WOCONSTANIC: quiet)
   };
 
   !!!
   Indexes: ordinary results collapse; head and tail statements attach canonically.
   !!!
 
+  !! A SETTLED head/tail renders its VALUE, not the attached form -- FOOP-75
+  !! §4.1's "transparency when settled". All three of these resolve.
   indexes_written = {
     base = {a = 1; b = 2};
-    indexed = base#0;                    !! indexed =^ base; #0 and ^ share one arena shape
-    from_postfix = base$;                !! fromˍpostfix =$ base
-    from_attached =$ base;               !! fromˍattached =$ base
+    indexed = base#0;                    !! indexed = 1; #0 and ^ share one arena shape
+    from_postfix = base$;                !! fromˍpostfix = 2
+    from_attached =$ base;               !! fromˍattached = 2
+  };
+
+  !! An UNSETTLED head/tail keeps the attached spelling (§4.3.1) -- an empty
+  !! brane has neither a head nor a tail, so these cannot resolve. Both halves
+  !! of the rule are pinned: settled above renders values, unsettled here
+  !! renders `=^`/`=$`.
+  indexes_unsettled = {
+    empty = {};
+    empty_head = empty#0;                !! emptyˍhead =^ empty, with NK reason
+    empty_tail = empty$;                 !! emptyˍtail =$ empty, with NK reason
   };
 
   !!!
@@ -135,8 +147,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   ECONSTANIC and WOCONSTANIC are annotations, never source tokens.
   !!!
 
-  econstanic = {unfound = nowhere};      !! unfound stays nowhere
-  woconstanic = {sum = nowhere + absent}; !! sum stays nowhere + absent
+  econstanic = {unfound = nowhere};      !! unfound stays nowhere; ECONSTANIC quiet by default
+  woconstanic = {sum = nowhere + absent}; !! sum stays written; WOCONSTANIC quiet by default
   no_state_tokens = {unfound = nowhere}; !! opening brace carries no state token
 
   !!!
@@ -184,7 +196,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   };
   operatorsˍwritten = {
     sum = 7;
-    unresolved = missingˍleft + missingˍright;  !! WOCONSTANIC
+    unresolved = missingˍleft + missingˍright;
     divideˍbyˍzero = 1 / 0;  !! NK: DIV-BY-ZERO: division by zero
     nested = 7;
     unary = -8;
@@ -198,13 +210,13 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     hit = 1;
     regexˍhit = 1;
     anchoredˍmiss = base?missing;  !! NK: anchored search found no match
-    unanchoredˍmiss = missing;  !! ECONSTANIC
+    unanchoredˍmiss = missing;
     valueˍhit = 5;
     valueˍmiss = base?=8;  !! NK: anchored search found no match
     woconstanicˍbase = {
-      y = missing  !! ECONSTANIC
+      y = missing
     };
-    woconstanicˍhit = woconstanicˍbase?y  !! WOCONSTANIC
+    woconstanicˍhit = woconstanicˍbase?y
   };
   indexesˍwritten = {
     base = {
@@ -215,17 +227,22 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     fromˍpostfix = 2;
     fromˍattached = 2
   };
+  indexesˍunsettled = {
+    empty = {};
+    emptyˍhead =^ empty;  !! NK: anchored index found no match
+    emptyˍtail =$ empty  !! NK: anchored index found no match
+  };
   sfˍsff = {
     x = 1;
     sf = <x>;
-    sff = <<x>>;  !! WOCONSTANIC
-    operatorˍinterior = <<x + missing>>;  !! WOCONSTANIC
-    nested = <<x + <<missing>> >>  !! WOCONSTANIC
+    sff = <<x>>;
+    operatorˍinterior = <<x + missing>>;
+    nested = <<x + <<missing>> >>
   };
   substitution = {
     x = 1;
     sf = <x>;
-    sff = <<x>>;  !! WOCONSTANIC
+    sff = <<x>>;
     x = 10;
     1;
     10
@@ -248,7 +265,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     nestedˍbrane = {
       f1 = 3;
       f2 = 2;
-      f3 = notˍfound  !! ECONSTANIC
+      f3 = notˍfound
     };
     empty = {}
   };
@@ -262,17 +279,17 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
     notˍaˍbrane =$ 4  !! NK: 4 is not a brane
   };
   econstanic = {
-    unfound = nowhere  !! ECONSTANIC
+    unfound = nowhere
   };
   woconstanic = {
-    sum = nowhere + absent  !! WOCONSTANIC
+    sum = nowhere + absent
   };
   noˍstateˍtokens = {
-    unfound = nowhere  !! ECONSTANIC
+    unfound = nowhere
   };
   comments = {
-    first = nowhere;  !! ECONSTANIC
-    second = absent;  !! ECONSTANIC
+    first = nowhere;
+    second = absent;
     trailing = 1 / 0  !! NK: DIV-BY-ZERO: division by zero
   };
   width = {
@@ -283,6 +300,6 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   }
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"CnWuXfAMZ9Qx871Bo6lNkrA+f6rUeKOFUvfLnJ+M++/z8JNY9v0qXtkWlOfmRDPmiDlYjMJFOp8g4GfmUrkFBQ==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:36.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:bd91a857d28a483f3028100f60174168925c9e7166046717e56e2fe2c2918e64","timestamp":"2026-09-03T22:12:03.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:bd91a857d28a483f3028100f60174168925c9e7166046717e56e2fe2c2918e64","timestamp":"2026-09-03T22:12:03.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"hOI1aKUA0EiCUOcz8sV363OxB0rNWtUGBBmQyLjDz3ktbz55tteZRxav+HF2LISf/GypDPdu6csqmOpBH4xJCg==","produced_by":"einmo 0.1.0 sha256:bd91a857d28a483f3028100f60174168925c9e7166046717e56e2fe2c2918e64","timestamp":"2026-09-03T22:12:03.000000000Z"}

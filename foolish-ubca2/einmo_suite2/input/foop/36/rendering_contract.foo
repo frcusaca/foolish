@@ -35,7 +35,7 @@
     divide_by_zero = 1 / 0;              !! divideˍbyˍzero = 1 / 0, with NK reason
     nested = 1 + 2 * 3;                  !! nested = 7
     unary = -8;                          !! unary = -8
-    comparison = {1, 2, 'lt}$;           !! comparison =$ {1; 2; 'True}; canonical attached tail
+    comparison = {1, 2, 'lt}$;           !! comparison = 'True; settled tail renders its value
   };
 
   !!!
@@ -47,22 +47,34 @@
     hit = base?a;                        !! hit = 1
     regex_hit = base?(a.*);              !! regexˍhit = 1
     anchored_miss = base?missing;        !! anchoredˍmiss = base?missing, with NK reason
-    unanchored_miss = missing;            !! unanchoredˍmiss = missing, ECONSTANIC
+    unanchored_miss = missing;            !! unanchoredˍmiss = missing (ECONSTANIC: quiet by default)
     value_hit = base?=5;                 !! valueˍhit = 5
     value_miss = base?=8;                !! valueˍmiss = base?=8, with NK reason
     woconstanic_base = {y = missing;};
-    woconstanic_hit = woconstanic_base?y; !! woconstanicˍhit = woconstanicˍbase?y, WOCONSTANIC
+    woconstanic_hit = woconstanic_base?y; !! woconstanicˍhit = woconstanicˍbase?y (WOCONSTANIC: quiet)
   };
 
   !!!
   Indexes: ordinary results collapse; head and tail statements attach canonically.
   !!!
 
+  !! A SETTLED head/tail renders its VALUE, not the attached form -- FOOP-75
+  !! §4.1's "transparency when settled". All three of these resolve.
   indexes_written = {
     base = {a = 1; b = 2};
-    indexed = base#0;                    !! indexed =^ base; #0 and ^ share one arena shape
-    from_postfix = base$;                !! fromˍpostfix =$ base
-    from_attached =$ base;               !! fromˍattached =$ base
+    indexed = base#0;                    !! indexed = 1; #0 and ^ share one arena shape
+    from_postfix = base$;                !! fromˍpostfix = 2
+    from_attached =$ base;               !! fromˍattached = 2
+  };
+
+  !! An UNSETTLED head/tail keeps the attached spelling (§4.3.1) -- an empty
+  !! brane has neither a head nor a tail, so these cannot resolve. Both halves
+  !! of the rule are pinned: settled above renders values, unsettled here
+  !! renders `=^`/`=$`.
+  indexes_unsettled = {
+    empty = {};
+    empty_head = empty#0;                !! emptyˍhead =^ empty, with NK reason
+    empty_tail = empty$;                 !! emptyˍtail =$ empty, with NK reason
   };
 
   !!!
@@ -126,8 +138,8 @@
   ECONSTANIC and WOCONSTANIC are annotations, never source tokens.
   !!!
 
-  econstanic = {unfound = nowhere};      !! unfound stays nowhere
-  woconstanic = {sum = nowhere + absent}; !! sum stays nowhere + absent
+  econstanic = {unfound = nowhere};      !! unfound stays nowhere; ECONSTANIC quiet by default
+  woconstanic = {sum = nowhere + absent}; !! sum stays written; WOCONSTANIC quiet by default
   no_state_tokens = {unfound = nowhere}; !! opening brace carries no state token
 
   !!!
