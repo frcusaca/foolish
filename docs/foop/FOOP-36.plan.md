@@ -253,6 +253,52 @@ classification that may still be pre-constanic. The qualifier states which.
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run: `cargo test -p foolish-ubca2 --lib` (the whole crate — this is a rename, so
       EVERYTHING must stay green, all 134). Record the before-count.
+- [ ] **Give all four §0 groups a predicate on `NyesExt`** (`foolish-ubca2/src/nyes_ext.rs`),
+      beside the existing `is_constanic()` and `is_constantew()` — §0.1.2. Conclusive has none
+      today, which is why five sites hand-roll the state list; pre-constanic has one only in
+      `foolish-core`, under the older name, with zero callers.
+  - [ ] ```rust
+        /// Pre-constanic (nigh): PREMBRYONIC, EMBRYONIC, BRANING — still stepping.
+        fn is_preconstanic(&self) -> bool {
+            !self.is_constanic()
+        }
+
+        /// Not Yet Evaluated — the older name for the same group. An alias, kept
+        /// so the traditional Foolish vocabulary still reads.
+        fn is_nye(&self) -> bool {
+            self.is_preconstanic()
+        }
+
+        /// Conclusive: the FIR reached a value — CONSTANT or INDEPENDENT (FOOP-36 §0).
+        /// Distinct from `is_constantew()`, which also admits NK: NK is constant
+        /// everywhere yet never produced a value.
+        fn is_conclusive(&self) -> bool {
+            matches!(self, Nyes::Constant | Nyes::Independent)
+        }
+        ```
+        **`is_preconstanic` is primary and `is_nye` delegates to it**, so the four read
+        uniformly while the traditional name keeps working.
+  - [ ] This does not touch `foolish-core`. `foolish_core::Nyes::is_nye()` exists at
+        `fir.rs:143` with **zero callers workspace-wide** (verify this still holds), so the
+        `NyesExt` method shadows nothing in practice. **Do not edit `foolish-core`** — the
+        scope guard forbids it.
+  - [ ] Unit tests in that module's `tests`, in the same shape as the existing
+        `constantew_states()` — assert over `ALL_NYES`:
+    - [ ] `conclusive_states()` and `preconstanic_states()`
+    - [ ] `is_nye_is_alias_for_preconstanic()` — the two agree on every state
+    - [ ] `conclusive_is_subset_of_constantew()`, mirroring
+          `constantew_is_subset_of_constanic()`
+    - [ ] `conclusive_and_constantew_differ_exactly_on_nk()` — §0's load-bearing
+          distinction, worth pinning explicitly
+    - [ ] `preconstanic_is_complement_of_constanic()` — every state is exactly one
+  - [ ] Update the module doc comment at the top of `nyes_ext.rs`: it lists "Three categories"
+        and omits conclusive entirely.
+- [ ] **Replace the five hand-rolled conclusive matches** with `.is_conclusive()`:
+      `fvm_storage.rs` lines **818, 2007, 3739, 3810, 3950** (each is
+      `matches!(…, Nyes::Constant | Nyes::Independent)`). Verify each really is a conclusive
+      test and not an accident of the same two states appearing together — read it, do not
+      sed it blindly. Line 1375 (`nyes_from_found`'s match arm) is a mapping, not a test;
+      leave it.
 - [ ] **Code renames** in `foolish-ubca2/src/fvm_storage.rs`, mechanical and behaviour-free:
   - [ ] `FirPointer::settled_result` → `settled_constanic_result` (line ~639). It gates on
         `is_constanic()`, and §0.1.1 confirms that is genuinely what the slot holds — do NOT
@@ -934,8 +980,11 @@ spec first, work top to bottom, timestamp each box, stop where told, accumulate 
 report once, treat a failing test as broken code (except Phase 5's intended failure), never
 promote outside the gates.
 
-Adds **Phase 0.5** — a fail-fast, skippable vocabulary fix placed FIRST: qualify every
-"settled" in `foolish-ubca2` with its NYES group per §0.1 (`settled_result` →
+Adds **Phase 0.5** — a fail-fast, skippable vocabulary fix placed FIRST. It gives all four §0
+NYES groups a predicate on `NyesExt` (`is_preconstanic` primary with `is_nye` as its alias, plus
+the new `is_conclusive`; `is_constanic` and `is_constantew` already exist), replaces the five
+hand-rolled `Constant | Independent` matches in `fvm_storage.rs`, and qualifies every "settled"
+with its NYES group per §0.1 (`settled_result` →
 `settled_constanic_result`, `all_settled` → `all_foolish_children_conclusive`,
 `step_to_settled` → `step_to_constanic`, and the rest), plus `lib.rs`'s stale `is_settled()`
 claim. Mechanical and behaviour-free, with an explicit skip rule — abandon it the moment it
