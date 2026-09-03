@@ -439,11 +439,14 @@ starting points measured 2026-09-02, not targets — some occurrences will right
         post-merge UBCa2 141/141, sibling checked einmo gate, serial workspace suite, formatter,
         and scoped clippy all passed.
         (2026-09-02 20:30)
-- [ ] Cleanup `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
+- [x] Cleanup `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
   - [x] Check that this `.plan.md` has all but Cleanup checkboxes completed
         (2026-09-02 20:30)
-  - [ ] Remove `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
-  - [ ] This is the last sub-task checkbox to be checked in this block
+  - [x] Remove `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`.
+        **Removed:** clean worktree after the merge and post-merge validation.
+        (2026-09-02 20:30)
+  - [x] This is the last sub-task checkbox to be checked in this block.
+        (2026-09-02 20:30)
 
 ---
 
@@ -451,5 +454,5 @@ starting points measured 2026-09-02, not targets — some occurrences will right
 
 **Date**: 2026-09-02
 **Updated By**: Codex / GPT-5.6
-**Changes**: Merged FOOP-56 into `jia` as `1cc25545` after human approval and recorded the
-passing post-merge validation. Cleanup remains the sole unfinished plan action.
+**Changes**: Completed cleanup: removed the merged, clean FOOP-56 worktree after passing
+post-merge validation. All plan checkboxes are complete.
