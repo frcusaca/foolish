@@ -892,7 +892,20 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added §MISC "Bold Marks a Short Span — Use a Bolded Separator, Not a Bolded
+**Changes**: Added §MISC "A Checkbox Marks What Needs Human Action", placed after "Bold Marks a
+Short Span…" and before "When in Doubt", ending the run of presentation guidance with the
+actionable-signal rule. Even with the orienting introduction, the logical labels and the concluding
+index, it is still often not plainly obvious whether a section needs the human to DO something or
+is simply news to celebrate — the reader should not have to infer it. So whenever the agent clearly
+knows an item depends on or demands human action or input, it marks it with an unchecked todo
+checkbox (`[ ] Bug D remains in code`), placed either on the logical section header itself or in
+that section's concluding sentence/paragraph — both sanctioned, pick whichever reads better. When
+the checkbox's association with a section is not clear, it gets its own letter so it can still be
+referred to (``[ ]G: please `cargo build` and verify``), reusing the same logical-label alphabet the
+neighbouring subsections establish. The stated benefit is structural: the checkbox carries the
+open/closed signal INLINE, so sections can be ordered by SUBJECT MATTER without segregating
+"outstanding issues" from "closed issues" — the structure follows the material, not the status.
+Prior entry: added §MISC "Bold Marks a Short Span — Use a Bolded Separator, Not a Bolded
 Paragraph", placed after "Concluding Paragraphs Are an Index…" and before "When in Doubt", since
 it governs the VISUAL FORMATTING of the same reports those two subsections describe. Bold marks a
 SHORT span the eye should land on — a header, a label, a key phrase — and is not a way to raise
@@ -1167,6 +1180,26 @@ wade through a wall of bold.
 ALL CAPS. The worked example, exactly right:
 
 > **A — The sequencer is built and green**
+
+#### A Checkbox Marks What Needs Human Action
+
+Even with the orienting introduction, the logical labels, and the concluding index, it is still
+often not plainly obvious whether a section needs the human to DO something or is simply news to
+celebrate. The reader should not have to infer that.
+
+**Whenever the agent clearly knows an item depends on, or demands, human action or input, mark it
+with an unchecked todo checkbox** — `[ ] Bug D remains in code`. Put it either on the logical
+section header itself or in that section's concluding sentence/paragraph; both placements are
+sanctioned, so pick whichever reads better for that section.
+
+**When the checkbox's association with a section is not clear, give it its own letter** so it can
+still be referred to: ``[ ]G: please `cargo build` and verify``. That reuses the same logical-label
+alphabet the two subsections above already establish, so the concluding index can point at it like
+any other item.
+
+The benefit is structural: the checkbox carries the open/closed signal INLINE, so sections can be
+presented in a logical order organised by subject matter, without segregating "outstanding issues"
+into one group and "closed issues" into another. The structure follows the material, not the status.
 
 #### When in Doubt
 
