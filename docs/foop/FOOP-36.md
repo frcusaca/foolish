@@ -7,7 +7,7 @@ type: Standards
 created: 2026-09-01
 phase: phase-4
 supersedes: []
-begun: [ ] 
+begun: [x]
 ---
 
 # FOOP-36: A Foolish-rendering sequencer for `foolish-ubca2`
