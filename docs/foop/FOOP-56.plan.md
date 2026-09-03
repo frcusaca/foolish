@@ -423,17 +423,25 @@ starting points measured 2026-09-02, not targets — some occurrences will right
       (`foolish-core/src/sequencer.rs` has 4 pre-existing clippy warnings — not this FOOP's,
       and the scope guard forbids touching that file. Scoped `--no-deps` run passed.)
       (2026-09-02 20:19)
-- [ ] Merge `foop-56-nyes-groups` to `jia`
-  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
+- [x] Merge `foop-56-nyes-groups` to `jia` as merge commit `1cc25545`.
+      (2026-09-02 20:30)
+  - [x] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
-    - [ ] Present the human with
+        **Human approval:** user replied “merge.”
+        (2026-09-02 20:22)
+    - [x] Present the human with
           `cd /yolo/foolish/../foolish_worktrees/foop-56-nyes-groups` and ask them to review
           BEFORE checking the parent checkbox. Say plainly that this is a rename-and-document
-          change with **no behaviour delta**, that the suite is 134/134 either side, and that
-          FOOP-36 and FOOP-26 were updated to use the new names.
-  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` if the merge broke any
+          change with **no behaviour delta**, that the suite is 141/141 after its seven new
+          tests, and that FOOP-36 and FOOP-26 were updated to use the new names.
+        (2026-09-02 20:20)
+  - [x] Repair ALL tests in `jia` at `/yolo/foolish` if the merge broke any. **None required:**
+        post-merge UBCa2 141/141, sibling checked einmo gate, serial workspace suite, formatter,
+        and scoped clippy all passed.
+        (2026-09-02 20:30)
 - [ ] Cleanup `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
-  - [ ] Check that this `.plan.md` has all but Cleanup checkboxes completed
+  - [x] Check that this `.plan.md` has all but Cleanup checkboxes completed
+        (2026-09-02 20:30)
   - [ ] Remove `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
   - [ ] This is the last sub-task checkbox to be checked in this block
 
@@ -443,5 +451,5 @@ starting points measured 2026-09-02, not targets — some occurrences will right
 
 **Date**: 2026-09-02
 **Updated By**: Codex / GPT-5.6
-**Changes**: Completed Phase 4's uniform terminology pass across AGENTS.md and FOOPs 16, 26,
-36, and 46; confirmed the mapping/index boundaries and found no remaining genuine ambiguity.
+**Changes**: Merged FOOP-56 into `jia` as `1cc25545` after human approval and recorded the
+passing post-merge validation. Cleanup remains the sole unfinished plan action.
