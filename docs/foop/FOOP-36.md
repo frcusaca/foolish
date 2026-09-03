@@ -630,7 +630,10 @@ comment, which the parser discards:
 s = <<a + b>>;          !! WOCONSTANIC
 x = nonexistent;        !! ECONSTANIC (unfound)
 t = a + b;              !! BRANING
-u = {p = 1; q = p + 1;} !! EMBRYONIC
+u = {                    !! EMBRYONIC
+  p = 1;
+  q = p + 1;
+}
 ```
 
 The annotation is what makes `Foolish` mode usable for **debugging** (§2.1): a half-stepped
@@ -640,7 +643,9 @@ debugging artifact than the current dump — and `Detailed` mode remains for the
 FIR's *internal* shape, rather than its source shape, is the thing under investigation.
 
 Because §3 renders written form in every state, the annotation carries information that is
-**otherwise unrecoverable from the output** — which is precisely why it is worth emitting.
+**otherwise unrecoverable from the output** — which is precisely why it is worth emitting. This
+is exactly the test that excludes a **brane's own** state, below: a brane's annotation almost
+always duplicates information a member line already carries.
 
 **Comments are pure annotation.** `foolish_parser` discards `!!` to end-of-line (verified:
 `foolish-parser/src/lexer.rs` handles `!!` line comments and `!!!` block comments), so every
@@ -654,7 +659,53 @@ they would perturb line-per-statement correspondence with the input.
 
 **Annotate only what is not obvious.** A CONSTANT/INDEPENDENT node gets no comment — its
 written form and its settledness agree, and a `!! CONSTANT` on every line would bury the
-informative annotations in noise. Comments are emitted only for the five states above.
+informative annotations in noise. Comments are emitted only for the five states above — and, per
+§4.0 below, never as a rollup on a brane's own opening line.
+
+#### §4.0 A brane's own state is never annotated — except a direct alarm
+
+**A `Brane` (or `ConcatHelper`) node's own NYES is never rendered as a `!!` comment on its
+opening line**, regardless of what that state is. This is a stronger rule than "annotate only
+what is not obvious" above — it is a flat exclusion for one FIR kind, stated separately because
+it is easy to get backwards.
+
+**Why a brane is different from every other kind.** Every OTHER kind's state comment describes
+something about *that specific node* that is otherwise unrecoverable — an operator's own
+ECONSTANIC operand, a search's own NK reason. A brane's state, by contrast, is always a
+**rollup** of its members (`decide_nyes_due_to_children`, `fvm_storage.rs` ~1070): the brane is
+WOCONSTANIC because some member is WOCONSTANIC, or NK because some member's reason bubbled up.
+That specific member **already renders its own accurate annotation on its own line** — so
+repeating the rollup on the bracket is not new information, it is an echo, and per real
+`einmo_suite2` fixtures it was frequently the exact same reason text duplicated onto two lines
+(the enclosing brane's `{` and the responsible member's own line). §2.1's round-trip argument
+covers this precisely: re-stepping the written brane reaches the same distribution of member
+states, so nothing is lost by leaving the bracket bare.
+
+**The one exception: a DIRECT alarm on the brane itself.** When a brane's NYES slot carries an
+alarm reason that was set on *that pointer specifically* (`FVMStorage::alarm_reason`, a
+per-pointer lookup with no recursion into children — contrast the general `nk_reason` used
+elsewhere, which deliberately walks into children and is exactly the borrowing this rule
+otherwise forbids), the brane's opening line DOES get `!! NK: <reason>`. This matters because
+the evaluator's step-cap (`ITERATION-EXCEEDED`) alarm is set only on the **composed root**,
+which is a brane, and no member of that brane carries the reason — suppressing it
+unconditionally would silently discard the one piece of information nowhere else in the output,
+defeating §2.1's whole debugging purpose. `comment_nk` (§4.1) still governs whether this
+exception fires; `suppress_sequencing_comments` (§4.1) overrides it like everything else.
+
+```foolish
+{  !! NK: Iteration exceeded 9999
+  f1 = {
+    f1  !! ECONSTANIC
+  };
+  stuck = f1  !! BRANING
+}
+```
+
+Here the outer brane carries a DIRECT alarm (the step cap fired on the composed root itself), so
+it alone gets the exception. `f1`'s own sub-brane has no direct alarm — only a derived
+ECONSTANIC rollup from its `f1` member — so it stays bare, and `f1`'s own line already carries
+`!! ECONSTANIC`. `stuck = f1` never got the chance to settle before the cap fired (still
+BRANING, pre-constanic — §2.1), so it too stays written with no borrowed reason of its own.
 
 ### §4.1 Line width — 108 characters
 
@@ -675,14 +726,34 @@ pub struct SequenceOptions {
     /// Turned off, an NK expression renders as bare Foolish with no trace
     /// of its NK-ness — which is what a caller wanting pure source wants.
     pub comment_nk: bool,
+    /// Overrides `comment_nk` AND every §4 state annotation: when true, the
+    /// sequencer emits no `!!` comment of its own at all, on any line, for
+    /// any reason. Default false. Named "sequencing comments" — rather than
+    /// just "comments" — to distinguish annotations THIS renderer generates
+    /// from any comment a future sequencer feature might echo through from
+    /// source instead of generate.
+    pub suppress_sequencing_comments: bool,
 }
 
 impl Default for SequenceOptions {
     fn default() -> Self {
-        Self { mode: SequenceMode::Foolish, width: 108, comment_nk: true }
+        Self {
+            mode: SequenceMode::Foolish,
+            width: 108,
+            comment_nk: true,
+            suppress_sequencing_comments: false,
+        }
     }
 }
 ```
+
+**`suppress_sequencing_comments` is an override, not a peer flag.** It sits one level above
+`comment_nk`: `comment_nk` decides only whether NK gets a reason comment, while
+`suppress_sequencing_comments` silences every `!!` annotation this renderer emits — the five
+state comments of this section as well as NK's — regardless of what `comment_nk` says. A caller
+wanting the closest thing to a plain pretty-printer (no evaluator commentary of any kind,
+whatever the FIR's state) sets this rather than trying to enumerate every annotation kind
+individually.
 
 `Ubca2Sequencer::format(storage, fir, mode)` stays as the common-case entry point (it builds
 `SequenceOptions::default()` with the given mode);
@@ -846,6 +917,11 @@ the value is unknowable, but because that is what was written.
 Either way the *expression* is identical; only the annotation moves. The einmo corpus is
 rendered with the default, so it is reproducible.
 
+**`SequenceOptions::suppress_sequencing_comments` (§4.1) overrides `comment_nk`.** Setting it
+silences NK's reason comment regardless of `comment_nk`, along with every §4 state comment — a
+caller wanting zero evaluator commentary sets this one flag rather than `comment_nk: false` plus
+some hypothetical state-comment equivalent that does not otherwise exist.
+
 **NK is constanic AND constantew** — see §5.1 for why that matters and what it does not change.
 
 When on, the reason is drawn from `hs_nk()` and follows §4's placement rule:
@@ -991,7 +1067,9 @@ full-line comment and none after; blank lines both sides of a `!!!` fence).
 
 **T9 — Flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation and on renders
 `a = 1/0;  !! NK: …`, the *expression* identical under both. A non-default `width` changes line
-breaking. The einmo adapter uses the defaults, so the corpus is reproducible.
+breaking. `suppress_sequencing_comments` on silences both NK's reason comment and every §4 state
+comment, overriding `comment_nk` even when the latter explicitly asks for annotations. The einmo
+adapter uses the defaults, so the corpus is reproducible.
 
 ### Group B — the suite as a fit replacement
 

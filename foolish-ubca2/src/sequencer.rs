@@ -29,6 +29,12 @@ pub struct SequenceOptions {
     pub width: usize,
     /// Whether NK findings are appended as Foolish line comments.
     pub comment_nk: bool,
+    /// Overrides `comment_nk` and every state annotation: when true, the
+    /// sequencer emits no `!!` comments of its own at all. Named
+    /// "sequencing comments" to distinguish this renderer's own annotations
+    /// from any comment the sequencer may in future echo through from
+    /// source rather than generate itself.
+    pub suppress_sequencing_comments: bool,
 }
 
 impl Default for SequenceOptions {
@@ -37,6 +43,7 @@ impl Default for SequenceOptions {
             mode: SequenceMode::Foolish,
             width: LINE_BUDGET,
             comment_nk: true,
+            suppress_sequencing_comments: false,
         }
     }
 }
@@ -480,6 +487,37 @@ impl<'a> Renderer<'a> {
     }
 
     fn annotate(&self, fir: FirPointer, lines: &mut [String]) {
+        if self.options.suppress_sequencing_comments {
+            return;
+        }
+        // A brane's own NYES is a rollup of its members (decide_nyes_due_to_children);
+        // each member already carries its own accurate annotation on its own line, so
+        // repeating the derived state — or worse, a borrowed child's NK reason — on the
+        // opening `{` is redundant noise, not information otherwise unrecoverable from
+        // the output (§4's own test for whether an annotation earns its place). The
+        // written brane, re-stepped, reaches the same member states (§2.1), so nothing
+        // is lost by leaving the bracket bare.
+        //
+        // The one exception: a DIRECT alarm on the brane itself (`alarm_reason`, a
+        // per-pointer field with no recursion into children — contrast `nk_reason`,
+        // which deliberately walks into children and is exactly the borrowing this
+        // rule avoids). The step-cap/iteration alarm is set only on the composed
+        // root, which is a brane with no member of its own carrying that reason —
+        // suppressing it unconditionally would silently discard the one piece of
+        // information nowhere else in the output, defeating §2.1's debugging intent.
+        let cursor = FirCursor::new(fir, self.storage);
+        if matches!(cursor.node(), FirSpec::Brane { .. } | FirSpec::ConcatHelper) {
+            if self.options.comment_nk
+                && let Some(reason) = self.storage.alarm_reason(fir)
+            {
+                let annotation = format!("NK: {}", sanitize_reason(reason));
+                if let Some(first) = lines.first_mut() {
+                    first.push_str("  !! ");
+                    first.push_str(&annotation);
+                }
+            }
+            return;
+        }
         let state = self.storage.get_nyes(fir);
         let annotation = match state {
             Nyes::Prembrionic
@@ -690,7 +728,10 @@ mod tests {
         let (storage, program) = evaluated_program("{f=3;a=2;b={f1=f;f2=a;f3=not_found;};}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{  !! WOCONSTANIC\n  f = 3;\n  a = 2;\n  b = {  !! WOCONSTANIC\n    f1 = 3;\n    f2 = 2;\n    f3 = notˍfound  !! ECONSTANIC\n  }\n}"
+            "{\n  f = 3;\n  a = 2;\n  b = {\n    f1 = 3;\n    f2 = 2;\n    f3 = notˍfound  !! ECONSTANIC\n  }\n}",
+            "a brane's own derived state is a rollup of its members and must not repeat as a \
+             comment on its opening brace — each member already carries its own accurate \
+             annotation, so the outer and inner brace lines here stay bare"
         );
     }
 
@@ -720,8 +761,9 @@ mod tests {
             },
         );
         assert_eq!(
-            annotated,
-            "{  !! NK: DIV-BY-ZERO: division by zero\n  x = 1 / 0  !! NK: DIV-BY-ZERO: division by zero\n}"
+            annotated, "{\n  x = 1 / 0  !! NK: DIV-BY-ZERO: division by zero\n}",
+            "the enclosing brane's own derived NK state must not repeat the member's reason \
+             on the opening brace"
         );
         assert_eq!(without_nk, "{x = 1 / 0}");
 
@@ -737,6 +779,86 @@ mod tests {
         assert!(
             narrow.contains("\n  a = 1;"),
             "narrow rendering was {narrow}"
+        );
+    }
+
+    #[test]
+    fn foolish_suppress_sequencing_comments_overrides_comment_nk_and_state_annotations() {
+        let (storage, program) = evaluated_program("{x=1/0;}");
+        let suppressed_nk = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                suppress_sequencing_comments: true,
+                ..SequenceOptions::default()
+            },
+        );
+        assert_eq!(
+            suppressed_nk, "{x = 1 / 0}",
+            "the override must silence NK's annotation just as comment_nk: false does"
+        );
+        let suppressed_nk_even_when_comment_nk_true = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                comment_nk: true,
+                suppress_sequencing_comments: true,
+                ..SequenceOptions::default()
+            },
+        );
+        assert_eq!(
+            suppressed_nk_even_when_comment_nk_true, "{x = 1 / 0}",
+            "suppress_sequencing_comments must win even when comment_nk explicitly asks for \
+             NK annotations — it is an override, not a peer flag"
+        );
+
+        // A WOCONSTANIC state comment is unconditional under comment_nk (§4) but must still
+        // be silenced by the override, proving it is not NK-specific.
+        let (storage, program) = evaluated_program("{b={x=3;};r=b?missing;}");
+        let annotated = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            annotated.contains("!!"),
+            "sanity: this program normally carries a state comment; got:\n{annotated}"
+        );
+        let suppressed_state = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                suppress_sequencing_comments: true,
+                ..SequenceOptions::default()
+            },
+        );
+        assert!(
+            !suppressed_state.contains("!!"),
+            "suppress_sequencing_comments must silence state annotations too, not just NK; \
+             got:\n{suppressed_state}"
+        );
+    }
+
+    #[test]
+    fn foolish_width_preserves_atoms_and_indents_nested_branes() {
+        let source =
+            "{outer={an_unsplittable_identifier_that_exceeds_the_budget=1;alpha=2;beta=3;};}";
+        let (storage, program) = evaluated_program(source);
+        let rendered = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                width: 24,
+                ..SequenceOptions::default()
+            },
+        );
+        assert!(
+            rendered.contains("outer = {\n"),
+            "nested brane did not break: {rendered}"
+        );
+        assert!(
+            rendered.contains("    anˍunsplittableˍidentifierˍthatˍexceedsˍtheˍbudget = 1;"),
+            "long atom was altered: {rendered}"
+        );
+        assert!(
+            rendered.contains("\n    alpha = 2;"),
+            "nested body was not indented: {rendered}"
         );
     }
 
@@ -855,5 +977,25 @@ mod tests {
             seen,
             vec![Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning]
         );
+    }
+
+    #[test]
+    fn foolish_iteration_alarm_is_a_parseable_nk_annotation() {
+        let (storage, roots) = crate::UbcaEvaluator
+            .evaluate_arena("{\n  f1 = { f1 }\n  stuck = f1;\n}")
+            .expect("evaluation returns an alarm-bearing FIR");
+        let rendered = Ubca2Sequencer::format(&storage, roots[0], SequenceMode::Foolish);
+        assert_eq!(
+            rendered,
+            "{  !! NK: Iteration exceeded 9999\n  f1 = {\n    f1  !! ECONSTANIC\n  };\n  stuck = f1  !! BRANING\n}",
+            "the alarm is set DIRECTLY on the composed root (system_foo.rs's \
+             non_settling_program_renders_nk_with_iteration_alarm regression guard) — the one \
+             case where a brane's own annotation is not a redundant rollup of its members, \
+             since no member line carries this reason. `stuck`'s own search never got a \
+             chance to settle before the cap fired (still pre-constanic, BRANING), so its \
+             line stays `stuck = f1` with no borrowed reason of its own; got:\n{rendered}"
+        );
+        compose_program_with_system(&mut FVMStorage::new(), &rendered)
+            .expect("alarm rendering remains Foolish source");
     }
 }

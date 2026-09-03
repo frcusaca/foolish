@@ -640,7 +640,10 @@ a fixed, human-authored target.
         CONSTANT / INDEPENDENT.** **No NYES token may appear as syntax**, only inside `!!`.
         Comment placement is §4's rule, exactly: one per rendered line, after the `;` (or after
         the last token of a trailing statement), separated by **exactly two spaces**;
-        multi-line constructs annotate their OPENING line.
+        multi-line constructs annotate their OPENING line — **except a `Brane`/`ConcatHelper`
+        node's OWN rollup state, which is never annotated at all (§4.0, human direction
+        2026-09-03), with the single exception of a DIRECT alarm on the brane itself** (the
+        step-cap case, which has no member line to carry the reason).
   - [ ] **Every difference between the hand-written expectation and real output must be
         accounted for**, one at a time: either the renderer is wrong (fix it) or the
         prediction was wrong (fix it AND record why the spec misled you — that is a spec
@@ -649,9 +652,39 @@ a fixed, human-authored target.
       `Detailed`-delegation byte-equality tests from Phase 2. (2026-09-03 09:56 — 15 focused
       sequencer tests cover conclusive/inconclusive process results, canonical indexes, leaves,
       names, branes, concatenation, SF/SFF, annotations, and Detailed delegation.)
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] **Human-directed refinement (2026-09-03): brane opening lines no longer annotate their
+      own rollup state.** During review the human observed that a brane containing an NK member
+      duplicated that member's exact reason text onto the brane's own opening `{` (e.g.
+      `{  !! NK: DIV-BY-ZERO: division by zero\n  x = 1 / 0;  !! NK: DIV-BY-ZERO: division by
+      zero\n}`), and directed that no brane state — not just NK, all six — be marked on the
+      bracket, "for purpose of rendering... they can be recompiled and stepped to the same
+      stage" (§2.1's round-trip argument). Implemented as new §4.0: `annotate()` now skips
+      `Brane`/`ConcatHelper` nodes entirely, with one narrow exception — a DIRECT
+      `alarm_reason` on the brane itself (not borrowed from a child) still renders, because the
+      step-cap/`ITERATION-EXCEEDED` alarm is set only on the composed root and no member line
+      carries it; omitting it there would be a genuine information loss, not a redundant echo.
+      Also added `SequenceOptions::suppress_sequencing_comments` (human-named, to distinguish
+      this renderer's own annotations from any comment a future feature might echo through from
+      source) as an override sitting above `comment_nk`. Updated: `annotate()` in
+      `sequencer.rs`; `SequenceOptions`; three existing tests
+      (`foolish_flags_change_only_annotations_and_layout`,
+      `foolish_renders_branes_and_the_supported_nested_concatenation_case`,
+      `foolish_iteration_alarm_is_a_parseable_nk_annotation`) whose expected strings carried the
+      old duplicated bracket comments; one new test
+      (`foolish_suppress_sequencing_comments_overrides_comment_nk_and_state_annotations`).
+      `einmo_suite2/checked/foop/36/rendering_contract.foo.einmo` re-promoted — 12 lines
+      changed, every one a sub-brane or the top-level brane's opening `{` losing its rollup
+      comment, reviewed line-by-line against `checked_body.txt`/`output_body.txt`: no value
+      changed, and every removed reason is still present, verbatim, on the responsible member's
+      own line. FOOP-36.md §4 updated (worked EMBRYONIC example corrected; new §4.0 added).
+      (2026-09-03 — see also the `annotate` doc comment in `sequencer.rs` for the code-level
+      statement of this rule.)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
       `einmo_suite/`'s gates are still on the OLD rendering and must still pass — Phase 5 is
       where they move.
+      (2026-09-03 — `cargo test -p foolish-ubca2 --lib`: 161/161 (both einmo_suite2 gates and
+      all three einmo_suite gates green). `cargo test -p foolish-ubca --lib --
+      einmo_gate_checked`: still passes, unchanged — sibling scope guard honored.)
 
 ## Phase 4 — Movement II: feature completion against the hand-written target
 
