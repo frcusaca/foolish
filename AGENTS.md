@@ -892,7 +892,30 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added §MISC "Concluding Paragraphs Are an Index, Not a Summary", directly after
+**Changes**: Extended §MISC "Concluding Paragraphs Are an Index, Not a Summary" with a SECOND
+kind of marker and renamed the heading to "… — Logical Labels and Positional Markers". A brief
+lead-in now distinguishes the two: **logical labels** (A, B, C, D) mark sections the agent
+DELIBERATELY structured, knowing in advance what it needed to discuss; **positional markers**
+(`(s1)`, `(s2)`, `(s3)`…) mark WHERE IN THE TURN something happened and are emitted at regular
+intervals AS THE AGENT WORKS, independent of any logical structure. Why they exist: agents do
+long exploration — debuggers, printf tracing, dozens of tool calls — and equally produce
+mundane output (an `ls`, a `grep` result, a test summary) that is absurd to narrate yet is
+often exactly what the human wants to scroll back to; a positional marker lets the agent point
+at that raw output later ("the file list is at (s4)") without having explained it at the time.
+The closing index uses BOTH, per the human's verbatim worked example ("…Bugs A,B,C and D are
+identified and analyzed in their sections above. You may find interesting to see output at
+marker (s123) and (s356)."), and a logical section may itself refer back to a positional marker
+("the trace for this is at (s217)"). Because the markers are sequential they also support
+RANGES, in two forms: a plain span, "(Ranges S33-S132)", pointing at a long stretch of
+repetitive output without listing every marker in it; and a COMPARATIVE reference, "(notice t5
+result seems drastically different from others in t1-t10)", singling out an outlier by position
+without reproducing the ten results it stands out from — the case where narration is worst.
+Hence the cadence rule: emit markers regularly enough that a range MEANS something. Label choice
+is otherwise pragmatic: on a session restart, or when a
+sequence number cannot be established, switch to another rare sequential form (`t1, t2, t3` or
+`ss1, ss2, ss3`) — labels must be sensible and scoped to the CURRENT SESSION, not globally
+consistent or resumable, and must remain rare and distinctive for the same searchability reason
+the subsection already gives. Prior entry: added that subsection, directly after
 "Lead With the Most Important Information — Especially Bug Counts" as its companion — the first
 covers how to OPEN a report, this one how to CLOSE it. English composition's concluding
 sentence/paragraph convention is relaxed in a conversation turn: a conclusion need not restate
@@ -1032,7 +1055,7 @@ This is not licence to bury the lede: the introduction is short, it is concrete,
 opens on what matters. A vague throat-clear — "I did a lot of work and found some things" —
 names nothing and orients no one; it is the failure mode to avoid here.
 
-#### Concluding Paragraphs Are an Index, Not a Summary
+#### Concluding Paragraphs Are an Index, Not a Summary — Logical Labels and Positional Markers
 
 English composition teaches that a passage ends by restating and tying off — the concluding
 sentence, the concluding paragraph. **In a conversation turn with the human, that convention is
@@ -1058,6 +1081,61 @@ This pairs with the preceding subsection. The **orienting introduction** names t
 the detail ("The issues are A, B, C, and D"); the **concluding index** points back to those same
 labels afterward. The labels are what make both ends work, so use the SAME ones at both ends of
 the response.
+
+**A second kind of marker does different work.** Everything above concerns **logical labels**
+(**A**, **B**, **C**, **D**) — they mark sections the agent DELIBERATELY structured, where it
+knew in advance what it needed to discuss. **Positional markers** (`(s1)`, `(s2)`, `(s3)`…)
+instead mark WHERE IN THE TURN something happened, emitted as the work proceeds and independent
+of any logical structure. The two coexist, and a good closing index uses both.
+
+**Emit positional markers at regular intervals while working.** Agents do long, complex
+exploration — a debugger session, printf tracing, dozens of tool calls — and it is NOT
+reasonable to narrate every detail, nor would the human want to read it. The same is just as
+true, and more often true, of perfectly mundane output: an `ls`, a `grep` result, a directory
+listing, a test summary. Re-pasting or explaining every one of those would be absurd, yet they
+are frequently the exact thing the human wants to scroll back and look at. A positional marker
+solves both cases: drop `(s1)`, `(s2)`, `(s3)`… into the output as you go, and you can point at
+that raw output later — "the file list is at (s4)" — without having had to explain or reproduce
+it at the time. They are cheap to emit and they cost the reader nothing.
+
+**The closing index uses both kinds, each for what it is good at.** Logical labels say what was
+analyzed; positional markers say where the raw material sits. The worked example does both at
+once:
+
+> "During this turn, I worked for 30 minutes, exploring 5 bugs using Foolish debugger, the
+> Rust debugger, adding printf's. Bugs A,B,C and D are identified and analyzed in their
+> sections above. You may find interesting to see output at marker (s123) and (s356)."
+
+A logical section may also refer back to positional markers from inside itself — "the trace for
+this is at (s217)" — which ties the two systems together: the section carries the analysis, the
+marker carries the evidence.
+
+**Because the markers are sequential, they support RANGES — and ranges are what make them
+genuinely useful over a long run of similar work.** Two forms earn their keep:
+
+> "(Ranges S33-S132)"
+
+points at a whole span of the turn at once — a long stretch of repetitive tool output — without
+listing every marker inside it.
+
+> "(notice t5 result seems drastically different from others in t1-t10)"
+
+is the more interesting one: it singles out an OUTLIER by position, without reproducing or
+narrating the ten results it stands out from. The human scrolls to t5, glances at its
+neighbours, and sees the difference themselves. This is exactly the case where narration is
+worst — describing ten similar outputs so that one may stand out is far more text, and far less
+convincing, than pointing at them.
+
+The practical consequence: emit the markers at a steady enough cadence that a range MEANS
+something. Sequential and regular, not sporadic.
+
+**Label choice is pragmatic, not prescribed.** If the session restarts, or a sequence number
+simply cannot be established, switch to another rare sequential form — `t1, t2, t3` or
+`ss1, ss2, ss3`. What matters is that the labels are SENSIBLE and scoped to the CURRENT
+SESSION's reference; they need not be globally consistent, nor resumable across sessions. This
+is the same "rare, distinctive sequential strings" requirement as above, for the same reason: a
+marker that also occurs in ordinary prose or in the code under discussion cannot be scrolled
+back to, because the reader's eye and their terminal search both land on the wrong thing.
 
 #### When in Doubt
 
