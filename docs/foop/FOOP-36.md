@@ -557,6 +557,44 @@ aa=f}` and `{d=f}` even though neither declares it. Both render `3`. That the co
 failed to *merge* does not stop its constituents from evaluating — which is precisely why
 rendering them recursively, rather than echoing the source text, is the right rule.
 
+#### §3.2.1 §3.2 and FOOP-46's phased design converge
+
+§3.2's two renderings and **FOOP-46's two phases are the same distinction**, arrived at from
+opposite directions. FOOP-46 §1–§2 describes a `BraneConcatOp` that is either **Gathering** —
+its `foolish_children` are the unmerged constituents, and it "is not yet a brane in any
+meaningful sense" — or **Joined**, holding one brane in `ubc_children` with the constituents'
+statements revived into it.
+
+That maps onto §3.2 exactly:
+
+| FOOP-46 phase | What the FIR holds | §3.2 renders |
+|---|---|---|
+| **Gathering** | unmerged constituents | the juxtaposition, `A B`, each constituent recursively simplified |
+| **Joined** | one brane in `ubc_children` | that brane, `{…}` |
+
+So the rendering rule does not merely *survive* FOOP-46 — it is the natural display of what
+FOOP-46 builds, and each constituent's own render (a value where it reached one, its written
+form where it did not) is exactly the per-constituent readiness the phased design reasons about.
+
+**One detail to settle, and it should fall out cleanly.** §3.2 currently asks
+`hs_concatenation()` whether `merged.is_some()`. FOOP-46 §4 may satisfy that question
+differently — its option 1 populates `ubc_children` with a `FirSpec::Brane` and deletes
+`FirSpec::ConcatHelper`, making `.value()` the interface rather than a `merged` slot. Either
+way the *question* §3.2 asks is the same one FOOP-46's phases already answer; only the accessor
+changes. §4's own text notes that `settled_result`/`value()` already return the brane once
+constanic, so the Joined case needs no new mechanism.
+
+The care needed is that a **reader of the output** can still tell a merged concatenation from a
+plain brane, since §3.2 renders them differently (`A B` versus `{…}`) and that difference is
+information about the program. If FOOP-46's chosen shape makes them indistinguishable in the
+FIR, §3.2 should be amended deliberately to render them alike, rather than the distinction
+lapsing unnoticed.
+
+**What this FOOP does about it.** It writes the requirement into both FOOPs as a section each
+owns (plan Phase 6.5), so the convergence is on the record in all three places rather than
+depending on whoever lands last noticing it. Since the designs already agree, those sections
+should be short — a statement of what rendering needs, and a pointer here.
+
 **Why this is not a special case.** It falls straight out of §3: a merged concatenation has a
 value, so render the value; an unmerged one does not, so render it as written, and "as written"
 means each constituent gets the same treatment. The only thing §3.2 adds is that the
@@ -1281,7 +1319,13 @@ green run.
 §0.1 surveys all 134 uses of "settled" in `foolish-ubca2` and classifies each by NYES group;
 §0.1.1 establishes that `settled_result` means **constanic** (not constantew — the StayFoolish
 path at 902–904 admits ECONSTANIC/WOCONSTANIC), so all three arms of §3's predicate are
-reachable. §0.1.2 lists the predicate per group; the two missing ones and all the renames were split into
+reachable. Adds **§3.2.1**: §3.2's two renderings and **FOOP-46's two phases are the same distinction** —
+Gathering ↔ the juxtaposition, Joined ↔ the brane — so the rendering is the natural display of
+what FOOP-46 builds rather than a constraint on it. One detail is left to settle deliberately:
+§4 may delete `FirSpec::ConcatHelper`, and §3.2 renders a merged concatenation and a plain
+brane differently, so either the FIR keeps something that distinguishes them or §3.2 is amended
+to render them alike. This FOOP **propagates that into both FOOPs** as sections they own (plan
+Phase 6.5), so the agreement is on the record in all three places. §0.1.2 lists the predicate per group; the two missing ones and all the renames were split into
 **FOOP-56**, scheduled to land before this FOOP.
 
 Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),

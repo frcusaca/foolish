@@ -38,7 +38,7 @@ hand-authored case, before any baseline is generated and before the renderer exi
 | **0.5** | **(moved to FOOP-56)** | 0.5 | The NYES-group vocabulary work became its own FOOP, scheduled BEFORE this one. Phase 0.5 now just confirms it landed. |
 | **I** | **New test, written by hand** | 3 | A brand-new `einmo_suite2/` holding ONE case whose expected OUTPUT is **typed from the specification before the renderer is written**. The renderer is then built until it reproduces what was typed. |
 | **II** | **Feature completion** | 4 | The renderer is finished against that fixed target: round-trip properties (§2/§2.1) proven, every §3 row covered, `Detailed` delegation pinned. `einmo_suite/` is untouched and still green on the OLD rendering. |
-| **III** | **Replacement** | 5–7 | `einmo_suite2` **becomes the suite**: the 179 inputs are copied across, rendered under the new sequencer, reviewed case by case, and `cargo test` is pointed at it. `einmo_suite/` is left frozen and still green as the reference to diff against — everything is done EXCEPT removing it. |
+| **III** | **Replacement** | 5–7 (incl. 6.5) | `einmo_suite2` **becomes the suite**: the 179 inputs are copied across, rendered under the new sequencer, reviewed case by case, and `cargo test` is pointed at it. `einmo_suite/` is left frozen and still green as the reference to diff against — everything is done EXCEPT removing it. |
 
 Why this order, and not the obvious one:
 
@@ -791,6 +791,75 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 
 ---
 
+## Phase 6.5 — Propagate this FOOP's requirements into FOOP-26 and FOOP-46
+
+*§3.2's rendering and FOOP-46's phased design are the same distinction reached from opposite
+directions (§3.2.1): Gathering ↔ render the juxtaposition, Joined ↔ render the brane. Because
+they already agree, **these sections should be short and easy to write** — a statement of what
+rendering needs, and a pointer to §3.2. Do it after Phase 6's review, when the real rendered
+output exists and the requirement can be stated from evidence rather than speculation. If a
+section turns out to be hard to write, that is the signal that the designs have diverged —
+report it rather than forcing it.*
+
+- [ ] (read §3.2 and §3.2.1 of `FOOP-36.md`)
+- [ ] Establish relevant tests for this phase: none — it edits documentation only. Confirm at
+      the end that `einmo_suite2`'s gates and `foolish-ubca`'s are still green.
+- [ ] **Check first whether either FOOP has begun.** `docs/foop/FOOP-26.md` and
+      `docs/foop/FOOP-46.md` — read the `begun:` frontmatter and check for a worktree. If
+      either is actively being edited, **coordinate with the human before writing into it**
+      rather than editing under another agent.
+
+### 6.5a — FOOP-26: what concatenation must still expose for rendering
+
+- [ ] Add a section to `FOOP-26.md` (suggested: under its §4, the concatenation chapter) headed
+      so it is clearly an obligation, e.g. **"§4.x TODO — rendering requirements from FOOP-36"**.
+- [ ] State the requirement concretely, using the output Phase 6 actually produced. Frame it
+      as what rendering *needs*, not as a constraint imposed on FOOP-26 — the designs agree:
+  - [ ] FOOP-36 §3.2 renders a **merged** concatenation as the merged brane (`{a=1, b=2, c=3}`)
+        and an **unmerged** one as the juxtaposition with each constituent recursively
+        simplified (`{a=1, aa=3}{b=notfound}notˍfoundˍbrane{d=3}`).
+  - [ ] It distinguishes them by `hs_concatenation()` returning `(elements, merged)` with
+        `merged.is_some()`.
+  - [ ] Therefore: **after concatenation becomes an operator, a rendering caller must still be
+        able to ask "did this merge, and if so what is the brane; if not what are the
+        constituents?"** Name that requirement; FOOP-26 chooses how to satisfy it.
+  - [ ] Note that `⨃` is never emitted — it is not input syntax — so whatever FOOP-26 does must
+        not depend on a marker the renderer refuses to print.
+- [ ] Include a pointer back to `FOOP-36.md` §3.2/§3.2.1 so the reasoning is one click away.
+
+### 6.5b — FOOP-46: telling a merged concatenation from a plain brane
+
+- [ ] Add the corresponding section to `FOOP-46.md`, keyed to its **§4** ("the operator's
+      `ubc_children` should be a brane"), e.g. **"§4.x TODO — rendering requirements from
+      FOOP-36"**.
+- [ ] Lead with the convergence (§3.2.1): FOOP-46's **Gathering** phase is what §3.2 renders as
+      the juxtaposition, and its **Joined** phase is what §3.2 renders as the brane. The
+      rendering is the natural display of what §4 builds; §4 needs no new mechanism for it,
+      since `settled_result`/`value()` already return the brane once constanic — as §4's own
+      text observes.
+- [ ] Then state the one detail §4's implementation must settle:
+  - [ ] §4's option 1 populates `ubc_children` with a `FirSpec::Brane` and **deletes
+        `FirSpec::ConcatHelper` entirely**. §3.2 renders a merged concatenation (`A B`) and a
+        plain brane (`{…}`) **differently**, so a renderer — and a reader of the output — must
+        still be able to tell them apart.
+  - [ ] Either the FIR keeps something that says so, or §3.2 is amended to render them alike.
+        **Either answer is fine; the requirement is that it be decided rather than lapse.**
+- [ ] Include the same pointer back to `FOOP-36.md` §3.2/§3.2.1.
+
+### 6.5c — Record and report
+
+- [ ] Update `FOOP-36.md` §3.2.1 to record that the sections were written, with their section
+      numbers, so a later reader can follow the chain in both directions.
+- [ ] Check `docs/foop/INDEX.md`'s Track 6 "Interaction to watch" paragraph still describes the
+      situation accurately; update it if these sections changed the picture.
+- [ ] **Report to the human**: what was written into each FOOP, and — importantly — **whether
+      writing it revealed that §3.2 itself needs to change**. If FOOP-46's §4 direction makes
+      the merged/unmerged distinction unrenderable, that is a finding about THIS FOOP, not just
+      a note for that one, and §3.2 should be revised here rather than left to conflict later.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+---
+
 ## Phase 7 — Comprehensive case
 
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
@@ -838,6 +907,10 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 - [ ] **`einmo_suite2` is the suite `cargo test` exercises**, and its `checked/` tier is
       complete (180 cases). Its `verified/` tier is empty and awaits the human — raise it,
       do not `#[ignore]` its gate.
+- [ ] **Phase 6.5's sections exist** in `FOOP-26.md` and `FOOP-46.md`, and `FOOP-36.md`
+      §3.2.1 records their section numbers. If either FOOP was being actively edited and the
+      human deferred the write, say so explicitly in the merge report — an undone propagation
+      is a known debt, not a silent one.
 - [ ] **`einmo_suite/` is NOT removed by this FOOP.** Its retirement is a separate act, for the
       human to authorize once `einmo_suite2` has been trusted for a while. Say so explicitly in
       the merge report.
