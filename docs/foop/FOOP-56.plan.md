@@ -73,19 +73,23 @@ If a change seems to require editing `foolish-core`, stop and report — it does
       **Confirmed: both `begun: [ ]`, no worktrees for either exist (only a pre-existing,
       unrelated foop-55 worktree).**
       (2026-09-02 18:21)
-- [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups` with branch
+- [x] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups` with branch
       `foop-56-nyes-groups`:
       `git worktree add -b foop-56-nyes-groups /yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`
-- [ ] **All work from here happens in the worktree**, including edits to `docs/foop/`.
+      (2026-09-02 18:21)
+- [x] **All work from here happens in the worktree**, including edits to `docs/foop/`.
+      (2026-09-02 18:21)
 
 ---
 
 ## Phase 1 — The four predicates
 
-- [ ] (read §1 of `FOOP-56.md`)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] (read §1 of `FOOP-56.md`)
+      (2026-09-02 18:21)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-ubca2::nyes_ext`. Run after each edit.
-- [ ] Add to `NyesExt` in `foolish-ubca2/src/nyes_ext.rs`:
+      (2026-09-02 18:21)
+- [x] Add to `NyesExt` in `foolish-ubca2/src/nyes_ext.rs`:
       ```rust
       /// Pre-constanic (nigh): PREMBRYONIC, EMBRYONIC, BRANING — still stepping.
       fn is_preconstanic(&self) -> bool {
@@ -107,19 +111,41 @@ If a change seems to require editing `foolish-core`, stop and report — it does
       ```
       Declare each in the trait AND implement it in the `impl NyesExt for Nyes` block, matching
       the file's existing style.
-- [ ] **T1 — predicate unit tests**, in the shape of the existing `constantew_states()`,
+      **Deviation from the literal spec snippet:** `is_preconstanic` and `is_nye` are default
+      trait methods exactly as shown (they only call `self.is_constanic()`, generic over
+      `Self`). `is_conclusive`'s body pattern-matches concrete `Nyes` variants
+      (`Nyes::Constant | Nyes::Independent`), which does not type-check as a default method on
+      a generic `Self` (E0308: expected type parameter `Self`, found `Nyes`) — moved its body
+      into the `impl NyesExt for Nyes` block instead, alongside `is_constanic`/`is_constantew`,
+      which already do the same for the same reason. The trait declares only its signature.
+      Behaviour is identical to the spec snippet; only where the body lives differs.
+      (2026-09-02 18:21)
+- [x] **T1 — predicate unit tests**, in the shape of the existing `constantew_states()`,
       asserting over `ALL_NYES`:
-  - [ ] `conclusive_states()`
-  - [ ] `preconstanic_states()`
-  - [ ] `is_nye_is_alias_for_preconstanic()` — agree on every state
-  - [ ] `conclusive_is_subset_of_constantew()`
-  - [ ] `conclusive_and_constantew_differ_exactly_on_nk()` — **the load-bearing one**: the two
+      (2026-09-02 18:21)
+  - [x] `conclusive_states()`
+        (2026-09-02 18:21)
+  - [x] `preconstanic_states()`
+        (2026-09-02 18:21)
+  - [x] `is_nye_is_alias_for_preconstanic()` — agree on every state
+        (2026-09-02 18:21)
+  - [x] `conclusive_is_subset_of_constantew()`
+        (2026-09-02 18:21)
+  - [x] `conclusive_and_constantew_differ_exactly_on_nk()` — **the load-bearing one**: the two
         cuts agree everywhere except NK, which is constantew but not conclusive
-  - [ ] `preconstanic_is_complement_of_constanic()` — every state is in exactly one
-- [ ] Update the module doc at the top of `nyes_ext.rs`: it says "Three categories" and omits
+        (2026-09-02 18:21)
+  - [x] `preconstanic_is_complement_of_constanic()` — every state is in exactly one
+        (2026-09-02 18:21)
+- [x] Update the module doc at the top of `nyes_ext.rs`: it says "Three categories" and omits
       conclusive. State all four groups and note `is_nye` as the alias.
-- [ ] Run all tests — old and new — and make sure they all pass correctly. Still 134 plus the
-      new unit tests.
+      (2026-09-02 18:21)
+- [x] Run all tests — old and new — and make sure they all pass correctly. Still 134 plus the
+      new unit tests. **Actual: 140 passed; 0 failed** (`cargo test -p foolish-ubca2 --lib`).
+      One run mid-phase hit a stale "catastrophe crumb" (`output-error` status) left in
+      `einmo_suite/output/` by an earlier interrupted tool call — 6 files, all under
+      `output/` (scratch, regenerated data; nothing under `checked/`/`verified/` was touched).
+      Restored with `git checkout -- foolish-ubca2/einmo_suite/output/` and reran clean.
+      (2026-09-02 18:21)
 
 ---
 
