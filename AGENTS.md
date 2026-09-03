@@ -718,17 +718,26 @@ a following `&`-search can read.
 - **Nye** (say "nigh") - Not Yet Evaluated
 - **NYES** (say "nice") - Not Yet Evaluated State
 - **No-no** - The `???` unknown value
+- **Pre-constanic** (nigh) - PREMBRYONIC, EMBRYONIC, BRANING: needs more stepping. Predicate
+  (`foolish-ubca2`'s `NyesExt`): `is_preconstanic()`, with `is_nye()` as an alias for the
+  traditional name — see **Nye** above. FOOP-56.
 - **Constanic** (say "cons-TAN-nic") - Constant in Context. Any terminal NYES state:
-  ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK. Pre-constanic (nigh) = needs more stepping.
+  ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK. Pre-constanic (nigh) = needs more
+  stepping. Predicate: `is_constanic()`.
 - **Constantew** - CONSTANT EveryWhere. A FIR that won't change no matter what: CONSTANT, INDEPENDENT, or NK
   (constantew ⊂ constanic). A **non-constantew constanic** (ECONSTANIC, WOCONSTANIC) may gain a
-  value when context is recoordinated. See FOOP-62 §Terminology.
+  value when context is recoordinated. See FOOP-62 §Terminology. Predicate: `is_constantew()`.
 - **Conclusive** (shorthand **Conc**) - a FIR whose NYES is CONSTANT or INDEPENDENT: it reached
   a value. An **inconclusive constanic** includes all other pre-constanic and constanic states.
+  Predicate: `is_conclusive()`. FOOP-56.
   - This is a different cut from constantew, and the two differ exactly on **NK**: NK is constantew
     (nothing will change it) yet inconclusive (it never produced a value).
   - Introduced by FOOP-36 §0, where rendering keys on conclusive while recoordination keys on constantew.
   - Often used expression "Inconclusive Constanic" means one of "WOCONSTANIC, ECONSTANIC, NK"
+  - All four predicates live on `foolish-ubca2/src/nyes_ext.rs`'s `NyesExt` trait (FOOP-56).
+    There is **no `is_settled()`** — despite an appearance in FOOP-62 §Terminology, it was
+    never implemented; "settled" is qualified with its specific group everywhere in
+    `foolish-ubca2` rather than named as its own predicate.
 - **Ordinate** - a name associated with a brane
 - **Coordinate** - brane member names used for relational access
 - **Home brane of a FIR** (synonym: **brane of a FIR**) - the first brane reached by
@@ -882,26 +891,22 @@ When proposing updates, explain what has changed and why the documentation needs
 ## Last Updated
 
 **Date**: 2026-09-02
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **Constantew** and **Conclusive** to the Foolish Terminology list. Constantew
-(CONSTANT/INDEPENDENT/NK — won't change no matter what) is existing vocabulary from FOOP-62
-§Terminology that the list was missing; **conclusive** (CONSTANT/INDEPENDENT — reached a value)
-is introduced by FOOP-36 §0. The two are different cuts and differ exactly on NK, which is
-constantew yet inconclusive. Also added the **"Plan of Execution for Plan"** rule to the FOOP
-section — every spec
-says which agent executes which phase, planned by complexity (judgment phases to a larger
-model; fixed-target execution phases to a smaller one), with a list of what is never delegated.
-Now a standard section in `docs/foop/FOOP-template.md` and the `foop-write-plan` skill.
-Also added §"READ THE SUITE'S `einmo.toml` FIRST" and §"Comment style in Foolish einmo inputs"
-to the Approval Tests (einmo)
-section: formatting and signing are configured **per suite**, so an agent must read that
-suite's own toml before generating or reviewing einmo files. Names the concrete hazard — the
-section separator differs between suites (`foolish-ubca` uses `!!`+LF, `foolish-ubca2` uses
-einmo's default `①`+LF), content containing it is a hard `SeparatorCollision` error at write
-time, and a real artifact's `#einmo … separator=…` header beats both toml comments and FOOP
-prose when they disagree. Retains the prior entry's rule: agents must never mark a
-Verified-tier test `#[ignore]` on their own judgment — that decision belongs to the human,
-explicitly, every time, and applies retroactively (see FOOP-16 for `foolish-ubca2`'s case).
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: FOOP-56 (§4a): added the two missing predicate entries — **Pre-constanic**
+(`is_preconstanic()`, alias `is_nye()`) and folded predicate names into the existing
+**Constanic** (`is_constanic()`), **Constantew** (`is_constantew()`), and **Conclusive**
+(`is_conclusive()`) entries in the Foolish Terminology list, so a reader moves from concept to
+call. Noted that all four predicates live on `foolish-ubca2/src/nyes_ext.rs`'s `NyesExt`, and
+that **no `is_settled()` exists** — FOOP-62 §Terminology lists one, but it was never
+implemented; `foolish-ubca2` qualifies "settled" with its specific group everywhere instead of
+naming it as its own predicate. Prior entry: added **Constantew** and **Conclusive** to the
+Foolish Terminology list. Constantew (CONSTANT/INDEPENDENT/NK — won't change no matter what) is
+existing vocabulary from FOOP-62 §Terminology that the list was missing; **conclusive**
+(CONSTANT/INDEPENDENT — reached a value) is introduced by FOOP-36 §0. The two are different cuts
+and differ exactly on NK, which is constantew yet inconclusive. Retains the prior entry's rule:
+agents must never mark a Verified-tier test `#[ignore]` on their own judgment — that decision
+belongs to the human, explicitly, every time, and applies retroactively (see FOOP-16 for
+`foolish-ubca2`'s case).
 
 ### MISC
 

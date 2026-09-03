@@ -216,7 +216,7 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
   - Add `FirCursor<'s>` (holds `ptr: FirPointer`, `storage: &'s FVMStorage`) and `FirCursorMut<'s>` (holds `ptr: FirPointer`, `storage: &'s mut FVMStorage`) to the same module as `FirPointer`/`FVMStorage` from the previous task.
   - Add `FVMStorage::get_mut(&mut self, ptr: FirPointer) -> &mut Fir` alongside `with_mut` — the resolved two-cursor-type design depends on this existing, per the FOOP's `OperatorFir::combine` walkthrough (its NK/division/modulo/arithmetic branches each collapse a `push_ubc_child`-then-`set_nyes` pair into one held `&mut Fir` via `get_mut`, instead of two separate `with_mut` closures).
   - Add the `temporary_release!` macro exactly as specified — a small, documented escape hatch for the rarer interleaved-reacquisition shape (a storage-needing call, such as a nested `create_child`, made mid-sequence while another mutation handle is still logically "in progress"). Not exercised by `combine` itself; keep it available for whichever later per-kind or per-function task in Phases 1–4 turns out to need it.
-  - Implement `FirCursor`'s read-side methods exactly per the FOOP's method table: `node`, `foolish_children`, `ubc_children`, `all_children`, `parent`, `is_root`, `get_nyes`, `front_task`, `home_brane`, `statement`, `settled_result`. Confirm `home_brane`'s and `statement`'s recursive termination logic against `fir_trait.rs`'s real `_get_my_brane`/`_get_my_statement` (re-read them at this point — the FOOP's writeup summarizes them, this task implements them) — preserve the exact climb-until-brane-like / climb-until-Statement-or-root shape, translating `Rc::ptr_eq` root checks to `FirPointer` equality.
+  - Implement `FirCursor`'s read-side methods exactly per the FOOP's method table: `node`, `foolish_children`, `ubc_children`, `all_children`, `parent`, `is_root`, `get_nyes`, `front_task`, `home_brane`, `statement`, `settled_constanic_result`. Confirm `home_brane`'s and `statement`'s recursive termination logic against `fir_trait.rs`'s real `_get_my_brane`/`_get_my_statement` (re-read them at this point — the FOOP's writeup summarizes them, this task implements them) — preserve the exact climb-until-brane-like / climb-until-Statement-or-root shape, translating `Rc::ptr_eq` root checks to `FirPointer` equality.
   - Implement `FirCursorMut`'s mutating-side methods exactly per the FOOP's method table: `set_nyes` (keep `pub(crate)` visibility — the OWNERSHIP CONTRACT means this must NOT be publicly callable), `create_child`, `push_foolish_child_sff_marked` (implement its `sift_for_first_non_econstanic_descendent_search` companion as an arena-threaded `sift_*` function per the codebase's naming rule, preserving the unconditional panic — not `debug_assert!` — on violation), `push_ubc_child`, `push_search_result` (preserve its `debug_assert!` singular-result invariant, FOOP-62), `clear_ubc_children`, `pop_front_task`, `push_task`. Do NOT add a `push_foolish_child` equivalent — the FOOP states explicitly this has no `FirCursorMut` counterpart, superseded entirely by `create_child`.
   - Implement `FirPointer::step` and its `step_inner` companion, and `FirPointer::value`, exactly per the FOOP's transcribed translation of `fir_trait.rs`'s real `step_inner`/`FirRefExt::value` — re-read both of those in `foolish-ubca2/src/fir_trait.rs` at this point (they're still present, unmigrated, from the Phase-0 copy) to confirm the translation is faithful, not just plausible. Preserve the `MAX_DEPTH` guard, the front-task constanic-gate (pop vs. recurse), and the `Scope` mutation for `StayFoolish`/`Statement`/brane-like kinds before recursing.
   - Implement `FVMStorage::clone_subtree(&mut self, root: FirPointer, new_parent: FirPointer, index: usize, sfm: bool, skip_foolish_children: bool) -> FirPointer`. Re-read `constanic_clone_at` in full at `foolish-ubca2/src/fir_kinds.rs` (still present, unmigrated, from the Phase-0 copy — same line numbers as `foolish-ubca`'s copy since nothing has changed yet) before writing this, and preserve its real behavior exactly: (1) the share-not-clone short-circuit — `Constant`/`Independent` non-`Brane` nodes return the SAME `FirPointer`, not a new slot; `FoolRef` and `Creation` kinds ALWAYS short-circuit to sharing the same `FirPointer`, unconditionally, regardless of NYES state (this is what keeps the FoolRefFir two-child invariant's original-statement reference genuinely shared, and a named creation's identity intact); (2) `StayFoolish`/`StayFullyFoolish` unwrapping — recurse into the settled result or first foolish child, never producing a cloned SF/SFF node; (3) the recursive per-node rebuild for every other kind, matching `constanic_clone_at`'s per-`FirKind` match arms one-for-one, with `index` becoming a cloned `StatementFir`'s new `line_number` exactly as today.
@@ -224,7 +224,7 @@ All work in this phase is inside `foolish-ubca2` only. `foolish-ubca` is never t
   - Write a small number of new unit tests directly exercising `clone_subtree`'s three behaviors above (a share case, an SF-unwrap case, a full-rebuild case) in isolation against a hand-built small arena, using the helper pair just added — these are additional arena-specific unit tests for this phase's "Establish relevant tests" checkbox.
   - This task does not yet change any existing FIR kind's fields or any call site — it only adds `FirCursor`/`FirCursorMut`/`clone_subtree` alongside the old `Rc`/`Weak`/`RefCell` code, exactly like the previous task. `cargo check -p foolish-ubca2` and the full einmo suite must still pass unchanged after this task.
       All types added to `foolish-ubca2/src/fvm_storage.rs` (same module as the previous task).
-      `_get_my_brane`/`_get_my_statement`/`settled_result`/`step_inner`/`MAX_DEPTH`/
+      `_get_my_brane`/`_get_my_statement`/`settled_constanic_result`/`step_inner`/`MAX_DEPTH`/
       `constanic_clone_at` were all re-read DIRECTLY from the live source (`fir_trait.rs`,
       `fir_kinds.rs`) immediately before writing each corresponding arena translation, per the
       coordinator's explicit instruction not to trust the earlier sub-fork's unverified sections
@@ -393,7 +393,7 @@ not a claim that the arena path is live in production yet.
       3 new unit tests (25 total in `fvm_storage`): `operator_addition_settles_constant` (mirrors
       `fir_kinds.rs::tests::operator_nyes_transitions`'s `2+3=5` exactly),
       `operator_division_by_zero_settles_nk` (mirrors `operator_div_by_zero_nyes_transitions`'s
-      `1/0=NK` exactly), `operator_pushes_tasks_for_unsettled_operands` (the Braning-phase
+      `1/0=NK` exactly), `operator_pushes_tasks_for_inconclusive_operands` (the Braning-phase
       task-queueing branch). Targeted einmo re-run: full suite (broader than "binary/unary
       operator cases" specifically, since the suite runs quickly and this confirms no regression
       crate-wide) — passes unchanged.
@@ -407,7 +407,7 @@ not a claim that the arena path is live in production yet.
       translation of the real `impl Fir for StatementFir`'s core logic (re-read immediately
       before writing). **Deliberately deferred, not implemented**: the two NF-refusal checks
       (`check_null_const_conflict`/`check_rename_of_named_creation`, FOOP-33 §4) and
-      `settled_result`'s NF-substitution override — both depend on `_ib_search`/`_ab_search`/
+      `settled_constanic_result`'s NF-substitution override — both depend on `_ib_search`/`_ab_search`/
       `.value()`, which are search-engine operations Phase 2 owns exclusively (same carve-out
       `SearchFir` already has, extended here for the same reason). `ArenaFir` carries no
       `nf_reason` slot yet. Added `FirCursor::as_stmt_identifier`/`as_stmt_line_number` mirroring
@@ -486,13 +486,13 @@ not a claim that the arena path is live in production yet.
       this). **Correctness-critical invariant explicitly verified** by a dedicated unit test
       (`push_search_result_pair_preserves_the_two_child_invariant`): after the call,
       `ubc_children` holds exactly `[result, fool_ref]`; `[0]` is the searchable value every
-      existing reader accesses via `.first()`/`settled_result`; `[1]`'s `FoolRef` reports its
+      existing reader accesses via `.first()`/`settled_constanic_result`; `[1]`'s `FoolRef` reports its
       referent as the exact same `FirPointer` passed in (genuinely shared, not cloned — this is
       what makes the invariant meaningful, and it depends on `clone_subtree`'s own `FoolRef`-
       always-shares rule, already implemented and tested in the earlier foundational task,
       staying true). One test-authoring bug caught and fixed during this task (not an
-      implementation bug): the test's first draft checked `settled_result()` on the root brane
-      before setting the root's own Nyes to constanic — `settled_result`'s contract correctly
+      implementation bug): the test's first draft checked `settled_constanic_result()` on the root brane
+      before setting the root's own Nyes to constanic — `settled_constanic_result`'s contract correctly
       gates on `is_constanic()`, so it answered `None` until the test set the root's Nyes
       directly (a real search FIR would already be constanic by the time it pushes a result;
       this test sets it directly since stepping a real search is Phase 2's scope). Targeted
@@ -516,7 +516,7 @@ not a claim that the arena path is live in production yet.
       `ubc_children[0]` first; either kind falls through to its first `foolish_children` entry;
       if both are empty, an `eprintln!` ALARM fires (matching the original) and the wrapper
       clones as-is via the normal path. Verified with 2 new `clone_subtree` unit tests
-      (`clone_subtree_unwraps_stay_foolish_to_its_settled_result`,
+      (`clone_subtree_unwraps_stay_foolish_to_its_settled_constanic_result`,
       `clone_subtree_unwraps_stay_fully_foolish_to_first_foolish_child`) confirming no cloned
       SF/SFF wrapper node is ever produced, matching the invariant the original method
       guarantees. This closes the SECOND of the two placeholders the coordinator asked to be
@@ -565,7 +565,7 @@ not a claim that the arena path is live in production yet.
       `StatementFir`'s task. Once join-readiness is confirmed, this arena translation settles
       `Woconstanic` (an honestly-incomplete result) rather than building helpers and joining to
       `Constant` — `_helpers_populated` never becomes `true` under this path, so the not-yet-
-      migrated `stmt_count`/`stmt_at`/`settled_result` overrides are never called against a
+      migrated `stmt_count`/`stmt_at`/`settled_constanic_result` overrides are never called against a
       half-built helper state. Added `FirCursor::as_concat_provenance`.
 
       3 new unit tests (39 total in `fvm_storage`): `concat_helper_settles_like_a_brane` (mirrors
@@ -872,7 +872,7 @@ this phase's tasks strictly in the order listed.
 
 ## Phase 3 — Migrate `evaluator.rs`'s stepping loop
 
-`evaluator.rs` is 1246 lines with a small number of free functions (verified by reading the file): `step_until`, `step_until_line_number`, `step_until_statement_name` (public entry points), `display_stmt_name` (a small helper, unlikely to touch pointers), `step_to_settled` (the core stepping loop), `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR conversion family, used for output serialization). This phase splits along that seam.
+`evaluator.rs` is 1246 lines with a small number of free functions (verified by reading the file): `step_until`, `step_until_line_number`, `step_until_statement_name` (public entry points), `display_stmt_name` (a small helper, unlikely to touch pointers), `step_to_constanic` (the core stepping loop), `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR conversion family, used for output serialization). This phase splits along that seam.
 
 - [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: full `foolish-ubca2` suite (`einmo_gate_checked`) after each task — the stepping loop is exercised by every case, so no narrower subset applies; run unit tests: `foolish-ubca2::evaluator` substring match if such tests exist (check `evaluator.rs` for a `mod tests` block; if none exists, note that in this checkbox and rely on the einmo suite alone for this phase).
       (2026-08-30 20:44)
@@ -882,12 +882,12 @@ this phase's tasks strictly in the order listed.
       keeps compiling/passing unchanged throughout this phase per the additive-then-cutover
       design).
 
-- [x] Migrate `step_to_settled` (the core per-FIR stepping dispatch)
+- [x] Migrate `step_to_constanic` (the core per-FIR stepping dispatch)
       (2026-08-30 20:44)
   - Replace `.borrow()`/`.borrow_mut()`/`Weak::upgrade()` call sites with `FVMStorage::get`/`FVMStorage::with_mut`. This function is where the majority of the loop's arena access concentrates — expect this to be the largest single task in this phase; split into indented sub-tasks (e.g. by NYES-state-transition branch, if the function's internal structure supports that split cleanly) if it proves larger than expected once underway.
   - Targeted einmo re-run: full suite.
       Re-read `evaluator.rs` in full (all 1246 lines) immediately before writing any arena
-      translation. Added `core_fir_conversion::step_to_settled` — a direct translation of the
+      translation. Added `core_fir_conversion::step_to_constanic` — a direct translation of the
       real function, re-confirmed to use its OWN `MAX_STEPS = 10_000` (distinct from
       `step_inner`'s `MAX_DEPTH = 100` recursion guard — one caps total top-level iterations,
       the other caps recursion depth within one iteration). Did NOT prove larger than expected —
@@ -898,7 +898,7 @@ this phase's tasks strictly in the order listed.
 
 - [x] Migrate `step_until`, `step_until_line_number`, `step_until_statement_name` (the public step-N-times/step-to-target entry points)
       (2026-08-30 20:44)
-  - These likely call `step_to_settled` in a loop and additionally inspect FIR state directly (to check the stopping condition) — update any direct `.borrow()`/pointer-chasing here to go through `FVMStorage`.
+  - These likely call `step_to_constanic` in a loop and additionally inspect FIR state directly (to check the stopping condition) — update any direct `.borrow()`/pointer-chasing here to go through `FVMStorage`.
   - Targeted einmo re-run: full suite.
       Direct translations of all three real functions. **Deliberate signature deviation,
       documented in the code**: the real `step_until`'s matcher is `FnMut(Option<&FirRef>) ->
@@ -913,7 +913,7 @@ this phase's tasks strictly in the order listed.
 - [x] Migrate `proto_to_core_fir`, `proto_to_core_fir_sff_body`, `proto_to_core_fir_sff_operand`, `anchor_to_core_fir`, `proto_to_core_fir_inner` (the FIR→core-FIR output-serialization family)
       (2026-08-30 20:44)
   - These functions currently take `&FirRef` (and, for the SFF variants, an additional `current_stmt: Option<&FirRef>`) and walk the tree to build the `core_fir::Fir` representation einmo actually serializes into OUTPUT. Update their signatures to take `FirPointer` plus `&FVMStorage` instead of `&FirRef`.
-  - This family is worth its own task separate from `step_to_settled` because it is the direct producer of every einmo OUTPUT line — a subtle bug here would show up as a diff against `checked/` on nearly every case, making it both high-blast-radius and (usefully) easy to detect via the full-suite re-run.
+  - This family is worth its own task separate from `step_to_constanic` because it is the direct producer of every einmo OUTPUT line — a subtle bug here would show up as a diff against `checked/` on nearly every case, making it both high-blast-radius and (usefully) easy to detect via the full-suite re-run.
   - Targeted einmo re-run: full suite (this is, by construction, the function family the entire suite's OUTPUT depends on).
       **Direct, line-by-line translation of all five real functions — no arm simplified, even
       the `Search` variant's deeply nested SF-unwrap-preservation logic** (`has_complex`/
@@ -1288,7 +1288,7 @@ skipped during the cutover.
     `compose_program_with_system` — parse `system.foo` + user source, compose via
     `arena_compiler`, supply `ComparisonFir` bodies via an arena-side `BodyOverride`-equivalent
     hook — then rewiring `evaluate`'s body to construct `FVMStorage`, call it, step via
-    `core_fir_conversion::step_to_settled`, extract `program_result` structurally, and serialize
+    `core_fir_conversion::step_to_constanic`, extract `program_result` structurally, and serialize
     via `core_fir_conversion`'s output functions), the 13 `impl Fir` block deletions, `ProtoBrane`
     deletion, and the ~260-test port/retire pass. This `evaluate` rewrite is THE single highest-
     risk step in the whole FOOP (per the coordinator's own framing) — it is the point where the
@@ -1324,7 +1324,7 @@ skipped during the cutover.
     **`einmo_gate_checked` progress**: 32 divergent cases before these fixes → 7 → **5** (commit
     `37cc1760`, after finding and fixing a real bug: `check_null_const_conflict`/`check_rename_of_
     named_creation`/`apply_null_const_rule_to_merged_stmt` all correctly SET `nf_reason` on a
-    refused statement, but nothing surfaced that refusal through `FirPointer::settled_result`'s
+    refused statement, but nothing surfaced that refusal through `FirPointer::settled_constanic_result`'s
     generic `ubc_children().first()` read — the NF write path never pushed anything there. Fixed
     via a new shared `refuse_statement` helper that also pushes a fresh, already-`Nk` node to
     `ubc_children`. Also fixed a related, separate gap: `core_fir_conversion`'s `Statement`/`Brane`
@@ -1387,7 +1387,7 @@ skipped during the cutover.
 
     **Phase 5's foundation-group sub-task's own prerequisites are now ALL closed**: `nf_reason`,
     `IndexFir` dispatch, `StatementFir` NF checks, `ConcatenationFir` merge logic, `ComparisonFir`
-    verdict resolution, the `settled_result`/NF-surfacing fix, and now the SFM-threading +
+    verdict resolution, the `settled_constanic_result`/NF-surfacing fix, and now the SFM-threading +
     `StayFoolish` output fixes. `evaluate` is genuinely, fully live on the arena path with a green
     suite. **Next: the 13 `impl Fir` block deletions + `ProtoBrane` deletion are now safe to
     start** (nothing outside the doomed old `Rc`-based code references them once `compiler.rs`/
@@ -1425,7 +1425,7 @@ skipped during the cutover.
       types directly are not blocked by, and do not need, a signature or body change on the real
       side. Instead, `UbcaEvaluator::evaluate`'s body alone was rewired to construct its OWN
       `FVMStorage` and call the (separately, fully built) `arena_compiler::compose_program_with_
-      system`/`core_fir_conversion::step_to_settled`/`proto_to_core_fir` — this is the crate's
+      system`/`core_fir_conversion::step_to_constanic`/`proto_to_core_fir` — this is the crate's
       ONE genuinely production-facing entry point (confirmed by the same research), and rewiring
       only it achieves the actual goal (the arena path becomes the crate's real live evaluator,
       `einmo_gate_checked` exercises it end-to-end) without requiring `compiler.rs`'s ~150+ test
@@ -1594,3 +1594,10 @@ skipped during the cutover.
         worktree and branch. See parent checkbox note.
   - [x] This is the last sub-task checkbox to be checked in this block
         (2026-08-31 14:08)
+
+## Last Updated
+
+**Date**: 2026-09-02
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: updated live `foolish-ubca2` identifier references to
+`settled_constanic_result`, `step_to_constanic`, and the renamed conclusive-operand test.

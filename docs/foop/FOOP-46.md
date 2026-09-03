@@ -35,7 +35,7 @@ code; it is the shape the operator should have been built with.
 
 This FOOP was split out of **FOOP-26**, which specifies the operator's *contract* (it is an
 operator, not a brane; it answers no brane-like question about itself; it says "don't know"
-rather than zero while unsettled; it waits for an `Econstanic` constituent rather than
+rather than zero while its result is not conclusive; it waits for an `Econstanic` constituent rather than
 proceeding past it) and its *ergonomics* (the compiler marks each written constituent by its
 syntactic form). **FOOP-26 §4 is the specification this FOOP implements.** Nothing here
 restates it.
@@ -143,7 +143,7 @@ A search may appear as a constituent in its own right, not merely inside one:
 Joined while any constituent is pre-constanic, so a search travelling outward from a
 pre-constanic constituent meets Gathering concatenations all the way up until it leaves them.
 There is no arrangement in which it meets a Joined concatenation on the way out — being Joined
-would mean the constituent it started from had already settled.
+would mean the constituent it started from had already become constanic.
 
 This answers Open Question 4 (a Gathering concatenation whose parent is also Gathering) in the
 affirmative and by construction, rather than by testing: it is the normal case, not an edge one.
@@ -225,11 +225,11 @@ below the operator — stepping, IB search, `stmt_count`/`stmt_at`, rendering �
 **`Brane`'s existing code**, unmodified. The operator's job ends at producing that brane. It
 does not imitate a brane, delegate to one method by method, or carry a parallel implementation.
 
-`.value()` is the whole interface. Today `FirPointer::settled_result` (`fvm_storage.rs:639`)
+`.value()` is the whole interface. Today `FirPointer::settled_constanic_result` (`fvm_storage.rs:639`)
 already returns `ubc_children[0]` once the node is constanic, and `value()` (`:649`) unwraps
-through it recursively. So **a settled concatenation's `.value()` is already the brane in
+through it recursively. So **a constanic concatenation's `.value()` is already the brane in
 `ubc_children`** — no new mechanism is needed for the Joined phase, and FOOP-26 §4.5's "a
-concatenation answers no brane-like question about itself; ask its settled value" is satisfied
+concatenation answers no brane-like question about itself; ask its constanic value" is satisfied
 by the accessor that exists.
 
 **How close the current code already is.** `ConcatHelper`'s `fir_op_step` arm
@@ -267,7 +267,7 @@ so it is worth confirming each of these behaves:
 - Line numbering — `populate_concat_helpers` renumbers copied statements to their global index
   (`revive_constanic(stmt, helper, global_idx, …)`, `:2749`); that must remain true.
 - Rendering — FOOP-36 (the Foolish-rendering sequencer) renders a brane as `{…}`. A joined brane
-  rendering as an ordinary brane is arguably correct, since that is what it *is* once settled;
+  rendering as an ordinary brane is arguably correct, since that is what it *is* once constanic;
   confirm with FOOP-36 rather than assuming.
 - The `provenance: ConcatProvenance` field, which records whether the operator was written as a
   juxtaposition or a tail-concatenation, stays on the **operator**, not on the produced brane.
@@ -304,7 +304,7 @@ Review Gate.
 
 To be written when this FOOP moves out of Draft. Judgment phases — resolving §3 and §4, and every
 `output` → `checked` promotion review — go to a larger model; the mechanical rewrite of the
-operator against a settled specification does not.
+operator against a constanic specification does not.
 
 ## Rejected Alternatives
 
@@ -345,12 +345,9 @@ Keeping them apart lets FOOP-26 land and be measured before a rewrite begins.
 ## Last Updated
 
 **Date**: 2026-09-02
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Created. Split out of FOOP-26 (human, 2026-09-02) so `BraneConcatOp` can be
-**rewritten** against a specified phased search behavior rather than patched: during Gathering an
-IB search demanded by a constituent finds nothing in the concatenation and falls through to its
-parent; once Joined, IB searches resolve normally within `ubc_children`. FOOP-26 §4 keeps the
-operator's contract and ergonomics and is the specification this FOOP implements.
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: qualified the concatenation phases and value-access prose,
+and updated the live accessor name to `settled_constanic_result`.
 
 §3 traces the fall-through for a bare-name constituent and establishes that **the phases chain,
 and can only chain one way**: a concatenation cannot be Joined while any constituent is
@@ -366,7 +363,7 @@ cause is FOOP-26 §4.5's unknown-count defect.
 
 §4 states the reuse design (human, 2026-09-02): once Joined, the operator holds a **brane** in
 `ubc_children`, and all stepping, searching and rendering below it is performed by `Brane`'s
-existing code. `.value()` is the whole interface, and it already works — `settled_result`
+existing code. `.value()` is the whole interface, and it already works — `settled_constanic_result`
 (`fvm_storage.rs:639`) returns `ubc_children[0]` once constanic, so a settled concatenation's
 `.value()` is already the brane. Verified line by line that `ConcatHelper`'s `fir_op_step` arm
 and `Brane`'s have identical bodies, differing only in the pattern matched, so `ConcatHelper`

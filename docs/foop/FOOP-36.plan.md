@@ -112,7 +112,9 @@ evaluator's conclusion. `hs_index` returns `(offset, anchored, anchor, result)`;
 
 **`Nyes`** (`fir.rs` ~115) has 8 variants: `Prembrionic`, `Embryonic`, `Braning` (pre-constanic);
 `Econstanic`, `Woconstanic`, `Constant`, `Independent`, `Nk` (constanic). Helpers:
-`is_constanic()`, `is_nye()`, `should_show_nyes()`. Note the spelling **`Prembrionic`** in code
+`is_constanic()`, `is_nye()`, `should_show_nyes()`. FOOP-56 additionally provides
+`is_preconstanic()`, `is_constantew()`, and `is_conclusive()` on `foolish-ubca2`'s `NyesExt`.
+Note the spelling **`Prembrionic`** in code
 vs `PREMBRYONIC` in prose.
 
 **Facts already verified — do not spend context re-checking:**
@@ -150,8 +152,8 @@ vs `PREMBRYONIC` in prose.
   - **"Settled" is prose, not a predicate** — `is_settled()` does not exist despite `lib.rs`
     and FOOP-62 claiming it. After FOOP-56 the uses are qualified: `settled_constanic_result`,
     `step_to_constanic`, `all_foolish_children_conclusive`, and so on.
-  - [ ] (Phase 0.5 fixes `lib.rs` line 24's stale `is_settled()` claim; if that phase was
-        cancelled, fix the comment here instead.)
+  - [x] FOOP-56 corrected `lib.rs`'s stale `is_settled()` claim before this FOOP began.
+    (2026-09-02 20:15)
 - **The separator is `①` (U+2460) for ubca2, NOT `!!` (§4.2).** Verified from the artifacts:
   `foolish-ubca2/einmo_suite`'s files carry `#einmo 1 encoding=utf-8 separator=①\n`, while the
   older `foolish-ubca/einmo_suite` still carries `separator=!!\n`. **FOOP-92's spec text and
@@ -262,13 +264,13 @@ Q5 was dissolved by the human; the confirmation left below is cheap and worth do
   - [ ] Concatenation written form — juxtaposition from `hs_concatenation`'s elements
   - [ ] SF / SFF written form — `<`/`>`, `<<`/`>>` + interior
 - [x] **Q5 — DISSOLVED by the human 2026-09-02: "constants should always be rendered in
-      Foolish."** A settled search IS its value, so `result = {y = 1;}?y` rendering `result = 1`
+      Foolish."** A conclusive search IS its value, so `result = {y = 1;}?y` rendering `result = 1`
       is correct and complete — the search disappearing is the evaluator succeeding, not
       information lost. The FIR already separates the two cases structurally (resolved →
       CONSTANT, no `SearchFir` left; unresolved → the `SearchFir` survives), so **no provenance
       marking, no new accessor, nothing to decide.** §3 was rewritten accordingly.
       (2026-09-02 14:05)
-- [ ] **Confirm §0.1.1 — which NYES states a `settled_result` slot actually holds.** The gate
+- [ ] **Confirm §0.1.1 — which NYES states a `settled_constanic_result` slot actually holds.** The gate
       (`fvm_storage.rs:639`) tests `is_constanic()` on the owner, but two mechanisms narrow
       what lands in the slot: `Nyes::transform_for_clone` preserves only CONSTANT/INDEPENDENT/NK
       (= **constantew**) and turns everything else EMBRYONIC; and `push_ubc_child` (line 151)
@@ -470,10 +472,10 @@ a fixed, human-authored target.
         - result **conclusive** (CONSTANT/INDEPENDENT) → collapses to the value
         - **Add the test line 816's rule lacks**: an operator with an ECONSTANIC operand must
           still queue it as a task. The existing
-          `operator_pushes_tasks_for_unsettled_operands` uses PREMBRYONIC operands only, so it
-          does not distinguish conclusive from constanic — and `all_settled` at
-          `fvm_storage.rs:816` gates on `Constant | Independent`, i.e. conclusive (§0.1
-          Group 2). That distinction is currently untested.
+          `operator_pushes_tasks_for_inconclusive_operands` covers PREMBRYONIC operands, and
+          `operator_pushes_tasks_for_econstanic_operand` proves the remaining distinction:
+          an ECONSTANIC operand is constanic but must remain queued because
+          `all_foolish_children_conclusive` gates on `is_conclusive()`.
         - result ECONSTANIC (unanchored miss) → renders the search
         - result WOCONSTANIC → renders the search
         - result NK (anchored miss) → renders the search, NOT `???`
@@ -835,7 +837,7 @@ report it rather than forcing it.*
 - [ ] Lead with the convergence (§3.2.1): FOOP-46's **Gathering** phase is what §3.2 renders as
       the juxtaposition, and its **Joined** phase is what §3.2 renders as the brane. The
       rendering is the natural display of what §4 builds; §4 needs no new mechanism for it,
-      since `settled_result`/`value()` already return the brane once constanic — as §4's own
+      since `settled_constanic_result`/`value()` already return the brane once constanic — as §4's own
       text observes.
 - [ ] Then state the one detail §4's implementation must settle:
   - [ ] §4's option 1 populates `ubc_children` with a `FirSpec::Brane` and **deletes
@@ -943,11 +945,10 @@ report it rather than forcing it.*
 ## Last Updated
 
 **Date**: 2026-09-02
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Edited for execution by a smaller agent. Added §"How to work this plan" — read the
-spec first, work top to bottom, timestamp each box, stop where told, accumulate doubts and
-report once, treat a failing test as broken code (except Phase 5's intended failure), never
-promote outside the gates.
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: updated Phase 0.5 and active renderer-plan references to
+the implemented predicates, `settled_constanic_result`, `step_to_constanic`, and the
+ECONSTANIC conclusive-vs-constanic regression test.
 
 Adds **Phase 0.5** — a fail-fast, skippable vocabulary fix placed FIRST. It gives all four §0
 NYES groups a predicate on `NyesExt` (`is_preconstanic` primary with `is_nye` as its alias, plus
