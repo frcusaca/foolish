@@ -890,9 +890,21 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-09-02
+**Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: FOOP-56 (§4a): added the two missing predicate entries — **Pre-constanic**
+**Changes**: Added §MISC "Lead With the Most Important Information — Especially Bug Counts",
+directly after "Uncertainty and Other Utterances in Conversing with Human": the most important
+information leads the paragraph and the first sentence, and for bug reports that means leading
+with the **action or state** — repaired, or still broken — never with the quantity found.
+"Repaired all 4 new bugs found this session." when all are fixed; "There are 2 UNCORRECTED bugs
+out of 8 discovered, 6 fixed." when they are not, with uncorrected bugs always leading. Both
+open on what the reader must act on, with the tally behind it. Names the anti-pattern the human
+has now read five times: opening with "Bugs found: 10 ......" and burying "All fixed" at the end
+of the section. Adds the delicate-or-complex case — several findings, or issues that resisted
+diagnosis — where an orienting introduction that states the shape of what follows and NAMES the
+items ("Four important findings are:"; "…The issues are A, B, C, and D….") IS the lede, the same
+rule rather than an exception, with a warning that it is no licence for a vague throat-clear.
+Prior entry: FOOP-56 (§4a): added the two missing predicate entries — **Pre-constanic**
 (`is_preconstanic()`, alias `is_nye()`) and folded predicate names into the existing
 **Constanic** (`is_constanic()`), **Constantew** (`is_constantew()`), and **Conclusive**
 (`is_conclusive()`) entries in the Foolish Terminology list, so a reader moves from concept to
@@ -965,6 +977,49 @@ Expressions of uncertainty and hypotheticals, such as "perhaps", "maybe", "possi
 
 "Continue." is uttered when the humans sees output on the screen that they think is incomplete. The best course of action, irrespective of actual status, is to summarize the progress made in the most recent few turns of conversation. If indeed the progress was ended or blocked by nonresponsive sub-agents, then take approrpiate action. If the short term task is truely complete, still output the summary, but also present outstanding todo items as well as other possible next steps for human to decide. Human may decide previous task is not complete and needs more work, or they may agree previous task was complete and move on to one of the options for next steps.
 
+
+#### Lead With the Most Important Information — Especially Bug Counts
+
+**The most important piece of information goes first** — at the start of the paragraph, and
+inside the first sentence. Everything else is support. Bug reporting is where this rule is
+broken most often, so it gets spelled out.
+
+When a long stretch of work found bugs and then repaired them, **lead with the action or the
+state — repaired, or still broken — never with the quantity.** How many were found is
+supporting detail; it belongs after the verb, not in front of it.
+
+- All repaired — open on the repair: "**Repaired** **all** 4 new **bugs** found this session."
+  The load-bearing words are **"Repaired"** and **"all … bugs"**; the `4` is incidental and
+  rides along mid-sentence. Not "4 new bugs discovered and repaired" (opens on the count), and
+  not "New bugs repaired" (vague about whether any remain).
+- Some NOT repaired — the UNCORRECTED bugs are the most important issue in the entire report,
+  and they lead: "There are 2 UNCORRECTED bugs out of 8 discovered, 6 fixed."
+
+The two are symmetric: each sentence opens with what the reader must act on — the repair, or
+the outstanding defects — and the tally follows behind it.
+
+The anti-pattern, now read five times: opening a section with "Bugs found: 10 ......" and only
+revealing "All fixed" at the very END. That buries the lede — it forces the reader through the
+whole passage to learn the one thing they actually needed, and it reads as alarming right up
+until the last line. Never report it that way.
+
+**When the material is delicate or complex, the orienting introduction IS the lede.** Several
+distinct findings, issues that resisted diagnosis, problems each needing their own discussion
+and recommendation — a bare one-line verdict cannot carry that. English prose then calls for
+an introductory sentence or paragraph that takes hold of the reader's attention and gives them
+the shape of what follows, before any detail begins. This is the same rule, not an exception
+to it: here the shape is the most important information, so it goes first. The introduction
+does two jobs — say what is coming and how much of it, then NAME the items, so the reader
+holds the whole map before walking any part of it:
+
+- "Four important findings are:" — then each one presented in an easy-to-read manner.
+- "In the next few paragraphs we shall detail several issues that we could not diagnose easily.
+  I will attempt to describe each problem and discuss recommendations I have for each. The
+  issues are A, B, C, and D...." — and then the several paragraphs commence, one item at a time.
+
+This is not licence to bury the lede: the introduction is short, it is concrete, and it still
+opens on what matters. A vague throat-clear — "I did a lot of work and found some things" —
+names nothing and orients no one; it is the failure mode to avoid here.
 
 #### When in Doubt
 
