@@ -567,10 +567,22 @@ impl<'a> Renderer<'a> {
         if provenance == ConcatProvenance::TailConcatenation {
             children.reverse();
         }
+        // Juxtaposition needs a SPACE between elements, not an empty join.
+        // Concatenation is written `A B C`, and the elements are frequently
+        // bare identifiers: joining `f1` and `f2` with nothing produces the
+        // single identifier `f1f2`, destroying an element. That is a MEANING
+        // change the round-trip test cannot see, because the fused text
+        // re-renders to itself stably — verified on
+        // `misc/concat_sf_f_more`, where `o = f1 <f2> <<f3>>` rendered
+        // `o = f1f2<<f3>>` and re-parsed with 2 concatenation children
+        // instead of 3.
+        //
+        // Tail concatenation keeps its own `` ` `` separator, which already
+        // separates the elements on its own.
         let separator = if provenance == ConcatProvenance::TailConcatenation {
             "`"
         } else {
-            ""
+            " "
         };
         vec![
             children
@@ -1834,6 +1846,49 @@ mod tests {
         assert!(
             !Ubca2Sequencer::format_with(&storage, roots[0], &silent).contains("did not complete"),
             "warn_iteration_excess: false must drop the banner"
+        );
+    }
+
+    /// An UNMERGED concatenation joins its elements with a SPACE. Joining
+    /// with nothing fuses bare identifiers — `f1` and `f2` become the single
+    /// identifier `f1f2` — which DESTROYS an element: the rendering
+    /// re-parses as a 2-element concatenation where the source had 3.
+    ///
+    /// The round-trip test cannot catch this, because the fused text
+    /// re-renders to itself stably: it is consistently wrong, so Property 2
+    /// holds while the meaning has changed. Found by reading
+    /// `misc/concat_sf_f_more` during the Phase 6 review, and confirmed by
+    /// counting `foolish_children` on the re-parsed program.
+    #[test]
+    fn foolish_unmerged_concatenation_separates_its_elements() {
+        let (storage, program) =
+            evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("o = f1 f2 <<f3>>"),
+            "concatenation elements must be space-separated: {rendered}"
+        );
+        assert!(
+            !rendered.contains("f1f2"),
+            "adjacent bare identifiers must not fuse into one: {rendered}"
+        );
+
+        // The element COUNT must survive the round trip — this is the check
+        // that actually pins the meaning.
+        let (storage2, program2) = evaluated_program(&rendered);
+        let cursor2 = FirCursor::new(program2, &storage2);
+        let last = cursor2
+            .stmt_at(cursor2.stmt_count().unwrap_or(0) - 1)
+            .expect("program has statements");
+        let body = FirCursor::new(last, &storage2)
+            .foolish_children()
+            .first()
+            .copied()
+            .expect("statement has a body");
+        assert_eq!(
+            FirCursor::new(body, &storage2).foolish_children().len(),
+            3,
+            "the re-parsed concatenation must keep all 3 elements: {rendered}"
         );
     }
 
