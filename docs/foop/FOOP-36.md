@@ -561,6 +561,14 @@ aa=f}` and `{d=f}` even though neither declares it. Both render `3`. That the co
 failed to *merge* does not stop its constituents from evaluating — which is precisely why
 rendering them recursively, rather than echoing the source text, is the right rule.
 
+**Deferred implementation case (human decision, 2026-09-03).** The current concatenation
+implementation instead constructs the searches inside those bare brane constituents under SFF;
+they settle ECONSTANIC with no result, so a read-only renderer cannot truthfully print `3`.
+FOOP-46's BraneConcatOp work owns restoring the specified search behavior and then updating this
+sequencer against it. Until that FOOP lands, FOOP-36's contract tests the ordinary nested-brane
+case `{f=3; a=2; b={f1=f; f2=a; f3=not_found;};}`, where the two conclusive searches render `3`
+and `2`, while the unresolved one remains written.
+
 #### §3.2.1 §3.2 and FOOP-46's phased design converge
 
 §3.2's two renderings and **FOOP-46's two phases are the same distinction**, arrived at from

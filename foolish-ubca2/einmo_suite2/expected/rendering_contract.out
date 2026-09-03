@@ -44,7 +44,12 @@
   concatenation = {  !! WOCONSTANIC
     merged = {a = 1; b = 2; c = 3};
     f = 3;
-    unmerged = {a = 1; aa = 3}{b = notfound}notˍfoundˍbrane{d = 3};  !! WOCONSTANIC
+    a = 2;
+    nestedˍbrane = {  !! WOCONSTANIC
+      f1 = 3;
+      f2 = 2;
+      f3 = notˍfound  !! ECONSTANIC
+    };
     empty = {}
   };
   nk = {  !! NK: DIV-BY-ZERO: division by zero

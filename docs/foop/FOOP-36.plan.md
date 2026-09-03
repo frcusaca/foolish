@@ -528,14 +528,11 @@ a fixed, human-authored target.
         constituent, a non-resolving one, a bare unresolved name, and a second resolving one in
         a single statement; concatenation of empty branes; and `⨃` appearing nowhere in any of
         it.
-        **BLOCKED (2026-09-03 07:55):** a temporary arena trace of the exact worked case found
-        the concatenation WOCONSTANIC with no UBC child. Both `aa=f` and `d=f` are stored as
-        `Search { pattern: "^f$", anchored: false, ... }`, NYES ECONSTANIC, zero UBC children.
-        The renderer therefore has no conclusive `3` to print; printing `3` would require it
-        to perform a new search, contrary to §3's read-only result predicate. The parse builder
-        deliberately constructs searches below bare concatenation branes under SFF, initially
-        ECONSTANIC. Resolving them requires an evaluator change in the plan's READ-ONLY
-        `fvm_storage.rs`, or the worked expectation must change to `f`. Human decision required.
+        **Deferred by the human (2026-09-03):** the exact worked case currently stores `aa=f`
+        and `d=f` as ECONSTANIC searches with no UBC result because bare concatenation branes
+        are built under SFF. It belongs to FOOP-46's BraneConcatOp ergonomics work, where the
+        evaluator and this sequencer will be updated together. This FOOP's hand contract instead
+        covers the simpler `{f=3, a=2, b={f1=f, f2=a, f3=not_found}}` nested-brane case.
   - [ ] **`nk`** — §5: NK **reverts to the written Foolish**, it is NOT rendered `???`.
         `1/0` renders `1/0` with `!! NK: DIV-BY-ZERO: …` beside it (flag on). An NK *search*
         result renders as the SEARCH, not as NK — e.g. an anchored miss renders
@@ -606,11 +603,12 @@ a fixed, human-authored target.
       `#0` and `^` have the same arena representation and standardize to attached `=^`; the
       supported comparison idiom ends in an attached tail and therefore standardizes to `=$`;
       and the written no-no reason is exactly `??? literal`. These revisions are recorded in
-      the committed hand-target scratch file; the unresolved concatenation contradiction above
-      is deliberately NOT revised away.
-  - [ ] Establish relevant tests. Use [these instructions](../../README.md#running-specific-tests)
+      the committed hand-target scratch file. The old bare-concatenation worked case is deferred
+      to FOOP-46 by human direction; its replacement nested-brane case is green here.
+  - [x] Establish relevant tests. Use [these instructions](../../README.md#running-specific-tests)
         to run unit tests: `foolish-ubca2::sequencer`; run einmo case:
         `foop/36/rendering_contract` in `einmo_suite2`.
+        (2026-09-03 09:56)
   - [ ] Implement group by group, in the order listed in 3b. Each group's sub-brane going green
         is a checkpoint.
   - [ ] While implementing the `concatenation` group (§3.2): split on whether the merge
@@ -619,9 +617,9 @@ a fixed, human-authored target.
         (`{{a=1}{b=2}{c=3}}` → `{{a=1, b=2, c=3}}`). **Unmerged** → render the juxtaposition
         `A B` with **each constituent rendered recursively through this same sequencer** — the
         simplest rendering of `foolish_children` under §3, element by element. Never emit `⨃`
-        in either case; it is not input syntax. The spec's worked case must come out exactly as
-        §3.2 shows, including `aa=f` AND `d=f` both resolving to `3` while `notfound` and
-        `not_found_brane` stay written.
+        in either case; it is not input syntax. The bare-concatenation worked case that requires
+        `aa=f` and `d=f` to resolve is deferred to FOOP-46 (human, 2026-09-03); this FOOP pins
+        the ordinary nested-brane replacement case instead.
   - [ ] While implementing `searches_written` AND `operators_written` (§3): it is ONE predicate
         on the **result**, applied to both kinds — render the original expression when the
         result is absent or an **inconclusive constanic**; render the value when the result is
@@ -647,8 +645,10 @@ a fixed, human-authored target.
         accounted for**, one at a time: either the renderer is wrong (fix it) or the
         prediction was wrong (fix it AND record why the spec misled you — that is a spec
         defect worth reporting).
-- [ ] T1 unit tests alongside, per §Test Plan T1: exact rendered strings per §3 row, and the
-      `Detailed`-delegation byte-equality tests from Phase 2.
+- [x] T1 unit tests alongside, per §Test Plan T1: exact rendered strings per §3 row, and the
+      `Detailed`-delegation byte-equality tests from Phase 2. (2026-09-03 09:56 — 15 focused
+      sequencer tests cover conclusive/inconclusive process results, canonical indexes, leaves,
+      names, branes, concatenation, SF/SFF, annotations, and Detailed delegation.)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
       `einmo_suite/`'s gates are still on the OLD rendering and must still pass — Phase 5 is
       where they move.
@@ -659,11 +659,11 @@ a fixed, human-authored target.
 properties the whole design rests on — while `einmo_suite/` remains untouched and green on the
 OLD rendering. Nothing here generates a baseline.*
 
-- [ ] (read §2 and §2.1 of `FOOP-36.md`)
+- [x] (read §2 and §2.1 of `FOOP-36.md`) (2026-09-03 09:56)
 - [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-ubca2::sequencer`, `foolish-ubca2::round_trip`; run einmo
       case: `foop/36/rendering_contract` in `einmo_suite2` (must stay green throughout).
-- [ ] **T2 — round-trip properties (§2).** Write the test as the six literal steps, since that
+- [x] **T2 — round-trip properties (§2).** Write the test as the six literal steps, since that
       is the shape the human specified and it is what makes the assertion meaningful:
       1. compile the program; 2. step to finish; 3. output → `R1`; 4. compile `R1` (that it
       compiles IS Property 1); 5. step to finish; 6. output → `R2`; **assert `R2 == R1`.**
@@ -675,6 +675,8 @@ OLD rendering. Nothing here generates a baseline.*
       with nobody having to predict the right answer in advance. It also settles §Q7
       empirically — whichever way a trailing use site renders, `R2 == R1` says whether that
       rendering is stable.
+      (2026-09-03 09:56 — `foolish_rendering_round_trips_constanic_programs` covers constants,
+      ECONSTANIC/WOCONSTANIC, NK, searches, indexes, SF/SFF, and both concatenation forms.)
   - [ ] **The T2 input must instrument a VARIETY of constanic states**, not just constants:
         CONSTANT and INDEPENDENT values; ECONSTANIC searches (unanchored misses); WOCONSTANIC
         statements; and NK expressions (`1/0`, an anchored miss). NK is **constantew** (§5.1) so
@@ -689,13 +691,16 @@ OLD rendering. Nothing here generates a baseline.*
       §2.1 explicitly does not require it of pre-constanic FIR. If Phase 3b's `preconstanic`
       group could not be expressed as suite INPUT, this is where those three states get their
       coverage.
-- [ ] **T8 — comment style and separator safety (§4.2).** Assert the renderer never emits `①`
+- [x] **T8 — comment style and separator safety (§4.2).** Assert the renderer never emits `①`
       (U+2460) anywhere — chiefly via an NK reason containing one, which §5 collapses to a
       space. Also check the §4.2 layout rules hold across every `.foo` input this FOOP authors.
-- [ ] **T9 — flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation, on
+      (2026-09-03 09:56 — focused sanitizer and contract-layout tests.)
+- [x] **T9 — flags (§4.1, §5).** `comment_nk` off renders `a = 1/0;` with no annotation, on
       renders `a = 1/0;  !! NK: …` — the EXPRESSION identical under both, only the annotation
       moving. A non-default `width` changes where lines break. Confirm the einmo adapter uses
       the defaults, so the corpus is reproducible.
+      (2026-09-03 09:56 — direct `SequenceOptions` coverage; the suite adapter calls
+      `SequenceMode::Foolish`.)
 - [ ] **T7 — line width (§4.1).** Unit tests that a construct over 108 chars at its indent
       breaks with its body indented, that nesting reduces the budget by the indent, and that
       the three exceptions (unsplittable atom, annotated line, echoed over-width source) render

@@ -299,6 +299,11 @@ Review Gate.
    is a **failing test to write first**.
 6. **The nested-concatenation cases from FOOP-26 §4.3**, since an inner operator's phases are
    nested inside the outer one's.
+7. **FOOP-36's deferred unmerged-rendering case.** After the BraneConcatOp behavior is in place,
+   `{f=3; a={a=1,aa=f}{b=notfound}not_found_brane{d=f}}` must retain conclusive results for
+   `aa=f` and `d=f`, so Foolish sequencing renders `aa=3` and `d=3` while the unresolved
+   constituents remain written. The sequencer must consume recorded conclusive results; it must
+   not re-run searches merely to format them.
 
 ## Plan of Execution for Plan
 

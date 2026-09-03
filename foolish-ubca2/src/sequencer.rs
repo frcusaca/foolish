@@ -574,11 +574,12 @@ fn sanitize_reason(reason: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{SequenceMode, Ubca2Sequencer};
+    use super::{SequenceMode, SequenceOptions, Ubca2Sequencer, sanitize_reason};
     use crate::fvm_storage::{
-        FVMStorage, FirCursor, FirPointer, compose_program_with_system, program_result,
+        FVMStorage, FirCursor, FirPointer, FirSpec, compose_program_with_system, program_result,
         proto_to_core_fir, step_to_constanic,
     };
+    use foolish_core::fir::Nyes;
 
     fn evaluated_body(source: &str, statement_index: usize) -> (FVMStorage, FirPointer) {
         let mut storage = FVMStorage::new();
@@ -591,6 +592,28 @@ mod tests {
             .expect("statement exists");
         let body = FirCursor::new(statement, &storage).foolish_children()[0];
         (storage, body)
+    }
+
+    fn evaluated_program(source: &str) -> (FVMStorage, FirPointer) {
+        let mut storage = FVMStorage::new();
+        let roots = compose_program_with_system(&mut storage, source).expect("source compiles");
+        let composed_root = roots[0];
+        step_to_constanic(&mut storage, composed_root).expect("source settles");
+        let program = program_result(&storage, composed_root).expect("program result exists");
+        (storage, program)
+    }
+
+    fn assert_foolish_body(source: &str, statement_index: usize, expected: &str) {
+        let (storage, fir) = evaluated_body(source, statement_index);
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish),
+            expected
+        );
+    }
+
+    fn evaluate_and_render_program(source: &str) -> String {
+        let (storage, program) = evaluated_program(source);
+        Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
     }
 
     fn assert_detailed_delegates(source: &str, statement_index: usize) {
@@ -627,5 +650,210 @@ mod tests {
     #[test]
     fn detailed_delegates_for_nk() {
         assert_detailed_delegates("{x=1/0;}", 0);
+    }
+
+    #[test]
+    fn foolish_collapses_conclusive_processes_to_values() {
+        assert_foolish_body("{x=3+4;}", 0, "7");
+        assert_foolish_body("{b={x=3;};r=b?x;}", 1, "3");
+    }
+
+    #[test]
+    fn foolish_retains_inconclusive_processes_as_source() {
+        assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
+        assert_foolish_body("{r=missing;}", 0, "missing  !! ECONSTANIC");
+        assert_foolish_body(
+            "{b={x=3;};r=b?missing;}",
+            1,
+            "b?missing  !! NK: anchored search found no match",
+        );
+    }
+
+    #[test]
+    fn foolish_preserves_stay_wrappers() {
+        assert_foolish_body("{x=1;sf=<x>;sff=<<x>>;}", 1, "<x>");
+        assert_foolish_body("{x=1;sf=<x>;sff=<<x>>;}", 2, "<<x>>  !! WOCONSTANIC");
+    }
+
+    #[test]
+    fn foolish_standardizes_attached_indexes() {
+        let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{b = {x = 3}; A =$ b}"
+        );
+    }
+
+    #[test]
+    fn foolish_renders_branes_and_the_supported_nested_concatenation_case() {
+        assert_foolish_body("{x={a=1;b=2;};}", 0, "{a = 1; b = 2}");
+        let (storage, program) = evaluated_program("{f=3;a=2;b={f1=f;f2=a;f3=not_found;};}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{  !! WOCONSTANIC\n  f = 3;\n  a = 2;\n  b = {  !! WOCONSTANIC\n    f1 = 3;\n    f2 = 2;\n    f3 = notˍfound  !! ECONSTANIC\n  }\n}"
+        );
+    }
+
+    #[test]
+    fn foolish_renders_leaves_names_and_indexes_as_foolish_source() {
+        assert_foolish_body("{x=-8;}", 0, "-8");
+        assert_foolish_body("{x=???;}", 0, "???  !! NK: ??? literal");
+        assert_foolish_body("{b={x=3;};r=b#0;}", 1, "3");
+
+        let (storage, program) = evaluated_program("{my_var=2;λ=3;}");
+        assert_eq!(
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            "{myˍvar = 2; λ = 3}"
+        );
+    }
+
+    #[test]
+    fn foolish_flags_change_only_annotations_and_layout() {
+        let (storage, program) = evaluated_program("{x=1/0;}");
+        let annotated = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        let without_nk = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                comment_nk: false,
+                ..SequenceOptions::default()
+            },
+        );
+        assert_eq!(
+            annotated,
+            "{  !! NK: DIV-BY-ZERO: division by zero\n  x = 1 / 0  !! NK: DIV-BY-ZERO: division by zero\n}"
+        );
+        assert_eq!(without_nk, "{x = 1 / 0}");
+
+        let (storage, program) = evaluated_program("{a=1;b=2;c=3;}");
+        let narrow = Ubca2Sequencer::format_with(
+            &storage,
+            program,
+            &SequenceOptions {
+                width: 8,
+                ..SequenceOptions::default()
+            },
+        );
+        assert!(
+            narrow.contains("\n  a = 1;"),
+            "narrow rendering was {narrow}"
+        );
+    }
+
+    #[test]
+    fn foolish_annotations_are_separator_safe() {
+        assert_eq!(
+            sanitize_reason("first①\nsecond\rthird"),
+            "first second third"
+        );
+        let contract = include_str!("../einmo_suite2/input/foop/36/rendering_contract.foo");
+        assert!(!contract.contains('①'));
+        assert!(contract.contains("\n  !!!\n"));
+        assert!(contract.contains("!!!\n\n  leaves"));
+    }
+
+    #[test]
+    fn foolish_rendering_round_trips_constanic_programs() {
+        for source in [
+            "{x=3+4;}",
+            "{r=missing;}",
+            "{x=1/0;}",
+            "{b={x=3;};r=b?missing;}",
+            "{b={a=1;b=5;};r=b?=5;}",
+            "{b={x=3;};r=b#0;}",
+            "{x=1;sf=<x>;sff=<<x>>;}",
+            "{x={a=1}{b=2};}",
+            "{x=???;}",
+            "{f=3;a=2;b={f1=f;f2=a;f3=not_found;};}",
+        ] {
+            let first = evaluate_and_render_program(source);
+            let second = evaluate_and_render_program(&first);
+            assert_eq!(second, first, "rendering drifted for {source}: {first}");
+        }
+    }
+
+    #[test]
+    fn foolish_preconstanic_rendering_parses_without_state_syntax() {
+        let mut seen = Vec::new();
+
+        for program in ["{a=missing;b=a+absent;}", "{x=1+2;}", "{x={a=1;b=2;};}"] {
+            let mut storage = FVMStorage::new();
+            let roots =
+                compose_program_with_system(&mut storage, program).expect("source compiles");
+            let root = roots[0];
+
+            for _ in 0..32 {
+                let root_rendered = Ubca2Sequencer::format(&storage, root, SequenceMode::Foolish);
+                compose_program_with_system(&mut FVMStorage::new(), &root_rendered)
+                    .expect("pre-constanic rendering parses");
+
+                let root_cursor = FirCursor::new(root, &storage);
+                let mut candidates = vec![root];
+                for statement_index in 0..root_cursor.stmt_count().unwrap_or(0) {
+                    if let Some(statement) = root_cursor.stmt_at(statement_index) {
+                        candidates.push(statement);
+                        candidates.extend(FirCursor::new(statement, &storage).foolish_children());
+                    }
+                }
+                for candidate in candidates {
+                    let state = storage.get_nyes(candidate);
+                    if !matches!(state, Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning)
+                        || seen.contains(&state)
+                    {
+                        continue;
+                    }
+                    let rendered =
+                        Ubca2Sequencer::format(&storage, candidate, SequenceMode::Foolish);
+                    for line in rendered.lines() {
+                        let source = line.split("  !!").next().unwrap_or(line);
+                        assert!(
+                            ![
+                                "PREMBRYONIC",
+                                "EMBRYONIC",
+                                "BRANING",
+                                "ECONSTANIC",
+                                "WOCONSTANIC"
+                            ]
+                            .iter()
+                            .any(|token| source.contains(token)),
+                            "state leaked into source syntax: {line}"
+                        );
+                    }
+                    seen.push(state);
+                }
+                if storage.get_nyes(root).is_constanic() {
+                    break;
+                }
+                root.step(&mut storage);
+            }
+        }
+
+        let mut storage = FVMStorage::new();
+        let search = storage.make_root(FirSpec::Search {
+            pattern: "^missing$".to_string(),
+            anchored: false,
+            forward: false,
+            is_value_search: false,
+            contexted: false,
+        });
+        search.step(&mut storage);
+        assert_eq!(storage.get_nyes(search), Nyes::Embryonic);
+        let rendered = Ubca2Sequencer::format(&storage, search, SequenceMode::Foolish);
+        let wrapped = format!("{{x={rendered}\n;}}");
+        compose_program_with_system(&mut FVMStorage::new(), &wrapped)
+            .expect("embryonic search rendering parses");
+        assert!(rendered.contains("  !! EMBRYONIC"));
+        seen.push(Nyes::Embryonic);
+        seen.sort_by_key(|state| match state {
+            Nyes::Prembrionic => 0,
+            Nyes::Embryonic => 1,
+            Nyes::Braning => 2,
+            _ => unreachable!("only pre-constanic states are recorded"),
+        });
+
+        assert_eq!(
+            seen,
+            vec![Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning]
+        );
     }
 }

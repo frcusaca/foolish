@@ -95,7 +95,8 @@
   concatenation = {
     merged = {a = 1}{b = 2}{c = 3};     !! merged = {a = 1; b = 2; c = 3}
     f = 3;
-    unmerged = {a = 1; aa = f}{b = notfound}not_found_brane{d = f};
+    a = 2;
+    nested_brane = {f1 = f; f2 = a; f3 = not_found;};
     empty = {}{};                         !! empty = {}
   };
 
