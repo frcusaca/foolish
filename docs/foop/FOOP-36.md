@@ -19,7 +19,7 @@ big-endian sort key preceded by `D` (`foop: D63`, file `FOOP-36.md`, following F
 ## Abstract
 
 This FOOP gives `foolish-ubca2` **its own sequencer**, owned by the crate, whose default
-`Foolish` mode renders a FIR — settled or mid-evaluation — as **valid Foolish source that
+`Foolish` mode renders a FIR — constanic or mid-evaluation — as **valid Foolish source that
 parses back in**. The goal is that a Foolisher can write an einmo case's expected OUTPUT from
 the specification, without running the evaluator.
 
@@ -214,37 +214,37 @@ excludes them. §3's rule is stated over the narrower phrase, because a FIR's **
 it tests and a result under inspection is constanic; §2.1 covers pre-constanic FIR separately,
 and it renders the same way for the same reason — no value was reached.
 
-#### §0.1 Survey: what "settled" means in `foolish-ubca2` today
+#### §0.1 Survey: what "settled" meant in `foolish-ubca2` before FOOP-56
 
-`foolish-ubca2` uses "settled" heavily — **134 lines, 131 of them in `fvm_storage.rs`** — as
-informal prose, never as a callable predicate. **`is_settled()` does not exist** in the crate:
-`lib.rs` line 24 documents `NyesExt` as adding it and FOOP-62 §Terminology specifies it, but
-`nyes_ext.rs` provides only `is_constanic()` and `is_nnk_constanic()`. (FOOP-62's
-`is_constantew()` is likewise unimplemented.) Anything calling `is_settled()` would not compile.
+Before FOOP-56, `foolish-ubca2` used "settled" heavily — **134 lines, 131 of them in
+`fvm_storage.rs`** — as informal prose, never as a callable predicate. **`is_settled()` does
+not exist**: FOOP-62 §Terminology specifies it, but the implemented `NyesExt` predicates are
+`is_preconstanic()` (and its `is_nye()` alias), `is_constanic()`, `is_constantew()`, and
+`is_conclusive()`. Anything calling `is_settled()` would not compile.
 
-The word is **not used consistently**. Each site means one of the groups from §0, and they
-differ. Classified by what the code actually requires:
+The prior uses were **not consistent**. Each meant one of the groups from §0, and they differ.
+They are classified below by what the code required:
 
 **Group 1 — "settled" ≡ constanic.** The gate is literally `is_constanic()`.
 
 | Site | Line | What it requires |
 |---|---|---|
-| `FirPointer::settled_result` | 639 | `is_constanic()` on the OWNER — but see §0.1.1: what the slot can hold is narrower |
-| `FirCursor::settled_result` | 1602 | delegates to the above |
-| `step_to_settled` | 3272 | loops until `is_constanic()`; the error path re-tests the same |
+| `FirPointer::settled_constanic_result` | 639 | `is_constanic()` on the OWNER — but see §0.1.1: what the slot can hold is narrower |
+| `FirCursor::settled_constanic_result` | 1602 | delegates to the above |
+| `step_to_constanic` | 3272 | loops until `is_constanic()`; the error path re-tests the same |
 | duplicate-definition compare | 2589 | "prior definition not yet settled" = `!is_constanic()` |
 | conflicting-redefinition compare | 2702 | "one side not yet settled" = either `!is_constanic()` |
-| `anchor_settled` | 3178 | `is_constanic()` on the anchor |
+| `anchor_constanic` | 3178 | `is_constanic()` on the anchor |
 
 **Group 2 — "settled" ≡ conclusive.** The gate is `Constant | Independent`, i.e. §0's
 *conclusive*. This is the site that would be wrong if read as "constanic".
 
 | Site | Line | What it requires |
 |---|---|---|
-| `all_settled` (Operator) | 816–819 | `matches!(nyes, Constant \| Independent)` — an operator queues its operands as tasks unless every one is **conclusive**. An ECONSTANIC operand is constanic but NOT enough. |
-| `operator_pushes_tasks_for_unsettled_operands` (test) | 5301 | exercises the rule with PREMBRYONIC operands only, so it does not actually distinguish conclusive from constanic. The distinction rests on line 816 alone — a test worth adding (§Test Plan T1). |
+| `all_foolish_children_conclusive` (Operator) | 816–819 | `is_conclusive()` — an operator queues its operands as tasks unless every one is **conclusive**. An ECONSTANIC operand is constanic but NOT enough. |
+| `operator_pushes_tasks_for_econstanic_operand` (test) | 5333 | proves the distinction: an ECONSTANIC operand is constanic yet still queued because it is not conclusive. |
 
-##### §0.1.1 `settled_result` means **constanic**, and the name should say so
+##### §0.1.1 `settled_constanic_result` means **constanic**
 
 The gate at line 639 tests `is_constanic()` on the node owning the slot, and that is also the
 right description of the slot's contents. Two mechanisms push toward something narrower, but
@@ -263,10 +263,10 @@ neither closes the door:
 ~20 slot writes, several are `Nyes::Nk`, one is `Nyes::Constant` (1527), and the remainder
 carry whatever the found value had.
 
-**So the accurate qualifier is `constanic`, not `constantew` or `conclusive`.** A rename to
-**`settled_constanic_result`** would be correct and would state the gate the function already
-applies. (`settled_constantew_result` would be wrong — it would promise something the
-StayFoolish path does not deliver.)
+**So the accurate qualifier is `constanic`, not `constantew` or `conclusive`.** FOOP-56 names
+the method **`settled_constanic_result`**, stating the gate it applies.
+`settled_constantew_result` would be wrong — it would promise something the StayFoolish path
+does not deliver.
 
 **Consequence for §3.** All three arms of the predicate are genuinely reachable: conclusive
 results (shared or preserved CONSTANT/INDEPENDENT), NK results (many write sites), and
@@ -284,62 +284,57 @@ ECONSTANIC/WOCONSTANIC results (via SF and the found-value paths). No arm is dea
 | Constantew | `is_constantew()` |
 | Conclusive | `is_conclusive()` |
 
-**`is_preconstanic()` and `is_conclusive()` are added by [FOOP-56](FOOP-56.md)**, which is
-scheduled to land **before** this FOOP. That FOOP also replaces the five hand-rolled
+**[FOOP-56](FOOP-56.md) added `is_preconstanic()` and `is_conclusive()` before this FOOP.** It
+also replaced the five hand-rolled
 `matches!(nyes, Nyes::Constant | Nyes::Independent)` conclusive tests in `fvm_storage.rs`
 (lines 818, 2007, 3739, 3810, 3950) with named calls, and qualifies every bare "settled" with
 its group — the survey in §0.1 above is what it works from.
 
-This FOOP's renderer should **use those predicates** rather than hand-rolling state lists. If
-FOOP-56 has not landed, §3's rule still stands — it is stated in §0's vocabulary, which is
-independent of what the code calls things.
+This FOOP's renderer should **use those predicates** rather than hand-rolling state lists.
 
-**Group 3 — "settled" = the outcome of a classification**Group 3 — "settled" = the outcome of a classification, spanning several groups.** Here
+**Group 3 — "settled" = the outcome of a classification, spanning several groups.** Here
 "settled" names *the state being computed*, not a test.
 
 | Site | Line | What it computes |
 |---|---|---|
-| `settled_nyes = nyes_from_found(...)` | 968 | maps a found result's NYES: ECONSTANIC/WOCONSTANIC → WOCONSTANIC, CONSTANT/INDEPENDENT → CONSTANT, NK → NK. Output is constanic; the input need not be. |
-| `let settled = ...decide_nyes_due_to_children(...)` | 1070 | classifies a Braning node from its children — may yield **Braning** (still pre-constanic!) when a child is pre-constanic. So this "settled" is explicitly *not* constanic. |
+| `constanic_nyes = nyes_from_found(...)` | 968 | maps a found result's NYES: ECONSTANIC/WOCONSTANIC → WOCONSTANIC, CONSTANT/INDEPENDENT → CONSTANT, NK → NK. Output is constanic; the input need not be. |
+| `let decided_nyes = ...decide_nyes_due_to_children(...)` | 1070 | classifies a Braning node from its children — may yield **Braning** (still pre-constanic!) when a child is pre-constanic. |
 
 **Group 4 — prose in doc comments and test names.** The remaining ~120 occurrences. Mostly
 accurate but imprecise; several would read better as "constanic" or "conclusive". Notable:
-`indep_int_stepping_already_settled_is_noop` (5209) means CONSTANT/INDEPENDENT — conclusive;
-`revive_constanic_unwraps_stay_foolish_to_its_settled_result` (5623) means constanic, via
-`settled_result`.
+`indep_int_stepping_already_conclusive_is_noop` (5209) means CONSTANT/INDEPENDENT — conclusive;
+`revive_constanic_unwraps_stay_foolish_to_its_settled_constanic_result` (5623) means constanic, via
+`settled_constanic_result`.
 
 **What this FOOP does about it.** "Settled" is the word every agent reached for and it is
 staying. The problem is not the word but that it is used bare, leaving the reader to work out
 which group is meant. The remedy is a **descriptor**, not a replacement:
 
-| Today | Proposed | Why |
+| Before FOOP-56 | Implemented name | Why |
 |---|---|---|
 | `FirPointer::settled_result` (639) | **`settled_constanic_result`** | it gates on `is_constanic()`, and per §0.1.1 that is genuinely what the slot holds — `constantew` would over-promise |
 | `FirCursor::settled_result` (1602) | **`settled_constanic_result`** | delegates to the above |
-| `all_settled` (816) | **`all_foolish_children_conclusive`** | a local `bool` (not a function — see below). It iterates `storage.foolish_children(ptr)` and gates on `Constant \| Independent` — §0's *conclusive* exactly. Naming the collection it walks beats "operands", which is an Operator-specific gloss on what is structurally the foolish-children list. |
+| `all_settled` (816) | **`all_foolish_children_conclusive`** | a local `bool` (not a function — see below). It iterates `storage.foolish_children(ptr)` and gates on `is_conclusive()`. |
 | `step_to_settled` (3272) | **`step_to_constanic`** | it loops until `is_constanic()` |
 
-**`all_settled` is a local `bool`, not a predicate function.** It is
-`let all_settled = children.iter().all(…)`, consumed by `if !all_settled` on the next line —
+**`all_foolish_children_conclusive` is a local `bool`, not a predicate function.** It is
+`let all_foolish_children_conclusive = children.iter().all(…)`, consumed by its following `if` —
 there is nothing to call, so a verb form like `are_all_settled()` does not apply. As a boolean
 binding the idiomatic Rust name is a noun phrase, hence `all_foolish_children_conclusive`.
 
-**[FOOP-56](FOOP-56.md) does these renames**, along with adding the two missing predicates
-(§0.1.2) and correcting `lib.rs` line 24's claim that `NyesExt` adds `is_settled()`. It is
-scheduled to land **before** this FOOP, so that the vocabulary exists in the code this FOOP
-describes — and because `foolish-ubca2` is edited concurrently by FOOP-26 and FOOP-46, so a
-~20-site rename is far cheaper before they diverge.
+**[FOOP-56](FOOP-56.md) made these renames**, added the two missing predicates (§0.1.2), and
+corrected `lib.rs`'s stale `is_settled()` claim. It landed before this FOOP so the vocabulary
+exists in the code this FOOP describes.
 
-Whatever the code ends up calling things, §3's rule is stated over *conclusive* and
-*inconclusive constanic* — each naming exactly one group — so this FOOP does not depend on
-FOOP-56 landing first.
+§3's rule is stated over *conclusive* and *inconclusive constanic* — each naming exactly one
+group.
 
 ### §1 Two modes, one entry point
 
 `foolish-ubca2` gains a module `src/sequencer.rs` exposing:
 
 ```rust
-/// How a settled FIR is rendered.
+/// How a FIR is rendered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SequenceMode {
     /// FOOP-36: valid Foolish source that parses back to an equivalent FIR.
@@ -387,7 +382,7 @@ valid INPUT, so the whole corpus can be re-fed to the evaluator as a self-check.
 
 #### §2.1 Property 1 holds for pre-constanic FIR; Property 2 does not
 
-**`Foolish` mode must render a FIR in ANY state, settled or not.** Einmo is a debugging tool
+**`Foolish` mode must render a FIR in ANY state, constanic or pre-constanic.** Einmo is a debugging tool
 as well as an approval tool — a case may be captured mid-evaluation (a step budget, an
 `ALARM:` that halts stepping, a deliberately-stepped snapshot), and when it is, the OUTPUT
 still has to be something a Foolisher can read and, per this FOOP's whole purpose, could have
@@ -443,7 +438,7 @@ on the search's `result()`, not on the search's own NYES:
 > render the result's value.
 
 The principle: a search collapses to a value only when it actually produced one. ECONSTANIC and
-WOCONSTANIC are "settled, but not into a value, and context may still change them"; NK is "no
+WOCONSTANIC are "constanic, but not into a value, and context may still change them"; NK is "no
 value, and none is coming". In none of those is there a value to print, so the question that
 was asked is what gets printed.
 
@@ -581,7 +576,7 @@ form where it did not) is exactly the per-constituent readiness the phased desig
 differently — its option 1 populates `ubc_children` with a `FirSpec::Brane` and deletes
 `FirSpec::ConcatHelper`, making `.value()` the interface rather than a `merged` slot. Either
 way the *question* §3.2 asks is the same one FOOP-46's phases already answer; only the accessor
-changes. §4's own text notes that `settled_result`/`value()` already return the brane once
+changes. §4's own text notes that `settled_constanic_result`/`value()` already return the brane once
 constanic, so the Joined case needs no new mechanism.
 
 The care needed is that a **reader of the output** can still tell a merged concatenation from a
@@ -901,7 +896,7 @@ reads FIR through the existing `FirQueryable` accessors and writes text. §Open 
 records why no provenance marking is needed: the conclusive/inconclusive distinction is already
 carried by NYES.
 
-One **read-only** addition may prove necessary: rendering an unsettled search or operator in
+One **read-only** addition may prove necessary: rendering a pre-constanic search or operator in
 its *written form* (§4) requires the surface spelling. `hs_search()` supplies pattern,
 direction and anchoring; `hs_operator()` supplies the glyph and operands. If any kind turns
 out not to expose enough to reconstruct its written form, the remedy is a **new
@@ -912,7 +907,7 @@ never taken as an implementation convenience.**
 
 ## UBC Step Impact
 
-**None.** The sequencer runs on already-settled FIR. No step rule changes; no evaluation
+**None.** The sequencer runs on already-constanic FIR. No step rule changes; no evaluation
 order changes; no NYES transition changes. Step counts in einmo output are unaffected.
 
 ## Test Plan
@@ -1278,11 +1273,10 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
 ## Last Updated
 
 **Date**: 2026-09-02
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Restructured for style, following FOOP-26's shape: every section states the design
-**forward**, and all before/after comparisons are gathered into a single **§7 What changes, in
-one place**. Motivation now opens with §"What is wanted" rather than with what is wrong. The
-Abstract was rewritten around the one governing rule and no longer contradicts §5 on NK.
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: converted §0.1 into a pre-FOOP-56 survey and recorded the
+implemented predicates, renamed identifiers, and ECONSTANIC regression test. Updated current
+references from `settled_result` to `settled_constanic_result`.
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
@@ -1317,7 +1311,7 @@ less" and "a value changed, not just its rendering" are the failure modes invisi
 green run.
 
 §0.1 surveys all 134 uses of "settled" in `foolish-ubca2` and classifies each by NYES group;
-§0.1.1 establishes that `settled_result` means **constanic** (not constantew — the StayFoolish
+§0.1.1 establishes that `settled_constanic_result` means **constanic** (not constantew — the StayFoolish
 path at 902–904 admits ECONSTANIC/WOCONSTANIC), so all three arms of §3's predicate are
 reachable. Adds **§3.2.1**: §3.2's two renderings and **FOOP-46's two phases are the same distinction** —
 Gathering ↔ the juxtaposition, Joined ↔ the brane — so the rendering is the natural display of

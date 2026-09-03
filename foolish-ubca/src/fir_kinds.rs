@@ -8454,10 +8454,17 @@ mod tests {
         let body = stmt.borrow().core().foolish_children()[0].clone();
         let b = body.borrow();
         assert_eq!(b.kind(), FirKind::Concatenation);
-        assert_eq!(b.as_concat_provenance(), ConcatProvenance::TailConcatenation);
+        assert_eq!(
+            b.as_concat_provenance(),
+            ConcatProvenance::TailConcatenation
+        );
 
         let children = b.core().foolish_children();
-        assert_eq!(children.len(), 4, "outer has 4 elements: [Concat(d,e,f), c, b, a]");
+        assert_eq!(
+            children.len(),
+            4,
+            "outer has 4 elements: [Concat(d,e,f), c, b, a]"
+        );
     }
 
     #[test]
@@ -8478,7 +8485,10 @@ mod tests {
         let b_body = b_stmts[0].borrow().core().foolish_children()[0].clone();
         let a_lines = a_body.borrow().stmt_count().unwrap_or(0);
         let b_lines = b_body.borrow().stmt_count().unwrap_or(0);
-        assert_eq!(a_lines, b_lines, "equivalent spellings settle to same stmt count");
+        assert_eq!(
+            a_lines, b_lines,
+            "equivalent spellings settle to same stmt count"
+        );
     }
 
     #[test]
@@ -8491,7 +8501,10 @@ mod tests {
         let body = stmts[0].borrow().core().foolish_children()[0].clone();
         let b = body.borrow();
         assert_eq!(b.kind(), FirKind::Concatenation);
-        assert_eq!(b.as_concat_provenance(), ConcatProvenance::TailConcatenation);
+        assert_eq!(
+            b.as_concat_provenance(),
+            ConcatProvenance::TailConcatenation
+        );
         let children = b.core().foolish_children();
         assert_eq!(children.len(), 4);
     }
@@ -8508,15 +8521,8 @@ mod tests {
 
         // Use a real brane as the new parent (Weak::new doesn't work for dyn Fir).
         let dummy_parent = make_brane(vec![]);
-        let new_parent: std::rc::Weak<RefCell<dyn Fir>> =
-            std::rc::Rc::downgrade(&dummy_parent);
-        let cloned = ProtoBrane::constanic_clone_at(
-            &cat,
-            &new_parent,
-            0,
-            false,
-            false,
-        );
+        let new_parent: std::rc::Weak<RefCell<dyn Fir>> = std::rc::Rc::downgrade(&dummy_parent);
+        let cloned = ProtoBrane::constanic_clone_at(&cat, &new_parent, 0, false, false);
         assert_eq!(
             cloned.borrow().as_concat_provenance(),
             ConcatProvenance::TailConcatenation,
@@ -8526,12 +8532,8 @@ mod tests {
 
     #[test]
     fn tail_concat_evaluation_inert() {
-        let brane_a = make_brane(vec![
-            make_statement("x", 0, make_constant_int(10)),
-        ]);
-        let brane_b = make_brane(vec![
-            make_statement("y", 0, make_constant_int(20)),
-        ]);
+        let brane_a = make_brane(vec![make_statement("x", 0, make_constant_int(10))]);
+        let brane_b = make_brane(vec![make_statement("y", 0, make_constant_int(20))]);
 
         let juxta = make_concatenation(vec![brane_a.clone(), brane_b.clone()]);
         let tail = make_tail_concatenation(vec![brane_a, brane_b]);

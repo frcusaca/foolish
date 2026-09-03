@@ -53,8 +53,8 @@ them. It is consumed producing its result, like any operator. → **§3**
 ### Change 3 — Concatenation becomes an operator, with defined ergonomics
 
 `BraneConcatOp` is a process, exactly as `Op+` is: `Op+(a,b)` is not an integer, and a
-concatenation is not a brane — its settled *value* is. It answers no brane-like question about
-itself, says "don't know" rather than zero while unsettled, and waits for an element whose
+concatenation is not a brane — its constanic *value* is. It answers no brane-like question about
+itself, says "don't know" rather than zero while its result is not conclusive, and waits for an element whose
 search chain is merely ECONSTANIC instead of proceeding past it. This is what makes
 concatenation work when its dependencies are searches that resolve to branes. Alongside it, the
 **ergonomics**: the compiler marks each written constituent by its syntactic form, so the
@@ -259,7 +259,7 @@ terminal state, so "step to constanic" means "step until no more stepping is app
 *Constantew* — CONSTANT, INDEPENDENT or NK: will not change no matter what. *Conclusive* —
 CONSTANT or INDEPENDENT: reached a value. The last two differ **exactly on NK**, which is
 constantew (nothing will change it) yet inconclusive (it never produced a value). This FOOP
-gates on constantew where a settled *failure* must be caught, and on conclusive where a *value*
+gates on constantew where a *constantew failure* must be caught, and on conclusive where a *value*
 is required; the two are not interchangeable and each use says which it means.
 
 Beat 2's copy is made under a **mark status** — `normal`, `under-sfm` or `under-ufm` — carried
@@ -384,7 +384,7 @@ While stepping an SF's children, they are passed the `under-sfm` status
 (`step_inner:769-772`).
 
 A constanic copy that meets an SF node unwraps it: the mark is not copied. The copy descends
-into the SF's settled `ubc_children[0]` if it has one, otherwise into its written body
+into the SF's constanic `ubc_children[0]` if it has one, otherwise into its written body
 (`revive_constanic:1977-1992`). This is the same under every status — the status does not decide
 whether to unwrap, only what NYES the copied nodes get (§2).
 
@@ -405,7 +405,7 @@ arm (`:4457`) passes `true` for its content, and `search_nyes` (`:4249`) turns t
 birth NYES. `check_sff_marked_child` (`:1811`) then walks the constructed subtree and asserts no
 descendant search escaped the rule.
 
-A search born `Econstanic` has already settled "found nothing here", so it does not resolve in
+A search born `Econstanic` is already constanic: it found nothing here, so it does not resolve in
 the brane the SFF is written in.
 
 While stepping an SFF's children, they are passed the same status the SFF itself is being
@@ -417,7 +417,7 @@ When an SFF's content is recoordinated into a new brane, the copy's `transform_f
 detachment: the search is re-born ready to run, in the new brane.
 
 A constanic copy that meets an SFF node unwraps it: the mark is not copied, and the copy
-descends into the written body (`foolish_children[0]`). Unlike SF, an SFF has no settled result
+descends into the written body (`foolish_children[0]`). Unlike SF, an SFF has no constanic result
 to prefer, because its content has not run.
 
 An SFF resolves against the neighbours of the position it is recoordinated to.
@@ -438,8 +438,8 @@ intending only to change how it was carried. These four are the specific ways th
 3. **Weakening or skipping `check_sff_marked_child`.** It is the only assertion that
    `under_sff` reached every descendant. A search that escapes it is born `Prembrionic`,
    resolves in the defining brane, and on a miss settles NK, which is terminal.
-4. **Making an SFF copy prefer a settled result, as SF does.** SFF content is unresolved by
-   construction. Where a settled result exists, it is evidence of change 3.
+4. **Making an SFF copy prefer a constanic result, as SF does.** SFF content is unresolved by
+   construction. Where a constanic result exists, it is evidence of change 3.
 
 A single-mark SFF program must produce byte-identical einmo OUTPUT before and after any change
 in this area.
@@ -662,9 +662,9 @@ crates:
 **Rendering** (human, 2026-09-02). A pre-constanic UFM renders as `<<< … >>>` around its
 content. A constanic UFM does not render: it has been consumed producing its result, so the
 adapter unwraps to that result. This is the rule every operator already follows — `.value()`
-returns the node while pre-constanic and its result once settled — so no special case is needed
+returns the node while pre-constanic and its result once constanic — so no special case is needed
 beyond the arm itself. The `foolish-core` builder is required rather than optional because
-einmo renders mid-evaluation trees, so an unsettled UFM reaches the renderer.
+einmo renders mid-evaluation trees, so a pre-constanic UFM reaches the renderer.
 
 **`foolish-ubca` and the shared parser.** `foolish-parser` is a dependency of both evaluator
 crates, so the new token and AST variant reach `foolish-ubca` whether or not it implements
@@ -724,7 +724,7 @@ to mark syntax must preserve the asymmetry for the same reason.
 #### §4.1 What a concatenation is
 
 `BraneConcatOp` is an operator, as `Op+` is. `Op+(a, b)` is not an integer; the integer is its
-settled value. A concatenation is not a brane; the brane is its settled value.
+constanic value. A concatenation is not a brane; the brane is its constanic value.
 
 Three things are distinct and must not be conflated:
 
@@ -907,7 +907,7 @@ through `.value()` and asked whether it is brane-like:
 
 - any constituent that is **constantew** but not brane-like → the whole concatenation settles
   NK, naming the offending indexes. The gate is constantew rather than **conclusive** because
-  the two differ exactly on NK, and an NK constituent is a settled type error: it will never
+  the two differ exactly on NK, and an NK constituent is a constantew type error: it will never
   become a brane, so there is nothing to wait for. A conclusive-only gate would let it through
   to the wait branch and hang;
 - any constituent not yet brane-like and not a type error → the concatenation settles
@@ -926,7 +926,7 @@ then settles from the drained helper, not from the raw constituents.
 #### §4.5 What a concatenation answers about itself
 
 A concatenation answers no brane-like question about itself. `stmt_count`, `stmt_at` and
-`is_brane_like` are questions for its settled value; a caller unwraps through `.value()` to the
+`is_brane_like` are questions for its constanic value; a caller unwraps through `.value()` to the
 `ConcatHelper`, which answers all three.
 
 While its helper is unpopulated, a concatenation's statement count is unknown, not zero. An
@@ -987,7 +987,7 @@ constituent as ready. Add the `Econstanic`-chain walk described above.
 concatenation without unwrapping first. A block of ~9 (`concat_equals_big_brane`,
 `concat_ib_search_crosses_segments`, and siblings) is built on "a concatenation behaves exactly
 like an equivalent big brane" — true of the result, not of the operator. Each needs reading
-individually. The analogous `settled_result()` correction on the branch produced two
+individually. The analogous `settled_constanic_result()` correction on the branch produced two
 test-behavior changes and zero einmo OUTPUT regressions.
 
 **Two open items**, both parser-shaped, neither blocking:
@@ -1270,13 +1270,13 @@ FOOP-36 first, then §2 → §3 → §4.** Human confirms.
    not-yet-populated concatenation; if one does, trace it before assuming the fallback's
    reasoning transfers.
 4. **Should `MAX_DEPTH` be loud?** ubca2 returns silently at depth 100. A silent no-progress at
-   the ceiling is indistinguishable from a settled program to anything watching from outside.
+   the ceiling is indistinguishable from a constanic program to anything watching from outside.
 5. **Is the FOOP-65 Equivalence Law divergence (§4.6) in scope here or its own FOOP?**
 6. ~~What should `foolish-ubca` do with a UFM program?~~ **ANSWERED (human, 2026-09-02):**
    compile it to an `NkFir` with reason `"Syntax Not Implemented"` and discard its children —
    not a compile error. **§3.**
 7. ~~Does the rendering adapter need a UFM arm?~~ **ANSWERED (human, 2026-09-02):** yes when the
-   UFM is not constant, no once it is. A settled UFM unwraps to its result like any operator; a
+   UFM is not constant, no once it is. A constanic UFM unwraps to its result like any operator; a
    pre-constanic one renders as `<<< … >>>`. The `foolish-core` builder is therefore required.
    **§3.**
 
@@ -1290,7 +1290,7 @@ Recording these prevents their rediscovery.
 | **D8 (SFF self-reference spins BRANING)** | **RETRACTED — not a defect.** The reproduction was malformed (`n = <<#-1>>` at index 0 reaches before the brane); BRANING forever is the honest answer to a self-referential question. |
 | **§5.6's bespoke concatenation search handler** | **Designed, implemented, proven dead code, removed.** The general IB-then-AB fallback already implements it. |
 | **Pure-Foolish `'or` truth table** | **Implemented and failed** — a value search inside `system.foo` cannot resolve when its operand is ECONSTANIC there. |
-| **Breadth-first stepping inside UBCa** | **Rejected, and renamed UBCc.** FIFO sequential draining is Foolish **semantics**, not strategy: ~185 NYES reads and ~83 value reads rest on the entitlement that predecessors have settled, and FOOP-23 *defines* the immediate brane as "lines before the current expression." Breadth-first does not reorder the meaning of "so far" — it dissolves it. Therefore it warrants a **separate implementation with its own baselines**, never a mutation of this one. |
+| **Breadth-first stepping inside UBCa** | **Rejected, and renamed UBCc.** FIFO sequential draining is Foolish **semantics**, not strategy: ~185 NYES reads and ~83 value reads rest on the entitlement that predecessors have become constanic, and FOOP-23 *defines* the immediate brane as "lines before the current expression." Breadth-first does not reorder the meaning of "so far" — it dissolves it. Therefore it warrants a **separate implementation with its own baselines**, never a mutation of this one. |
 | **The 113 branch commits** | **Not merged, not cherry-picked.** `foolish-ubca` stays frozen as the oracle. |
 
 **The UBC lineage** (authoritative code names — a letter names an *implementation of the
@@ -1362,16 +1362,16 @@ Small items found while surveying, not worth their own FOOP:
   `:3425`) carry ~100 lines of mark-specific logic about what to show under a mark. §2 and §3
   change which marks survive a copy, so **the adapter is a second place every mark change must
   land** — a correct evaluation can still render wrong. A UFM kind (§3) also needs an arm here,
-  or it renders as nothing. Conversely a pure *rendering* fix — such as the settled-wrapper
+  or it renders as nothing. Conversely a pure *rendering* fix — such as the constanic-wrapper
   ambiguity below — belongs in `foolish-core`, where it lands for both implementations at once.
 
-- **Sequencer: a settled wrapper hides the value it holds** (human observation, 2026-08-28,
+- **Sequencer: a constanic wrapper hides the value it holds** (human observation, 2026-08-28,
   reading `misc/sf_of_sff`). Statement #3 renders as
   `sf=?(result=<<WOCONSTANIC Op+(...)>>, ...)`, which reads as though the `Op+` were rendered
   poorly. Traced: the wrapper is genuinely in the FIR, not a rendering artifact — but the
   rendering makes **two different situations look identical on screen**: a value merely
   *displayed* under a mark versus one *blocked* by it. Worth deciding separately: should the
-  sequencer show the value inside a settled wrapper, so a reader can tell "wrapped but
+  sequencer show the value inside a constanic wrapper, so a reader can tell "wrapped but
   readable" from "wrapped and therefore unresolvable"? This matters more once §2 lands, since
   retained marks become common. Explicitly **not** the same question as §2's mark state.
 
@@ -1440,11 +1440,10 @@ unrecoverable.
 ## Last Updated
 
 **Date**: 2026-09-02
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Draft, organized in four parts — **I Motivation** (what happened on the FOOP-55
-branch, and the defects re-measured live against `foolish-ubca2`), **II Specification** (what
-`foolish-ubca2` shall do), **III Design** (the types that resolves to, defined once), **IV Plan
-of Implementation** (order, tests, open decisions).
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: qualified the formerly bare uses of “settled” in the
+concatenation specification, distinguishing constanic readiness/value access, conclusive
+readiness, and the constantew NK type-error gate. Updated live ubca2 accessor references.
 
 Three changes: (1) SF/SFF mark handling becomes an explicit mark status, (2) UFM `<<<…>>>` is a
 new mark and operator, (3) concatenation becomes an operator with compiler-supplied constituent
@@ -1462,7 +1461,7 @@ table of where each is set/propagated/consumed, and what is deliberately not cha
 **Terminology aligned to `AGENTS.md` §Foolish Terminology** (2026-09-02): §1 carries a note
 defining *constanic*, *constantew* and *conclusive*, and every gate in this FOOP now says which
 cut it means. The two that differ exactly on NK are used deliberately — the flatten-time type
-check gates on **constantew** (an NK constituent is a settled type error, so there is nothing to
+check gates on **constantew** (an NK constituent is a constantew type error, so there is nothing to
 wait for; a conclusive-only gate would send it to the wait branch and hang), while the
 constituent-readiness chain walk ends on **conclusive** (a hop that reached a value; an NK hop
 never did). `transform_for_clone`'s preserved states are named *constantew* rather than the

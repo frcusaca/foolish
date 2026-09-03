@@ -273,7 +273,8 @@ needs to provide. `trait Fir`'s ~40 methods are mostly per-kind *data* accessors
 bodies (`as_i64`, `as_op_name`, `as_stmt_identifier`, `stmt_count`, `stmt_at`, …) that answer
 "what does this node hold," not "navigate the tree" — those stay plain methods reached through
 one `storage.get(ptr)` call and need no special wrapper. The methods that genuinely recurse
-across nodes (`_get_my_statement`, `_get_my_brane`, `_ib_search`/`_ab_search`, `settled_result`)
+across nodes (`_get_my_statement`, `_get_my_brane`, `_ib_search`/`_ab_search`,
+`settled_constanic_result`)
 are the ones a wrapper earns its keep on.
 
 Two lifetime-parameterized cursor types, not one type generic over mutability — stable Rust
@@ -317,7 +318,7 @@ compose:
 | `front_task(&self) -> Option<FirPointer>` | `ProtoBrane::front_task()` | unchanged shape |
 | `home_brane(&self) -> Option<FirCursor<'s>>` | `Fir::_get_my_brane` | arena-threaded parent-chain climb to the first brane-like kind; preserves the exact termination logic (climb until `core().parent()` pointer-equals `self` → `None`; else check `is_brane_like()` → stop, else recurse), with `Rc::ptr_eq` becoming a `FirPointer` equality check |
 | `statement(&self) -> FirCursor<'s>` | `Fir::_get_my_statement` | same climb-to-`FirKind::Statement`-or-self-if-root shape |
-| `settled_result(&self) -> Option<FirCursor<'s>>` | `Fir::settled_result` | preserves the exact constanic-gate contract verbatim from today's doc comment: "applies the constanic gate ITSELF — pre-constanic always answers `None`" |
+| `settled_constanic_result(&self) -> Option<FirCursor<'s>>` | `Fir::settled_result` | preserves the exact constanic-gate contract verbatim from today's doc comment: "applies the constanic gate ITSELF — pre-constanic always answers `None`" |
 
 **Mutating side (`FirCursorMut`)** — one mutation per call, matching the `with_mut` shape already
 specified above:
@@ -357,9 +358,9 @@ impl FirPointer {
     }
 
     /// Arena-threaded FirRefExt::value: recursively unwraps through
-    /// settled_result, returning a clone of self when there is none.
+    /// settled_constanic_result, returning a clone of self when there is none.
     pub fn value(self, storage: &FVMStorage) -> FirPointer {
-        match FirCursor { ptr: self, storage }.settled_result() {
+        match FirCursor { ptr: self, storage }.settled_constanic_result() {
             Some(child) => child.ptr.value(storage),
             None => self,
         }
@@ -551,7 +552,7 @@ source node's `FirKind` and either:
    found statement) a genuinely shared reference rather than a copy, and what keeps a named
    creation's identity intact across detachment.
 2. **Unwraps.** `StayFoolish`/`StayFullyFoolish` nodes are stripped entirely: the clone recurses
-   into the settled result (if the SF node is already constanic) or the first foolish child
+   into the settled constanic result (if the SF node is already constanic) or the first foolish child
    (otherwise), never producing a cloned SF/SFF wrapper node itself.
 3. **Recursively rebuilds**, for every other kind: a fresh `Rc::new_cyclic` node whose children
    come from `clone_children_for_constanic_clone`, which maps `constanic_clone_at` over the
@@ -840,3 +841,10 @@ later, separate cleanup — see Open Questions.
 - Code locations: `foolish-ubca/src/fir_kinds.rs`, `foolish-ubca/src/compiler.rs`,
   `foolish-ubca/src/proto_brane.rs`, `foolish-ubca/src/evaluator.rs`,
   `foolish-ubca/src/ubca_snapshot_tester.rs`.
+
+## Last Updated
+
+**Date**: 2026-09-02
+**Updated By**: Codex / GPT-5.6
+**Changes**: FOOP-56 vocabulary pass: updated the active arena-storage references to
+`settled_constanic_result`, the implemented name for the constanic-gated accessor.

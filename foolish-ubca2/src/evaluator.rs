@@ -24,7 +24,7 @@ impl foolish_core::Evaluator for UbcaEvaluator {
         let mut results = Vec::new();
 
         for composed_root in composed_roots {
-            let failure = crate::fvm_storage::step_to_settled(&mut storage, composed_root).err();
+            let failure = crate::fvm_storage::step_to_constanic(&mut storage, composed_root).err();
             let program_fir = crate::fvm_storage::program_result(&storage, composed_root)
                 .unwrap_or(composed_root);
 
