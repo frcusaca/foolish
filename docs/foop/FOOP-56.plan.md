@@ -172,29 +172,94 @@ If a change seems to require editing `foolish-core`, stop and report — it does
 
 ---
 
-## Phase 4 — Documentation, and the two waiting FOOPs
+## Phase 4 — Bring ALL ubca2 documentation onto the vocabulary
 
-- [ ] (read §4 of `FOOP-56.md`)
-- [ ] `AGENTS.md` §Foolish Terminology: the four group entries already define the concepts.
-      Add the **predicate name** to each (`is_preconstanic()` / `is_nye()`, `is_constanic()`,
-      `is_constantew()`, `is_conclusive()`), so a reader moves from concept to call. Follow the
-      Markdown File Update Protocol — **replace** the "## Last Updated" entry, do not append.
-- [ ] **Update `FOOP-36.md` and `FOOP-36.plan.md`:**
-  - [ ] Its §0.1.2 proposes exactly these predicates; replace that with a pointer to FOOP-56
-        and state that the predicates exist.
-  - [ ] Its §0.1/§0.1.1 survey of "settled" describes the OLD names. Update to the qualified
-        names, keeping the survey (it is still the explanation of *why* they differ).
-  - [ ] **Delete Phase 0.5 from `FOOP-36.plan.md`** — this FOOP is that phase, done properly.
-        Note in its place that FOOP-56 landed first and the vocabulary is already in the code.
-  - [ ] Check every §3 sentence still reads correctly against the now-real predicate names.
-- [ ] **Update `FOOP-26.md`:** it reasons throughout about which children must be constanic
-      before a step proceeds. Where it says "constanic" but means *conclusive* — a value was
-      actually reached — say conclusive; where it means the terminal-state group, leave it.
-      **Read each occurrence rather than sweeping**: this is a semantic distinction, and
-      getting it wrong changes what FOOP-26 specifies. If any occurrence is genuinely
-      ambiguous, list it for the human rather than guessing.
-- [ ] `docs/foop/INDEX.md`: add FOOP-56, FOOP-36, FOOP-46 and FOOP-26 rows, and record the
-      ordering **FOOP-56 → FOOP-36 → FOOP-26** in the Implementation Roadmap.
+*The predicates and renames of Phases 1–3 are only half the job. The other half is that every
+document describing `foolish-ubca2` should say which NYES group it means, so the next agent
+reads one vocabulary rather than inferring from context. **This phase is uniform**: the same
+pass over each ubca2-related FOOP, not a special case per document.*
+
+**The pass, applied to each document below:**
+
+1. **Every bare "settled"** gains its group adjective — "settled constanic", "conclusive",
+   "constantew" — or is left alone where context already makes it unambiguous. Do not sweep for
+   its own sake.
+2. **Every "constanic" that actually means *conclusive*** — where the point is that a value was
+   reached, not merely that a terminal state was — is corrected. **This is a semantic
+   distinction; read each occurrence.** Getting it wrong changes what the document specifies.
+3. **Renamed identifiers** (`settled_result` → `settled_constanic_result`, `all_settled` →
+   `all_foolish_children_conclusive`, `step_to_settled` → `step_to_constanic`, and the rest of
+   §2) are updated wherever the document names them.
+4. **Where a document hand-rolls a state list** (`CONSTANT or INDEPENDENT`, `ECONSTANIC,
+   WOCONSTANIC, NK`) in prose, name the group instead and keep the list only where the
+   enumeration is the point.
+5. **Anything genuinely ambiguous is listed for the human**, not guessed. One consolidated list
+   at the end of the phase (AGENTS.md §"Accumulate doubts; report them once").
+
+- [ ] (read §2 and §4 of `FOOP-56.md`)
+- [ ] Establish relevant tests for this phase: none — this phase edits documentation only. Run
+      `cargo test -p foolish-ubca2 --lib` once at the end to confirm nothing was touched by
+      accident (still 134/134 plus Phases 1–2's new tests).
+
+### 4a — `AGENTS.md`, the authority
+
+- [ ] §Foolish Terminology already defines all four groups. Add the **predicate name** to each
+      entry (`is_preconstanic()` / `is_nye()`, `is_constanic()`, `is_constantew()`,
+      `is_conclusive()`) so a reader moves from concept to call.
+- [ ] Note that `is_settled()` does **not** exist, so no one goes looking for it.
+- [ ] Markdown File Update Protocol: **replace** the "## Last Updated" entry, do not append.
+
+### 4b — The three ubca2 FOOPs (uniform pass)
+
+*All three describe `foolish-ubca2`. Apply the five-step pass above to each. Counts are
+starting points measured 2026-09-02, not targets — some occurrences will rightly stay.*
+
+- [ ] **`FOOP-16.md`** (8 "settled", 28 "constanic") and **`FOOP-16.plan.md`** (30 "settled") —
+      the FOOP that built `foolish-ubca2`. Its plan is largely complete, so **prefer leaving
+      completed checkboxes as the historical record they are** (`foop.md`: completed plan files
+      are not rewritten). Update the spec; touch the plan only where a name it references no
+      longer exists in the code.
+- [ ] **`FOOP-26.md`** (21 "settled", 87 "constanic") — marks, concatenation-as-operator, the
+      three-beat step. **The heaviest of the three and the one where step 2 matters most**: it
+      reasons throughout about which children must be constanic before a step proceeds, and
+      several of those are conclusive tests. Its "wait for `foolish_children` to become
+      constanic" beat is exactly the kind of sentence to read closely — `fvm_storage.rs:818`
+      gates on conclusive, so if the spec means that rule, it should say conclusive.
+      **This FOOP has an active author**: check with the human before editing if it is being
+      worked on concurrently.
+- [ ] **`FOOP-46.md`** (9 "settled", 29 "constanic") — BraneConcatOp. Its §"A constituent that
+      is not constanic is not ready" reasoning is the passage to read against step 2.
+      Spec only; it has no plan yet.
+- [ ] **`FOOP-36.md`** and **`FOOP-36.plan.md`** — the sequencer FOOP this one was extracted
+      from:
+  - [ ] §0.1.2 already points here; confirm it matches what Phases 1–3 actually built.
+  - [ ] §0.1/§0.1.1's survey of "settled" describes the OLD names. Update to the qualified
+        ones, **keeping the survey** — it is still the explanation of *why* the groups differ.
+  - [ ] Phase 0.5 in its plan is already reduced to "confirm FOOP-56 landed"; verify.
+  - [ ] Check every §3 sentence reads correctly against the now-real predicate names.
+
+### 4c — Sweep for stragglers
+
+- [ ] `grep -rn "settled" docs/foop/FOOP-16* docs/foop/FOOP-26.md docs/foop/FOOP-36* docs/foop/FOOP-46.md`
+      and confirm each remaining occurrence is deliberate — qualified, or unambiguous in
+      context. Record the count you are leaving and why.
+- [ ] Check `foolish-ubca2/einmo_suite/MAPPING.md` and the crate's own `lib.rs` module docs for
+      the same issue.
+- [ ] **Deliberately NOT in scope:** FOOP-62, FOOP-23, FOOP-33, FOOP-55 and the other
+      `foolish-ubca` (not ubca2) FOOPs. They are shipped or describe the sibling crate;
+      rewriting them is a larger act than this FOOP claims. **FOOP-62 §Terminology is the
+      origin of `constanic`/`constantew`** and lists `is_settled()`, which was never
+      implemented — note the discrepancy (§4), do not amend a shipped FOOP.
+- [ ] `docs/foop/INDEX.md`: confirm the FOOP-26/36/46/56 rows and Track 6's
+      **56 → 36 → 26** ordering are present and accurate. (Added on `jia` 2026-09-02.)
+
+### 4d — Report
+
+- [ ] **One consolidated report to the human**: every occurrence that was genuinely ambiguous
+      between constanic and conclusive, with the document, the line, and what each reading
+      would mean. A "constanic" that should be "conclusive" in FOOP-26 or FOOP-46 is a **spec
+      correction**, not a wording tweak — the human should see the list before it is treated as
+      settled. If there were none, say so plainly.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
@@ -233,7 +298,10 @@ If a change seems to require editing `foolish-core`, stop and report — it does
 
 **Date**: 2026-09-02
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created the FOOP-56 plan — five phases: add the four predicates and their unit
+**Changes**: Rewrote Phase 4 as a **uniform documentation pass** over all four ubca2 FOOPs
+(16, 26, 36, 46) plus AGENTS.md and the crate's module docs, with the five-step pass stated
+once and applied to each, a straggler sweep, an explicit out-of-scope list, and a consolidated
+ambiguity report to the human. Prior entry: created the FOOP-56 plan — five phases: add the four predicates and their unit
 tests; replace the five hand-rolled conclusive `matches!` (and add the ECONSTANIC-operand test
 the distinction currently lacks); qualify every bare "settled" with its group; update AGENTS.md,
 FOOP-36, FOOP-26 and INDEX.md; merge. The governing invariant throughout is 134/134 before and

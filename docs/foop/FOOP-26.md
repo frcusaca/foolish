@@ -254,6 +254,14 @@ Every FIR with children steps in three beats:
 | **2 — copy under a mark status** | Constanic-copy what is needed into the new context. The status decides whether copied nodes re-evaluate here (§2). | — |
 | **3 — do my own work** | Step the children this kind created for itself. | `ubc_children` |
 
+**NYES vocabulary used throughout** (`AGENTS.md` §Foolish Terminology). *Constanic* — any
+terminal state, so "step to constanic" means "step until no more stepping is appropriate".
+*Constantew* — CONSTANT, INDEPENDENT or NK: will not change no matter what. *Conclusive* —
+CONSTANT or INDEPENDENT: reached a value. The last two differ **exactly on NK**, which is
+constantew (nothing will change it) yet inconclusive (it never produced a value). This FOOP
+gates on constantew where a settled *failure* must be caught, and on conclusive where a *value*
+is required; the two are not interchangeable and each use says which it means.
+
 Beat 2's copy is made under a **mark status** — `normal`, `under-sfm` or `under-ufm` — carried
 by the stepping path rather than chosen by the copying kind. §2 states what each status does.
 
@@ -286,7 +294,7 @@ exclusive:
 
 | Status | Effect on a constanic copy made under it |
 |---|---|
-| `normal` | markers met are dropped; each copied node's NYES is reset — anything non-terminal becomes `Embryonic`, so the copy re-evaluates in its new brane |
+| `normal` | markers met are dropped; each copied node's NYES is reset — anything **not constantew** becomes `Embryonic`, so the copy re-evaluates in its new brane |
 | `under-sfm` | markers met are dropped; each copied node's NYES is **preserved verbatim**, so the copy does not re-evaluate |
 | `under-ufm` | markers met are dropped; NYES is reset as under `normal` — **and this holds even when the copy is made beneath an enclosing SF**, where `under-sfm` would otherwise have preserved |
 
@@ -317,7 +325,7 @@ pub fn transform_for_clone(self, descendent_of_sfm_and_foolishly_ignorant: bool)
         return self;                      // under-sfm: preserve verbatim
     }
     match self {
-        Nyes::Constant | Nyes::Independent | Nyes::Nk => self,   // terminal, no re-evaluation
+        Nyes::Constant | Nyes::Independent | Nyes::Nk => self,   // constantew: no re-evaluation
         _ => Nyes::Embryonic,                                    // re-evaluate in the new brane
     }
 }
@@ -765,7 +773,7 @@ classification decides the mark:
 | Brane | SFF detachment | its statements must not resolve against where the brane is written |
 | Search — any form | wrapped in an SF node | the search must resolve to a brane, but not step past that |
 | Concatenation | the ambient status, as a brane-like constituent | it is itself an operator producing a brane; its own constituents are already marked |
-| Constantew (integer, `???`, `⬤`) | no mark | it has no statements to contribute; rejected when the operator flattens |
+| Constantew (integer, `???`, `⬤`) | no mark | it will not change and has no statements to contribute; rejected when the operator flattens |
 | Operator | rejected at classify time | an NK node naming the kind |
 
 **The nested-concatenation row, expanded.** A concatenation constituent is written with
@@ -856,7 +864,7 @@ between them:*
 {a = {x=1;} <<{y=2;}>>; a;}               !! a = {x=1; y=2}
 ```
 
-*A constantew has no statements to contribute, so the concatenation is NK:*
+*A constantew constituent has no statements to contribute, so the concatenation is NK:*
 
 ```foolish
 {a = {x=1;} `99; a;}
@@ -890,13 +898,18 @@ before the operator acts.
 A constituent that is a search whose result chain terminates `Econstanic` is **not** ready. The
 operator keeps waiting rather than proceeding past it. Readiness walks the result chain
 (`ubc_children[0]`, per FOOP-23's two-child invariant), answering "not ready" at the first
-`Econstanic` hop and "ready" when the chain ends in a real value.
+`Econstanic` hop and "ready" when the chain ends **conclusive** — a hop that reached a value.
+Note this is the conclusive cut, not constantew: an NK hop is constantew but never produced a
+value, and it is caught by the type-error check below rather than by waiting.
 
 **Between the beats — the type check.** Once the constituents have drained, each is resolved
 through `.value()` and asked whether it is brane-like:
 
-- any constituent that is constantew but not brane-like → the whole concatenation settles NK,
-  naming the offending indexes;
+- any constituent that is **constantew** but not brane-like → the whole concatenation settles
+  NK, naming the offending indexes. The gate is constantew rather than **conclusive** because
+  the two differ exactly on NK, and an NK constituent is a settled type error: it will never
+  become a brane, so there is nothing to wait for. A conclusive-only gate would let it through
+  to the wait branch and hang;
 - any constituent not yet brane-like and not a type error → the concatenation settles
   `Woconstanic` and waits;
 - all constituents brane-like → proceed to beat 2.
@@ -1056,8 +1069,9 @@ pub(crate) enum CloneMarks {
     /// Preserve each copied node's NYES verbatim. The copy does not
     /// re-evaluate in its new brane.
     UnderSfm,
-    /// Reset each copied node's NYES normally: terminal states keep, every
-    /// other state becomes `Embryonic`, so the copy re-evaluates here.
+    /// Reset each copied node's NYES normally: constantew states (CONSTANT,
+    /// INDEPENDENT, NK) keep theirs, every other state becomes `Embryonic`,
+    /// so the copy re-evaluates here.
     UnderUfm,
 }
 
@@ -1211,7 +1225,7 @@ FOOP-36 first, then §2 → §3 → §4.** Human confirms.
    separates sections on `①` (U+2460) + LF, not `foolish-ubca`'s `!!` + LF, and content
    containing the separator is a hard write-time error.
 4. **The three mark statuses (§2) get one unit test each, asserting the copied NYES** — under
-   `Normal` a non-terminal node comes back `Embryonic`; under `UnderSfm` it comes back with its
+   `Normal` a non-constantew node comes back `Embryonic`; under `UnderSfm` it comes back with its
    source NYES unchanged (an `Econstanic` search stays `Econstanic`); under `UnderUfm` it comes
    back `Embryonic` **even when the copy is made beneath an enclosing SF**, which is the case
    that distinguishes `UnderUfm` from `Normal`. Plus one asserting the status reaches a
@@ -1444,6 +1458,15 @@ carried.
 Part III defines `MarkState { Normal, UnderSfm, UnderUfm }` on the stepping scope and
 `CloneMarks { UnderSfm, UnderUfm }` at the copy boundary, with the one mapping between them, a
 table of where each is set/propagated/consumed, and what is deliberately not changed.
+
+**Terminology aligned to `AGENTS.md` §Foolish Terminology** (2026-09-02): §1 carries a note
+defining *constanic*, *constantew* and *conclusive*, and every gate in this FOOP now says which
+cut it means. The two that differ exactly on NK are used deliberately — the flatten-time type
+check gates on **constantew** (an NK constituent is a settled type error, so there is nothing to
+wait for; a conclusive-only gate would send it to the wait branch and hang), while the
+constituent-readiness chain walk ends on **conclusive** (a hop that reached a value; an NK hop
+never did). `transform_for_clone`'s preserved states are named *constantew* rather than the
+ambiguous "terminal", since constanic states are terminal too but are reset.
 
 Measured 2026-09-02 and recorded: a constanic copy drops SF/SFF markers unconditionally at every
 depth, so marker removal is not what the copy-side flag selects — NYES treatment is. That is why

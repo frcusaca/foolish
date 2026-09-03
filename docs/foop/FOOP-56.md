@@ -41,6 +41,11 @@ never as a callable predicate — and it does not mean one thing. It means const
 sites, conclusive at others, and at one site names a value that may still be BRANING. Each use
 gains a qualifier naming its group.
 
+Alongside the code, **every document describing `foolish-ubca2` is brought onto the same
+vocabulary** — FOOP-16, FOOP-26, FOOP-36, FOOP-46, AGENTS.md's terminology entries, and the
+crate's own module docs (§4). That uniformity is the point: the vocabulary is worth little if
+the specifications an agent reads still say "settled" and leave the group implicit.
+
 This is a **vocabulary and clarity** change. No behaviour changes, no FIR changes, no einmo
 baseline moves.
 
@@ -187,7 +192,35 @@ Two mechanisms push toward a narrower name, and it is worth recording why they d
 arm inside `nyes_from_found`, not a test — it stays as it is. The distinction is exactly the
 kind a blind `sed` gets wrong.
 
-### §4 Documentation
+### §4 Documentation — uniformly, across everything describing `foolish-ubca2`
+
+The predicates and renames are half the job. The other half is that **every document describing
+`foolish-ubca2` says which NYES group it means**, so the next agent reads one vocabulary rather
+than inferring from context. The same pass applies to each: qualify bare "settled"; correct any
+"constanic" that actually means *conclusive*; update renamed identifiers; name a group where
+prose hand-rolls a state list; and **list anything genuinely ambiguous for the human rather
+than guessing**.
+
+The documents in scope, with their starting counts (measured 2026-09-02):
+
+| Document | "settled" | "constanic" | Note |
+|---|---|---|---|
+| `FOOP-16.md` / `.plan.md` | 8 / 30 | 28 | built the crate; its plan is largely complete, so completed checkboxes stay as the historical record |
+| `FOOP-26.md` | 21 | 87 | marks / concatenation / three-beat step — **heaviest, and where constanic-vs-conclusive matters most** |
+| `FOOP-36.md` / `.plan.md` | 56 | 159 | the sequencer FOOP this one was extracted from |
+| `FOOP-46.md` | 9 | 29 | BraneConcatOp; spec only, no plan yet |
+| `AGENTS.md` §Foolish Terminology | — | — | the authority; gains the predicate name on each entry |
+| `nyes_ext.rs`, `lib.rs`, `MAPPING.md` | — | — | module docs in the crate itself |
+
+**Why "constanic → conclusive" is the delicate step.** FOOP-26's three-beat step waits for
+`foolish_children` to become constanic; `fvm_storage.rs:818` gates that on `Constant |
+INDEPENDENT`, i.e. **conclusive**. If the spec means the code's rule, it should say conclusive.
+That is a **specification correction**, not a wording tweak, and every such case goes to the
+human in one consolidated list before it is treated as settled.
+
+**Deliberately out of scope:** FOOP-62, FOOP-23, FOOP-33, FOOP-55 and the other
+`foolish-ubca` FOOPs — shipped, or describing the sibling crate. Rewriting them is a larger act
+than this FOOP claims.
 
 - `nyes_ext.rs`'s module doc lists "Three categories" and omits conclusive; it gains the fourth
   and the alias.
@@ -285,7 +318,12 @@ for; the fix is a qualifier, not a ban.
 
 **Date**: 2026-09-02
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created FOOP-56 — one predicate per NYES group (`is_preconstanic` with `is_nye` as
+**Changes**: Widened §4 from "documentation" to a **uniform pass over every document
+describing `foolish-ubca2`** — FOOP-16, FOOP-26, FOOP-36, FOOP-46, AGENTS.md's terminology
+entries, and the crate's module docs — with the in-scope table and starting counts. The
+delicate step is correcting any "constanic" that actually means *conclusive*: that is a
+specification correction, not a wording tweak, and each goes to the human in one consolidated
+list. Prior entry: created FOOP-56 — one predicate per NYES group (`is_preconstanic` with `is_nye` as
 its alias, `is_constanic`, `is_constantew`, `is_conclusive`) on `foolish-ubca2`'s `NyesExt`,
 plus qualification of all 134 bare uses of "settled" with the group each means. Extracted from
 FOOP-36, which was carrying it as a skippable phase; scheduled **before** FOOP-36, which is
