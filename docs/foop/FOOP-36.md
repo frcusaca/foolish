@@ -755,6 +755,16 @@ wanting the closest thing to a plain pretty-printer (no evaluator commentary of 
 whatever the FIR's state) sets this rather than trying to enumerate every annotation kind
 individually.
 
+**One switch for now; a configuration object later if it earns one** (human, 2026-09-03). The
+renderer emits several distinguishable kinds of commentary — "show BRANING warning", "show NK
+warning", "show NK detail", "show iteration-excess warning" — and it is easy to imagine wanting
+them independently. It is **deliberately not** built that way yet: today there is
+`comment_nk` plus the single `suppress_sequencing_comments` override, and every annotation kind
+answers to that override. **If these grow numerous enough that callers genuinely need per-kind
+control, the right move is a dedicated configuration object**, not another few booleans bolted
+onto `SequenceOptions`. Until a caller actually needs it, the single on/off switch is the whole
+interface.
+
 `Ubca2Sequencer::format(storage, fir, mode)` stays as the common-case entry point (it builds
 `SequenceOptions::default()` with the given mode);
 `format_with(storage, fir, &SequenceOptions)` is the form that takes an explicit width. The
@@ -1048,6 +1058,56 @@ anywhere. That makes NK the *easy* case for §2's round trip rather than a hard 
 renders `1/0`, re-parses, re-settles NK, and `R2 == R1`. The reason it still renders as written
 rather than as `???` is not fear of losing an answer; it is simply that `1/0` is the program and
 `???` is a different expression the Foolisher did not write.
+
+#### §5.2 The brane exception: an NK **brane** renders its contents
+
+**NK reverts to the written expression — EXCEPT when the NK result is a brane, in which case
+the brane is rendered** (human, 2026-09-03).
+
+```foolish
+{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}
+
+  f = {            !! not `f = #-1`
+    c = #-1;  !! NK: unknown
+    d = 2;
+    e = 2
+  }
+```
+
+**Why a brane is different from a scalar.** For `1/0`, the written form **is** the information —
+`1/0` says everything there is to say. A brane's NK, by contrast, is a **rollup**: the brane
+above is NK only on account of `c`, while `d` and `e` resolved perfectly well. Reverting the
+whole statement to `#-1` would hide both the structure the search genuinely found and the
+members that did resolve.
+
+Rendering the brane instead leaves **every member in its own correct state** — the unresolved
+ones as their original searches, the resolved ones as their values. That is also what makes the
+output right to *re-read elsewhere*: the unresolved members are still searches, free to resolve
+in the new context, which is exactly what recoordination promises. The reader is not told which
+members are constanic, but can infer it from what each one renders as.
+
+**The brane's own opening line stays bare**, per §4.0 — the member lines carry the accurate
+annotations, and a rollup on the brace would be an echo (in the case above, literally a bare
+`!! NK: unknown`, which says strictly less than the lines beneath it).
+
+#### §5.3 BRANING reverts, and says so
+
+**A BRANING result always reverts to its written form** — the §5.2 brane exception does **not**
+extend to it — **but it carries a `!! BRANING` annotation.**
+
+**Why it reverts.** Tried the other way and reverted it (2026-09-03): a BRANING brane is still
+*mid-evaluation* and may be **self-referential**, so rendering its contents unrolls the
+recursion. `{f1 = { f1 }; stuck = f1;}` expanded roughly 32 levels of nested braces before the
+step cap stopped it. An NK brane is safe precisely **because** it has settled — its contents are
+fixed and finite. A BRANING brane has no such guarantee.
+
+**Why it is annotated even though §4.0 suppresses brane rollups.** Reaching the sequencer still
+BRANING is **abnormal** — sequencing normally runs on settled FIR. Unlike an NK rollup, which
+the member lines already explain, this one tells the reader something they cannot otherwise
+see and would want to know: that evaluation did not finish. It is worth the line precisely
+because it is not normal.
+
+Like every annotation this renderer emits, it answers to `suppress_sequencing_comments` (§4.1).
 
 ### §6 Nothing is removed
 

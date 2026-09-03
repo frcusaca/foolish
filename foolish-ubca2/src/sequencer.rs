@@ -165,10 +165,43 @@ impl<'a> Renderer<'a> {
         F: FnOnce(&Self) -> Vec<String>,
     {
         let cursor = FirCursor::new(fir, self.storage);
-        if let Some(&result) = cursor.ubc_children().first()
-            && self.storage.get_nyes(result).is_conclusive()
-        {
-            return self.render_expr(result.value(self.storage), width, current_stmt, false);
+        if let Some(&result) = cursor.ubc_children().first() {
+            let result_nyes = self.storage.get_nyes(result);
+            // The ordinary rule (§3): a CONCLUSIVE result renders as its
+            // value; anything else reverts to the written expression.
+            //
+            // The brane exception (§5.2, human 2026-09-03): when the result
+            // is a BRANE, render the brane even though it is NK or BRANING.
+            // Such a state on a brane is a ROLLUP — the brane is NK because
+            // something INSIDE it is (e.g. `{c = #-1; d = 2; e = 2}`, NK only
+            // on account of `c`) — so reverting the whole statement to `#-1`
+            // would hide a structure the search genuinely found AND the
+            // members that did resolve. Rendering the brane instead leaves
+            // every member in its own correct state: the unresolved ones stay
+            // as their original searches, the resolved ones show values. That
+            // is also what makes the output right to re-read elsewhere — the
+            // unresolved members are still searches, free to resolve in the
+            // new context, which is exactly what recoordination promises.
+            //
+            // Reverting remains right for a SCALAR NK like `1/0`, whose
+            // written form IS the information; it is wrong for a brane, whose
+            // contents are.
+            let renders_as_brane = matches!(
+                FirCursor::new(result.value(self.storage), self.storage).node(),
+                FirSpec::Brane { .. }
+            );
+            // NK only — deliberately NOT extended to BRANING. Tried and
+            // reverted (2026-09-03): a BRANING brane is still mid-evaluation
+            // and may be SELF-REFERENTIAL, so rendering it unrolls the
+            // recursion. `{f1 = { f1 }; stuck = f1;}` expanded ~32 levels of
+            // nested braces before the step cap stopped it. An NK brane is
+            // safe precisely because it has settled — its contents are fixed
+            // and finite. A BRANING result therefore still REVERTS to its
+            // written form; the reader is alarmed to it by the `!! BRANING`
+            // annotation instead (see `annotate`).
+            if result_nyes.is_conclusive() || (result_nyes == Nyes::Nk && renders_as_brane) {
+                return self.render_expr(result.value(self.storage), width, current_stmt, false);
+            }
         }
         written(self)
     }
@@ -656,8 +689,31 @@ impl<'a> Renderer<'a> {
         // root, which is a brane with no member of its own carrying that reason —
         // suppressing it unconditionally would silently discard the one piece of
         // information nowhere else in the output, defeating §2.1's debugging intent.
+        // The rule keys on what this node RENDERS AS, not only on its own
+        // kind. A node that renders as a brane includes §5.2's case — an NK
+        // Index/Search whose result is a brane, which now renders that brane
+        // rather than reverting — and its opening `{` must stay bare for the
+        // same reason a plain brane's does: the members carry the accurate
+        // per-line annotations, and a rollup on the brace is an echo (here it
+        // was a bare `!! NK: unknown`, which says strictly less than the
+        // member lines below it).
+        // `lines.len() > 1` is the operative test for the second arm: the
+        // justification is that MEMBER LINES already carry the accurate
+        // annotations, which only holds when the brane actually expanded
+        // across lines here. A search whose result is a brane but which
+        // rendered to ONE line (`stuck = f1`) has no member lines of its own,
+        // so it keeps its annotation like any other single-line node.
         let cursor = FirCursor::new(fir, self.storage);
-        if matches!(cursor.node(), FirSpec::Brane { .. } | FirSpec::ConcatHelper) {
+        let renders_as_brane =
+            matches!(cursor.node(), FirSpec::Brane { .. } | FirSpec::ConcatHelper)
+                || (lines.len() > 1
+                    && cursor.ubc_children().first().is_some_and(|&result| {
+                        matches!(
+                            FirCursor::new(result.value(self.storage), self.storage).node(),
+                            FirSpec::Brane { .. }
+                        )
+                    }));
+        if renders_as_brane {
             if self.options.comment_nk
                 && let Some(reason) = self.storage.alarm_reason(fir)
             {
@@ -665,6 +721,21 @@ impl<'a> Renderer<'a> {
                 if let Some(first) = lines.first_mut() {
                     first.push_str("  !! ");
                     first.push_str(&annotation);
+                }
+            } else if self.storage.get_nyes(fir) == Nyes::Braning {
+                // BRANING is the one rollup state a brane DOES advertise
+                // (human, 2026-09-03). Reaching the sequencer still BRANING is
+                // abnormal — sequencing normally runs on settled FIR — so
+                // unlike an NK rollup (which the member lines already explain)
+                // this one is worth alarming the reader about, precisely
+                // BECAUSE it is not normal.
+                //
+                // Still governed by `suppress_sequencing_comments`, which
+                // returned at the top of this function before we got here:
+                // that flag silences EVERY comment this renderer emits, with
+                // no exceptions, and this alarm is not one.
+                if let Some(first) = lines.first_mut() {
+                    first.push_str("  !! BRANING");
                 }
             }
             return;
@@ -1426,6 +1497,56 @@ mod tests {
         assert!(
             rendered.contains("result =^ empty"),
             "an UNsettled head index keeps the attached form: {rendered}"
+        );
+    }
+
+    /// §5.2: NK reverts to the written expression EXCEPT when the NK result
+    /// is a BRANE, which renders its contents instead. A brane's NK is a
+    /// rollup — here only `c` is unresolvable, while `d`/`e` resolved — so
+    /// reverting `f` to `#-1` would hide both the structure the search found
+    /// and the members that did resolve. Per §4.0 the rendered brane's own
+    /// opening line stays bare.
+    #[test]
+    fn foolish_nk_brane_result_renders_the_brane_not_the_written_search() {
+        let (storage, program) =
+            evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("f = {"),
+            "an NK result that is a brane must render the brane: {rendered}"
+        );
+        assert!(
+            !rendered.contains("f = #-1"),
+            "it must NOT revert to the written search: {rendered}"
+        );
+        assert!(
+            !rendered.contains("f = {  !!"),
+            "the rendered brane's opening line stays bare (§4.0): {rendered}"
+        );
+        // A SCALAR NK still reverts — the written form is the information.
+        assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
+    }
+
+    /// §5.3: BRANING always reverts to its written form — the §5.2 brane
+    /// exception does NOT extend to it, because a BRANING brane is still
+    /// mid-evaluation and may be self-referential (rendering
+    /// `{f1 = { f1 }; stuck = f1;}` unrolled ~32 levels before the step cap).
+    /// It carries `!! BRANING` instead, because reaching the sequencer still
+    /// BRANING is abnormal and worth telling the reader.
+    #[test]
+    fn foolish_braning_reverts_and_is_annotated() {
+        let (storage, roots) = crate::UbcaEvaluator
+            .evaluate_arena("{\n  f1 = { f1 }\n  stuck = f1;\n}")
+            .expect("evaluation returns an alarm-bearing FIR");
+        let rendered = Ubca2Sequencer::format(&storage, roots[0], SequenceMode::Foolish);
+        assert!(
+            rendered.contains("stuck = f1  !! BRANING"),
+            "a BRANING result reverts to its written form AND is annotated: {rendered}"
+        );
+        assert!(
+            !rendered.contains("stuck = {"),
+            "a BRANING result must NOT render as a brane — it may be self-referential \
+             and unroll: {rendered}"
         );
     }
 }
