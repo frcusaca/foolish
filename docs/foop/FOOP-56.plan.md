@@ -58,13 +58,21 @@ If a change seems to require editing `foolish-core`, stop and report — it does
 
 ## Phase 0 — Begin
 
-- [ ] Begin work: commit `FOOP-56.md` and `FOOP-56.plan.md` to origin, check `begun: [x]` in
+- [x] Begin work: commit `FOOP-56.md` and `FOOP-56.plan.md` to origin, check `begun: [x]` in
       the frontmatter
-- [ ] Record the BEFORE state, and write the numbers into this plan:
-  - [ ] `cargo test -p foolish-ubca2 --lib` — expect 134/134
-  - [ ] `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — expect pass
-- [ ] Confirm FOOP-36 and FOOP-26 have **not** begun in a worktree. If either has, stop and ask
+      (2026-09-02 18:21)
+- [x] Record the BEFORE state, and write the numbers into this plan:
+      (2026-09-02 18:21)
+  - [x] `cargo test -p foolish-ubca2 --lib` — expect 134/134. **Actual: 134 passed; 0 failed.**
+        (2026-09-02 18:21)
+  - [x] `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — expect pass. **Actual: 1
+        passed; 0 failed.**
+        (2026-09-02 18:21)
+- [x] Confirm FOOP-36 and FOOP-26 have **not** begun in a worktree. If either has, stop and ask
       the human — this FOOP is scheduled before both precisely to avoid colliding with them.
+      **Confirmed: both `begun: [ ]`, no worktrees for either exist (only a pre-existing,
+      unrelated foop-55 worktree).**
+      (2026-09-02 18:21)
 - [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-56-nyes-groups` with branch
       `foop-56-nyes-groups`:
       `git worktree add -b foop-56-nyes-groups /yolo/foolish/../foolish_worktrees/foop-56-nyes-groups`

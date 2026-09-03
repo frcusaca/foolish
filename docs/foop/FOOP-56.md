@@ -7,7 +7,7 @@ type: Standards
 created: 2026-09-02
 phase: phase-4
 supersedes: []
-begun: [ ] 
+begun: [x]
 ---
 
 # FOOP-56: NYES groups — one predicate per group, and "settled" qualified everywhere
