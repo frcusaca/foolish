@@ -151,26 +151,46 @@ If a change seems to require editing `foolish-core`, stop and report — it does
 
 ## Phase 2 — Replace the five hand-rolled conclusive tests
 
-- [ ] (read §3 of `FOOP-56.md`)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] (read §3 of `FOOP-56.md`)
+      (2026-09-02 18:21)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run: `cargo test -p foolish-ubca2 --lib` (whole crate — a wrong replacement here
       changes behaviour, and the suite is what catches it).
-- [ ] Replace with `.is_conclusive()`, **reading each one first** to confirm it is a conclusive
+      (2026-09-02 18:21)
+- [x] Replace with `.is_conclusive()`, **reading each one first** to confirm it is a conclusive
       *test* and not a coincidence of the same two states:
-  - [ ] `fvm_storage.rs:818` (the `all_settled` binding — see Phase 3 for its rename)
-  - [ ] `fvm_storage.rs:2007` (`is_constanic_non_brane` — note the existing name says
+      (2026-09-02 18:21)
+  - [x] `fvm_storage.rs:818` (the `all_settled` binding — see Phase 3 for its rename)
+        (2026-09-02 18:21)
+  - [x] `fvm_storage.rs:2007` (`is_constanic_non_brane` — note the existing name says
         "constanic" but the match is conclusive; rename it `is_conclusive_non_brane` while here)
-  - [ ] `fvm_storage.rs:3739`
-  - [ ] `fvm_storage.rs:3810`
-  - [ ] `fvm_storage.rs:3950` (`empty_done`)
-- [ ] **Leave `fvm_storage.rs:1375` alone** — it is a match arm in `nyes_from_found` mapping
+        (2026-09-02 18:21)
+  - [x] `fvm_storage.rs:3739`
+        (2026-09-02 18:21)
+  - [x] `fvm_storage.rs:3810`
+        (2026-09-02 18:21)
+  - [x] `fvm_storage.rs:3950` (`empty_done`)
+        (2026-09-02 18:21)
+- [x] **Leave `fvm_storage.rs:1375` alone** — it is a match arm in `nyes_from_found` mapping
       states to states, not a test. Confirm by reading it.
-- [ ] **T2 — the untested distinction.** `operator_pushes_tasks_for_unsettled_operands` uses
+      **Confirmed**: it remaps a found node's Nyes to a caller settlement value
+      (Econstanic/Woconstanic → Woconstanic; Constant/Independent → Constant; Nk → Nk), not a
+      conditional test — left unchanged.
+      (2026-09-02 18:21)
+- [x] **T2 — the untested distinction.** `operator_pushes_tasks_for_unsettled_operands` uses
       PREMBRYONIC operands only, so it never distinguishes conclusive from constanic. Add a
       case with an **ECONSTANIC** operand and assert it is still queued as a task — constanic,
       but not conclusive, so line 818's rule must still push it.
-- [ ] Run all tests — old and new — and make sure they all pass correctly. **134/134 plus the
+      Added `operator_pushes_tasks_for_econstanic_operand` in `fvm_storage.rs`'s tests module,
+      immediately after the PREMBRYONIC-only test it complements.
+      (2026-09-02 18:21)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **134/134 plus the
       new tests**; if any pre-existing test moved, a replacement was wrong.
+      **Actual: 141 passed; 0 failed** (140 from Phase 1 + this phase's 1 new T2 test). Also
+      required adding `NyesExt` to `mod core_fir_conversion`'s `use super::{...}` list (that
+      submodule imports by explicit name, not glob, so the file-level `use` at line 15 did not
+      reach lines 3739/3810/3950 inside it).
+      (2026-09-02 18:21)
 
 ---
 

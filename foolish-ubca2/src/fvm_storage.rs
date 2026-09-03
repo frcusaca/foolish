@@ -815,7 +815,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
                 let all_settled = children
                     .iter()
-                    .all(|&c| matches!(storage.get_nyes(c), Nyes::Constant | Nyes::Independent));
+                    .all(|&c| storage.get_nyes(c).is_conclusive());
                 if !all_settled {
                     for child in children {
                         storage.with_mut(ptr, |fir| fir.push_task(child));
@@ -2004,9 +2004,9 @@ impl FVMStorage {
         // `foolish_children` afterward would silently see the shared child
         // missing, even though `revive_constanic` reported success.
         let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
-        let is_constanic_non_brane = matches!(nyes, Nyes::Constant | Nyes::Independent)
-            && !matches!(spec, FirSpec::Brane { .. });
-        if is_share_kind || is_constanic_non_brane {
+        let is_conclusive_non_brane =
+            nyes.is_conclusive() && !matches!(spec, FirSpec::Brane { .. });
+        if is_share_kind || is_conclusive_non_brane {
             self.attach_shared_foolish_child(new_parent, root);
             return root;
         }
@@ -3251,7 +3251,7 @@ mod search_fir_dispatch {
 mod core_fir_conversion {
     use super::{
         ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH,
-        search_fir_dispatch,
+        NyesExt, search_fir_dispatch,
     };
 
     use foolish_core::fir as core_fir;
@@ -3736,7 +3736,7 @@ mod core_fir_conversion {
                     );
                     if !preserve_search {
                         let resolved_state = storage.get_nyes(result);
-                        if matches!(resolved_state, Nyes::Constant | Nyes::Independent) {
+                        if resolved_state.is_conclusive() {
                             // `sf_inner_pattern`'s `Some` branch is NOT
                             // reachable here: `FirSpec::Search` carries no
                             // `sf_inner_pattern` field — it starts `None`
@@ -3806,10 +3806,7 @@ mod core_fir_conversion {
                     );
                     let resolved_state = storage.get_nyes(result);
                     let result_is_brane = matches!(storage.get(result), FirSpec::Brane { .. });
-                    if !preserve_search
-                        && (matches!(resolved_state, Nyes::Constant | Nyes::Independent)
-                            || result_is_brane)
-                    {
+                    if !preserve_search && (resolved_state.is_conclusive() || result_is_brane) {
                         return resolved;
                     }
                     let mut builder = IndexFirBuilder::new(offset)
@@ -3947,7 +3944,7 @@ mod core_fir_conversion {
             }
             FirSpec::Concatenation { provenance } => {
                 let joined = !cursor.ubc_children().is_empty();
-                let empty_done = matches!(state, Nyes::Constant | Nyes::Independent);
+                let empty_done = state.is_conclusive();
                 if state.is_constanic() && (joined || empty_done) {
                     let count = cursor.stmt_count().unwrap_or(0);
                     let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)
@@ -5324,6 +5321,35 @@ mod tests {
             FirCursor::new(op, &storage).front_task(),
             Some(a),
             "unsettled operands must be queued as tasks"
+        );
+    }
+
+    /// An `Operator` with an ECONSTANIC operand still pushes a task for it:
+    /// ECONSTANIC is constanic but not conclusive, and line 818's rule
+    /// (`all_foolish_children_conclusive`) gates on conclusive, not constanic.
+    /// `operator_pushes_tasks_for_unsettled_operands` only exercises
+    /// PREMBRYONIC operands, so it cannot tell the two apart — this does.
+    #[test]
+    fn operator_pushes_tasks_for_econstanic_operand() {
+        let mut storage = FVMStorage::new();
+        let op = storage.make_root(FirSpec::Operator {
+            op: "+".to_string(),
+        });
+        let a = op.create_child(
+            &mut storage,
+            FirSpec::Operator {
+                op: "+".to_string(),
+            },
+        );
+        storage.with_mut(a, |fir| fir.set_nyes(Nyes::Econstanic));
+
+        op.step(&mut storage);
+
+        assert_eq!(storage.get_nyes(op), Nyes::Braning);
+        assert_eq!(
+            FirCursor::new(op, &storage).front_task(),
+            Some(a),
+            "an ECONSTANIC (constanic but inconclusive) operand must still be queued"
         );
     }
 
