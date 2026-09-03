@@ -229,6 +229,14 @@ impl<'a> Renderer<'a> {
             format!("{context}{marker}{name}={value}")
         } else if let Some(name) = canonical_name_pattern(pattern) {
             if *anchored {
+                // FUTURE (deferred, see FOOP-36.md §4.3.4): an anchored
+                // BACKWARD name search with a regexp-free pattern could render
+                // in the DOT form (`b.x`, chaining as `a = b.c.d.e.f.g`)
+                // instead of `b?x`. It is safe — `Astn::DotSearch` lowers to
+                // byte-identical FIR — and was implemented and green before
+                // being deliberately deferred out of this FOOP (human,
+                // 2026-09-03) to keep the Movement III baseline review to one
+                // pass. Not this FOOP's change; see §4.3.4 for the full note.
                 format!("{context}{marker}{name}")
             } else {
                 name.to_string()

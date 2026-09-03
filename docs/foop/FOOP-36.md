@@ -1418,6 +1418,79 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
   draft of §5 asserted the round trip closed without having established why — the claim happened
   to be right, but the reasoning was absent, and the human was right to strike it.
 
+## Proposed Next Steps
+
+*Work this FOOP deliberately did not do, recorded so it is not re-derived. Neither is committed
+to; both are proposals for a future FOOP to accept or reject.*
+
+### N1. Instrument an additional element on the FIR to aid rendering
+
+**The problem this solves.** This FOOP's renderer reads the FIR and nothing else, and the FIR
+is a *semantic* record — it deliberately does not keep how a thing was **written**. Several
+distinct source spellings therefore reach the sequencer indistinguishable, and it must pick one
+output spelling for all of them, with no way to prefer the one the Foolisher actually typed.
+
+The worked example, verified during this FOOP's development: `b.x` and `b?x` are the same
+operation. `Astn::DotSearch` lowers (`fvm_storage.rs`'s `build_fir`) to exactly
+
+```rust
+FirSpec::Search { pattern: format!("^{coordinate}$"), anchored: true,
+                  forward: false, is_value_search: false, contexted: false }
+```
+
+— byte-for-byte what a plain-name `?` produces, with **no record of which spelling was
+written**. (FOOP-23 agrees from the language side: "`.` aliases `?` for name search".) So the
+renderer cannot render `b.x` for what was written `b.x` and `b?x` for what was written `b?x`;
+it can only choose one for both. The same shape of problem recurs for every canonicalization
+§4.3 makes — attached vs postfix search forms, `#0` vs `^`, parenthesized vs bare patterns.
+
+**The proposal.** Instrument an additional element on the FIR as a **sequencing aid**, which
+the renderer consults when choosing among equivalent spellings. It can be populated from either
+of two sources, and both are worth having:
+
+- **From the original Foolish compiler** — what the Foolisher actually wrote, captured at parse
+  time and carried through. This is what lets output preserve the author's spelling rather than
+  imposing a canonical one.
+- **From stepping** — information the evaluator learns that the source never stated, accumulated
+  as the FIR is stepped. This is what lets output reflect what *happened*, not merely what was
+  typed.
+
+**Why it is its own FOOP.** It adds to the FIR, so it touches `foolish-core` and every
+implementor — squarely outside this FOOP's stated blast radius (§FIR Impact: "**None.** No new
+FIR variant"). It also changes what "correct output" means for every canonicalization in §4.3,
+so it wants its own specification and its own baseline review rather than riding along inside a
+rendering FOOP.
+
+### N2. Render a regexp-free anchored backward search in the dot form
+
+The concrete instance of N1, and the reason N1 was noticed. An **anchored** backward name search
+whose pattern is a plain identifier would render `b.x` rather than `b?x`, chaining as
+`a = b.c.d.e.f.g`.
+
+It was implemented and green during this FOOP's development, then deliberately backed out
+(human, 2026-09-03). Without N1's instrument it is a *guess* at which spelling to prefer,
+applied uniformly, and it moves a large fraction of baselines (every anchored plain-name
+backward search renders `b?x` today) for no gain a reviewer could check. Two details
+established while it was in, worth keeping:
+
+- **`canonical_name_pattern`** (`sequencer.rs`) is the right "regexp-free identifier"
+  predicate. Note the **unanchored half already ships in this FOOP** — an unanchored plain-name
+  search renders as the bare identifier today, via that same predicate. Only the anchored half
+  is deferred.
+- **The dot must not attach to `=`.** `a =.g b.c.d.e.f` was verified to parse, so attaching is
+  *possible*, but it was declined: `howˍis = hw.how` reads better than `howˍis =.how hw`.
+  §4.3.1 stands as written — only `^` and `$` ever attach — and a future FOOP implementing the
+  dot form should keep it that way.
+
+### N3. Line wrapping, once EOL continuation exists
+
+§4.1.1 puts one statement per line and does **no** wrapping within a line: a long statement
+simply runs long. That is not a preference but a consequence — Foolish has no end-of-line
+continuation syntax, so there is no way to break a line without either changing how it parses
+or inventing a convention the parser does not know. A future FOOP defines EOL continuation
+semantics; the wrapping rules that build on them, and the 108-column budget they would honour,
+belong with it.
+
 ## References
 
 - **FOOP-26** — `foolish-ubca2` marks / concatenation-as-operator / three-beat step. Draft,
@@ -1441,11 +1514,25 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
 
 ## Last Updated
 
-**Date**: 2026-09-02
-**Updated By**: Codex / GPT-5.6
-**Changes**: FOOP-56 vocabulary pass: converted §0.1 into a pre-FOOP-56 survey and recorded the
-implemented predicates, renamed identifiers, and ECONSTANIC regression test. Updated current
-references from `settled_result` to `settled_constanic_result`.
+**Date**: 2026-09-03
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: **Foolish Standard Formatting** rules settled with the human and written in as
+spec. New **§4.0**: a brane's own derived (rollup) state is never annotated on its opening
+brace — the one exception being a DIRECT alarm on the brane itself, which no member line
+carries. Rewritten **§4.1.1**: ONE STATEMENT PER LINE, always, and **no wrapping within a
+line** — Foolish has no EOL continuation syntax yet, so `width` no longer drives any layout
+decision and long lines are correct output. New **§4.3**, the canonical spellings: **§4.3.1**
+the attached search form `A = B SEARCH` → `A =SEARCH B` (operator right of the `=`), with only
+`^`/`$` ever attaching and `#0`/`#-1` canonicalizing to them first; **§4.3.2** marker runs —
+opening runs must be unambiguous, closing runs decode greedily against the open-marker nesting
+(stated as a language rule for later FOOPs), with **§4.3.2.1** recording why this FOOP's
+closing-side space is still unconditional; **§4.3.3** no needless parentheses. New
+**§Proposed Next Steps**: **N1** instrument an additional element on the FIR to aid rendering
+(populated from the original compiler or from stepping) — the general finding behind **N2**,
+the deferred anchored dot form, and **N3**, wrapping once EOL continuation exists. Prior entry:
+FOOP-56 vocabulary pass: converted §0.1 into a pre-FOOP-56 survey and recorded the implemented
+predicates, renamed identifiers, and ECONSTANIC regression test; updated current references
+from `settled_result` to `settled_constanic_result`.
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
