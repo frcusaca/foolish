@@ -892,7 +892,18 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added §MISC "Lead With the Most Important Information — Especially Bug Counts",
+**Changes**: Added §MISC "Concluding Paragraphs Are an Index, Not a Summary", directly after
+"Lead With the Most Important Information — Especially Bug Counts" as its companion — the first
+covers how to OPEN a report, this one how to CLOSE it. English composition's concluding
+sentence/paragraph convention is relaxed in a conversation turn: a conclusion need not restate
+anything. What serves the reader is an INDEX — a short closing paragraph saying WHERE above to
+find each item, so the human can scroll BACK on a terminal. That requires the items be LABELLED
+with markers easy to eyeball and to search: bolded **A**/**B**/**C**, **S1**/**S2**/**S3**, and
+rare distinctive sequential strings rather than markers that also occur in prose or code. Quotes
+the human's own worked example ("…please find them under headings A, B, C and D…") and notes the
+pairing: the orienting introduction names the items up front, the concluding index points back
+to the SAME labels. Prior entry: added §MISC "Lead With the Most Important Information —
+Especially Bug Counts",
 directly after "Uncertainty and Other Utterances in Conversing with Human": the most important
 information leads the paragraph and the first sentence, and for bug reports that means leading
 with the **action or state** — repaired, or still broken — never with the quantity found.
@@ -1020,6 +1031,33 @@ holds the whole map before walking any part of it:
 This is not licence to bury the lede: the introduction is short, it is concrete, and it still
 opens on what matters. A vague throat-clear — "I did a lot of work and found some things" —
 names nothing and orients no one; it is the failure mode to avoid here.
+
+#### Concluding Paragraphs Are an Index, Not a Summary
+
+English composition teaches that a passage ends by restating and tying off — the concluding
+sentence, the concluding paragraph. **In a conversation turn with the human, that convention is
+relaxed.** A conclusion here need not restate anything; the human just read it.
+
+**What serves the reader is an INDEX: a short closing paragraph saying WHERE above to look for
+each thing.** The human reads on a scrolling terminal, and the conclusion's job is to help them
+scroll BACK to the part they want.
+
+That only works if the items above are **LABELLED** with markers that are easy to eyeball and
+easy to search for. Bolded section numbers and letters do this well: **A**, **B**, **C**;
+**S1**, **S2**, **S3**. Prefer **rare, distinctive sequential strings** — a marker that also
+occurs in ordinary prose or in the code under discussion is useless to scroll back to, because
+the reader's eye and their terminal search both land on the wrong thing.
+
+The worked example:
+
+> "In short, I presented a bunch of new bugs I found, each in varying state of repair or
+> disrepair, please find them under headings A, B, C and D, each fully explained and analyzed
+> above."
+
+This pairs with the preceding subsection. The **orienting introduction** names the items before
+the detail ("The issues are A, B, C, and D"); the **concluding index** points back to those same
+labels afterward. The labels are what make both ends work, so use the SAME ones at both ends of
+the response.
 
 #### When in Doubt
 
