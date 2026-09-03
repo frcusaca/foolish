@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/16/comprehensive.foo
 suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 9decd559
-producer-diff: sha256:2cc340598af1a1192f3727c9ee5ead2bc9a7e4cde0f11b9e21257d1c4ec9e192
-generated: 2026-09-03T18:52:56.000000000Z
+producer: 60ce6639
+producer-diff: sha256:1b82a3573ff70c0c29cb8eb4ca32224ad7acfaf64d78da072bec50b227c1f8b8
+generated: 2026-09-03T19:38:35.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -84,29 +84,68 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 }
 ①
 {
-  recipe = {steps = {prep = 7; bake = 40; cool = 9}; yield = 12};
-  series = {10; 20; 30};
+  recipe = {
+    steps = {
+      prep = 7;
+      bake = 40;
+      cool = 9
+    };
+    yield = 12
+  };
+  series = {
+    10;
+    20;
+    30
+  };
   first =^ series;
   last =$ series;
-  nums = {alpha = 42; beta = 15; gamma = 42; delta = 99};
+  nums = {
+    alpha = 42;
+    beta = 15;
+    gamma = 42;
+    delta = 99
+  };
   fwdˍval = 42;
   bwdˍval = 42;
-  records = {alice = 100; bob = 200; carol = 150; dave = 102};
+  records = {
+    alice = 100;
+    bob = 200;
+    carol = 150;
+    dave = 102
+  };
   nvˍfwd = 100;
   afterˍbake = 7;
   nextˍ42 = 15;
   top = 3;
-  outer'{x = 5; y = 7; viaˍib = 12; viaˍab = 4};
+  outer'{
+    x = 5;
+    y = 7;
+    viaˍib = 12;
+    viaˍab = 4
+  };
   ltˍresult =$ {1; 2; 'True};
   eqˍresult =$ {3; 3; 'True};
-  concatˍa = {p = 1; q = 2};
-  concatˍb = {r = 3};
-  joined = {p = 1; q = 2; r = 3};
-  chained = {w = 3; v = 2; u = 1};
+  concatˍa = {
+    p = 1;
+    q = 2
+  };
+  concatˍb = {
+    r = 3
+  };
+  joined = {
+    p = 1;
+    q = 2;
+    r = 3
+  };
+  chained = {
+    w = 3;
+    v = 2;
+    u = 1
+  };
   'shared = ⬤;
   restate = 'shared
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:52:56.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:52:56.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"pbyvuZBynvMXZboWfwgDrlzEQ/JeWNdaLMikhNw+HEy6Xbt5YPNKhM8R834yvNgfP294HPN2BC5fxg3F2jB6Bg==","produced_by":"einmo 0.1.0 sha256:a93923248ee324841b688157c24a2fa19fa64ee0a72571f1ae0d2a3458b2fe3d","timestamp":"2026-09-03T18:52:56.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:35.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:35.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"69q6VIcf4bHLDgBGpQkFW8FrSB4KDbey3D5h69ZSZcMVDEadc4vRM/vryW9JzgZNVbAGk2KCLWzOaBJ7kNUjAw==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:35.000000000Z"}

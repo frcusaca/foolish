@@ -758,34 +758,122 @@ individually.
 `Ubca2Sequencer::format(storage, fir, mode)` stays as the common-case entry point (it builds
 `SequenceOptions::default()` with the given mode);
 `format_with(storage, fir, &SequenceOptions)` is the form that takes an explicit width. The
-einmo adapter uses the default — **baselines are rendered at 108 and nothing else**, or the
-corpus would not be reproducible.
+einmo adapter uses the default, so the corpus is reproducible.
 
-The budget behaves exactly as the existing one does — it is the **single-line vs multi-line
-decision threshold**, threaded down through nested renders as `line_hint` and reduced by the
-indent at each level, so a construct that does not fit on one line at its depth breaks across
-lines with its body indented. That machinery is already correct; only the constant differs.
+#### §4.1.1 One statement per line — always, and no wrapping yet
 
-**It is a target, not a guarantee.** Three things can legitimately exceed it, and the renderer
-must not mangle output to prevent them:
+**Foolish Standard Formatting puts every statement on its own line.** A brane renders its
+opener, then one line per member statement, then its closer — unconditionally, regardless of
+how short the brane is. There is no single-line collapsing of `{a = 1; b = 2}` into one line
+and no width threshold deciding between the two forms.
 
-1. **An atom longer than the budget.** A single long identifier, a `???` reason at its 60-char
-   cap on a deeply indented line, or a brane name near the limit cannot be split — Foolish has
-   no line-continuation syntax, and inventing one would break Property 1 (§2).
-2. **A `!!` annotation pushing a line over.** The comment is appended after the statement
-   (§4). Wrapping the comment onto its own line would perturb the line-per-statement
-   correspondence that makes the output readable, so an annotated line may exceed 108.
-3. **Source that was itself over-width.** Concatenation chains and long juxtapositions render
-   as written (§3); if the Foolisher wrote a 195-character statement, rendering it faithfully
-   reproduces it. Reformatting the user's program is not this FOOP's job.
+```foolish
+{
+  a = 1;
+  b = 2
+}
+```
 
-**Measured against the current corpus** (5,435 output lines across all 179 cases): 20 lines
-exceed 108 today and 3 exceed even 128 — confirming the existing budget is already soft. Of
-those 20, all but two are the old rendering's own verbosity
-(`?(result=…, pattern='^oneˍzero$', UNANCHORED, NK)`), which §3 removes entirely. The two that
-remain are echoed input: a 195-character concatenation chain and a 128-character source
-comment. So 108 is comfortably reachable for output this FOOP generates, and the exceptions
-above cover what is left.
+**Within a line, there is no wrapping at all.** A statement that runs long simply runs long.
+The 108-column width is therefore, for now, an **advisory target that nothing enforces** — it
+is documented because it is the project's document width (AGENTS.md §Code Style) and because a
+later FOOP will define wrapping against it, but this FOOP's renderer never breaks a line to
+satisfy it.
+
+**Why no wrapping yet, explicitly.** Foolish has **no end-of-line continuation syntax** — `\`
+at end of line is not defined in the lexer, and inventing one here would be a language change
+smuggled in through a rendering FOOP. Wrapping without a continuation marker means either
+breaking a statement across lines in a way that changes how it parses (breaking Property 1,
+§2), or inventing an indentation-continuation convention the parser does not know about.
+Neither is this FOOP's to decide. **A later FOOP defines EOL continuation semantics and the
+wrapping rules that build on them; until then, long lines are correct output.**
+
+**What this replaces.** Earlier revisions of this section made 108 a live single-vs-multi-line
+threshold threaded down as `line_hint`. That machinery is gone for statements: the decision it
+made no longer exists, because the multi-line form is now the only form. `SequenceOptions::width`
+is retained in the struct (callers may still set it, and a future wrapping FOOP will want it)
+but the `Foolish` renderer does not currently consult it for statement layout.
+
+**Why always multi-line is the right default, not merely simpler.** One statement per line is
+what makes the `!!` annotation scheme (§4) coherent: an annotation belongs to exactly one
+statement and sits at the end of exactly one line. The moment several statements share a line,
+a single `!!` — which the lexer reads to end-of-line — swallows every statement after it on
+that line. That is not a hypothetical: it was a real, corpus-caught bug in this FOOP's own
+renderer, where an inline-collapsed multi-line operand put a `!!` mid-line and silently ate the
+anchor's closing brace and the statement's `;`. Making the multi-line form universal removes
+that failure mode by construction rather than by patching each site that collapses lines.
+
+### §4.3 Foolish Standard Formatting — canonical spellings
+
+Beyond layout, `Foolish` mode normalizes three spellings. Each has the same shape of
+justification: several source spellings mean the same thing, so the renderer picks one, and the
+one it picks is the one that re-parses unambiguously.
+
+#### §4.3.1 The attached search form: `A = B SEARCH` renders `A =SEARCH B`
+
+FOOP-75 §4 defines the attached spelling and §2 establishes that both spellings build the same
+tree. The search operator attaches to the **right** of the `=` and the anchor follows it:
+
+```foolish
+h = b.x^        renders    h =^ b?x
+e = {}^         renders    e =^ {}      !! NK: anchored index found no match
+```
+
+**Only `^` and `$` ever attach.** Every other search operator renders **postfix**, even when
+the source wrote it attached — `A =#1 B` renders `A = B#1`. Head and tail are the only two
+whose attached form is unambiguous on replay; the rest re-scan ambiguously (FOOP-75 §6), and
+one canonical spelling per operation is worth more than preserving which spelling the Foolisher
+happened to use.
+
+**`#0` and `#-1` canonicalize first.** An anchored index at offset 0 IS head and at offset -1
+IS tail, however it was spelled, so `result = empty#0` renders `result =^ empty` and
+`d = b#-1` renders `d =$ b`. The canonicalization happens before the attach decision, so a
+source-level `#0` reaches the attached form and a source-level `#2` does not.
+
+**§4.1's transparency rule comes first.** A search that settled conclusively renders as its
+value, not as a search at all (FOOP-75 §4.1), so the attached form appears **only** for
+statements still showing their search structure — unsettled, or NK. `d = b#-1` on a brane whose
+tail is `30` renders `d = 30`, not `d =$ b`.
+
+#### §4.3.2 Marker runs: unambiguous opens, greedy closes
+
+SF/SFF delimiters (`<`, `<<`, and the longer forms a later FOOP adds) are lexed by greedily
+pairing adjacent characters, so a run of them at a boundary can group in a way neither wrapper
+intended. The language rule, stated here so later FOOPs can find it:
+
+> **An opening marker run must be unambiguous.** `<<<<` is NOT acceptable — it does not say
+> whether it opens two `<<`s, or a `<` and a `<<<`, or some other split. `<< <<` and `<<< <`
+> are acceptable, because the space says where each marker ends.
+>
+> **A closing marker run is decoded greedily against the open-marker nesting.** The decoder
+> knows which markers are open and in what order, so it consumes each close against the
+> innermost still-open marker. A long run like `>>>>>>>>>>>>>` therefore resolves without
+> needing internal spaces, and `< << <<< < <<< << >>>>>>>>>>>>>` decodes successfully.
+
+**The sequencer's whole obligation under this rule is narrow: emit a space after an opening
+marker when the token that follows is itself a marker.** Closing runs need nothing — the greedy
+decoder handles them. (This FOOP's renderer currently also spaces some closing boundaries; that
+is conservative rather than required, and a later FOOP implementing the greedy decoder above can
+remove it. See §4.3.2.1.)
+
+##### §4.3.2.1 Why the closing-side space is currently unconditional
+
+An attempt was made to insert the closing-side space only where the boundary run is genuinely
+ambiguous (odd length). It fails, and the reason is worth recording: whether a given close is
+safe depends on what an **enclosing** wrapper appends immediately afterward, which the render
+call producing the inner text cannot see. `b = <1 + <<b>> + <c>>` looked safe considered one
+level at a time and still fused. Until the greedy decoder of §4.3.2 exists, the renderer takes
+the conservative route — a space whenever the interior touches this wrapper's own delimiter
+character — accepting an occasionally-unnecessary space in exchange for never emitting an
+unparseable run.
+
+#### §4.3.3 No needless parentheses
+
+**`((a))` renders `(a)`.** Redundant grouping is removed; parentheses appear only where they
+delimit or disambiguate something. In particular a search pattern that is already stored
+parenthesized (FOOP-75 §6.1: the current parser absorbs the parens INTO `pattern`, so `?(ho)`
+stores `"(ho)"`) is written back exactly as stored rather than wrapped again — `?((ho))` is not
+disambiguation, it is a stray unmatched paren the parser cannot place.
 
 **Do not add a width assertion to the einmo gates.** Width is a formatting target; a case
 whose *input* is legitimately wide would fail a hard gate for a reason unrelated to what it

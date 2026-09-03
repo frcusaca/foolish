@@ -1043,6 +1043,47 @@ re-attests" does not arise for it. What needs human attestation instead is `einm
 own `verified/` tier, which starts empty — a new-suite question, not a broken-tier one. Raise
 it with the human at Phase 6 rather than assuming either answer.
 
+### 5c — Deferred formatting refinement (queued, not yet done)
+
+- [ ] **Render a regexp-free backward search by name rather than by pattern** (human,
+      2026-09-03 — queued deliberately as a TODO rather than actioned mid-phase).
+      When a **backward** name search's pattern contains **only an identifier** — no regexp
+      metacharacters at all — the rendering should use the name form rather than the pattern
+      form:
+  - [ ] **Anchored** backward search → the **dot form**: `b.asdf` (not `b?asdf`), where
+        `asdf` is the regexp-free pattern.
+  - [ ] **Unanchored** backward search → the **bare identifier**: `asdf`, with no leading dot
+        and no marker. (The renderer already does this today via
+        `render_search`'s `canonical_name_pattern` branch — confirm it agrees with this rule
+        rather than assuming, and pin it with a test if it does.)
+  - [ ] Decide and record what "contains only an identifier" means precisely — the existing
+        `canonical_name_pattern` helper already answers a very similar question for the
+        unanchored case, so reuse it rather than writing a second, subtly-different predicate.
+  - [ ] Check the interaction with §4.3.1: the dot form is a *contextless deepening* search
+        (AGENTS.md §Searches: "`.` always deepens"), so confirm `b.asdf` and `b?asdf` really
+        are the same operation for a plain-name pattern before rendering one as the other.
+        **If they are NOT the same operation, this refinement is wrong and must be dropped** —
+        raise it rather than shipping a rendering that changes meaning.
+  - [ ] **The dot form applies in BOTH positions** (human, 2026-09-03):
+    - [ ] **Chained / postfix position** — a deepening chain reads as dots throughout:
+          `a = b.c.d.e.f.g`, not `a = b?c?d?e?f?g`.
+    - [ ] **Attached ("sweetened") position** — when the trailing search is pulled left onto
+          the `=` per §4.3.1, it KEEPS its dot: `a =.g b.c.d.e.f`, **not** `a =?g b.c.d.e.f`.
+    - [ ] **This widens §4.3.1's attach rule from two operators to three.** §4.3.1 as written
+          says only `^` and `$` ever attach; a regexp-free backward search (`.g`) becomes a
+          third. Update §4.3.1's text in `FOOP-36.md` at the same time — leaving it saying
+          "only `^`/`$`" while the renderer also attaches `.` would be exactly the kind of
+          spec/implementation drift this FOOP exists to remove.
+    - [ ] Re-check the FOOP-75 §6 replay question for the dot form specifically: `=$`/`=^` are
+          marker-only, but `=.g` carries a NAME after the marker, so confirm the parser's
+          suffix scanner terminates `.g` where the renderer thinks it does (a space, per
+          FOOP-75 §5). If it does not, the dot form cannot be attached and only the chained
+          position applies.
+  - [ ] Regenerate and re-review any `einmo_suite2` baseline this moves. It will move many:
+        every anchored plain-name backward search in the corpus currently renders `b?x`.
+        **If this lands AFTER Phase 6's promotions, it invalidates them** — so either do it
+        before Phase 6, or accept a second full review pass. Sequencing is a human call.
+
 ---
 
 ## Phase 6 — Promotion Review Gate: `einmo_suite2`'s 179 copied baselines

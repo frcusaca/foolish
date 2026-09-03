@@ -388,8 +388,6 @@ impl<'a> Renderer<'a> {
                 .unwrap_or_else(|| "???".to_string());
         }
         self.render_inline(child, width, current_stmt)
-            .replace("{ ", "{")
-            .replace(" }", "}")
     }
 
     /// Renders `fir` and safely collapses it to ONE line, for use as an
@@ -407,23 +405,31 @@ impl<'a> Renderer<'a> {
     /// closing `}` and the outer `;`). Each line's own annotation is
     /// dropped before joining — annotations are per-line commentary, never
     /// part of the written form an inline context needs.
+    ///
+    /// The brace tightening at the end matters more since §4.1.1 made the
+    /// multi-line form universal: a brane's `{` and `}` are now ALWAYS on
+    /// their own lines, so joining them with spaces would render every
+    /// inline brane anchor as `{ 1; 2; 'True }` rather than `{1; 2; 'True}`.
     fn render_inline(
         &self,
         fir: FirPointer,
         width: usize,
         current_stmt: Option<FirPointer>,
     ) -> String {
-        self.render_expr(fir, width, current_stmt, false)
-            .into_iter()
-            .map(|line| {
-                line.split("  !!")
-                    .next()
-                    .unwrap_or(&line)
-                    .trim()
-                    .to_string()
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
+        tighten_braces(
+            &self
+                .render_expr(fir, width, current_stmt, false)
+                .into_iter()
+                .map(|line| {
+                    line.split("  !!")
+                        .next()
+                        .unwrap_or(&line)
+                        .trim()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+                .join(" "),
+        )
     }
 
     /// [`Self::render_inline`], routed through [`Self::render_written_operand`]
@@ -436,17 +442,20 @@ impl<'a> Renderer<'a> {
         width: usize,
         current_stmt: Option<FirPointer>,
     ) -> String {
-        self.render_written_operand(fir, width, current_stmt)
-            .into_iter()
-            .map(|line| {
-                line.split("  !!")
-                    .next()
-                    .unwrap_or(&line)
-                    .trim()
-                    .to_string()
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
+        tighten_braces(
+            &self
+                .render_written_operand(fir, width, current_stmt)
+                .into_iter()
+                .map(|line| {
+                    line.split("  !!")
+                        .next()
+                        .unwrap_or(&line)
+                        .trim()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+                .join(" "),
+        )
     }
 
     fn render_written_operand(
@@ -484,21 +493,15 @@ impl<'a> Renderer<'a> {
             .enumerate()
             .map(|(index, statement)| self.render_statement(statement, width, index + 1 == count))
             .collect();
-        let can_inline = statements.iter().all(|lines| {
-            lines.len() == 1 && !lines[0].contains("  !!") && !lines[0].contains('\n')
-        });
-        if can_inline {
-            let inside = statements
-                .iter()
-                .map(|lines| lines[0].as_str())
-                .collect::<Vec<_>>()
-                .join(" ");
-            let candidate = format!("{chars}{{{inside}}}");
-            if candidate.chars().count() <= width {
-                return vec![candidate];
-            }
-        }
 
+        // Foolish Standard Formatting: ONE STATEMENT PER LINE, always (§4.1.1).
+        // A non-empty brane never collapses onto a single line, however short
+        // it is, and `width` is not consulted — the single-vs-multi-line
+        // threshold this used to compute no longer exists, because only the
+        // multi-line form remains. Beyond being simpler, it is what makes the
+        // `!!` annotation scheme (§4) sound: an annotation reads to
+        // end-of-line, so two statements sharing a line means the first one's
+        // comment swallows the second.
         let mut lines = vec![format!("{chars}{{")];
         for statement in statements {
             lines.extend(
@@ -717,6 +720,17 @@ fn append_before_comment(line: &mut String, suffix: &str) {
     }
 }
 
+/// Removes the space a line-join leaves just inside a brane's braces.
+///
+/// Since §4.1.1 made one-statement-per-line universal, a brane's `{` and `}`
+/// always sit on their own lines, so collapsing one to a single line joins
+/// them with spaces: `{ 1; 2; 'True }`. Foolish Standard Formatting writes
+/// the tight form, `{1; 2; 'True}`. Applied only when collapsing TO one line
+/// (the inline-operand helpers); the multi-line form never needs it.
+fn tighten_braces(text: &str) -> String {
+    text.replace("{ ", "{").replace(" }", "}")
+}
+
 fn sanitize_reason(reason: &str) -> String {
     let one_line = reason
         .replace(['\n', '\r', '①'], " ")
@@ -842,13 +856,13 @@ mod tests {
         let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{b = {x = 3}; A =$ b}"
+            "{\n  b = {\n    x = 3\n  };\n  A =$ b\n}"
         );
     }
 
     #[test]
     fn foolish_renders_branes_and_the_supported_nested_concatenation_case() {
-        assert_foolish_body("{x={a=1;b=2;};}", 0, "{a = 1; b = 2}");
+        assert_foolish_body("{x={a=1;b=2;};}", 0, "{\n  a = 1;\n  b = 2\n}");
         let (storage, program) = evaluated_program("{f=3;a=2;b={f1=f;f2=a;f3=not_found;};}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
@@ -868,7 +882,7 @@ mod tests {
         let (storage, program) = evaluated_program("{my_var=2;λ=3;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{myˍvar = 2; λ = 3}"
+            "{\n  myˍvar = 2;\n  λ = 3\n}"
         );
     }
 
@@ -890,13 +904,13 @@ mod tests {
         let (storage, program) = evaluated_program("{'k=⬤;j='k;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{'k = ⬤; j = 'k}"
+            "{\n  'k = ⬤;\n  j = 'k\n}"
         );
 
         let (storage, program) = evaluated_program("{characterized=a'b'{v=1};}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{characterized = a'b'{v = 1}}"
+            "{\n  characterized = a'b'{\n    v = 1\n  }\n}"
         );
     }
 
@@ -917,7 +931,7 @@ mod tests {
             "the enclosing brane's own derived NK state must not repeat the member's reason \
              on the opening brace"
         );
-        assert_eq!(without_nk, "{x = 1 / 0}");
+        assert_eq!(without_nk, "{\n  x = 1 / 0\n}");
 
         let (storage, program) = evaluated_program("{a=1;b=2;c=3;}");
         let narrow = Ubca2Sequencer::format_with(
@@ -946,7 +960,7 @@ mod tests {
             },
         );
         assert_eq!(
-            suppressed_nk, "{x = 1 / 0}",
+            suppressed_nk, "{\n  x = 1 / 0\n}",
             "the override must silence NK's annotation just as comment_nk: false does"
         );
         let suppressed_nk_even_when_comment_nk_true = Ubca2Sequencer::format_with(
@@ -959,7 +973,7 @@ mod tests {
             },
         );
         assert_eq!(
-            suppressed_nk_even_when_comment_nk_true, "{x = 1 / 0}",
+            suppressed_nk_even_when_comment_nk_true, "{\n  x = 1 / 0\n}",
             "suppress_sequencing_comments must win even when comment_nk explicitly asks for \
              NK annotations — it is an override, not a peer flag"
         );
@@ -1304,7 +1318,7 @@ mod tests {
         let (storage, program) = evaluated_program("{b={x=3;};A=b$;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
-            "{b = {x = 3}; A =$ b}"
+            "{\n  b = {\n    x = 3\n  };\n  A =$ b\n}"
         );
     }
 
