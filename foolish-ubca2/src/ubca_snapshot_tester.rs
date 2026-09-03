@@ -185,14 +185,9 @@ mod einmo_tests {
     /// output↔checked correspondence, then asserts checked↔verified
     /// correspondence with human attestation.
     ///
-    /// Deliberately NOT `#[ignore]`d: `einmo_suite/verified/` is still empty
-    /// here (human-signed attestation, not yet done for this crate — see
-    /// FOOP-16, and AGENTS.md's rule that agents may never mark a
-    /// Verified-tier test `#[ignore]` on their own judgment), so this test
-    /// is expected to fail until a human runs
-    /// `einmo promote checked to verified foolish-ubca2/einmo_suite --interactive`
-    /// against this crate's own `checked/`. The failure is intentional and
-    /// visible on purpose — do not silence it by re-adding `#[ignore]`.
+    /// Deliberately NOT `#[ignore]`d: `einmo_suite/verified/` contains
+    /// human-signed artifacts, and this test must pass. AGENTS.md forbids an
+    /// agent from adding `#[ignore]` to a Verified-tier gate.
     #[test]
     fn einmo_gate_verified() {
         // Serialized against the sibling gates — see module docs.

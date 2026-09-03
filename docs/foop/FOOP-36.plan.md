@@ -189,22 +189,28 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 
 ## Phase 0 — Begin
 
-- [ ] Begin work: commit `FOOP-36.md` and `FOOP-36.plan.md` to origin, check `begun: [x]` in
+- [x] Begin work: commit `FOOP-36.md` and `FOOP-36.plan.md` to origin, check `begun: [x]` in
       `FOOP-36.md` frontmatter
+      (2026-09-02 20:35)
 - [x] Sequencing against FOOP-26 (§Q4) — **DECIDED by the human 2026-09-02: FOOP-36 goes
       first.** No need to re-ask. If FOOP-26 has nonetheless begun in a worktree, say so and
       pause rather than racing it.
       (2026-09-02 10:15)
-- [ ] Confirm the tree is green BEFORE any change (AGENTS.md: never start Phase+ work with
+- [x] Confirm the tree is green BEFORE any change (AGENTS.md: never start Phase+ work with
       broken tests). Record the result in this plan.
-  - [ ] `cargo test -p foolish-ubca2 --lib` — record pass count (expected 134/134)
-  - [ ] `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — record result; this is the
+      (2026-09-02 20:36)
+  - [x] `cargo test -p foolish-ubca2 --lib` — 141 passed; 0 failed.
+        (The planned count 134 predates FOOP-56's seven added tests.)
+        (2026-09-02 20:36)
+  - [x] `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — 1 passed; 0 failed; this is the
         **T5 "before" reading** the final phase compares against
-  - [ ] **`einmo_gate_verified` on `foolish-ubca2` PASSES today** — `verified/` holds all 179
+        (2026-09-02 20:36)
+  - [x] **`einmo_gate_verified` on `foolish-ubca2` PASSES today** — 1 passed; 0 failed; `verified/` holds all 179
         human-signed artifacts (measured 2026-09-02; whole crate 134/134). FOOP-16 and
         `ubca_snapshot_tester.rs`'s doc comment both claim `verified/` is empty and the gate is
         expected to fail: **that is STALE, do not trust it.** Re-measure and record the actual
         result, since everything downstream depends on it.
+        (2026-09-02 20:36)
   - [x] §Q6 (`verified/` is populated — all 179 cases have a frozen twin) — **DECIDED by the
         human 2026-09-02: option (a).** The agent reviews and promotes `output` → `checked`
         case by case as normal; **the human then mass-verifies `checked` → `verified` in one
@@ -213,14 +219,17 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
         `#[ignore]` it** (AGENTS.md). And note the human's mass-verify presumes a real per-case
         review has already happened; it does not replace one.
         (2026-09-02 10:15)
-  - [ ] Also fix `ubca_snapshot_tester.rs`'s stale `einmo_gate_verified` doc comment (it says
+  - [x] Also fix `ubca_snapshot_tester.rs`'s stale `einmo_gate_verified` doc comment (it says
         `verified/` "is still empty here" and the failure "is intentional"). Comment only.
-- [ ] Create worktree at
-      `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer` with branch
+        (2026-09-02 20:36)
+- [x] Create worktree at
+      `/home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer` with branch
       `foop-36-foolish-rendering-sequencer`:
-      `git worktree add -b foop-36-foolish-rendering-sequencer /yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer`
-- [ ] **All work from here happens in the worktree** — including edits to `docs/foop/`
+      `git worktree add -b foop-36-foolish-rendering-sequencer /home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer`
+      (2026-09-02 20:36)
+- [x] **All work from here happens in the worktree** — including edits to `docs/foop/`
       (`foop.md` §worktree discipline).
+      (2026-09-02 20:36)
 
 ---
 
@@ -230,10 +239,11 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 `matches!` replacements, and qualifying every bare "settled". It became its own FOOP —
 **FOOP-56**, scheduled to land **before** this one.*
 
-- [ ] Confirm FOOP-56 has merged, and that `foolish-ubca2` therefore provides
+- [x] Confirm FOOP-56 has merged, and that `foolish-ubca2` therefore provides
       `NyesExt::is_preconstanic()` (with `is_nye()` as its alias), `is_constanic()`,
       `is_constantew()` and `is_conclusive()`. §3's rule is written in that vocabulary; use the
       predicates rather than hand-rolling `matches!(…, Nyes::Constant | Nyes::Independent)`.
+      (2026-09-02 20:36)
 - [ ] If FOOP-56 has **not** merged, this FOOP still works — §3's rule is stated in §0's
       vocabulary regardless of what the code calls things. Note it and proceed; do not do
       FOOP-56's work here.
@@ -246,23 +256,36 @@ serialize on a `static GATE_LOCK: Mutex<()>`; see the module docs at the top of
 change the FOOP's blast radius, BEFORE any code depends on the answer (§Open Questions Q2).
 Q5 was dissolved by the human; the confirmation left below is cheap and worth doing.*
 
-- [ ] (read §3 and §FIR Impact of `FOOP-36.md`)
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] (read §3 and §FIR Impact of `FOOP-36.md`)
+      (2026-09-02 20:51)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run unit tests: `foolish-core::sequencer_tests`, `foolish-ubca2::identifier`. No einmo
       cases yet — this phase adds no rendering.
+      (2026-09-02 20:51 — 28 `sequencer_tests` and 15 `identifier`-filtered tests passed.)
 - [ ] For each §3 table row, inspect the `FirQueryable` accessors in
       `foolish-core/src/fir.rs` (`hs_search`, `hs_operator`, `hs_index`, `hs_concatenation`,
       `hs_stay_foolish`, `hs_stay_fully_foolish`, `hs_brane`, `hs_creation_name`) and record in
       this plan, one line per row: **can the written form be reconstructed from what is
       exposed?**
-  - [ ] Operator written form — glyph + operands from `hs_operator`
+  - [x] Operator written form — glyph + operands from `hs_operator`
+        (2026-09-02 20:51 — reconstructible.)
   - [ ] Search written form — `?` / `~` / `.` / `&`-forms from `hs_search`'s pattern +
         direction + anchored triple. **Note the known hazard:** the pattern is stored
         regex-wrapped (`'^a$'`), so the written name must be recovered from it — confirm the
         unwrapping is total and unambiguous, or report it as needing an accessor.
-  - [ ] Index written form — `#N` / `^` / `$` from `hs_index`'s offset + anchored
-  - [ ] Concatenation written form — juxtaposition from `hs_concatenation`'s elements
-  - [ ] SF / SFF written form — `<`/`>`, `<<`/`>>` + interior
+        **BLOCKED (2026-09-02 20:51):** `SearchQuery` exposes direction, anchor, and value-search
+        data, but `foolish-ubca2/src/fvm_storage.rs::proto_to_core_fir_inner` constructs its
+        `SearchFirBuilder`s without `.direction(...)` and does not carry `FirSpec::Search`'s
+        `contexted` bit. Thus `?=` and `~=` become indistinguishable in the FIR sent to a
+        sequencer, and no `&` form can be recovered. In addition, `^x$` is ambiguous between
+        an identifier/dot search's compiler wrapper and an explicit regex. This violates §3's
+        requirement to render the original valid Foolish search.
+  - [x] Index written form — `#N` / `^` / `$` from `hs_index`'s offset + anchored
+        (2026-09-02 20:51 — reconstructible; `offset` and optional anchor suffice.)
+  - [x] Concatenation written form — juxtaposition from `hs_concatenation`'s elements
+        (2026-09-02 20:51 — reconstructible; elements and optional merged brane are exposed.)
+  - [x] SF / SFF written form — `<`/`>`, `<<`/`>>` + interior
+        (2026-09-02 20:51 — reconstructible from the distinct wrapper accessors and their child.)
 - [x] **Q5 — DISSOLVED by the human 2026-09-02: "constants should always be rendered in
       Foolish."** A conclusive search IS its value, so `result = {y = 1;}?y` rendering `result = 1`
       is correct and complete — the search disappearing is the evaluator succeeding, not
@@ -894,7 +917,7 @@ report it rather than forcing it.*
 ## Phase 8 — Merge
 
 - [ ] Verify all work is complete in
-      `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer` and committed to
+      `/home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer` and committed to
       `foop-36-foolish-rendering-sequencer`
 - [ ] Confirm the scope guard held: `git diff jia --stat` shows **no** changes under
       `foolish-ubca/`, **no** changes to `foolish-core/src/sequencer.rs`, and **no changes to
@@ -928,16 +951,16 @@ report it rather than forcing it.*
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present the human with
-          `cd /yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer` and ask
+          `cd /home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer` and ask
           them to review `einmo_suite2` BEFORE checking the parent checkbox. Say plainly that
           this FOOP **replaces `einmo_suite` with `einmo_suite2`** — 179 inputs copied across
           and re-rendered, `cargo test` now pointed at the new suite, the old one left frozen
           and still green for diffing, and **not** removed. The review question is "is this
           valid, predictable Foolish?", not "does it match".
-  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` if the merge broke any
-- [ ] Cleanup `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer`
+  - [ ] Repair ALL tests in `jia` at `/home/agent/yolo/foolish` if the merge broke any
+- [ ] Cleanup `/home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer`
   - [ ] Check that this `.plan.md` has all but Cleanup checkboxes completed
-  - [ ] Remove `/yolo/foolish/../foolish_worktrees/foop-36-foolish-rendering-sequencer`
+  - [ ] Remove `/home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer`
   - [ ] This is the last sub-task checkbox to be checked in this block
 
 ---
