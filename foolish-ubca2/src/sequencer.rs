@@ -3,7 +3,8 @@
 use foolish_core::fir::Nyes;
 
 use crate::fvm_storage::{
-    ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirPointer, FirSpec, proto_to_core_fir,
+    ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirPointer,
+    FirSpec, StayMarker, proto_to_core_fir,
 };
 use crate::nyes_ext::NyesExt;
 
@@ -226,9 +227,10 @@ impl<'a> Renderer<'a> {
             }
             FirSpec::StayFoolish => self.render_stay(fir, width, current_stmt, false),
             FirSpec::StayFullyFoolish => self.render_stay(fir, width, current_stmt, true),
-            FirSpec::Concatenation { provenance } => {
-                self.render_concatenation(fir, width, current_stmt, *provenance)
-            }
+            FirSpec::Concatenation {
+                provenance,
+                rendering_aid,
+            } => self.render_concatenation(fir, width, current_stmt, *provenance, rendering_aid),
         };
 
         if annotate {
@@ -555,6 +557,7 @@ impl<'a> Renderer<'a> {
         width: usize,
         current_stmt: Option<FirPointer>,
         provenance: ConcatProvenance,
+        rendering_aid: &ConcatRenderingAid,
     ) -> Vec<String> {
         let cursor = FirCursor::new(fir, self.storage);
         if self.storage.get_nyes(fir).is_constanic()
@@ -587,7 +590,19 @@ impl<'a> Renderer<'a> {
         vec![
             children
                 .into_iter()
-                .map(|child| self.render_concat_element(child, width, current_stmt))
+                .enumerate()
+                .map(|(i, child)| {
+                    let element = self.render_concat_element(child, width, current_stmt);
+                    // Put back only the markers the source actually wrote
+                    // (FOOP-36 N1): `build_concat_element` synthesizes a
+                    // StayFoolish around a BARE element, so the FIR alone
+                    // cannot tell `f2` from `<f2>`.
+                    match rendering_aid.marker_at(i) {
+                        Some(StayMarker::Sf) => format!("<{element}>"),
+                        Some(StayMarker::Sff) => format!("<<{element}>>"),
+                        None => element,
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join(separator),
         ]
@@ -599,8 +614,15 @@ impl<'a> Renderer<'a> {
         width: usize,
         current_stmt: Option<FirPointer>,
     ) -> String {
+        // Render the element WITHOUT any SF/SFF wrapper: the caller puts the
+        // marker back from `ConcatRenderingAid`, which is the only thing that
+        // knows whether the source actually wrote one. Unwrapping just SF and
+        // letting SFF render its own marker would double-wrap the SFF case.
         let cursor = FirCursor::new(child, self.storage);
-        if matches!(cursor.node(), FirSpec::StayFoolish) {
+        if matches!(
+            cursor.node(),
+            FirSpec::StayFoolish | FirSpec::StayFullyFoolish
+        ) {
             return cursor
                 .foolish_children()
                 .first()
@@ -1865,8 +1887,9 @@ mod tests {
             evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
         assert!(
-            rendered.contains("o = f1 f2 <<f3>>"),
-            "concatenation elements must be space-separated: {rendered}"
+            rendered.contains("o = f1 <f2> <<f3>>"),
+            "elements must be space-separated, and each element's SOURCE-WRITTEN SF/SFF marker \
+             put back from ConcatRenderingAid: {rendered}"
         );
         assert!(
             !rendered.contains("f1f2"),
@@ -1889,6 +1912,37 @@ mod tests {
             FirCursor::new(body, &storage2).foolish_children().len(),
             3,
             "the re-parsed concatenation must keep all 3 elements: {rendered}"
+        );
+    }
+
+    /// `ConcatRenderingAid` (FOOP-36 N1, concatenation-only): the compiler
+    /// SYNTHESIZES a StayFoolish around a bare concatenation element, so the
+    /// FIR alone cannot tell `f2` from `<f2>`. The aid records which elements
+    /// wrote their marker, and the renderer puts back exactly those — no
+    /// more (it must not mark elements written bare) and no fewer.
+    #[test]
+    fn foolish_concat_rendering_aid_restores_only_source_written_markers() {
+        // Bare elements stay bare — the aid is empty, so nothing is added.
+        // Note this must be an UNMERGED concatenation: a merged one is
+        // conclusive and renders its VALUE, so no element is written at all.
+        let (storage, program) = evaluated_program("{o = missing_a missing_b;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("o = missingˍa missingˍb"),
+            "elements written bare must render bare: {rendered}"
+        );
+        assert!(
+            !rendered.contains('<'),
+            "no marker may be invented for a bare element: {rendered}"
+        );
+
+        // Mixed: only the marked ones come back, with the right marker each.
+        let (storage, program) =
+            evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("o = f1 <f2> <<f3>>"),
+            "each element's own source marker must be restored: {rendered}"
         );
     }
 

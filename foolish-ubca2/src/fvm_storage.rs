@@ -129,6 +129,13 @@ impl ProtoBrane {
         self.nyes = n;
     }
 
+    /// No-op except on `FirSpec::Concatenation`.
+    pub(crate) fn set_concat_rendering_aid(&mut self, aid: ConcatRenderingAid) {
+        if let FirSpec::Concatenation { rendering_aid, .. } = &mut self.spec {
+            *rendering_aid = aid;
+        }
+    }
+
     /// No-op except on `FirSpec::Search`/`FirSpec::Index`.
     pub(crate) fn set_contexted(&mut self, value: bool) {
         match &mut self.spec {
@@ -240,6 +247,46 @@ pub enum ConcatProvenance {
     TailConcatenation,
 }
 
+/// Which concatenation elements wrote their SF/SFF marker in source.
+///
+/// `build_concat_element` synthesizes a `StayFoolish` around a BARE element,
+/// so `f2` and `<f2>` become identical FIR and the renderer cannot tell them
+/// apart. This records the indices that were marked, so it can put back
+/// exactly those. Sparse — bare is the common case, so this is usually empty.
+/// Sequencing only, never evaluation. (FOOP-36 N1, concatenation-only.)
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ConcatRenderingAid {
+    /// `(index, marker)` for source-marked elements, ascending by index.
+    marked: Vec<(usize, StayMarker)>,
+}
+
+/// The marker an element was written with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StayMarker {
+    /// `<x>`
+    Sf,
+    /// `<<x>>`
+    Sff,
+}
+
+impl ConcatRenderingAid {
+    fn record(&mut self, index: usize, marker: StayMarker) {
+        self.marked.push((index, marker));
+    }
+
+    fn is_empty(&self) -> bool {
+        self.marked.is_empty()
+    }
+
+    /// The marker element `index` was written with, if any.
+    #[must_use]
+    pub fn marker_at(&self, index: usize) -> Option<StayMarker> {
+        self.marked
+            .iter()
+            .find_map(|&(i, m)| (i == index).then_some(m))
+    }
+}
+
 /// The name used for an anonymous statement (a bare expression with no LHS
 /// identifier). The sequencer renders a statement named `???` WITHOUT a
 /// `name=` prefix (FOOP-62 #19).
@@ -297,6 +344,9 @@ pub enum FirSpec {
     /// set at most once, after construction (see [`ProtoBrane::helpers_populated`]).
     Concatenation {
         provenance: ConcatProvenance,
+        /// Which elements wrote their SF/SFF marker in source. Sequencing
+        /// only; see [`ConcatRenderingAid`].
+        rendering_aid: ConcatRenderingAid,
     },
     Creation,
     Comparison {
@@ -1756,7 +1806,7 @@ impl<'s> FirCursor<'s> {
 
     pub fn as_concat_provenance(&self) -> ConcatProvenance {
         match self.node() {
-            FirSpec::Concatenation { provenance } => *provenance,
+            FirSpec::Concatenation { provenance, .. } => *provenance,
             _ => ConcatProvenance::Juxtaposition,
         }
     }
@@ -3946,7 +3996,7 @@ mod core_fir_conversion {
                     .state(state)
                     .build()
             }
-            FirSpec::Concatenation { provenance } => {
+            FirSpec::Concatenation { provenance, .. } => {
                 let joined = !cursor.ubc_children().is_empty();
                 let empty_done = state.is_conclusive();
                 if state.is_constanic() && (joined || empty_done) {
@@ -4060,7 +4110,8 @@ mod core_fir_conversion {
 /// file's top level).
 mod arena_compiler {
     use super::{
-        ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec,
+        ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirCursorMut,
+        FirPointer, FirSpec, StayMarker,
     };
 
     use foolish_core::fir::Nyes;
@@ -4204,33 +4255,61 @@ mod arena_compiler {
     /// `parent` is the ALREADY-CREATED arena parent (the
     /// `Concatenation`/`ConcatHelper` node), so each wrapper here is one
     /// `create_child` call.
+    /// Returns the marker this element WROTE in source, if any — `None` when
+    /// the wrapper was synthesized here rather than written. Recorded into
+    /// the concatenation's [`ConcatRenderingAid`] so the renderer can put
+    /// back exactly the markers the Foolisher typed.
     fn build_concat_element(
         storage: &mut FVMStorage,
         ast: Astn,
         parent: FirPointer,
         under_sff: bool,
-    ) -> FirPointer {
+    ) -> Option<StayMarker> {
+        let written = match &ast {
+            Astn::StayFoolish { .. } => Some(StayMarker::Sf),
+            Astn::StayFullyFoolish { .. } => Some(StayMarker::Sff),
+            _ => None,
+        };
         match classify_concat_element(&ast) {
-            ConcatElemKind::BareBrane => build_fir(storage, ast, Some(parent), true),
-            ConcatElemKind::BareConcat => build_fir(storage, ast, Some(parent), under_sff),
+            ConcatElemKind::BareBrane => {
+                build_fir(storage, ast, Some(parent), true);
+            }
+            ConcatElemKind::BareConcat => {
+                build_fir(storage, ast, Some(parent), under_sff);
+            }
             ConcatElemKind::BareSearch => {
                 let sf = parent.create_child(storage, FirSpec::StayFoolish);
                 build_fir(storage, ast, Some(sf), under_sff);
-                sf
             }
-            ConcatElemKind::SfSearch => build_fir(storage, ast, Some(parent), under_sff),
+            ConcatElemKind::SfSearch => {
+                build_fir(storage, ast, Some(parent), under_sff);
+            }
             ConcatElemKind::SfBrane => {
                 let sff = parent.create_child(storage, FirSpec::StayFullyFoolish);
                 build_fir(storage, ast, Some(sff), false);
-                sff
             }
-            ConcatElemKind::Error => parent.create_child(
-                storage,
-                FirSpec::Nk {
-                    reason: "invalid concatenation element".to_string(),
-                },
-            ),
+            ConcatElemKind::Error => {
+                parent.create_child(
+                    storage,
+                    FirSpec::Nk {
+                        reason: "invalid concatenation element".to_string(),
+                    },
+                );
+            }
         }
+        written
+    }
+
+    /// Writes the collected aid onto an already-built concatenation node.
+    fn set_concat_rendering_aid(
+        storage: &mut FVMStorage,
+        node: FirPointer,
+        aid: ConcatRenderingAid,
+    ) {
+        if aid.is_empty() {
+            return;
+        }
+        storage.with_mut(node, |fir| fir.set_concat_rendering_aid(aid));
     }
 
     /// `parent: None` means build a ROOT (self-parented via
@@ -4431,11 +4510,16 @@ mod arena_compiler {
                     storage,
                     FirSpec::Concatenation {
                         provenance: ConcatProvenance::Juxtaposition,
+                        rendering_aid: ConcatRenderingAid::default(),
                     },
                 );
-                for e in elements {
-                    build_concat_element(storage, e, node, under_sff);
+                let mut aid = ConcatRenderingAid::default();
+                for (i, e) in elements.into_iter().enumerate() {
+                    if let Some(marker) = build_concat_element(storage, e, node, under_sff) {
+                        aid.record(i, marker);
+                    }
                 }
+                set_concat_rendering_aid(storage, node, aid);
                 node
             }
             Astn::TailConcatenation { elements } => {
@@ -4443,11 +4527,19 @@ mod arena_compiler {
                     storage,
                     FirSpec::Concatenation {
                         provenance: ConcatProvenance::TailConcatenation,
+                        rendering_aid: ConcatRenderingAid::default(),
                     },
                 );
-                for e in elements.into_iter().rev() {
-                    build_concat_element(storage, e, node, under_sff);
+                // Elements are stored REVERSED (FOOP-65 §5.2), so the index
+                // recorded here is the STORED index, matching what the
+                // renderer walks.
+                let mut aid = ConcatRenderingAid::default();
+                for (i, e) in elements.into_iter().rev().enumerate() {
+                    if let Some(marker) = build_concat_element(storage, e, node, under_sff) {
+                        aid.record(i, marker);
+                    }
                 }
+                set_concat_rendering_aid(storage, node, aid);
                 node
             }
             Astn::StayFoolish { expr } => {
@@ -5754,6 +5846,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
             provenance: ConcatProvenance::Juxtaposition,
+            rendering_aid: ConcatRenderingAid::default(),
         });
         let brane1 = cat.create_child(
             &mut storage,
@@ -5799,6 +5892,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
             provenance: ConcatProvenance::Juxtaposition,
+            rendering_aid: ConcatRenderingAid::default(),
         });
         let brane = cat.create_child(
             &mut storage,
@@ -7542,6 +7636,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
             provenance: ConcatProvenance::Juxtaposition,
+            rendering_aid: ConcatRenderingAid::default(),
         });
         let brane1 = cat.create_child(
             &mut storage,
@@ -7616,6 +7711,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let cat = storage.make_root(FirSpec::Concatenation {
             provenance: ConcatProvenance::Juxtaposition,
+            rendering_aid: ConcatRenderingAid::default(),
         });
         let brane1 = cat.create_child(
             &mut storage,
