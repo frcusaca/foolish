@@ -1,0 +1,29 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/23/value_search_unanchored.foo
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 5d5637c3
+producer-diff: sha256:d7e3368e4c711289fc5883097e5444c475b0ddac48bc02f729b740ed5766224e
+generated: 2026-09-03T21:54:38.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	pi = 3;
+	e2 = 2;
+	found = ?=3;
+	nope = ?=9;
+	named = ?e.*=2;
+}
+①
+{
+  pi = 3;
+  e2 = 2;
+  found = 3;
+  nope = ?=9;
+  named = 2
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:874d258b882baddefe62a544d26326b6dbb7dde7e2951de3dbb239b96c472b66","timestamp":"2026-09-03T21:54:38.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:874d258b882baddefe62a544d26326b6dbb7dde7e2951de3dbb239b96c472b66","timestamp":"2026-09-03T21:54:38.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"ofy9nKPp1L7tpobhlSo9eHWYj0zU7ZNm0T23ORURUTj3c2jd0mR4VkFLeLndkxdT+UsDDhlqMz2jvyAZfC3GAw==","produced_by":"einmo 0.1.0 sha256:874d258b882baddefe62a544d26326b6dbb7dde7e2951de3dbb239b96c472b66","timestamp":"2026-09-03T21:54:38.000000000Z"}
+{"key":"stage:checked","pubkey":"63e36903fb388a10cc3802df5f7021fd4f3ef73fb95a0794372edab1018db8ae","signs":"prior-bytes","signature":"PkKcmdf9MIQB+C/A4Jls3Tj6Z1QysveVgAg8BJLB77ah2zoOUkH3vX1a66di3BbN6Sju2Z2le2FA033T0JGrBw==","produced_by":"einmo 0.1.0 sha256:d86a04bede04d2b43382d6c0e75f019f7a45913551ceca2631543ff24225a42f","timestamp":"2026-09-04T22:10:45.000000000Z"}

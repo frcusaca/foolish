@@ -1082,34 +1082,34 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
    settled case that became NK, is **a bug in this FOOP**, not a new baseline. Report it, do
    not promote it.
 
-- [ ] Confirm the rest of the tree is green — `foolish-ubca`'s gates and `einmo_suite/`'s
+- [x] Confirm the rest of the tree is green — `foolish-ubca`'s gates and `einmo_suite/`'s
       three gates all still pass, unchanged (T5)
-- [ ] **`einmo_suite2/verified/` is EMPTY** — it is a brand-new suite, so no case here has a
+- [x] **`einmo_suite2/verified/` is EMPTY** — it is a brand-new suite, so no case here has a
       frozen twin and nothing is at risk of being overwritten. (Contrast `einmo_suite/`, whose
       `verified/` holds all 179 human-signed artifacts and which this FOOP does not touch.)
       Promote `output` → `checked` in `einmo_suite2` as normal; **leave `checked` → `verified`
       entirely to the human** (§Q6).
-- [ ] **T12 — value non-regression. Diff each case against its `einmo_suite/checked/`
+- [x] **T12 — value non-regression. Diff each case against its `einmo_suite/checked/`
       counterpart** — the old rendering is still on disk precisely so this is possible. The
       question for each is not "does this match" (it must not) but **"is this the same program,
       said in Foolish?"** The rendering changes; the program's meaning must not. A `12` that
       became a `13`, or a settled case that became NK, is **a bug in this FOOP, not a new
       baseline** — report it, do not promote it. Mechanise the comparison where the shapes
       allow and read it where they do not.
-- [ ] Re-read the in-force specifications the cases exercise: `FOOP-36.md` §3/§4/§5, plus
+- [x] Re-read the in-force specifications the cases exercise: `FOOP-36.md` §3/§4/§5, plus
       `README.md` §"The Unknown" and `FOOP-23.md` §Specification for every NK result.
-- [ ] Review `regression/` — 4 cases, each named individually in the sub-boxes
-- [ ] Review `foop/9/` (2), `foop/13/` (5), `foop/16/` (1) — 8 cases
-- [ ] Review `foop/23/` (11) — search semantics; the NK/ECONSTANIC distinction matters most here
-- [ ] Review `foop/33/` (13) — creation original names (`'True`) must survive §3 unchanged
-- [ ] Review `foop/41/` (1), `foop/42/` (1), `foop/62/` (5), `foop/65/` (4) — 11 cases
-- [ ] Review `misc/` (132) — split into named sub-blocks of at most 20 cases each; name every
+- [x] Review `regression/` — 4 cases, each named individually in the sub-boxes
+- [x] Review `foop/9/` (2), `foop/13/` (5), `foop/16/` (1) — 8 cases
+- [x] Review `foop/23/` (11) — search semantics; the NK/ECONSTANIC distinction matters most here
+- [x] Review `foop/33/` (13) — creation original names (`'True`) must survive §3 unchanged
+- [x] Review `foop/41/` (1), `foop/42/` (1), `foop/62/` (5), `foop/65/` (4) — 11 cases
+- [x] Review `misc/` (132) — split into named sub-blocks of at most 20 cases each; name every
       case. Group by feature (sf/sff, seek, search, operators, unicode, alarms) so each block
       is reviewed against one part of the spec.
-- [ ] Write the justification summary into this plan or the commit message: for each
+- [x] Write the justification summary into this plan or the commit message: for each
       subdirectory, what changed in the rendering and why it is spec-correct; call out by name
       any case whose output surprised you.
-- [ ] **Report ALL accumulated doubts to the human in ONE statement** — or record "no doubts".
+- [x] **Report ALL accumulated doubts to the human in ONE statement** — or record "no doubts".
       Blocking doubts stop here; non-blocking ones are reported alongside (AGENTS.md
       §"Accumulate doubts; report them once, at the end").
 - [ ] `einmo promote output to checked foolish-ubca2/einmo_suite2`
@@ -1117,6 +1117,57 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 - [ ] Re-run `einmo_suite/`'s three gates — all must STILL pass, untouched
 
 ---
+
+### 6z — Review record (2026-09-04)
+
+**Method.** The rendering rules were frozen first (human, 2026-09-04) so the review could not be
+invalidated mid-pass. Outputs were regenerated against the frozen renderer, then classified by
+`t12_report_value_differences_old_vs_new`, which compares all 179 `einmo_suite/checked/` outputs
+against `einmo_suite2/output/` at VALUE level — normalizing away whitespace, `name=` spacing,
+line splitting, the old renderer's brane-opener state tokens, and its `?(...)`/`#(...)` machinery
+groups, so only genuine value or structural differences survive.
+
+**Result: 179 old cases, 0 missing, 76 value-differing, 103 byte-identical after normalization.**
+
+The 76 were triaged into three bands and each band discharged:
+
+- **14 "risky"** — digits shrank or reordered, the signature of a lost value. ALL read
+  individually. Every one turned out to be the old renderer's FIR machinery disappearing, not
+  data: `?(result=42, pattern='^x$', UNANCHORED)` → `42`, `#(offset=-99, UNANCHORED, NK)` →
+  `#-99`, `??? (division by zero)` → `1 / 0`, and the ~90-line `⨃(elements=3, ...)` dump in
+  `misc/concat_sf_f_more` → 15 readable lines with `oo = -54` unchanged.
+- **21 "additive"** — digits gained. 6 explained by `???` → the written expression; the other 15
+  read individually (`seek_beyond_start`, `named_brane_with_search`, `offset_access_out_of_bounds`,
+  `search_pattern_basics`, `seek_negative_clamping`, and the seek/contexted family). Two of the 15
+  had IDENTICAL digit strings and were flagged only by the prefix test. The rest gain digits
+  because an ANCHOR is now visible where the old form hid it inside machinery — strictly more
+  information, no value moved.
+- **41 "no digit change"** — every number identical; only formatting and annotations moved.
+
+**The disqualifying check, run mechanically over all 179:** counted NK markers (`???`, bare `NK`)
+in each old output against `!! NK`/`???` in each new one. **Zero cases where the NK count
+increased** — no settled value became NK anywhere in the corpus, which is the failure the gate
+exists to catch.
+
+**Bugs this review found, all repaired before promotion** (each with a regression test):
+
+1. Settled head/tail rendered the attached form instead of its value, losing `first = 10`
+   (`foop/41/offset_access_forward`) — bypassed FOOP-75 §4.1's transparency rule.
+2. An NK brane reverted to its written search, hiding the found structure AND the members that
+   did resolve (`misc/nested_brane_boundary`) — became §5.2.
+3. A name-and-value search dropped its name gate, rendering `a~=10` for `a~tmp_.*=10`
+   (`foop/23/value_search_name_and_value`) — a DIFFERENT search, not a formatting loss.
+4. The step-cap banner fired on any alarmed node, splitting a statement mid-expression
+   (`foop/23/value_search_pattern_error`).
+5. Unmerged concatenation joined elements with nothing, fusing `f1`/`f2` into the single
+   identifier `f1f2` and destroying an element — 3 children re-parsed as 2
+   (`misc/concat_sf_f_more`). Neither property check catches this: it parses AND round-trips,
+   because it is consistently wrong.
+
+**Doubts: none blocking.** One noted for the record: the NK reason for an operator chain reads
+`operator nk`, which is vaguer than the old `DIV-BY-ZERO: Division by zero produces NK`. Not
+wrong — the division is visible in the rendered `10 / 0 * 5` — but a small readability
+regression worth revisiting if it bothers a reviewer.
 
 ## Phase 6.5 — Propagate this FOOP's requirements into FOOP-26 and FOOP-46
 
