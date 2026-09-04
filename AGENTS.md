@@ -892,7 +892,19 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-09-03
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added §MISC "A Checkbox Marks What Needs Human Action", placed after "Bold Marks a
+**Changes**: Amended §MISC "Concluding Paragraphs Are an Index, Not a Summary" with a
+WHETHER-to-write-one rule, placed near the top of the subsection (after the "what serves the
+reader is an INDEX" paragraph, before the labelling how-to) so a reader learns whether the
+section applies before reading how to apply it. A concluding section is NOT automatic — use best
+judgement, against two triggers, either of which makes one a MUST: at least TWO separate logical
+issues under discussion (precisely when the reader needs an index to navigate between them), or
+an output longer than roughly 1500 tokens / 3500 characters (length alone makes scrolling back
+hard enough to warrant it, even for one issue). A short single-issue response wants none: the
+human's own worked anti-example is "Division by zero is not handled." followed by "---- summary,
+division by zero is not handled." — pure restatement that spends the reader's attention for
+nothing. The triggers govern WHETHER, not HOW: once either is met, the rest of the subsection
+applies in full (index form, logical labels, positional markers, bolded separator). Prior entry:
+added §MISC "A Checkbox Marks What Needs Human Action", placed after "Bold Marks a
 Short Span…" and before "When in Doubt", ending the run of presentation guidance with the
 actionable-signal rule. Even with the orienting introduction, the logical labels and the concluding
 index, it is still often not plainly obvious whether a section needs the human to DO something or
@@ -1088,6 +1100,23 @@ relaxed.** A conclusion here need not restate anything; the human just read it.
 **What serves the reader is an INDEX: a short closing paragraph saying WHERE above to look for
 each thing.** The human reads on a scrolling terminal, and the conclusion's job is to help them
 scroll BACK to the part they want.
+
+**First decide WHETHER a conclusion is wanted at all — it is not automatic.** Use best
+judgement, against two triggers, either of which makes one a MUST:
+
+- **At least TWO separate logical issues** are under discussion. That is exactly when the reader
+  needs an index to navigate back between them.
+- **The output runs longer than roughly 1500 tokens or 3500 characters.** Length alone makes
+  scrolling back hard enough to warrant the index, even for a single issue.
+
+**A short, single-issue response wants no conclusion.** Restating one line in the line beneath
+it is empty ritual and spends the reader's attention for nothing: "Division by zero is not
+handled." followed by "---- summary, division by zero is not handled." says the same thing
+twice. Just say it once and stop.
+
+The triggers govern WHETHER to write a conclusion, not HOW. Once either is met, everything
+below applies in full — the index form, the logical labels, the positional markers, the bolded
+separator.
 
 That only works if the items above are **LABELLED** with markers that are easy to eyeball and
 easy to search for. Bolded section numbers and letters do this well: **A**, **B**, **C**;
