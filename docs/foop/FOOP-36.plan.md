@@ -1420,6 +1420,19 @@ empty, so this case has no frozen twin.
       and FOOP-46 §4.2, recorded in FOOP-36 §3.2.1; `einmo_suite/` still present with its 179
       inputs, NOT removed; `cargo fmt --all --check` clean and `cargo clippy -p foolish-ubca2
       --all-targets` reports zero warnings from this crate's own sources. 180/180 tests pass.)
+- [ ] **BLOCKING (2026-09-04) — §2 Property 3 is violated by N4 and the fix is not in.**
+      Round-trip was promoted from a stated property to a **requirement** of `Ubca2Sequencer`
+      (human): the rendering must MEAN what the input meant, not merely parse and reach a fixed
+      point. `FOOP-36.md` §N4 records a reproduced violation — an unnamed creation as a value
+      renders `⬤`, which re-parses as a BRAND-NEW creation, so one shared creation becomes two.
+      Two proposals are written up (N4.a revert to the original Foolish; N4.b `↑` up-indexers,
+      whose first index must be negative since UBCa cannot look forward). **Neither is
+      implemented.** Decide and land one before merging, or record an explicit human decision to
+      merge with the defect outstanding.
+      - [ ] Note the same gap admitted the fused-`f1f2` concatenation bug (fixed). Both passed
+            Properties 1 and 2 while meaning something else, so consider whether a
+            semantic-identity check belongs in the corpus tests — §Rejected Alternatives F now
+            records that Property 3 has no mechanical check and is enforced by reading.
 - [ ] Merge `foop-36-foolish-rendering-sequencer` to `jia`
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!

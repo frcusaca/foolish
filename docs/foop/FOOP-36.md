@@ -379,11 +379,29 @@ Then:
    compile `P`, step to finish, output `R1`; then compile `R1`, step to finish, output `R2` —
    and `R2 == R1`. §Test Plan T2 states the six steps as a test writes them.
 
-Property 2, not "R evaluates to the same FIR", is the testable contract. It is strictly
-weaker than semantic identity and strictly stronger than "it parses" — and it is the property
-that actually matters for a snapshot baseline, because it says the rendering has reached a
-fixed point with nothing left to lose. §Rejected Alternatives F records why the stronger
-property (semantic identity of the re-parsed FIR) is not demanded.
+3. **`R` MEANS what `P` meant.** Re-parsing `R` yields a program with the same referential
+   structure — the same sharing, the same element counts, the same creations. **This is a
+   REQUIREMENT of `Ubca2Sequencer`, not an aspiration** (human, 2026-09-04).
+
+**Properties 1 and 2 are not sufficient, and this FOOP has the evidence.** Two defects satisfied
+both while meaning something else, and neither mechanical check could see it:
+
+| Defect | Rendered | Why 1 and 2 passed | What actually broke |
+|---|---|---|---|
+| Fused concatenation (fixed) | `o = f1 <f2> <<f3>>` → `o = f1f2<<f3>>` | `f1f2` is a valid identifier, and the wrong text re-renders to itself | 3 elements re-parsed as 2 — one destroyed |
+| Unnamed creation as value (§N4, OPEN) | `what_was_a = a` → `whatˍwasˍa = ⬤` | `⬤` parses, and re-renders to `⬤` | a REFERENCE became a fresh creation — one shared creation became two |
+
+Both are **consistently wrong**, which is exactly what Property 2 cannot catch: a fixed point of
+a broken rendering is still a fixed point. Property 1 is weaker still. So the pair of them
+certifies "the output is stable Foolish", never "the output is THIS program".
+
+**Earlier revisions of this section said semantic identity was "not demanded" and pointed at
+§Rejected Alternatives F. That is superseded** — both defects entered through precisely that
+gap. Property 3 is now in force; F is retained below as the record of a position this FOOP
+held and abandoned, with the reason.
+
+Property 2 remains the *operationally convenient* check — cheap, textual, and what a snapshot
+baseline compares — but it is the floor, not the contract.
 
 This gives the suite a **new, free, general invariant**: every einmo case's own OUTPUT is a
 valid INPUT, so the whole corpus can be re-fed to the evaluator as a self-check. §Test Plan
@@ -1456,15 +1474,28 @@ cross-crate concern owned by FOOP-54/64), and `!!` comments are already parser-d
 they cost nothing and keep the OUTPUT a single self-contained Foolish program. Worth
 revisiting if annotation volume grows.
 
-### F. Demand semantic identity instead of idempotence (§2)
+### F. Demand semantic identity instead of idempotence (§2) — **SUPERSEDED, not rejected**
 Require that re-parsing `R` yield a FIR *equivalent* to `eval(P)`, rather than merely that
-rendering reach a fixed point. Rejected on two grounds. First, it is not well-defined without
-a FIR equivalence relation, which does not exist in the codebase and would be a substantial
-FOOP of its own. Second, it is false in general by design: a search that settled ECONSTANIC
-renders as its written form, and re-parsing that form in a *different* context may legitimately
-resolve it — recoordination is the language working correctly, not the renderer losing
-information. Idempotence captures what a baseline actually needs (nothing further to lose)
-without asserting something the language does not promise.
+rendering reach a fixed point.
+
+**This was rejected, and that rejection is now overturned** (human, 2026-09-04): §2 Property 3
+makes meaning-preservation a REQUIREMENT of `Ubca2Sequencer`. Two defects entered through exactly
+this gap — the fused `f1f2` concatenation and the `⬤` unnamed creation (§N4) — each satisfying
+Properties 1 and 2 while meaning something else. The entry is kept as the record of a position
+this FOOP held and abandoned.
+
+The original first objection stands as a **cost**, not a refutation: there is no FIR equivalence
+relation in the codebase, so Property 3 currently has no mechanical check and is enforced by
+reading. Building one is plausibly its own FOOP.
+
+**The original second objection remains VALID and constrains how Property 3 must be defined.**
+Semantic identity is false in general if taken naively: a search that settled ECONSTANIC renders
+as its written form, and re-parsing that form in a *different* context may legitimately resolve
+differently — recoordination is the language working correctly, not the renderer losing
+information. So Property 3 asks for **the same referential structure** — the same sharing, the
+same element counts, the same creations — **not** the same final values in every context. Both
+recorded defects violate it under that reading (an element destroyed; a shared creation split),
+while ECONSTANIC recoordination does not.
 
 ## Open Questions
 
@@ -1533,8 +1564,9 @@ written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the hu
 
 ## Proposed Next Steps
 
-*Work this FOOP deliberately did not do, recorded so it is not re-derived. Neither is committed
-to; both are proposals for a future FOOP to accept or reject.*
+*Work this FOOP deliberately did not do, recorded so it is not re-derived. N1-N3 are proposals
+for a future FOOP to accept or reject. **N4 is different: it is a BLOCKING defect** against §2's
+Property 3, listed here only because its fix needs machinery this FOOP cannot land on its own.*
 
 ### N1. Instrument an additional element on the FIR to aid rendering
 
@@ -1604,10 +1636,16 @@ or inventing a convention the parser does not know. A future FOOP defines EOL co
 semantics; the wrapping rules that build on them, and the 108-column budget they would honour,
 belong with it.
 
-### N4. An unnamed creation as a VALUE must not render `⬤`
+### N4. An unnamed creation as a VALUE must not render `⬤` — **BLOCKING**
 
-**A Property 1 violation, found by the human reviewing `foop/33/creation/referential_equality`
-(2026-09-04). Not yet fixed.**
+**A §2 Property 3 violation, found by the human reviewing
+`foop/33/creation/referential_equality` (2026-09-04). Open.**
+
+**This is BLOCKING, not a deferred nicety** (human, 2026-09-04). Round-trip is a REQUIREMENT of
+`Ubca2Sequencer`, so a known, reproduced violation of it is a defect against this FOOP's own
+contract — it is listed here rather than in the bug list only because the fix needs either N1's
+rendering aid (N4.a) or new syntax (N4.b), neither of which is this FOOP's to land unilaterally.
+**It must be settled before FOOP-36 can be called complete.**
 
 **The rule that should hold.** When a creation is the VALUE of a statement, it renders as its
 ORIGINAL NAME — `'True`, `'False`, `'a` (FOOP-33's named-creation rule, already implemented and
@@ -1638,15 +1676,47 @@ passes, because it is *consistently* wrong). Only reading it finds it. This is n
 defect of that shape, which argues the corpus checks need a semantic-identity property, not only
 a textual one.
 
-**The fix, per the human: revert to the original Foolish.** When the value is a creation with no
-firm name, render the ORIGINAL EXPRESSION that produced it rather than `⬤` — e.g.
-`result = ?a&#1` stays written as that search. This is §3's existing predicate applied to one
-more case: there is no renderable value, so the written form is what the reader gets, and the
-next compiler re-derives the same creation by re-running the expression.
+**Two proposals, both from the human (2026-09-04). Either satisfies §2's Property 3; they are
+not exclusive, and the second is the more general.**
 
-**Implementation note.** This needs the same information N1 describes — the FIR records the
-creation but not the expression that reached it — so N4 is most naturally done with N1's
-rendering aid rather than before it.
+#### N4.a — Revert to the original Foolish
+
+When the value is a creation with no firm name, render the ORIGINAL EXPRESSION that produced it
+rather than `⬤`: `result = ?a&#1` stays written as that search.
+
+This is §3's existing predicate applied to one more case — there is no renderable value, so the
+reader gets the written form, and the next compiler re-derives the *same* creation by re-running
+the expression. Cheap, and consistent with everything §3 already does.
+
+**Needs N1's rendering aid**: the FIR records the creation but not the expression that reached
+it, so N4.a is most naturally done alongside N1 rather than before it.
+
+#### N4.b — Address it positionally, with `↑` up-indexers
+
+Introduce an **arrow indexer** giving *non-searching* access to a creation by position, so a
+creation is named by where it sits rather than by re-running a search.
+
+`↑` is the truly original one: **it pops up one level in the brane FIR tree** — my brane's
+statement. Repeated, it climbs further. After climbing, ordinary index steps descend:
+
+```foolish
+{....{ x = some_creation}}     could render     {...{a = ↑↑↑#-1&#4&#2}}
+```
+
+**The first index after `↑` MUST be negative.** This is not a stylistic preference but UBCa's
+operational semantics: at the moment you pop up a level, the statements *after* your own do not
+yet exist. **The future is as yet unknown and not searchable** — Foolish cannot look forward in
+its own brane (AGENTS.md §Searches says the same of forward forms). So the first hop off the
+arrow must reach *backward*, into what has already been evaluated.
+
+Subsequent indices may be positive (`&#4`, `&#2` above): once the first negative step has landed
+on an earlier statement, that statement's brane is fully known, and indexing within it is
+ordinary contexted navigation.
+
+**Why this is the more general answer.** It gives every unnamed value a canonical, non-searching
+address, not just creations — and unlike N4.a it does not depend on remembering the original
+expression, so it needs no rendering aid. The cost is new syntax: `↑` must be lexed, parsed,
+specified against the existing `&`-contexted forms, and given its own FOOP.
 
 ## References
 
@@ -1673,21 +1743,23 @@ rendering aid rather than before it.
 
 **Date**: 2026-09-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added **§Proposed Next Steps N4** — an unnamed creation as a VALUE must not render
-`⬤`. Found by the human reviewing `foop/33/creation/referential_equality`. A creation with a
-firm name renders it (`'True`, `'a` — FOOP-33's rule, working); one WITHOUT a name has nothing
-to render, and `⬤` is a creation EXPRESSION, so re-parsing makes a BRAND-NEW creation rather
-than a reference — one shared creation becomes two, changing referential identity. Verified via
-FOOP-33's no-rename rule, which fires only on an already-named creation:
-`{'n = ⬤; alias = 'n; 'x = alias;}` renders `'x = 'n` while the `⬤`-rendered form renders
-`'x = ⬤`. Like the fused-`f1f2` bug it passes BOTH properties — it parses and it round-trips
-stably, because it is consistently wrong — which argues the corpus needs a semantic-identity
-check, not only a textual one. The fix (human): revert to the original Foolish, which is §3's
-existing predicate applied to one more case; most naturally done with N1's rendering aid, since
-the FIR records the creation but not the expression that reached it. Prior entry: warning
-configuration (`SequenceWarnings`, one switch per kind, defaulting to warn about the abnormal
-and stay quiet about the ordinary), §4.4's step-cap banner above the program, §5.2's NK-brane
-rule and §5.3's BRANING revert, plus §4.0, §4.1.1, §4.3 and N1–N3.
+**Changes**: **Round-trip promoted from a property to a REQUIREMENT** (human). §2 gains
+**Property 3**: `R` must MEAN what `P` meant — the same referential structure, sharing, element
+counts and creations. Properties 1 and 2 are demonstrably insufficient, and this FOOP has two
+worked examples that satisfied both while meaning something else: the fused `f1f2` concatenation
+(fixed) and the `⬤` unnamed creation (**§N4, OPEN**). Both are *consistently* wrong, and a fixed
+point of a broken rendering is still a fixed point. **§Rejected Alternatives F is therefore
+SUPERSEDED rather than rejected** — its first objection (no FIR equivalence relation exists)
+survives as a COST, meaning Property 3 currently has no mechanical check and is enforced by
+reading; its second objection survives as a CONSTRAINT on how Property 3 is defined, since
+ECONSTANIC recoordination legitimately resolves differently in a new context, so Property 3 asks
+for referential structure, not identical values everywhere. **§N4 is marked BLOCKING** and the
+plan gains a blocking checkbox ahead of the Phase 8 merge. N4 now carries both human proposals:
+**N4.a** revert to the original Foolish (needs N1's rendering aid), and **N4.b** `↑` up-indexers
+giving non-searching positional access — where **the first index after `↑` MUST be negative**,
+because at the moment of popping up a level the statements after one's own do not yet exist:
+UBCa cannot look forward, the future being unknown and unsearchable. Prior entry: added §N4
+itself, recording the defect and its verification via FOOP-33's no-rename rule.
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
