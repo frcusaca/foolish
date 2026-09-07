@@ -607,6 +607,25 @@ owns (plan Phase 6.5), so the convergence is on the record in all three places r
 depending on whoever lands last noticing it. Since the designs already agree, those sections
 should be short — a statement of what rendering needs, and a pointer here.
 
+**Written, 2026-09-04** (after Phase 6, so both are stated from real promoted output rather than
+speculation):
+
+- **`FOOP-26.md` §4.5.1** — "TODO: rendering requirements from FOOP-36", placed beside §4.5
+  ("what a concatenation answers about itself"), which is exactly the question rendering asks.
+  States the merged/unmerged split, the requirement that the merged-or-not question stay
+  askable once concatenation is an operator, that `⨃` is never emitted, and that
+  `rendering_aid` must survive.
+- **`FOOP-46.md` §4.2** — "TODO: rendering requirements from FOOP-36", keyed to its §4. Leads
+  with the Gathering ↔ juxtaposition / Joined ↔ brane convergence, then states the single
+  detail §4 must settle: option 1 deletes `ConcatHelper`, yet §3.2 renders a merged
+  concatenation and a plain brane differently, so either the FIR keeps something that says
+  which it is, or §3.2 is amended to render them alike. Either is acceptable; deciding is the
+  requirement. (`FOOP-46.md` §4.1 separately carries the `ConcatRenderingAid` obligation.)
+
+**Neither section was hard to write** — the plan flagged difficulty as the signal that the
+designs had diverged. They have not: §3.2 needs no revision, and the merged/unmerged
+distinction remains renderable under both FOOPs' current direction.
+
 **Why this is not a special case.** It falls straight out of §3: a merged concatenation has a
 value, so render the value; an unmerged one does not, so render it as written, and "as written"
 means each constituent gets the same treatment. The only thing §3.2 adds is that the

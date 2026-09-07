@@ -1179,64 +1179,76 @@ output exists and the requirement can be stated from evidence rather than specul
 section turns out to be hard to write, that is the signal that the designs have diverged —
 report it rather than forcing it.*
 
-- [ ] (read §3.2 and §3.2.1 of `FOOP-36.md`)
-- [ ] Establish relevant tests for this phase: none — it edits documentation only. Confirm at
+- [x] (read §3.2 and §3.2.1 of `FOOP-36.md`)
+- [x] Establish relevant tests for this phase: none — it edits documentation only. Confirm at
       the end that `einmo_suite2`'s gates and `foolish-ubca`'s are still green.
-- [ ] **Check first whether either FOOP has begun.** `docs/foop/FOOP-26.md` and
+- [x] **Check first whether either FOOP has begun.** `docs/foop/FOOP-26.md` and
       `docs/foop/FOOP-46.md` — read the `begun:` frontmatter and check for a worktree. If
       either is actively being edited, **coordinate with the human before writing into it**
       rather than editing under another agent.
 
 ### 6.5a — FOOP-26: what concatenation must still expose for rendering
 
-- [ ] Add a section to `FOOP-26.md` (suggested: under its §4, the concatenation chapter) headed
+- [x] Add a section to `FOOP-26.md` (suggested: under its §4, the concatenation chapter) headed
       so it is clearly an obligation, e.g. **"§4.x TODO — rendering requirements from FOOP-36"**.
-- [ ] State the requirement concretely, using the output Phase 6 actually produced. Frame it
+- [x] State the requirement concretely, using the output Phase 6 actually produced. Frame it
       as what rendering *needs*, not as a constraint imposed on FOOP-26 — the designs agree:
-  - [ ] FOOP-36 §3.2 renders a **merged** concatenation as the merged brane (`{a=1, b=2, c=3}`)
+  - [x] FOOP-36 §3.2 renders a **merged** concatenation as the merged brane (`{a=1, b=2, c=3}`)
         and an **unmerged** one as the juxtaposition with each constituent recursively
         simplified (`{a=1, aa=3}{b=notfound}notˍfoundˍbrane{d=3}`).
-  - [ ] It distinguishes them by `hs_concatenation()` returning `(elements, merged)` with
+  - [x] It distinguishes them by `hs_concatenation()` returning `(elements, merged)` with
         `merged.is_some()`.
-  - [ ] Therefore: **after concatenation becomes an operator, a rendering caller must still be
+  - [x] Therefore: **after concatenation becomes an operator, a rendering caller must still be
         able to ask "did this merge, and if so what is the brane; if not what are the
         constituents?"** Name that requirement; FOOP-26 chooses how to satisfy it.
-  - [ ] Note that `⨃` is never emitted — it is not input syntax — so whatever FOOP-26 does must
+  - [x] Note that `⨃` is never emitted — it is not input syntax — so whatever FOOP-26 does must
         not depend on a marker the renderer refuses to print.
-- [ ] Include a pointer back to `FOOP-36.md` §3.2/§3.2.1 so the reasoning is one click away.
+- [x] Include a pointer back to `FOOP-36.md` §3.2/§3.2.1 so the reasoning is one click away.
 
 ### 6.5b — FOOP-46: telling a merged concatenation from a plain brane
 
-- [ ] Add the corresponding section to `FOOP-46.md`, keyed to its **§4** ("the operator's
+- [x] Add the corresponding section to `FOOP-46.md`, keyed to its **§4** ("the operator's
       `ubc_children` should be a brane"), e.g. **"§4.x TODO — rendering requirements from
       FOOP-36"**.
-- [ ] Lead with the convergence (§3.2.1): FOOP-46's **Gathering** phase is what §3.2 renders as
+- [x] Lead with the convergence (§3.2.1): FOOP-46's **Gathering** phase is what §3.2 renders as
       the juxtaposition, and its **Joined** phase is what §3.2 renders as the brane. The
       rendering is the natural display of what §4 builds; §4 needs no new mechanism for it,
       since `settled_constanic_result`/`value()` already return the brane once constanic — as §4's own
       text observes.
-- [ ] Then state the one detail §4's implementation must settle:
-  - [ ] §4's option 1 populates `ubc_children` with a `FirSpec::Brane` and **deletes
+- [x] Then state the one detail §4's implementation must settle:
+  - [x] §4's option 1 populates `ubc_children` with a `FirSpec::Brane` and **deletes
         `FirSpec::ConcatHelper` entirely**. §3.2 renders a merged concatenation (`A B`) and a
         plain brane (`{…}`) **differently**, so a renderer — and a reader of the output — must
         still be able to tell them apart.
-  - [ ] Either the FIR keeps something that says so, or §3.2 is amended to render them alike.
+  - [x] Either the FIR keeps something that says so, or §3.2 is amended to render them alike.
         **Either answer is fine; the requirement is that it be decided rather than lapse.**
-- [ ] Include the same pointer back to `FOOP-36.md` §3.2/§3.2.1.
+- [x] Include the same pointer back to `FOOP-36.md` §3.2/§3.2.1.
 
 ### 6.5c — Record and report
 
-- [ ] Update `FOOP-36.md` §3.2.1 to record that the sections were written, with their section
+- [x] Update `FOOP-36.md` §3.2.1 to record that the sections were written, with their section
       numbers, so a later reader can follow the chain in both directions.
-- [ ] Check `docs/foop/INDEX.md`'s Track 6 "Interaction to watch" paragraph still describes the
+- [x] Check `docs/foop/INDEX.md`'s Track 6 "Interaction to watch" paragraph still describes the
       situation accurately; update it if these sections changed the picture.
-- [ ] **Report to the human**: what was written into each FOOP, and — importantly — **whether
+- [x] **Report to the human**: what was written into each FOOP, and — importantly — **whether
       writing it revealed that §3.2 itself needs to change**. If FOOP-46's §4 direction makes
       the merged/unmerged distinction unrenderable, that is a finding about THIS FOOP, not just
       a note for that one, and §3.2 should be revised here rather than left to conflict later.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
+
+**Completed 2026-09-04.** Both FOOPs were `Draft`/`begun: [ ]` with no worktree, so writing into
+them was safe. Sections written: **FOOP-26 §4.5.1** (beside §4.5, "what a concatenation answers
+about itself" — the question rendering asks) and **FOOP-46 §4.2** (keyed to its §4). FOOP-36
+§3.2.1 records both, and INDEX.md's Track 6 "Interaction to watch" paragraph is updated.
+
+**Neither section was hard to write, which the plan named as the signal to watch.** The designs
+still agree: §3.2 needs no revision, and the merged/unmerged distinction stays renderable under
+both FOOPs' current direction. Two obligations fell out and are recorded: the merged-or-not
+question must stay askable once concatenation is an operator, and `rendering_aid` must survive
+the rewrite (FOOP-46 §4.1, written earlier this session).
+
 
 ## Phase 7 — Comprehensive case
 

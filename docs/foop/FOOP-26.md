@@ -933,6 +933,40 @@ While its helper is unpopulated, a concatenation's statement count is unknown, n
 unknown count makes an enclosing search's index lookup answer "not found", which the existing
 IB-then-AB fallback handles. No concatenation-specific search handler exists or is needed.
 
+#### §4.5.1 TODO — rendering requirements from FOOP-36
+
+FOOP-36 (the Foolish-rendering sequencer, implemented and its baselines promoted) renders a
+concatenation two different ways, and the distinction is information about the program:
+
+- **Merged** → the merged brane. `{a=1}{b=2}{c=3}` renders `{a = 1; b = 2; c = 3}`.
+- **Unmerged** → the juxtaposition, each constituent recursively simplified. Real promoted
+  output: `o = f1 <f2> <<f3>>`, and `nestedˍbrane = {f1 = 3; f2 = 2; f3 = notˍfound}` where the
+  resolving constituents show values and the unresolved one stays written.
+
+It distinguishes them by asking the concatenation whether it merged — today, `hs_concatenation()`
+returning `(elements, merged)` with `merged.is_some()`.
+
+**The requirement, stated as what rendering needs rather than as a constraint on this FOOP:**
+after concatenation becomes an operator, a rendering caller must still be able to ask *"did this
+merge, and if so what is the brane; if not, what are the constituents?"* §4.5 already says a
+concatenation answers no brane-like question about itself and that a caller unwraps through
+`.value()` — that is a fine answer, provided the merged/unmerged question itself stays askable.
+How to satisfy it is this FOOP's choice.
+
+Two details that constrain the shape of any answer:
+
+- **`⨃` is never emitted.** It is not input syntax and would not re-parse, so the renderer
+  refuses to print it. Whatever distinguishes the two cases must not be a marker only that
+  glyph could carry.
+- **`rendering_aid: ConcatRenderingAid` must survive** — the sequencing-only field FOOP-36 added
+  beside `provenance` on `FirSpec::Concatenation`, recording which elements wrote their SF/SFF
+  marker in source. Without it the renderer cannot tell `f2` from `<f2>`, since
+  `build_concat_element` synthesizes the wrapper for the bare form. FOOP-46 §4.1 carries the
+  same obligation for the rewrite.
+
+The reasoning is in `FOOP-36.md` §3.2 (the two-way split) and §3.2.1 (why it converges with
+FOOP-46's Gathering/Joined phases).
+
 #### §4.6 Today, and how to get there
 
 **Naming.** `FirSpec::Concatenation` becomes `FirSpec::BraneConcatOp`.

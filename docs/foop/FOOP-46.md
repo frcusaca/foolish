@@ -309,6 +309,34 @@ renders its VALUE (the joined brane), so the aid is consulted only on the unmerg
 path. Under this FOOP's phases that is exactly the **Gathering** case; **Joined** renders the
 brane and never reads the aid.
 
+### §4.2 TODO — rendering requirements from FOOP-36
+
+**Start from the convergence.** FOOP-36 §3.2.1 observes that this FOOP's two phases and §3.2's
+two renderings are the same distinction, reached from opposite directions:
+
+| This FOOP's phase | What the FIR holds | FOOP-36 §3.2 renders |
+|---|---|---|
+| **Gathering** | unmerged constituents | the juxtaposition, each constituent recursively simplified |
+| **Joined** | one brane in `ubc_children` | that brane, `{…}` |
+
+So the rendering is the natural display of what §4 builds, and §4 needs **no new mechanism** for
+it: as §4's own text observes, `settled_constanic_result`/`value()` already return the brane once
+constanic. Both renderings are implemented and their baselines promoted, so this is stated from
+real output rather than speculation.
+
+**The one detail §4's implementation must settle.** §4's option 1 populates `ubc_children` with a
+`FirSpec::Brane` and **deletes `FirSpec::ConcatHelper` entirely**. But §3.2 renders a merged
+concatenation and a plain brane **differently**, and that difference is information about the
+program — a reader of the output should be able to tell that `o` was built by concatenating
+rather than written as a brane literal.
+
+So either the FIR keeps something that says so, or §3.2 is amended to render them alike.
+**Either answer is acceptable; the requirement is that it be DECIDED rather than lapse
+unnoticed** — which is the whole reason this section exists rather than being left to whoever
+lands last.
+
+Reasoning: `FOOP-36.md` §3.2 and §3.2.1.
+
 ## FIR Impact
 
 - `FirSpec::BraneConcatOp` is rewritten. Whether it keeps `ConcatHelper` as a separate kind, or
