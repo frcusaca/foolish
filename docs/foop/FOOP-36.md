@@ -1604,6 +1604,50 @@ or inventing a convention the parser does not know. A future FOOP defines EOL co
 semantics; the wrapping rules that build on them, and the 108-column budget they would honour,
 belong with it.
 
+### N4. An unnamed creation as a VALUE must not render `⬤`
+
+**A Property 1 violation, found by the human reviewing `foop/33/creation/referential_equality`
+(2026-09-04). Not yet fixed.**
+
+**The rule that should hold.** When a creation is the VALUE of a statement, it renders as its
+ORIGINAL NAME — `'True`, `'False`, `'a` (FOOP-33's named-creation rule, already implemented and
+working). But when the creation has **no** firm name, there is nothing to render: `⬤` is a
+creation *expression*, so re-parsing it makes a **brand-new creation** rather than a reference
+to the existing one.
+
+```foolish
+{a = ⬤; what_was_a = a;}      renders   {a = ⬤; whatˍwasˍa = ⬤}
+```
+
+**That changes referential identity** — one shared creation becomes two. Verified via FOOP-33's
+no-rename rule, which fires only on an already-named creation and so distinguishes reference
+from fresh creation:
+
+| Program | `'x = alias` renders |
+|---|---|
+| `{'n = ⬤; alias = 'n;  'x = alias;}` — alias is a REFERENCE | `'x = 'n` (keeps its original name) |
+| `{'n = ⬤; alias = ⬤;   'x = alias;}` — alias is FRESH | `'x = ⬤` (a distinct creation, freely named) |
+
+The human's own worked case shows the same defect surfacing through that rule:
+`'howˍbadˍcanˍitˍbˍ1 = 'b` in the new rendering, where the old rendering produced the NF refusal
+`??? ('howˍbadˍcanˍitˍbˍ1 not-foolish (Named creations cannot be renamed))`.
+
+**Why no test caught it.** Exactly the trap the fused-`f1f2` bug set (§Phase 6 review): the
+output **parses** (Property 1's mechanical check passes) and **round-trips stably** (Property 2
+passes, because it is *consistently* wrong). Only reading it finds it. This is now the second
+defect of that shape, which argues the corpus checks need a semantic-identity property, not only
+a textual one.
+
+**The fix, per the human: revert to the original Foolish.** When the value is a creation with no
+firm name, render the ORIGINAL EXPRESSION that produced it rather than `⬤` — e.g.
+`result = ?a&#1` stays written as that search. This is §3's existing predicate applied to one
+more case: there is no renderable value, so the written form is what the reader gets, and the
+next compiler re-derives the same creation by re-running the expression.
+
+**Implementation note.** This needs the same information N1 describes — the FIR records the
+creation but not the expression that reached it — so N4 is most naturally done with N1's
+rendering aid rather than before it.
+
 ## References
 
 - **FOOP-26** — `foolish-ubca2` marks / concatenation-as-operator / three-beat step. Draft,
@@ -1627,24 +1671,23 @@ belong with it.
 
 ## Last Updated
 
-**Date**: 2026-09-03
+**Date**: 2026-09-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Warning configuration and the NK/BRANING brane rules.** New
-**`SequenceWarnings`** object (§4.1) replaces the single `comment_nk` boolean with one switch
-per warning kind — `warn_nk`, `warn_brane_nk`, `warn_woconstanic`, `warn_econstanic`,
-`warn_braning`, `warn_iteration_excess` — plus `silent()`/`verbose()` presets. The
-**conventional default warns about what is abnormal or unknowable and stays quiet about what is
-ordinary**: non-brane NK, BRANING and the step cap are ON; WOCONSTANIC, ECONSTANIC and a
-brane's own rollup NK are OFF. New **§4.4**: the step-cap alarm renders as a banner on its own
-line ABOVE the program (`!! This Foolish program did not complete stepping within the limit of
-9999 steps !!`) rather than trailing the root brace — and ONLY the step-cap alarm, only on a
-brane, since other alarms sit mid-statement where a full-line comment would not re-parse. New
-**§5.2**: NK reverts to the written expression EXCEPT when the result is a brane, which renders
-its contents so every member keeps its own state. New **§5.3**: BRANING always reverts (a
-BRANING brane may be self-referential and unroll) but carries `!! BRANING`. Earlier the same
-day: **§4.0** brane rollups are not annotated; **§4.1.1** one statement per line with no
-wrapping; **§4.3** canonical spellings (attached `^`/`$` only, marker runs, no needless
-parens); **§Proposed Next Steps** N1–N3.
+**Changes**: Added **§Proposed Next Steps N4** — an unnamed creation as a VALUE must not render
+`⬤`. Found by the human reviewing `foop/33/creation/referential_equality`. A creation with a
+firm name renders it (`'True`, `'a` — FOOP-33's rule, working); one WITHOUT a name has nothing
+to render, and `⬤` is a creation EXPRESSION, so re-parsing makes a BRAND-NEW creation rather
+than a reference — one shared creation becomes two, changing referential identity. Verified via
+FOOP-33's no-rename rule, which fires only on an already-named creation:
+`{'n = ⬤; alias = 'n; 'x = alias;}` renders `'x = 'n` while the `⬤`-rendered form renders
+`'x = ⬤`. Like the fused-`f1f2` bug it passes BOTH properties — it parses and it round-trips
+stably, because it is consistently wrong — which argues the corpus needs a semantic-identity
+check, not only a textual one. The fix (human): revert to the original Foolish, which is §3's
+existing predicate applied to one more case; most naturally done with N1's rendering aid, since
+the FIR records the creation but not the expression that reached it. Prior entry: warning
+configuration (`SequenceWarnings`, one switch per kind, defaulting to warn about the abnormal
+and stay quiet about the ordinary), §4.4's step-cap banner above the program, §5.2's NK-brane
+rule and §5.3's BRANING revert, plus §4.0, §4.1.1, §4.3 and N1–N3.
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
