@@ -1,0 +1,174 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/36/comprehensive.foo
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 4fe6341d
+producer-diff: sha256:cae3279ed4efa502b8b01489d53bfcc97ee9027cbb000b1e59e9a417dd5b8cc2
+generated: 2026-09-07T21:44:04.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+
+  !!!
+  FOOP-36 comprehensive: at least one path through every §3 row, §4's states,
+  §5's NK forms, and §4's comment-placement rule under pressure.
+
+  Unicode operator note: AGENTS.md asks for `<̲`/`=̲=̲`, but the current lexer
+  rejects U+0332 and implements no such operator (recorded in the plan at
+  Phase 3b). Comparison is therefore written through the supported
+  `{a, b, 'lt}$` system-brane idiom, as `rendering_contract.foo` does. `⬤` IS
+  used, since that one is supported.
+  !!!
+
+  !! §3 rows — leaves. Each is already its own value.
+  int = 7;
+  neg = -8;
+  creation = ⬤;
+  named_creation = 'True;
+  empty_brane = {};
+  no_no = ???;
+
+  !! §3 Statement/Brane rows, plus the identifier round-trip hazard: `_`
+  !! lexes to U+02CD and must come back as a valid identifier char.
+  my_var = 2;
+  λ = 3;
+  characterized = a'b'{v = 1};
+  'k = 1;
+
+  !!!
+  Operators: ONE predicate on the RESULT. Conclusive collapses to the value,
+  inconclusive constanic reverts to the op on its parameters.
+  !!!
+
+  op_conclusive = 3 + 4;
+  op_precedence = 1 + 2 * 3;
+  op_unary = -8;
+  op_inconclusive = missing_l + missing_r;
+  op_nk = 1 / 0;
+  op_comparison = {1, 2, 'lt}$;
+
+  !!!
+  Searches: the same predicate, on the search's RESULT rather than its own
+  NYES. Both anchoring shapes, and every miss flavour.
+  !!!
+
+  s_base = {a = 1; b = 5};
+  s_conclusive = s_base?a;
+  s_regex = s_base?(a.*);
+  s_anchored_miss = s_base?missing;
+  s_unanchored_miss = nowhere;
+  s_value_hit = s_base?=5;
+  s_value_miss = s_base?=8;
+  s_name_and_value = s_base?(a.*)=1;
+
+  !! Indexes: settled ones render their VALUE (FOOP-75 §4.1); an unsettled
+  !! one keeps the attached `=^`/`=$` spelling.
+  i_base = {10; 20; 30};
+  i_head = i_base#0;
+  i_tail = i_base$;
+  i_empty = {};
+  i_unsettled = i_empty#0;
+  i_not_a_brane = 4$;
+
+  !!!
+  SF and SFF keep their delimiters; a later use site shows what it captured.
+  !!!
+
+  sf_x = 1;
+  sf_named = <sf_x>;
+  sff_named = <<sf_x>>;
+  sff_operator = <<sf_x + missing>>;
+  sf_x = 10;
+  sf_named;
+  sff_named;
+
+  !!!
+  Concatenation: merged renders the brane, unmerged the juxtaposition with
+  each element's SOURCE-WRITTEN marker restored (ConcatRenderingAid).
+  !!!
+
+  c_merged = {a = 1}{b = 2}{c = 3};
+  c_empty = {}{};
+  c_m1 = {p = 1};
+  c_m2 = {q = 2};
+  c_unmerged = c_m1 <c_m2> <<c_missing>>;
+
+  !!!
+  §4 comment placement under pressure: adjacent annotated statements, and a
+  trailing one with no `;`. §5: NK reverts to the written Foolish, never `???`.
+  !!!
+
+  cmt_first = nowhere_a;
+  cmt_second = nowhere_b;
+  cmt_trailing = 1 / 0
+}
+①
+{
+  int = 7;
+  neg = -8;
+  creation = ⬤;
+  namedˍcreation = 'True;
+  emptyˍbrane = {};
+  noˍno = ???;  !! NK: ??? literal
+  myˍvar = 2;
+  λ = 3;
+  characterized = a'b'{
+    v = 1
+  };
+  'k = 1;
+  opˍconclusive = 7;
+  opˍprecedence = 7;
+  opˍunary = -8;
+  opˍinconclusive = missingˍl + missingˍr;
+  opˍnk = 1 / 0;  !! NK: DIV-BY-ZERO: division by zero
+  opˍcomparison = 'True;
+  sˍbase = {
+    a = 1;
+    b = 5
+  };
+  sˍconclusive = 1;
+  sˍregex = 1;
+  sˍanchoredˍmiss = sˍbase?missing;  !! NK: anchored search found no match
+  sˍunanchoredˍmiss = nowhere;
+  sˍvalueˍhit = 5;
+  sˍvalueˍmiss = sˍbase?=8;  !! NK: anchored search found no match
+  sˍnameˍandˍvalue = 1;
+  iˍbase = {
+    10;
+    20;
+    30
+  };
+  iˍhead = 10;
+  iˍtail = 30;
+  iˍempty = {};
+  iˍunsettled =^ iˍempty;  !! NK: anchored index found no match
+  iˍnotˍaˍbrane =$ 4;  !! NK: 4 is not a brane
+  sfˍx = 1;
+  sfˍnamed = <sfˍx>;
+  sffˍnamed = <<sfˍx>>;
+  sffˍoperator = <<sfˍx + missing>>;
+  sfˍx = 10;
+  1;
+  10;
+  cˍmerged = {
+    a = 1;
+    b = 2;
+    c = 3
+  };
+  cˍempty = {};
+  cˍm1 = {
+    p = 1
+  };
+  cˍm2 = {
+    q = 2
+  };
+  cˍunmerged = cˍm1 <cˍm2> <<cˍmissing>>;
+  cmtˍfirst = nowhereˍa;
+  cmtˍsecond = nowhereˍb;
+  cmtˍtrailing = 1 / 0  !! NK: DIV-BY-ZERO: division by zero
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"LRE0NlciWliRH1odLv6wdqqGBBdP8kcrFkmOM08x4VK6QLsw9mSGavqxEsbTKG8XDrSZ1zp6itHckYyS1INdAA==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
+{"key":"stage:checked","pubkey":"63e36903fb388a10cc3802df5f7021fd4f3ef73fb95a0794372edab1018db8ae","signs":"prior-bytes","signature":"PKcLZ68nRmwTsB2IQL8dm8aJQjTAt7YOLxWYIrOG5vOVJHMKdAnknuUAFdCQ0v4ecyrBSoCejYGoU5JPgWk1BQ==","produced_by":"einmo 0.1.0 sha256:d86a04bede04d2b43382d6c0e75f019f7a45913551ceca2631543ff24225a42f","timestamp":"2026-09-07T21:44:57.000000000Z"}

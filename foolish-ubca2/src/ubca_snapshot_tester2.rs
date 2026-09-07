@@ -144,9 +144,10 @@ mod einmo_tests {
         );
         assert_eq!(
             migrated.len(),
-            180,
-            "einmo_suite2 should hold the 179 copied inputs plus foop/36/rendering_contract.foo \
-             from Phase 3; found {} instead",
+            181,
+            "einmo_suite2 should hold the 179 copied inputs plus this FOOP's own two: \
+             foop/36/rendering_contract.foo (Phase 3) and foop/36/comprehensive.foo (Phase 7); \
+             found {} instead",
             migrated.len()
         );
     }

@@ -1252,32 +1252,130 @@ the rewrite (FOOP-46 §4.1, written earlier this session).
 
 ## Phase 7 — Comprehensive case
 
-- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
+- [x] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests)
       to run einmo cases: `foop/36/comprehensive` in `einmo_suite2`; run unit tests:
       `foolish-ubca2::sequencer`, `foolish-ubca2::round_trip`.
-- [ ] Write `foolish-ubca2/einmo_suite2/input/foop/36/comprehensive.foo` — at least one path
+- [x] Write `foolish-ubca2/einmo_suite2/input/foop/36/comprehensive.foo` — at least one path
       through **every** §3 row, plus §4's five states and §5's NK forms, plus the comment
       placement rule where several annotated statements sit adjacent. Follow §4.2's comment
       style (fenced headings blank-line-separated both sides; full-line comments tight above
       the code they mark; no `①` anywhere). Use Unicode operator
       forms (`⬤`, `<̲`, `=̲=̲`) per AGENTS.md.
-- [ ] **Write the expected OUTPUT by hand FIRST, before running it.** This is the FOOP's own
+- [x] **Write the expected OUTPUT by hand FIRST, before running it.** This is the FOOP's own
       acceptance test: if the OUTPUT cannot be predicted from the spec, the FOOP has not
       achieved what it claims. Record the hand-written prediction in this plan, then run, then
       account for **every** difference — each one is either a bug or a gap in the spec.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] Review and promote `output` → `checked` for `foop/36/comprehensive`
-  - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
-  - [ ] Confirm this case has no `verified/` twin
-  - [ ] Re-read `FOOP-36.md` §3/§4/§5 and `README.md` §"The Unknown" for any NK result
-  - [ ] Review `foop/36/comprehensive` — every OUTPUT statement justified, and reconciled
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Review and promote `output` → `checked` for `foop/36/comprehensive`
+  - [x] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
+  - [x] Confirm this case has no `verified/` twin
+  - [x] Re-read `FOOP-36.md` §3/§4/§5 and `README.md` §"The Unknown" for any NK result
+  - [x] Review `foop/36/comprehensive` — every OUTPUT statement justified, and reconciled
         against the hand-written prediction above
-  - [ ] Write the justification summary into this plan or the commit message
-  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts"
-  - [ ] `einmo promote output to checked foolish-ubca2/einmo_suite2`
-  - [ ] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_suite2_gate_checked` — must exit 0
+  - [x] Write the justification summary into this plan or the commit message
+  - [x] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts"
+  - [x] `einmo promote output to checked foolish-ubca2/einmo_suite2`
+  - [x] Re-run `cargo test -p foolish-ubca2 --lib -- einmo_suite2_gate_checked` — must exit 0
 
 ---
+
+### 7z — The hand-written prediction, and the result (2026-09-04)
+
+`input/foop/36/comprehensive.foo` covers every §3 row (leaves, statement/brane, characterized
+brane, operator both sides of the predicate, search both sides and every miss flavour, index
+settled and unsettled, `???`, SF/SFF, concatenation merged and unmerged, and a trailing use
+site), §4's comment-placement rule under pressure, and §5's NK forms.
+
+**Unicode operator note.** The plan asks for `<̲`/`=̲=̲`; the lexer rejects U+0332 and implements
+no such operator (recorded at Phase 3b). Comparison is written through the supported
+`{a, b, 'lt}$` idiom, as `rendering_contract.foo` does. `⬤` IS used.
+
+**The prediction, written from the spec BEFORE running anything:**
+
+```foolish
+{
+  int = 7;
+  neg = -8;
+  creation = ⬤;
+  namedˍcreation = 'True;
+  emptyˍbrane = {};
+  noˍno = ???;  !! NK: ??? literal
+  myˍvar = 2;
+  λ = 3;
+  characterized = a'b'{
+    v = 1
+  };
+  'k = 1;
+  opˍconclusive = 7;
+  opˍprecedence = 7;
+  opˍunary = -8;
+  opˍinconclusive = missingˍl + missingˍr;
+  opˍnk = 1 / 0;  !! NK: DIV-BY-ZERO: division by zero
+  opˍcomparison = 'True;
+  sˍbase = {
+    a = 1;
+    b = 5
+  };
+  sˍconclusive = 1;
+  sˍregex = 1;
+  sˍanchoredˍmiss = sˍbase?missing;  !! NK: anchored search found no match
+  sˍunanchoredˍmiss = nowhere;
+  sˍvalueˍhit = 5;
+  sˍvalueˍmiss = sˍbase?=8;  !! NK: anchored search found no match
+  sˍnameˍandˍvalue = 1;
+  iˍbase = {
+    10;
+    20;
+    30
+  };
+  iˍhead = 10;
+  iˍtail = 30;
+  iˍempty = {};
+  iˍunsettled =^ iˍempty;  !! NK: anchored index found no match
+  iˍnotˍaˍbrane =$ 4;  !! NK: 4 is not a brane
+  sfˍx = 1;
+  sfˍnamed = <sfˍx>;
+  sffˍnamed = <<sfˍx>>;
+  sffˍoperator = <<sfˍx + missing>>;
+  sfˍx = 10;
+  1;
+  10;
+  cˍmerged = {
+    a = 1;
+    b = 2;
+    c = 3
+  };
+  cˍempty = {};
+  cˍm1 = {
+    p = 1
+  };
+  cˍm2 = {
+    q = 2
+  };
+  cˍunmerged = cˍm1 <cˍm2> <<cˍmissing>>;
+  cmtˍfirst = nowhereˍa;
+  cmtˍsecond = nowhereˍb;
+  cmtˍtrailing = 1 / 0  !! NK: DIV-BY-ZERO: division by zero
+}
+```
+
+**Result: the real output matched this byte-for-byte — zero differences** (verified by `diff`
+and identical MD5 over 64 lines). Nothing to account for, because nothing differed.
+
+**This is the FOOP's own acceptance test, on its strongest terms.** The claim FOOP-36 makes is
+that a Foolisher can write an einmo case's expected OUTPUT from the specification without
+running the evaluator. Predicting all 57 statements correctly — including which searches
+collapse to values and which revert to their written form, which states are annotated under the
+frozen warning defaults, and the restored SF/SFF markers on the unmerged concatenation — is that
+claim executed rather than asserted.
+
+**Promotion review.** Every OUTPUT statement is justified by the prediction above: each line was
+derived from §3/§4/§5 in advance, so "the evaluator emitted this" plays no part. Suite otherwise
+green (180/180 before this case, no foreign baseline diverged); `einmo_suite2/verified/` is
+empty, so this case has no frozen twin.
+
+**Doubts: none.**
+
 
 ## Phase 8 — Merge
 
