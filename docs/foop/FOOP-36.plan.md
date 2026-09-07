@@ -1420,19 +1420,32 @@ empty, so this case has no frozen twin.
       and FOOP-46 §4.2, recorded in FOOP-36 §3.2.1; `einmo_suite/` still present with its 179
       inputs, NOT removed; `cargo fmt --all --check` clean and `cargo clippy -p foolish-ubca2
       --all-targets` reports zero warnings from this crate's own sources. 180/180 tests pass.)
-- [ ] **BLOCKING (2026-09-04) — §2 Property 3 is violated by N4 and the fix is not in.**
-      Round-trip was promoted from a stated property to a **requirement** of `Ubca2Sequencer`
-      (human): the rendering must MEAN what the input meant, not merely parse and reach a fixed
-      point. `FOOP-36.md` §N4 records a reproduced violation — an unnamed creation as a value
-      renders `⬤`, which re-parses as a BRAND-NEW creation, so one shared creation becomes two.
-      Two proposals are written up (N4.a revert to the original Foolish; N4.b `↑` up-indexers,
-      whose first index must be negative since UBCa cannot look forward). **Neither is
-      implemented.** Decide and land one before merging, or record an explicit human decision to
-      merge with the defect outstanding.
-      - [ ] Note the same gap admitted the fused-`f1f2` concatenation bug (fixed). Both passed
-            Properties 1 and 2 while meaning something else, so consider whether a
-            semantic-identity check belongs in the corpus tests — §Rejected Alternatives F now
-            records that Property 3 has no mechanical check and is enforced by reading.
+- [ ] **BLOCKING (2026-09-04) — implement §N4.a before merging.** Round-trip was promoted from
+      a stated property to a **requirement** of `Ubca2Sequencer` (human): the rendering must
+      MEAN what the input meant, not merely parse and reach a fixed point. `FOOP-36.md` §N4
+      records a reproduced violation — an unnamed creation as a value renders `⬤`, which
+      re-parses as a BRAND-NEW creation, so one shared creation becomes two.
+      **Fix decided (human): N4.a — revert to the original Foolish.**
+  - [ ] **Whenever a creation value lacks a null-characterized name, render the ORIGINAL
+        EXPRESSION that produced it** rather than `⬤` (`result = ?a&#1` stays written as that
+        search). A creation WITH such a name keeps rendering it (`'True`, `'a`) — FOOP-33's rule
+        is unaffected; only the nameless case changes.
+  - [ ] Needs N1's rendering aid, or an equivalent: the FIR records the creation but not the
+        expression that reached it. Scope it the way `ConcatRenderingAid` was scoped — the
+        narrowest field that answers this one question, inside `foolish-ubca2`.
+  - [ ] Add a regression test asserting the REFERENTIAL property, not just the text: use
+        FOOP-33's no-rename rule, which distinguishes a reference from a fresh creation
+        (`{'n = ⬤; alias = 'n; 'x = alias;}` renders `'x = 'n`; the `⬤`-rendered form renders
+        `'x = ⬤`).
+  - [ ] Re-render and re-review any baseline this moves — `foop/33/creation/*` at least.
+  - [ ] Note the same gap admitted the fused-`f1f2` concatenation bug (fixed). Both passed
+        Properties 1 and 2 while meaning something else, so consider whether a
+        semantic-identity check belongs in the corpus tests — §Rejected Alternatives F now
+        records that Property 3 has no mechanical check and is enforced by reading.
+- [ ] **NON-BLOCKING TODO — arrow indexers (`FOOP-36.md` §N5).** `↑` (pop up a level; does not
+      exist yet), `←`/`→` as spellings of `#-1`/`#1`, with ASCII aliases `<-`/`->` or the
+      parenthesized `(<-)`/`(->)` if those collide. Wanted on their own merits, NOT needed for
+      §2 — N4.a is the round-trip fix. Its own FOOP; do not hold this one for it.
 - [ ] Merge `foop-36-foolish-rendering-sequencer` to `jia`
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!

@@ -1636,16 +1636,14 @@ or inventing a convention the parser does not know. A future FOOP defines EOL co
 semantics; the wrapping rules that build on them, and the 108-column budget they would honour,
 belong with it.
 
-### N4. An unnamed creation as a VALUE must not render `⬤` — **BLOCKING**
+### N4. An unnamed creation as a VALUE must not render `⬤` — **BLOCKING, fix decided**
 
 **A §2 Property 3 violation, found by the human reviewing
-`foop/33/creation/referential_equality` (2026-09-04). Open.**
+`foop/33/creation/referential_equality` (2026-09-04).**
 
-**This is BLOCKING, not a deferred nicety** (human, 2026-09-04). Round-trip is a REQUIREMENT of
-`Ubca2Sequencer`, so a known, reproduced violation of it is a defect against this FOOP's own
-contract — it is listed here rather than in the bug list only because the fix needs either N1's
-rendering aid (N4.a) or new syntax (N4.b), neither of which is this FOOP's to land unilaterally.
-**It must be settled before FOOP-36 can be called complete.**
+**This is BLOCKING, not a deferred nicety.** Round-trip is a REQUIREMENT of `Ubca2Sequencer`, so
+a known, reproduced violation of it is a defect against this FOOP's own contract. **The fix is
+decided (N4.a below) and must land before FOOP-36 can be called complete.**
 
 **The rule that should hold.** When a creation is the VALUE of a statement, it renders as its
 ORIGINAL NAME — `'True`, `'False`, `'a` (FOOP-33's named-creation rule, already implemented and
@@ -1676,13 +1674,21 @@ passes, because it is *consistently* wrong). Only reading it finds it. This is n
 defect of that shape, which argues the corpus checks need a semantic-identity property, not only
 a textual one.
 
-**Two proposals, both from the human (2026-09-04). Either satisfies §2's Property 3; they are
-not exclusive, and the second is the more general.**
+**DECIDED (human, 2026-09-04): N4.a — revert to the original Foolish.** Whenever a creation
+value lacks a null-characterized name, the sequencer renders the ORIGINAL EXPRESSION rather than
+`⬤`. That is the fix `Ubca2Sequencer` implements to satisfy §2's Property 3.
 
-#### N4.a — Revert to the original Foolish
+N4.b's arrow indexers are **not** part of that fix. They are split out as a separate,
+**non-blocking** TODO — see §N5.
 
-When the value is a creation with no firm name, render the ORIGINAL EXPRESSION that produced it
-rather than `⬤`: `result = ?a&#1` stays written as that search.
+#### N4.a — Revert to the original Foolish (the decided fix)
+
+**Rule: whenever a creation value lacks a null-characterized name, render the ORIGINAL
+EXPRESSION that produced it rather than `⬤`.** `result = ?a&#1` stays written as that search.
+
+A creation WITH a null-characterized name keeps rendering that name (`'True`, `'a`) — FOOP-33's
+existing rule, which already works and is unaffected. The change is confined to the nameless
+case, where `⬤` is not a reference but a fresh-creation expression.
 
 This is §3's existing predicate applied to one more case — there is no renderable value, so the
 reader gets the written form, and the next compiler re-derives the *same* creation by re-running
@@ -1691,32 +1697,44 @@ the expression. Cheap, and consistent with everything §3 already does.
 **Needs N1's rendering aid**: the FIR records the creation but not the expression that reached
 it, so N4.a is most naturally done alongside N1 rather than before it.
 
-#### N4.b — Address it positionally, with `↑` up-indexers
+### N5. Arrow indexers — `↑`, `←`, `→` (non-blocking TODO)
 
-Introduce an **arrow indexer** giving *non-searching* access to a creation by position, so a
-creation is named by where it sits rather than by re-running a search.
+**Split out of N4 (human, 2026-09-04) and explicitly NON-BLOCKING.** N4 is fixed by reverting to
+the original Foolish; these are a separate ergonomics addition, wanted on their own merits rather
+than to satisfy §2.
 
-`↑` is the truly original one: **it pops up one level in the brane FIR tree** — my brane's
-statement. Repeated, it climbs further. After climbing, ordinary index steps descend:
+**The three arrows:**
+
+| Arrow | Means | ASCII alias | Status |
+|---|---|---|---|
+| `↑` | pop up one level in the brane FIR tree — my brane's statement | — | **does not exist; must be implemented** |
+| `←` | `#-1` — the previous statement | `<-` | alias for an existing operator |
+| `→` | `#1` — the next statement | `->` | alias for an existing operator |
+
+**ASCII aliases.** `<-` and `->` if the lexer can take them unambiguously; if either collides
+with existing syntax, fall back to the parenthesized forms `(<-)` and `(->)`. Check before
+choosing — `->` in particular is worth verifying against any existing use.
+
+**`↑` is the substantial one.** `←`/`→` are spellings of operators that already exist; `↑` is a
+new navigation with no current equivalent, popping up a level rather than moving within a brane.
+Repeated, it climbs further, and ordinary index steps then descend:
 
 ```foolish
-{....{ x = some_creation}}     could render     {...{a = ↑↑↑#-1&#4&#2}}
+↑↑↑#-1&#4&#2
 ```
 
-**The first index after `↑` MUST be negative.** This is not a stylistic preference but UBCa's
-operational semantics: at the moment you pop up a level, the statements *after* your own do not
-yet exist. **The future is as yet unknown and not searchable** — Foolish cannot look forward in
-its own brane (AGENTS.md §Searches says the same of forward forms). So the first hop off the
-arrow must reach *backward*, into what has already been evaluated.
+**The first index after `↑` MUST be negative.** This is UBCa's operational semantics, not a
+style rule: at the moment you pop up a level, the statements *after* your own do not yet exist.
+**The future is as yet unknown and not searchable** — Foolish cannot look forward in its own
+brane. So the first hop off the arrow must reach backward, into what has already been evaluated.
+Subsequent indices may be positive (`&#4`, `&#2` above): once that first negative step lands on
+an earlier statement, its brane is fully known and indexing within it is ordinary contexted
+navigation.
 
-Subsequent indices may be positive (`&#4`, `&#2` above): once the first negative step has landed
-on an earlier statement, that statement's brane is fully known, and indexing within it is
-ordinary contexted navigation.
-
-**Why this is the more general answer.** It gives every unnamed value a canonical, non-searching
-address, not just creations — and unlike N4.a it does not depend on remembering the original
-expression, so it needs no rendering aid. The cost is new syntax: `↑` must be lexed, parsed,
-specified against the existing `&`-contexted forms, and given its own FOOP.
+**Why it is worth having.** It gives any value a canonical, non-searching positional address —
+useful well beyond the creation case that prompted it, and it needs no rendering aid. The cost
+is new syntax to lex, parse, and specify against the existing `&`-contexted forms, which is why
+it is its own FOOP rather than a rider on this one.
 
 ## References
 
@@ -1743,23 +1761,24 @@ specified against the existing `&`-contexted forms, and given its own FOOP.
 
 **Date**: 2026-09-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **Round-trip promoted from a property to a REQUIREMENT** (human). §2 gains
-**Property 3**: `R` must MEAN what `P` meant — the same referential structure, sharing, element
-counts and creations. Properties 1 and 2 are demonstrably insufficient, and this FOOP has two
-worked examples that satisfied both while meaning something else: the fused `f1f2` concatenation
-(fixed) and the `⬤` unnamed creation (**§N4, OPEN**). Both are *consistently* wrong, and a fixed
-point of a broken rendering is still a fixed point. **§Rejected Alternatives F is therefore
-SUPERSEDED rather than rejected** — its first objection (no FIR equivalence relation exists)
-survives as a COST, meaning Property 3 currently has no mechanical check and is enforced by
-reading; its second objection survives as a CONSTRAINT on how Property 3 is defined, since
-ECONSTANIC recoordination legitimately resolves differently in a new context, so Property 3 asks
-for referential structure, not identical values everywhere. **§N4 is marked BLOCKING** and the
-plan gains a blocking checkbox ahead of the Phase 8 merge. N4 now carries both human proposals:
-**N4.a** revert to the original Foolish (needs N1's rendering aid), and **N4.b** `↑` up-indexers
-giving non-searching positional access — where **the first index after `↑` MUST be negative**,
-because at the moment of popping up a level the statements after one's own do not yet exist:
-UBCa cannot look forward, the future being unknown and unsearchable. Prior entry: added §N4
-itself, recording the defect and its verification via FOOP-33's no-rename rule.
+**Changes**: **N4's fix DECIDED (human): N4.a — revert to the original Foolish** whenever a
+creation value lacks a null-characterized name; a creation WITH such a name keeps rendering it
+(`'True`, `'a`), so FOOP-33's rule is untouched and only the nameless case changes. N4 stays
+BLOCKING until that lands. **The arrow indexers are split out as §N5, explicitly NON-BLOCKING**:
+`↑` (pop up one level in the brane FIR tree — the substantial one, since it does not exist yet),
+plus `←`/`→` as spellings of the existing `#-1`/`#1`, with ASCII aliases `<-`/`->` or the
+parenthesized `(<-)`/`(->)` if those collide. N5 retains the semantic constraint: the first index
+after `↑` MUST be negative, because at the moment of popping up a level the statements after
+one's own do not yet exist — UBCa cannot look forward. Prior entry: round-trip promoted from a
+stated property to a REQUIREMENT — §2 gains Property 3 (`R` must MEAN what `P` meant: same
+referential structure, sharing, element counts, creations), with the fused `f1f2` concatenation
+and the `⬤` creation as worked evidence that Properties 1 and 2 are insufficient, since both
+were CONSISTENTLY wrong and a fixed point of a broken rendering is still a fixed point.
+§Rejected Alternatives F is SUPERSEDED rather than rejected, its first objection surviving as a
+cost (no FIR equivalence relation, so Property 3 has no mechanical check and is enforced by
+reading) and its second as a constraint on the definition (ECONSTANIC recoordination
+legitimately resolves differently, so Property 3 asks for referential structure, not identical
+values everywhere).
 
 The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
 mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
