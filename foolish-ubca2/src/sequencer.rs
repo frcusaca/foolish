@@ -344,8 +344,85 @@ impl<'a> Renderer<'a> {
             // and finite. A BRANING result therefore still REVERTS to its
             // written form; the reader is alarmed to it by the `!! BRANING`
             // annotation instead (see `annotate`).
-            if result_nyes.is_conclusive() || (result_nyes == Nyes::Nk && renders_as_brane) {
+            // §N4.a: a creation value with NO null-characterized name must
+            // NOT collapse to `⬤`. `⬤` is a creation EXPRESSION — re-parsing
+            // it makes a BRAND-NEW creation, so a reference would become a
+            // fresh creation and one shared creation would become two,
+            // violating §2's Property 3 (the rendering must MEAN what the
+            // input meant). A creation WITH a name renders that name and is
+            // fine; only the nameless case reverts to the written search.
+            //
+            // This is §3's own predicate applied once more: there is no
+            // renderable value here, so the reader gets the written form and
+            // the next compiler re-derives the SAME creation by re-running
+            // the expression. Reverted lines are annotated (see `annotate`)
+            // so a reader is told WHY a value did not collapse.
+            //
+            // §N4.b (human 2026-09-07): having a name is not enough — that
+            // name must also be IN CONTEXT at THIS site and mean THIS
+            // creation. An original name is not unique across branes. In
+            // `{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}` the
+            // search reaches A's `'a`, but B has an `'a` of its own, so a
+            // bare `'a` here re-resolves to B's — a DIFFERENT creation node.
+            // The output parses and round-trips stably while pointing at the
+            // wrong object: Property 1 and 2 hold, Property 3 does not.
+            //
+            // The test is a real search, `?<name>=<this creation>`, run on
+            // the search engine itself (`SearchPredicate::NameValue`, whose
+            // value gate reduces to arena identity for creations) — not a
+            // hand-rolled walk. No `Search` FIR is built and nothing is
+            // mutated; the scan takes `&FVMStorage`, which is what lets a
+            // read-only sequencer ask a genuine search question.
+            // `None` = no usable name; `Some(true)` = the creation HAS a
+            // null-characterized name but it is out of context here. The two
+            // are annotated differently: only the latter is a postulation
+            // problem, and saying so on a merely-unnamed creation would
+            // mislead.
+            let unusable_creation_name: Option<bool> = {
+                let value_ptr = result.value(self.storage);
+                let value = FirCursor::new(value_ptr, self.storage);
+                if matches!(value.node(), FirSpec::Creation) {
+                    match (value.as_creation_display_name(current_stmt), current_stmt) {
+                        (Some(name), Some(stmt)) => {
+                            if crate::fvm_storage::search_name_finds_this_creation(
+                                self.storage,
+                                stmt,
+                                &name,
+                                value_ptr,
+                            ) {
+                                None
+                            } else {
+                                Some(true)
+                            }
+                        }
+                        _ => Some(false),
+                    }
+                } else {
+                    None
+                }
+            };
+            if unusable_creation_name.is_none()
+                && (result_nyes.is_conclusive() || (result_nyes == Nyes::Nk && renders_as_brane))
+            {
                 return self.render_expr(result.value(self.storage), width, current_stmt, false);
+            }
+            // A reverted line is owed the REASON it kept its written form
+            // while its neighbours collapsed to values (human, 2026-09-07);
+            // without it the reversion reads as the sequencer simply failing
+            // to resolve the expression. Only the out-of-context case gets
+            // the comment — an unnamed creation has no name to be out of
+            // context, and every one of them would otherwise be annotated.
+            if unusable_creation_name == Some(true) {
+                let mut lines = written(self);
+                if !self.options.suppress_sequencing_comments {
+                    if let Some(first) = lines.first_mut() {
+                        first.push_str(
+                            "  !! This is Foolish because of out-of-context \
+                             Creation Postulation application",
+                        );
+                    }
+                }
+                return lines;
             }
         }
         written(self)
@@ -1943,6 +2020,159 @@ mod tests {
         assert!(
             rendered.contains("o = f1 <f2> <<f3>>"),
             "each element's own source marker must be restored: {rendered}"
+        );
+    }
+
+    /// §N4.a (§2 Property 3): a creation value with NO null-characterized
+    /// name must NOT collapse to `⬤`. `⬤` is a creation EXPRESSION, so
+    /// re-parsing it makes a BRAND-NEW creation — a reference would become a
+    /// fresh creation and one shared creation would become two.
+    ///
+    /// Asserts the REFERENTIAL property, not merely the text, using FOOP-33's
+    /// no-rename rule: naming an already-named creation a second time is
+    /// refused, so `'x = alias` renders `'x = 'n` when `alias` REFERENCES
+    /// `'n`'s creation, and `'x = ⬤` when `alias` is a fresh one. That is the
+    /// difference the old rendering silently introduced.
+    #[test]
+    fn foolish_nameless_creation_value_reverts_to_its_written_expression() {
+        // The defect: a search whose result is a NAMELESS creation.
+        let (storage, program) = evaluated_program("{a = ⬤; what_was_a = a;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("whatˍwasˍa = a"),
+            "a nameless creation value must revert to its written expression: {rendered}"
+        );
+        assert!(
+            !rendered.contains("whatˍwasˍa = ⬤"),
+            "rendering ⬤ here would re-parse as a NEW creation: {rendered}"
+        );
+
+        // The referential check: reference vs fresh creation must stay
+        // distinguishable through the round trip.
+        let (storage, program) = evaluated_program("{'n = ⬤; alias = 'n; 'x = alias;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("'x = 'n"),
+            "a REFERENCE to a named creation keeps that creation's identity, so FOOP-33's \
+             no-rename rule still sees it as already-named: {rendered}"
+        );
+
+        // The DEFINING site still renders ⬤ — that is where ⬤ genuinely
+        // means "make a creation", and it is correct there.
+        assert!(
+            rendered.contains("'n = ⬤"),
+            "the defining site keeps ⬤: {rendered}"
+        );
+
+        // No over-reach: an ordinary conclusive search still collapses.
+        let (storage, program) = evaluated_program("{b = {p = 1}; r = b?p;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("r = 1"),
+            "a non-creation conclusive result must still render its value: {rendered}"
+        );
+    }
+
+    /// §N4 (§2 Property 3): a creation renders its null-characterized name
+    /// ONLY IF that name is IN CONTEXT at the rendering site — i.e. searching
+    /// for it from there lands on THIS creation.
+    ///
+    /// An original name is NOT unique across branes. The human's
+    /// counterexample: the search resolves to A's `'a`, but B has an `'a` of
+    /// its own, so rendering the bare name re-resolves to B's — a DIFFERENT
+    /// creation node. It parses and round-trips stably while pointing at the
+    /// wrong object, which is exactly what Properties 1 and 2 cannot catch.
+    #[test]
+    fn foolish_creation_name_renders_only_when_that_name_is_in_context() {
+        // Which creation does the LAST statement of B resolve to?
+        let resolves_to_a_tick_a = |src: &str| -> bool {
+            let (st, pr) = evaluated_program(src);
+            let root = FirCursor::new(pr, &st);
+            let a_brane = FirCursor::new(root.stmt_at(0).unwrap(), &st).foolish_children()[0];
+            let a_tick = FirCursor::new(FirCursor::new(a_brane, &st).stmt_at(0).unwrap(), &st)
+                .foolish_children()[0];
+            let b_brane = FirCursor::new(root.stmt_at(1).unwrap(), &st).foolish_children()[0];
+            let bc = FirCursor::new(b_brane, &st);
+            let last = bc.stmt_at(bc.stmt_count().unwrap_or(0) - 1).unwrap();
+            let body = FirCursor::new(last, &st).foolish_children()[0];
+            FirCursor::new(body, &st)
+                .ubc_children()
+                .first()
+                .map(|&u| u.value(&st))
+                == Some(a_tick)
+        };
+
+        // SHADOWED: B has its own 'a, so the name is NOT in context for A's.
+        let shadowed = "{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}";
+        let (storage, program) = evaluated_program(shadowed);
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            !rendered.contains("r = 'a"),
+            "a shadowed original name must NOT be rendered — it would re-resolve to B's own \
+             creation: {rendered}"
+        );
+        assert!(
+            resolves_to_a_tick_a(shadowed) && resolves_to_a_tick_a(&rendered),
+            "the rendering must resolve to the SAME creation as the original: {rendered}"
+        );
+
+        // IN CONTEXT: no shadowing name between the reference and the
+        // creation, so the name is safe to render.
+        let (storage, program) = evaluated_program("{'n = ⬤; alias = 'n;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("alias = 'n"),
+            "an in-context original name still renders: {rendered}"
+        );
+    }
+
+    /// A line reverted because its name is out of context carries the reason
+    /// (human, 2026-09-07) — otherwise the reversion is indistinguishable
+    /// from the sequencer failing to resolve the expression.
+    ///
+    /// The annotation is scoped to the postulation case ONLY: a creation with
+    /// no null-characterized name at all has no name to BE out of context,
+    /// and annotating every such line would bury the finding that matters.
+    #[test]
+    fn foolish_out_of_context_creation_name_reversion_is_annotated() {
+        let (storage, program) =
+            evaluated_program("{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        let reverted = rendered
+            .lines()
+            .find(|l| l.contains("r ="))
+            .unwrap_or_default();
+        assert!(
+            reverted.contains("!! This is Foolish because of out-of-context")
+                && reverted.contains("Creation Postulation application"),
+            "an out-of-context reversion must say why it reverted: {rendered}"
+        );
+
+        // A merely-unnamed creation reverts too, but is NOT a postulation
+        // problem and must stay unannotated.
+        let (storage, program) = evaluated_program("{orig = ⬤; ref = orig;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("ref = orig"),
+            "an unnamed creation still reverts to its written form: {rendered}"
+        );
+        assert!(
+            !rendered.contains("Creation Postulation"),
+            "an unnamed creation has no name to be out of context, so no such \
+             annotation belongs on it: {rendered}"
+        );
+
+        // The override still wins.
+        let opts = SequenceOptions {
+            suppress_sequencing_comments: true,
+            ..SequenceOptions::default()
+        };
+        let (storage, program) =
+            evaluated_program("{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}");
+        let rendered = Ubca2Sequencer::format_with(&storage, program, &opts);
+        assert!(
+            !rendered.contains("Creation Postulation"),
+            "suppress_sequencing_comments must silence this annotation too: {rendered}"
         );
     }
 

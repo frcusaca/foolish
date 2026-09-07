@@ -1636,7 +1636,7 @@ or inventing a convention the parser does not know. A future FOOP defines EOL co
 semantics; the wrapping rules that build on them, and the 108-column budget they would honour,
 belong with it.
 
-### N4. An unnamed creation as a VALUE must not render `⬤` — **BLOCKING, fix decided**
+### N4. An unnamed creation as a VALUE must not render `⬤` — **BLOCKING, RESOLVED 2026-09-07**
 
 **A §2 Property 3 violation, found by the human reviewing
 `foop/33/creation/referential_equality` (2026-09-04).**
@@ -1696,6 +1696,48 @@ the expression. Cheap, and consistent with everything §3 already does.
 
 **Needs N1's rendering aid**: the FIR records the creation but not the expression that reached
 it, so N4.a is most naturally done alongside N1 rather than before it.
+
+#### N4.b — A name must be IN CONTEXT to be rendered (human, 2026-09-07) — RESOLVED
+
+**Having a null-characterized name is not sufficient. That name must also be IN CONTEXT at the
+rendering site, and must mean THAT creation.**
+
+N4.a alone is unsound, by the human's counterexample:
+
+```foolish
+{ A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;}; }
+```
+
+`r`'s search reaches **A's** `'a`, but `B` has an `'a` of its own. Rendering the bare name `'a`
+re-resolves, on re-parse, to **B's** creation — a different node (confirmed by arena identity).
+The output parses (Property 1) and round-trips stably (Property 2) while denoting the wrong
+object: exactly the class of defect Property 3 was added to catch.
+
+**Rule.** A creation renders its original name only when the search `?<name>=<that creation>`,
+performed at the rendering site, finds it. Otherwise the statement reverts to its written form
+per N4.a.
+
+**Implementation (human, 2026-09-07: "We shoudl use search when possible").** The check runs the
+real search engine — `search_engine::contextful_search_scan` with `SearchPredicate::NameValue`,
+whose value gate reduces to arena-pointer identity for creations (`default_equal`). The name gate
+and identity gate are therefore applied together on each candidate, atomically, exactly as
+FOOP-23 §C.3.1 specifies for `?name=value`. **No `Search` FIR is constructed and nothing is
+mutated**: the scan takes `&FVMStorage`, which is what allows a read-only sequencer to ask a
+genuine search question. §UBC Step Impact remains **None**.
+
+**The check lives in the SEQUENCER, not in `get_display_name`.** This was implemented in
+`get_display_name` first and reverted: that method answers a *FOOP-33* question — "what is this
+creation's original name?" — and `check_rename_of_named_creation` uses it as an identity oracle.
+Narrowing it by context silently disabled the no-rename rule, turning
+`'how_bad_can_it_b_1 = bs#1`'s NF refusal into a plain `⬤` and breaking a `verified/`-backed
+`einmo_suite` baseline. Rendering permission and creation identity are different questions and
+must not share one accessor.
+
+**Reverted lines are annotated** (human, 2026-09-07):
+`!! This is Foolish because of out-of-context Creation Postulation application`. The annotation
+is scoped to *this* case only — a creation with no null-characterized name has no name to be out
+of context, and annotating every such reversion would bury the finding. `suppress_sequencing_comments`
+silences it like any other sequencer comment.
 
 ### N5. Arrow indexers — `↑`, `←`, `→` (non-blocking TODO)
 
@@ -1759,72 +1801,26 @@ it is its own FOOP rather than a rider on this one.
 
 ## Last Updated
 
-**Date**: 2026-09-04
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: **N4's fix DECIDED (human): N4.a — revert to the original Foolish** whenever a
-creation value lacks a null-characterized name; a creation WITH such a name keeps rendering it
-(`'True`, `'a`), so FOOP-33's rule is untouched and only the nameless case changes. N4 stays
-BLOCKING until that lands. **The arrow indexers are split out as §N5, explicitly NON-BLOCKING**:
-`↑` (pop up one level in the brane FIR tree — the substantial one, since it does not exist yet),
-plus `←`/`→` as spellings of the existing `#-1`/`#1`, with ASCII aliases `<-`/`->` or the
-parenthesized `(<-)`/`(->)` if those collide. N5 retains the semantic constraint: the first index
-after `↑` MUST be negative, because at the moment of popping up a level the statements after
-one's own do not yet exist — UBCa cannot look forward. Prior entry: round-trip promoted from a
-stated property to a REQUIREMENT — §2 gains Property 3 (`R` must MEAN what `P` meant: same
-referential structure, sharing, element counts, creations), with the fused `f1f2` concatenation
-and the `⬤` creation as worked evidence that Properties 1 and 2 are insufficient, since both
-were CONSISTENTLY wrong and a fixed point of a broken rendering is still a fixed point.
-§Rejected Alternatives F is SUPERSEDED rather than rejected, its first objection surviving as a
-cost (no FIR equivalence relation, so Property 3 has no mechanical check and is enforced by
-reading) and its second as a constraint on the definition (ECONSTANIC recoordination
-legitimately resolves differently, so Property 3 asks for referential structure, not identical
-values everywhere).
+**Date**: 2026-09-07
 
-The design as it now stands: `foolish-ubca2` gets its own sequencer whose default `Foolish`
-mode renders FIR — settled or mid-evaluation — as parseable Foolish. **§0** introduces
-the terminology from **AGENTS.md §Foolish Terminology** (the authority): *constanic*,
-*constantew* (CONSTANT EveryWhere), and *conclusive* (**Conc**) = CONSTANT/INDEPENDENT.
-*Inconclusive* is everything else INCLUDING pre-constanic states; the phrase *inconclusive
-constanic* narrows to WOCONSTANIC/ECONSTANIC/NK, which is what §3's rule is stated over. **§3**: when a result is an inconclusive
-constanic, render the original expression — the original search, or the op on its parameters;
-a conclusive result collapses to its value. **§3.1** explains why that loses nothing; **§3.2**
-splits concatenation on whether the merge succeeded. **§4** puts states with no Foolish syntax
-in `!!` comments; **§4.1** makes width configurable, default 108; **§4.2** covers einmo input
-comment style and the per-suite separator. **§5** derives NK's rendering from §3's predicate
-(`1/0`, never `???`), with `warn_nk` as a flag; **§5.1** distinguishes constantew from
-conclusive. **§6** keeps `Detailed` delegating unchanged to `foolish_core::FirSequencer`, so
-`foolish-ubca` cannot regress.
+**Updated By**: Claude Code / claude-opus-5
 
-**The suite is REPLACED, not edited.** `einmo_suite2` is built to become `foolish-ubca2`'s
-approval suite: the 179 inputs are copied across and rendered anew, and **the cut-over happens
-at the end of the project** — `cargo test` points at the old suite throughout Movements I and
-II, so the development procedure does not change until Movement III. `einmo_suite` is then left
-frozen and still green as the reference to diff against, and this FOOP does everything except
-remove it. That also defuses Q6: the old `verified/` tier is never disturbed.
-
-**The Test Plan is split in two**, because the new suite inherits the old one's job. **Group A**
-proves the sequencer (T0 hand-written contract, T1 per-row units covering both sides of §3's
-predicate, T2 six-step round trip over a variety of constanic states, T2b pre-constanic, T7
-width, T8 separator safety, T9 flags). **Group B** proves the suite is a fit replacement (T3
-corpus-wide parse, T4 baseline review, T5/T5b non-regression for `foolish-ubca` and the frozen
-old suite, T6 comprehensive, **T10 coverage parity**, **T11 suite integrity**, **T12 value
-non-regression across the cut-over**). T10 and T12 exist because "the new suite quietly tests
-less" and "a value changed, not just its rendering" are the failure modes invisible from a
-green run.
-
-§0.1 surveys all 134 uses of "settled" in `foolish-ubca2` and classifies each by NYES group;
-§0.1.1 establishes that `settled_constanic_result` means **constanic** (not constantew — the StayFoolish
-path at 902–904 admits ECONSTANIC/WOCONSTANIC), so all three arms of §3's predicate are
-reachable. Adds **§3.2.1**: §3.2's two renderings and **FOOP-46's two phases are the same distinction** —
-Gathering ↔ the juxtaposition, Joined ↔ the brane — so the rendering is the natural display of
-what FOOP-46 builds rather than a constraint on it. One detail is left to settle deliberately:
-§4 may delete `FirSpec::ConcatHelper`, and §3.2 renders a merged concatenation and a plain
-brane differently, so either the FIR keeps something that distinguishes them or §3.2 is amended
-to render them alike. This FOOP **propagates that into both FOOPs** as sections they own (plan
-Phase 6.5), so the agreement is on the record in all three places. §0.1.2 lists the predicate per group; the two missing ones and all the renames were split into
-**FOOP-56**, scheduled to land before this FOOP.
-
-Resolved: Q1 (out of scope — einmo only), Q3 (configurable width), Q4 (FOOP-36 lands first),
-Q5 (dissolved), Q6 (human mass-verifies after per-case review), Q8 (NK is constantew).
-Phase 1 resolved Q2 (render directly from the arena) and Q7 (a conclusive trailing use renders
-its value) on 2026-09-03.
+**Changes**: **§N4 RESOLVED.** Added **§N4.b — a name must be IN CONTEXT to be rendered**
+(human, 2026-09-07). N4.a alone was unsound: having a null-characterized name is not sufficient,
+because an original name is not unique across branes. The human's counterexample
+`{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}` renders a bare `'a` that re-resolves to
+B's creation rather than A's — parsing (Property 1) and round-tripping stably (Property 2) while
+denoting the WRONG object, which is exactly what Property 3 exists to catch. The rule: render the
+original name only when the search `?<name>=<that creation>`, performed at the rendering site,
+finds it. Implemented with the REAL search engine per the human's "We shoudl use search when
+possible" — `contextful_search_scan` + `SearchPredicate::NameValue`, whose value gate reduces to
+arena-pointer identity for creations, so the name and identity gates apply together atomically
+per FOOP-23 §C.3.1. **No `Search` FIR is constructed and nothing is mutated**: the scan takes
+`&FVMStorage`, which is what lets a read-only sequencer ask a genuine search question, so §UBC
+Step Impact stays **None**. Records that the check belongs in the SEQUENCER, not in
+`get_display_name`: implementing it there first silently disabled FOOP-33's no-rename rule (which
+uses that method as an identity oracle) and moved a `verified/`-backed `einmo_suite` baseline —
+rendering permission and creation identity are different questions and must not share one
+accessor. Reverted lines are annotated `!! This is Foolish because of out-of-context Creation
+Postulation application`, scoped to that case only. Prior entry: **N4's fix DECIDED (human): N4.a
+— revert to the original Foolish** whenever a creation value lacks a null-characterized name.

@@ -781,6 +781,78 @@ impl FirPointer {
     }
 }
 
+/// Whether the backward search `?<name>=<creation>` performed at
+/// `viewed_from` finds `creation` -- "is this original name in context HERE,
+/// and does it mean THIS creation?".
+///
+/// This is a RENDERING question (FOOP-36 §N4), deliberately kept OUT of
+/// [`FirPointer::get_display_name`]. That method answers a different, FOOP-33
+/// question -- "what is this creation's original name?" -- and the no-rename
+/// rule (`check_rename_of_named_creation`) uses it as an identity oracle.
+/// Narrowing it by context would silently disable that language rule.
+///
+/// This runs the real search engine ([`search_engine::contextful_search_scan`]
+/// with [`SearchPredicate::NameValue`]), not a hand-rolled walk, so the name
+/// gate and the identity gate are applied together on each candidate exactly
+/// as an atomic `?name=value` search applies them (FOOP-23 §C.3.1). The value
+/// gate reduces to arena-pointer identity for creations, via `default_equal`.
+///
+/// No `Search` FIR is constructed and no node is mutated: the engine's scan
+/// takes `&FVMStorage`, which is what lets the sequencer -- whose whole
+/// contract is to read already-constanic FIR -- ask a real search question.
+///
+/// The scan walks the viewing statement's home brane backward from its own
+/// position (Foolish cannot look forward), then repeats outward through
+/// enclosing branes, unanchored-search style. A nearer statement of the same
+/// name SHADOWS a farther one, and a shadowed name simply fails to match --
+/// which is precisely the case that makes rendering a bare original name
+/// unsound.
+pub(crate) fn search_name_finds_this_creation(
+    storage: &FVMStorage,
+    viewed_from: FirPointer,
+    name: &str,
+    creation: FirPointer,
+) -> bool {
+    use search_engine::{BraneNavigator, ScanOutcome, SearchPredicate, contextful_search_scan};
+
+    let predicate = SearchPredicate::NameValue {
+        name: name.to_owned(),
+        value: creation,
+    };
+    let mut stmt = viewed_from;
+    for _ in 0..MAX_DEPTH {
+        let Some(brane) = stmt.home_brane(storage) else {
+            return false;
+        };
+        let cursor = FirCursor::new(brane, storage);
+        let Some(count) = cursor.stmt_count() else {
+            return false;
+        };
+        if count > 0 {
+            let mut nav = BraneNavigator::new(storage, brane, false);
+            // Backward from just before our own position; the whole brane
+            // when we entered it from a nested one.
+            let upper = brane.find_stmt_index(storage, stmt).unwrap_or(count);
+            if upper > 0 {
+                nav.set_range(0, upper - 1);
+                match contextful_search_scan(storage, &mut nav, &predicate) {
+                    ScanOutcome::Found(_) => return true,
+                    // An Nk candidate halts the scan, exactly as it would
+                    // halt a real search: the answer is not knowable, so the
+                    // name cannot be justified here.
+                    ScanOutcome::NkStop => return false,
+                    ScanOutcome::Miss => {}
+                }
+            }
+        }
+        match brane.find_enclosing_stmt_and_brane(storage) {
+            Some((outer_stmt, _)) => stmt = outer_stmt,
+            None => return false,
+        }
+    }
+    false
+}
+
 /// Guard against runaway recursion on pathologically deep trees.
 const MAX_DEPTH: usize = 100;
 

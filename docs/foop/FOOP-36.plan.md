@@ -1420,28 +1420,78 @@ empty, so this case has no frozen twin.
       and FOOP-46 §4.2, recorded in FOOP-36 §3.2.1; `einmo_suite/` still present with its 179
       inputs, NOT removed; `cargo fmt --all --check` clean and `cargo clippy -p foolish-ubca2
       --all-targets` reports zero warnings from this crate's own sources. 180/180 tests pass.)
-- [ ] **BLOCKING (2026-09-04) — implement §N4.a before merging.** Round-trip was promoted from
-      a stated property to a **requirement** of `Ubca2Sequencer` (human): the rendering must
-      MEAN what the input meant, not merely parse and reach a fixed point. `FOOP-36.md` §N4
+- [x] **BLOCKING (2026-09-04) — implement §N4.a before merging.** (Done 2026-09-07 23:35)
+      Round-trip was promoted from a stated property to a **requirement** of `Ubca2Sequencer`
+      (human): the rendering must MEAN what the input meant, not merely parse and reach a fixed
+      point. `FOOP-36.md` §N4
       records a reproduced violation — an unnamed creation as a value renders `⬤`, which
       re-parses as a BRAND-NEW creation, so one shared creation becomes two.
       **Fix decided (human): N4.a — revert to the original Foolish.**
-  - [ ] **Whenever a creation value lacks a null-characterized name, render the ORIGINAL
+  - [x] **Whenever a creation value lacks a null-characterized name, render the ORIGINAL
         EXPRESSION that produced it** rather than `⬤` (`result = ?a&#1` stays written as that
         search). A creation WITH such a name keeps rendering it (`'True`, `'a`) — FOOP-33's rule
-        is unaffected; only the nameless case changes.
-  - [ ] Needs N1's rendering aid, or an equivalent: the FIR records the creation but not the
-        expression that reached it. Scope it the way `ConcatRenderingAid` was scoped — the
-        narrowest field that answers this one question, inside `foolish-ubca2`.
-  - [ ] Add a regression test asserting the REFERENTIAL property, not just the text: use
+        is unaffected; only the nameless case changes. (Done 2026-09-07 23:35)
+  - [x] **§N4.b — the name must also be IN CONTEXT** (human, 2026-09-07). Having a
+        null-characterized name is not sufficient; the human's counterexample
+        `{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}` renders `'a` that re-resolves
+        to B's creation, not A's. Implemented with the REAL search engine —
+        `contextful_search_scan` + `SearchPredicate::NameValue`, whose value gate is arena
+        identity for creations — so no `Search` FIR is built and nothing is mutated (the scan
+        takes `&FVMStorage`; §UBC Step Impact stays None). (Done 2026-09-07 23:35)
+  - [x] The check lives in the SEQUENCER, not `get_display_name`. Implementing it there first
+        broke FOOP-33's no-rename rule (`check_rename_of_named_creation` uses that method as an
+        identity oracle) and moved a `verified/`-backed `einmo_suite` baseline. Reverted;
+        `einmo_gate_checked`/`einmo_gate_verified` are green again. (Done 2026-09-07 23:35)
+  - [x] Reverted lines carry `!! This is Foolish because of out-of-context Creation Postulation
+        application` (human, 2026-09-07), scoped to the out-of-context case only — an unnamed
+        creation has no name to be out of context. (Done 2026-09-07 23:35)
+  - [x] Needs N1's rendering aid, or an equivalent: NOT needed as it turned out — the written
+        form is already reachable via the existing `written(self)` path, so no new FIR field was
+        added. (Done 2026-09-07 23:35)
+  - [x] Add a regression test asserting the REFERENTIAL property, not just the text: use
         FOOP-33's no-rename rule, which distinguishes a reference from a fresh creation
         (`{'n = ⬤; alias = 'n; 'x = alias;}` renders `'x = 'n`; the `⬤`-rendered form renders
-        `'x = ⬤`).
-  - [ ] Re-render and re-review any baseline this moves — `foop/33/creation/*` at least.
-  - [ ] Note the same gap admitted the fused-`f1f2` concatenation bug (fixed). Both passed
+        `'x = ⬤`). (Done 2026-09-07 23:35 — plus
+        `foolish_creation_name_renders_only_when_that_name_is_in_context`, which asserts by
+        ARENA IDENTITY that the rendering resolves to the same creation as the input, and
+        `foolish_out_of_context_creation_name_reversion_is_annotated`.)
+  - [x] Re-render and re-review any baseline this moves — `foop/33/creation/*` at least.
+        (Done 2026-09-07 23:35 — exactly five moved, each reviewed individually and promoted with its
+        own `--filter`; see §6z-N4 below.)
+  - [x] Note the same gap admitted the fused-`f1f2` concatenation bug (fixed). Both passed
         Properties 1 and 2 while meaning something else, so consider whether a
         semantic-identity check belongs in the corpus tests — §Rejected Alternatives F now
         records that Property 3 has no mechanical check and is enforced by reading.
+
+#### §6z-N4 — Promotion Review Gate for the §N4.a/§N4.b fix (2026-09-07)
+
+Five `einmo_suite2` baselines moved, all FOOP-33 creation cases — the exact blast radius the
+change should have. Reviewed case by case, promoted one at a time with `--filter`. The OLD
+`einmo_suite` (which has a `verified/` twin) did NOT move: `einmo_gate_checked` and
+`einmo_gate_verified` are both green, so FOOP-33's no-rename rule is untouched.
+
+- **`foop/33/creation/basics`** — `ref = orig` rendered `ref = ⬤`, and `diff = x~=y` rendered
+  `x~=⬤`. Both were the reported defect exactly: `⬤` re-parses as a NEW creation, so `same_ref`
+  and `diff` would have compared different objects than the input compares. Both now revert to
+  the written expression. `orig`/`x`/`y` are plain names, not null-characterized, so no
+  postulation annotation appears — correct.
+- **`foop/33/creation/referential_equality`** — the case exists to show `ba.v` and `bb.v` are the
+  SAME creation. The old rendering wrote `⬤` in both, which on re-parse makes two DIFFERENT
+  creations, inverting the very property under test. Now renders `v = shared` and
+  `crossˍsame = ba~=bb?v`, preserving the sharing.
+- **`foop/33/creation_concat`** — same defect on the concatenation path: `R.k`/`S.k`/`rs.k` all
+  reference the one `shared` creation and now say so instead of each minting a fresh `⬤`.
+- **`foop/33/comprehensive`** — `c = a` (a reference to a nameless creation) had collapsed to
+  `c = ⬤`; reverts, twice, in the brane and in its concatenated copy.
+- **`foop/33/chracterization_sequencing`** — the §N4.b case. `'b` is defined INSIDE `bs`, so at
+  the outer brane it is out of context: the old `= 'b` would not even re-resolve there. Now
+  reverts to `bs?'b` / `bs~'b` / `bs#1`, each annotated with the postulation reason.
+  `whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ*` revert WITHOUT the annotation (plain `b`, no
+  null-characterized name) — the intended scoping.
+
+Property 1 re-verified corpus-wide after the change (`einmo_suite2_corpus_wide_foolish_rendering_parses`
+green): the added comment does not break re-parsing. Full crate: **183/183**.
+
 - [ ] **NON-BLOCKING TODO — arrow indexers (`FOOP-36.md` §N5).** `↑` (pop up a level; does not
       exist yet), `←`/`→` as spellings of `#-1`/`#1`, with ASCII aliases `<-`/`->` or the
       parenthesized `(<-)`/`(->)` if those collide. Wanted on their own merits, NOT needed for
@@ -1466,33 +1516,15 @@ empty, so this case has no frozen twin.
 
 ## Last Updated
 
-**Date**: 2026-09-02
-**Updated By**: Codex / GPT-5.6
-**Changes**: FOOP-56 vocabulary pass: updated Phase 0.5 and active renderer-plan references to
-the implemented predicates, `settled_constanic_result`, `step_to_constanic`, and the
-ECONSTANIC conclusive-vs-constanic regression test.
+**Date**: 2026-09-07
 
-Adds **Phase 0.5** — a fail-fast, skippable vocabulary fix placed FIRST. It gives all four §0
-NYES groups a predicate on `NyesExt` (`is_preconstanic` primary with `is_nye` as its alias, plus
-the new `is_conclusive`; `is_constanic` and `is_constantew` already exist), replaces the five
-hand-rolled `Constant | Independent` matches in `fvm_storage.rs`, and qualifies every "settled"
-with its NYES group per §0.1 (`settled_result` →
-`settled_constanic_result`, `all_settled` → `all_foolish_children_conclusive`,
-`step_to_settled` → `step_to_constanic`, and the rest), plus `lib.rs`'s stale `is_settled()`
-claim. Mechanical and behaviour-free, with an explicit skip rule — abandon it the moment it
-stops being mechanical, since nothing later depends on it.
+**Updated By**: Claude Code / claude-opus-5
 
-The plan runs in **three movements**: (I) hand-write the expectations in a new `einmo_suite2/`
-before the renderer exists — the FOOP's own acceptance test; (II) complete the renderer against
-that fixed target; (III) **replace the suite** — copy the 179 inputs into `einmo_suite2`, render
-them, review case by case, and point `cargo test` at the new suite. The **cut-over is at the end
-of the project**, so the development procedure is unchanged until Movement III. `einmo_suite`
-is left frozen and green as the reference to diff against, and is NOT removed.
-
-Phase 3 enumerates all case groups; the Orientation block carries verified code facts, the
-trait shape, exact commands and §0's terminology inline so a modest-context agent need not
-re-derive them. Phase 5 gains **T10** (coverage parity — every old input has a new counterpart)
-and **T11** (suite integrity); Phase 6 gains **T12** (value non-regression: the rendering
-changes, the program's meaning must not). Phase 0's two blocking questions are already answered
-(Q4: FOOP-36 first; Q6: defused for the old suite, which is never re-rendered — the human
-mass-verifies `einmo_suite2`'s new `verified/` tier after the per-case review).
+**Changes**: Checked off the **BLOCKING §N4.a** item and its sub-tasks, extended with **§N4.b**
+(the name must be IN CONTEXT, not merely exist), and added the **§6z-N4 Promotion Review Gate
+record**: five `einmo_suite2` baselines moved — all FOOP-33 creation cases, the exact expected
+blast radius — each reviewed individually and promoted with its own `--filter`. The old
+`einmo_suite` did NOT move; `einmo_gate_checked` and `einmo_gate_verified` are green, so
+FOOP-33's no-rename rule is intact. The N1-rendering-aid sub-task closed as NOT NEEDED: the
+written form was already reachable, so no new FIR field was added. Full crate **183/183**.
+Prior entry: FOOP-56 vocabulary pass.

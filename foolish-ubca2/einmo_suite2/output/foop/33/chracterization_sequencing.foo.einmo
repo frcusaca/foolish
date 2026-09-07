@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/33/chracterization_sequencing.foo
 suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 88c0e53c
-producer-diff: sha256:d45d1a4d3da9cc5fe2ec771c5ccc9ef43fb4f776d8d992e3b3046b21e40ea2e9
-generated: 2026-09-03T19:57:33.000000000Z
+producer: 5cad954d
+producer-diff: sha256:b31dee6bdcda37d338039f2ba82994ba2bbfeb771131e6c747a733a2f94e68fa
+generated: 2026-09-07T23:26:43.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -46,18 +46,18 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   };
   whatˍwasˍtickˍa = 'a;
   whatˍwasˍtickˍa = 'a;
-  whatˍwasˍa = ⬤;
-  whatˍwasˍa = ⬤;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = 'b;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = 'b;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = 'b;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = 'b;
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = ⬤;
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 = ⬤;
-  'howˍbadˍcanˍitˍbˍ1 = 'b;
-  howˍbadˍcanˍitˍbˍ2 = 'b
+  whatˍwasˍa = a;
+  whatˍwasˍa = ?='a&#1;
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs^;
+  'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
+  howˍbadˍcanˍitˍbˍ2 = bs#1  !! This is Foolish because of out-of-context Creation Postulation application
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:33.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:33.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"I63JDpVB0zeK1lDYKkToxyEKPKbsc/czo+XK+oFHGv3Zx+FkbPV5UgsRSkzwrNEpvXCVuQ/8xTV0X0Y6v9zPCA==","produced_by":"einmo 0.1.0 sha256:2b4449c2d574873404b59c3b86fbf0fb76be589eef450a8af2bb55f7a6a79e27","timestamp":"2026-09-03T19:57:33.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uJwNhLYkW1DdQVCUigereYiGMg0rPZ5JFM/9m4RefCCuEEtu4LmYgt5op7jsdofqxLbSIxZZcQH2KsXHyL0lCg==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
