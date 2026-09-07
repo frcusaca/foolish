@@ -1379,37 +1379,47 @@ empty, so this case has no frozen twin.
 
 ## Phase 8 — Merge
 
-- [ ] Verify all work is complete in
+- [x] Verify all work is complete in
       `/home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer` and committed to
       `foop-36-foolish-rendering-sequencer`
-- [ ] Confirm the scope guard held: `git diff jia --stat` shows **no** changes under
+- [x] Confirm the scope guard held: `git diff jia --stat` shows **no** changes under
       `foolish-ubca/`, **no** changes to `foolish-core/src/sequencer.rs`, and **no changes to
       `foolish-ubca2/einmo_suite/`** beyond the einmo.toml comment fix already on `jia` — the
       old suite is frozen reference, not a thing this FOOP edits. (A `foolish-core/src/fir.rs`
       change appears only if Phase 1 reported and the human approved an additive accessor.)
-- [ ] **T5 non-regression** — `cargo test -p foolish-ubca --lib -- einmo_gate_checked` passes,
+- [x] **T5 non-regression** — `cargo test -p foolish-ubca --lib -- einmo_gate_checked` passes,
       matching the Phase 0 "before" reading exactly
-- [ ] **`einmo_suite/`'s three gates still pass**, unchanged, on the OLD rendering — including
+- [x] **`einmo_suite/`'s three gates still pass**, unchanged, on the OLD rendering — including
       `einmo_gate_verified` against its 179 human-signed artifacts. This FOOP leaves that tier
       untouched, which is the whole benefit of replacing rather than migrating in place.
-- [ ] **`einmo_suite2` is the suite `cargo test` exercises**, and its `checked/` tier is
+- [x] **`einmo_suite2` is the suite `cargo test` exercises**, and its `checked/` tier is
       complete (180 cases). Its `verified/` tier is empty and awaits the human — raise it,
       do not `#[ignore]` its gate.
-- [ ] **Phase 6.5's sections exist** in `FOOP-26.md` and `FOOP-46.md`, and `FOOP-36.md`
+- [x] **Phase 6.5's sections exist** in `FOOP-26.md` and `FOOP-46.md`, and `FOOP-36.md`
       §3.2.1 records their section numbers. If either FOOP was being actively edited and the
       human deferred the write, say so explicitly in the merge report — an undone propagation
       is a known debt, not a silent one.
-- [ ] **`einmo_suite/` is NOT removed by this FOOP.** Its retirement is a separate act, for the
+- [x] **`einmo_suite/` is NOT removed by this FOOP.** Its retirement is a separate act, for the
       human to authorize once `einmo_suite2` has been trusted for a while. Say so explicitly in
       the merge report.
-- [ ] `cargo fmt --all` and `cargo clippy -p foolish-ubca2 -- -D warnings` clean.
+- [x] `cargo fmt --all` and `cargo clippy -p foolish-ubca2 -- -D warnings` clean.
       **Note:** `foolish-core/src/sequencer.rs` has 4 pre-existing clippy **warnings** (lines
       187, 537, 563, 743 — `iter_next_slice` and friends), which become errors under a
       workspace-wide `-D warnings` gate. They are pre-existing and NOT this FOOP's to fix —
       indeed the scope guard forbids touching that file. Scope the clippy run to
       `-p foolish-ubca2`, and if a workspace `-D warnings` gate is demanded, report the
       conflict rather than editing `foolish-core/src/sequencer.rs` to satisfy it.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-04 — all pre-merge checks verified: worktree clean and committed; scope guard
+      held with ZERO changes to `foolish-ubca/`, `foolish-core/` (any file, not just
+      `sequencer.rs`) or `foolish-ubca2/einmo_suite/`; `foolish-ubca`'s `einmo_gate_checked`
+      passes matching Phase 0; `einmo_suite/`'s three gates all pass INCLUDING
+      `einmo_gate_verified` against its 179 human-signed artifacts, untouched; `einmo_suite2`
+      is the suite `cargo test` exercises with a complete 181-case `checked/` tier and an EMPTY
+      `verified/` awaiting the human; Phase 6.5's sections confirmed present in FOOP-26 §4.5.1
+      and FOOP-46 §4.2, recorded in FOOP-36 §3.2.1; `einmo_suite/` still present with its 179
+      inputs, NOT removed; `cargo fmt --all --check` clean and `cargo clippy -p foolish-ubca2
+      --all-targets` reports zero warnings from this crate's own sources. 180/180 tests pass.)
 - [ ] Merge `foop-36-foolish-rendering-sequencer` to `jia`
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
