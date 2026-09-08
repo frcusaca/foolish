@@ -51,6 +51,17 @@ removed nor changed — it becomes `Detailed`, a second explicitly-selected mode
 unchanged to `foolish_core::FirSequencer`, so `foolish-ubca` cannot regress by construction
 (§1, §6). §7 sets old and new side by side.
 
+**Correctness is defined by three properties (§2): the output parses, it is idempotent under
+re-evaluation, and — the requirement — it MEANS what the input meant.** The first two are not
+sufficient, and this FOOP has two defects on record that satisfied both while denoting something
+else; a fixed point of a consistently-wrong rendering is still a fixed point. **§2.2** names the
+pipeline's intermediate stages — `P → pp → spp → R → pr → spr → sspr` — making visible which
+comparisons are available and which are being skipped. The load-bearing one is **`spp` vs `spr`**,
+the two stepped FIRs: because stepped Foolish is a limiting/fixed point, they are two computations
+of the *same* limit, reached from human-written and from generated source, and equality at the end
+of computation is the point. HOW to compare two FIRs is a feature in its own right and is
+**split out to its own FOOP** (§N6); until it lands, Property 3 stays enforced by reading.
+
 The approval suite is **replaced rather than edited**: a new `einmo_suite2` receives the 179
 inputs, renders them under the new sequencer, and becomes what `cargo test` exercises.
 `einmo_suite` is left frozen and still passing as the reference to diff against, and this FOOP
@@ -383,7 +394,7 @@ Then:
    structure — the same sharing, the same element counts, the same creations. **This is a
    REQUIREMENT of `Ubca2Sequencer`, not an aspiration** (human, 2026-09-04). **§2.2 states
    where this is checkable** — the pair `spp` vs `spr`, two computations of the same fixed
-   point — and §2.2.2 defines the structural relation that checks its decidable half.
+   point. The relation that would check it is split out to its own FOOP (§N6).
 
 **Properties 1 and 2 are not sufficient, and this FOOP has the evidence.** Two defects satisfied
 both while meaning something else, and neither mechanical check could see it:
@@ -487,50 +498,18 @@ entirely inside that decision, and `pp` vs `pr` would have been blind to it. `pp
 worth adding as a debugging convenience — when the stepped comparison fails, it isolates a
 parse/render fault from an evaluation fault — but it is not the property.
 
-##### §2.2.2 What the structural relation compares — shape now, values later
-
-Equality on FIR is not merely hard to implement; taken naively it is **ill-defined** (human,
-2026-09-07). Too strict — comparing arena indices, NYES, or produced values — fails on *correct*
-renderings, because recoordination may legitimately resolve an ECONSTANIC differently in a new
-context (§Rejected Alternatives F's surviving objection). Too loose, and it certifies nothing.
-Every choice of what to ignore is therefore a judgment about what rendering must preserve, which
-restates Property 3 rather than proving it.
-
-So the relation is split, and only the decidable half is in force now. **Structural equivalence**
-compares, recursively over `foolish_children` (the *written* structure, which recoordination does
-not perturb):
-
-1. **Kind** — the same `FirSpec` discriminant.
-2. **Arity** — `foolish_children().len()` agrees. A 3-statement brane is not equivalent to a
-   5-statement one; a `Concatenation` over 2 constituents is not one over 3.
-3. **Children**, pairwise, in order.
-4. **Shape-bearing `FirSpec` fields** — `Search { pattern, anchored, forward, is_value_search,
-   contexted }`, `Index { offset, anchored, contexted }`, `Operator { op }`,
-   `Comparison { op }`, `Statement { identifier }`. Rendering `?x` as `~x` leaves the shape
-   unchanged while changing the program, so these are part of shape.
-
-It deliberately does **not** compare:
-
-- **Values** — `IndepInt { value }` and creation identity. Deferred (human, 2026-09-07: "We can
-  address value equivalence later"). Under this relation `{x=3;}` ≡ `{x=4;}`, by design.
-- **`Statement { line_number }`** — the sequencer reformats to one statement per line (§4.1), so
-  these differ by design.
-- **`FoolRef { referent }`** — a raw `FirPointer`, meaningless across two arenas.
-- **`Nk { reason }`** — prose, not structure.
-- **`Concatenation { rendering_aid }`** — sequencing-only by construction (§N1).
-- **`ubc_children`** and NYES — produced values, which is the deferred half.
-
-**What this catches, and what it does not.** The fused `f1f2` concatenation defect is caught by
-arity (3 elements against 2). The `⬤` unnamed-creation defect of §N4 is **not** — both sides
-render a `Creation` node, and the fault is creation *identity*, which is precisely the deferred
-half. Until value equivalence lands, that case stays covered by the arena-identity unit tests
-(§N4.a/§N4.b), which assert on `FirPointer` equality within one arena.
-
 **A stated limit.** `spr` is stepped from `R`, which is already the sequencer's own output. If
 the sequencer systematically drops something, it can be absent from *both* sides and the
 comparison stays silent — the same fixed-point loophole as Property 2, one level up. A
 comparison immune by construction would have to derive one side from `P` alone, and no such
 derivation exists. `spp` vs `spr` narrows the gap; it does not close it.
+
+**The relation itself is NOT specified here.** Defining FIR equality — what shape comparison
+covers, how creation identity is decided, how the tables are scoped — turned out to be a feature
+in its own right, with an open semantics question at its centre. It is therefore **split out to
+its own FOOP**; see §N6, which carries the full design worked out so far. This section states
+only WHICH PAIR to compare and why, which is a property of the round trip and belongs to §2.
+Until that FOOP lands, Property 3 remains enforced by reading, as §Rejected Alternatives F says.
 
 ### §3 What each FIR kind renders as
 
@@ -1365,24 +1344,11 @@ the interesting one to watch. Property 2 is asserted **only** where the FIR is c
 
 This procedure also settles §Open Questions **Q7** empirically.
 
-**T2c — Structural equivalence of the stepped FIRs (§2.2, §2.2.2).** Inside T2's own procedure,
-which already builds both arenas and today discards them: **assert `spp` structurally equivalent
-to `spr`** — the two stepped FIRs from steps 2 and 5. This is Property 3's decidable half, and
-per §2.2.1 it is the load-bearing pair because both are computations of the *same* fixed point,
-reached from human-written and from generated source respectively.
-
-The relation is §2.2.2's: kind, arity, children pairwise over `foolish_children`, and the
-shape-bearing `FirSpec` fields. It does not compare values, line numbers, `FoolRef` referents,
-NK reasons, the concat rendering aid, `ubc_children`, or NYES — each for the reason §2.2.2 gives.
-
-Cover the same variety T2 does, and additionally the two defects on record: a multi-element
-concatenation (the fused `f1f2` case, caught by arity) and a creation reference
-(`{orig = ⬤; ref = orig;}`, NOT caught by this relation — it is a value/identity fault, covered
-meanwhile by §N4's arena-identity unit tests). Asserted **only** where the FIR is constanic, for
-§2.1's reason.
-
-Optionally also assert `pp` ≡ `pr` (§2.2's third row). Not a property in its own right, but when
-T2c fails it separates a parse/render fault from an evaluation fault.
+**T2c — Structural equivalence of the stepped FIRs — DEFERRED to §N6's FOOP.** §2.2 identifies
+`spp` vs `spr` as the pair that would check Property 3, and T2's own procedure already builds both
+arenas and discards them, so the hook is cheap. But the relation itself is not specified in this
+FOOP (§N6), and it cannot be written before §Open Questions **Q9** is decided. **Not a FOOP-36
+deliverable**; recorded here so the connection to T2's six steps is not lost.
 
 **T2b — Pre-constanic rendering (§2.1).** FIRs stepped a bounded number of steps rather than to
 settlement: each renders, **parses**, contains **no NYES token as syntax**, and names its state
@@ -1557,6 +1523,20 @@ spellings; `ANCHORED`/`UNANCHORED` tokens; bare NYES tokens on brane openers and
 lists; `result=` slots; the `⨃` concatenation prefix. What replaces them is the program, plus
 `!!` comments where the evaluator has a finding worth recording.
 
+**How correctness is CHECKED also changes**, not only what is rendered. This is the one entry
+here that is about the test suite rather than the output:
+
+| | verification |
+|---|---|
+| today | read by a human; compared as TEXT against a baseline |
+| §2.2 | text comparison (Property 2), plus a STRUCTURAL compare of `spp` vs `spr` |
+
+Property 2's text comparison certifies "the output is stable Foolish"; it cannot certify "the
+output is THIS program", because a fixed point of a consistently-wrong rendering is still a fixed
+point — two defects entered through exactly that gap. §2.2 adds the pair that can see the
+difference, comparing the FIRs themselves before either is rendered: shape by kind, arity and
+children, values by integer equality and a creation table — a relation split out to §N6's FOOP.
+
 **What does not change.** `Detailed` mode (§1, §6) reaches byte-identical output to today, and
 `foolish-ubca` is untouched.
 
@@ -1605,8 +1585,9 @@ The original first objection stood as a **cost**, not a refutation: there is no 
 relation in the codebase, so Property 3 had no mechanical check and was enforced by reading.
 **That is now only half true** (human, 2026-09-07). §2.2 names the pipeline's intermediate
 stages, which makes the checkable pair explicit — `spp` vs `spr`, two computations of the same
-fixed point — and §2.2.2 defines the decidable half of the relation: structural equivalence over
-kind, arity, children, and the shape-bearing `FirSpec` fields. `FirSpec` already derives
+fixed point — and §N6 carries the worked design for the relation itself, split out to its own
+FOOP: structural equivalence over kind, arity, children, and the shape-bearing `FirSpec` fields.
+`FirSpec` already derives
 `PartialEq`, so this is a paired walk, not a new equivalence theory. **Value** equivalence
 (integers, creation identity) remains deferred and remains enforced by reading, so Property 3
 has PARTIAL mechanical coverage rather than none.
@@ -1624,7 +1605,23 @@ while ECONSTANIC recoordination does not.
 
 Ordered by number. **Q4 and Q6 are RESOLVED** (human decisions, recorded inline below and
 reflected in the plan); **Q2 and Q5 are for Phase 1 to answer before any rendering code is
-written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the human.
+written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the human. **Q9 is
+OPEN and blocks T2c's implementation.**
+
+- **Q9 — How does the per-brane creation table (§N6.3) handle a creation shared ACROSS brane
+  boundaries?** `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}` reaches one creation from
+  two sibling branes. A strictly brane-local table would compare `ba`'s and `bb`'s occurrences in
+  separate tables and never notice if they had been split into two distinct creations — missing
+  exactly the cross-brane sharing §2's Property 3 exists to protect. Consulting enclosing tables
+  outward catches it, but reintroduces some of the global map's over-constraint (§N6.3). Three
+  candidate rules, none yet chosen: (a) check at the brane that DEFINES the creation, treating a
+  reference as deferring to the defining brane's table; (b) consult tables outward from the
+  current brane to the root, recording at the outermost brane that can see both; (c) keep tables
+  strictly per-brane and accept that cross-brane sharing is checked only where both occurrences
+  sit in one brane. **This must be decided before T2c is written** — it changes what the check
+  detects, not merely how it is coded, and it is a language-semantics judgment rather than an
+  implementation convenience, so it is for the human, not an agent. **Q9 belongs to §N6's FOOP,
+  not to FOOP-36** — it blocks that work, not this one.
 
 - **Q1 — RESOLVED (human, 2026-09-02): out of scope. This FOOP targets einmo only.** The
   einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
@@ -1901,6 +1898,212 @@ useful well beyond the creation case that prompted it, and it needs no rendering
 is new syntax to lex, parse, and specify against the existing `&`-contexted forms, which is why
 it is its own FOOP rather than a rider on this one.
 
+### N6. FIR equality — its own FOOP
+
+**Split out of §2.2 (human, 2026-09-07): "Let's take everything we have right now, and move it to
+a next-step section recommending a FOOP to implement FIR Equality."**
+
+§2.2 establishes WHICH pair to compare — `spp` vs `spr`, the two stepped FIRs — and why. Defining
+the comparison itself turned out to be a feature in its own right: a relation over FIR with a
+shape half, a value half, a scoping rule, and an open semantics question at its centre (Q9). It
+is too large to ride on a rendering FOOP, and it is wanted well beyond this one — subtree
+comparison and "do these two differently-written programs denote the same thing?" are both
+natural users of it.
+
+**Recommendation: a dedicated FOOP defining FIR equality**, taking everything below as its
+starting design. It is NOT a blocker for FOOP-36: until it lands, Property 3 stays enforced by
+reading (§Rejected Alternatives F), which is the status quo this FOOP inherited.
+
+**What the new FOOP must decide first — §Open Questions Q9.** How a creation shared ACROSS brane
+boundaries is checked, given N6.3's per-brane tables. That choice changes what the relation
+detects, not merely how it is coded, so it is a language-semantics judgment for the human.
+
+**Scope beyond what is written below**, for whoever picks this up: whether the relation is a test
+helper or a language-level notion Foolish itself can express; whether it belongs in
+`foolish-ubca2` or lower; and whether `pp` vs `pr` (§2.2's third row) is worth implementing
+alongside as a debugging aid.
+
+**The design so far follows, moved verbatim from §2.2 apart from renumbering.**
+
+#### N6.1 The shape half — kind, arity, children
+
+Equality on FIR is not merely hard to implement; taken naively it is **ill-defined** (human,
+2026-09-07). Too strict — comparing arena indices, NYES, or produced values — fails on *correct*
+renderings, because recoordination may legitimately resolve an ECONSTANIC differently in a new
+context (§Rejected Alternatives F's surviving objection). Too loose, and it certifies nothing.
+Every choice of what to ignore is therefore a judgment about what rendering must preserve, which
+restates Property 3 rather than proving it.
+
+So the relation is split into a **shape** half (N6.1) and a **value** half (N6.2), each
+decidable on its own terms. **Structural equivalence** compares, recursively over
+`foolish_children` (the *written* structure, which recoordination does not perturb):
+
+1. **Kind** — the same `FirSpec` discriminant.
+2. **Arity** — `foolish_children().len()` agrees. A 3-statement brane is not equivalent to a
+   5-statement one; a `Concatenation` over 2 constituents is not one over 3.
+3. **Children**, pairwise, in order.
+4. **Shape-bearing `FirSpec` fields** — `Search { pattern, anchored, forward, is_value_search,
+   contexted }`, `Index { offset, anchored, contexted }`, `Operator { op }`,
+   `Comparison { op }`, `Statement { identifier }`. Rendering `?x` as `~x` leaves the shape
+   unchanged while changing the program, so these are part of shape.
+
+It deliberately does **not** compare:
+
+- **Values** — `IndepInt { value }` and creation identity. Deferred at the time N6.1 was
+  written; **N6.2 now settles both** (human, 2026-09-07).
+- **`Statement { line_number }`** — the sequencer reformats to one statement per line (§4.1), so
+  these differ by design.
+- **`FoolRef { referent }`** — a raw `FirPointer`, meaningless across two arenas.
+- **`Nk { reason }`** — prose, not structure.
+- **`Concatenation { rendering_aid }`** — sequencing-only by construction (§N1).
+- **`ubc_children`** and NYES — produced values, which is the deferred half.
+
+**What each half catches.** The fused `f1f2` concatenation defect is caught by **arity** (3
+elements against 2). The `⬤` unnamed-creation defect of §N4 is caught by **N6.2's creation
+table** — shape alone cannot see it, since both sides render a `Creation` node and the fault is
+one of identity.
+
+#### N6.2 The value half — integers are easy, creations are dynamic programming
+
+**Integers.** `IndepInt { value }` compares by value. Two `3`s are equal; a `3` and a `4` are
+not. Nothing more is needed: an integer literal denotes itself, and re-parsing a rendered `3`
+yields a `3`.
+
+**Creations are the interesting case** (human, 2026-09-07). A creation denotes nothing but its
+own identity, and identity is arena-scoped — `FirPointer` is meaningless across `spp` and `spr`.
+So creation equality cannot be decided by looking at either node: it is a **correspondence
+discovered during the walk**, built by dynamic programming over an equality table.
+
+**It is built incrementally, but with respect to IDENTICAL TREE TRAVERSAL** (human,
+2026-09-07). This qualifier is what makes the table well-defined rather than arbitrary. The two
+trees are walked in **lockstep** — the same order, position by position, `foolish_children` index
+by index — so when the walk arrives at a pair of creations, those two nodes occupy *the same
+position in their respective trees*. That is the only reason it is meaningful to call them
+corresponding.
+
+The consequence is that the shape half is not merely a separate check that happens to run
+alongside: it is the **precondition** for the value half. The lockstep walk is what N6.1's kind
+and arity comparisons enforce, and it is what lets a creation pair mean anything at all. If the
+walk ever had to guess which right-hand node matches a given left-hand node, the table would be
+searching for an isomorphism rather than verifying one, and the linear-time incremental
+construction below would not apply.
+
+**Hence a strict order of failure: the tree match would have to fail first** (human,
+2026-09-07). At every position the walk checks kind, then arity, then — only if both agree —
+descends or compares values. A shape mismatch **fails immediately and the walk stops**; it never
+reaches the creation table at that position or below it. So a creation-table failure (case 3
+below) is only ever reported for two trees whose shape has already matched everywhere the walk
+has been. That makes the diagnosis unambiguous: a shape failure says *the structure differs*, and
+a table failure says *the structure agrees but the sharing does not* — which is exactly the
+distinction §N4's defect turned on, and it would be lost if the two halves could fail in either
+order.
+
+**The rule.** Whenever the walk compares two elements and both are creations, consult a table of
+pairs `(left creation, right creation)`:
+
+1. **Neither is in the table** — they are **equal**, and the pairing is **recorded**.
+2. **The pair is in the table** — great, **equal**.
+3. **Either is in the table but paired to something else** — **fail**: the two trees are not the
+   same.
+
+Case 3 is the whole point. It is what makes the table a **bijection** rather than a mere mapping:
+a left creation may correspond to exactly one right creation and vice versa, so the check must be
+consulted in both directions.
+
+**Why this catches the §N4 defect.** For `{orig = ⬤; ref = orig;}`, the left tree has ONE
+creation reached twice — once at `orig`'s definition and once through `ref`. A correct rendering
+also yields one creation reached twice: the first comparison records the pairing, the second
+finds exactly that pairing already present, and case 2 approves. The defective `⬤` rendering
+yields TWO distinct creations on the right; the second comparison finds the left creation already
+paired to the OTHER right creation, and case 3 fails. Sharing preserved passes; sharing split
+fails — which is precisely §2's "the same sharing, the same creations".
+
+Note what the table does NOT require: it never asks that a creation occupy the same arena index,
+or be reached by the same route. Only that the *pattern* of sharing agree. That is what makes it
+sound across two independently-built arenas.
+
+**On redundancy — noted, not derived** (human, 2026-09-07: "explore formalism but don't spend
+cycles deriving"). In T2c's particular use — two whole programs from the same source, stepped the
+same way, walked from their roots — the table looks redundant: the lockstep walk tends to hit a
+shape difference before it ever reaches a creation pair. A spot check bears that out; the correct
+tree for `{orig = ⬤; ref = orig;}` against the defective `⬤` rendering differs in node count (7
+against 5), because a `Search` carries its anchor child and a bare `Creation` does not. So **both
+recorded defects are caught by the shape half**, which corrects an earlier draft claiming the
+table catches §N4.
+
+That is as far as it is worth taking the argument. Proving it properly is slippery — stepping
+rewrites the tree as it goes — and the conclusion would not change what gets built. Treat it as
+an observation about T2c's inputs.
+
+**Include the table regardless**, for reasons that do not depend on the observation holding:
+
+- **Out-of-order execution** (how the trees are BUILT) and **out-of-order comparison** (how they
+  are WALKED) each break the assumption that position implies identity. The human's concrete
+  case: comparing every one of a brane's children **in parallel**. There the table becomes shared
+  state, and two children racing to record `(L→R₁)` and `(L→R₂)` is a real violation that can be
+  LOST unless check-and-record is one atomic step. The resulting bijection is then also
+  run-to-run nondeterministic, so pairing detail in a failure message is diagnostic only.
+- **N6.3's other uses** — subtrees, and non-identical source — where the table is load-bearing
+  from the first comparison.
+
+It is cheap (a map consulted at creation nodes), correct today, and already correct under those
+changes. The one thing that must not happen is a future reader seeing an assertion that rarely
+fires, concluding it is dead, and deleting it — hence this note.
+
+#### N6.3 The table is PER-BRANE, not global
+
+**Because this equality will be applied to other situations — where the source Foolish was not an
+identical tree, or where it is applied to SUBTREES — a per-brane map is needed, not a global one**
+(human, 2026-09-07).
+
+The redundancy argument above quietly assumes T2c's setup: two whole programs from the *same*
+source text, stepped by the same evaluator, walked from their roots. That is one use of this
+relation and it is not the general one. Two others are already foreseeable:
+
+- **Subtree comparison.** Comparing two branes, or two statements, rather than two programs.
+  There is no shared root to anchor positions against, so positional correspondence carries no
+  information about referential correspondence. The table is the *only* thing relating the two
+  sides.
+- **Non-identical source.** Asking whether two programs a Foolisher wrote differently denote the
+  same thing — the natural generalization of this relation, and the reason to define it carefully
+  rather than as a test helper. Here the trees may agree in shape while having been built by
+  entirely different routes, and nothing about traversal order implies anything about identity.
+
+In both, the table is load-bearing from the first comparison, and the "provably redundant"
+paragraph does not apply.
+
+**Why the map must be per-brane.** A single global map forces every creation encountered anywhere
+into ONE bijection spanning the whole comparison. That over-constrains: two creations in
+*unrelated* branes have no reason to correspond, and a global map will happily pair them on first
+encounter and then reject a later, legitimate pairing as case 3. The comparison fails on trees
+that are in fact equivalent — a false negative, which is the worse failure for a correctness
+check, since it makes the tool untrustworthy exactly when it is doing its job.
+
+Scoping the map **per brane** matches the language: a brane is Foolish's unit of context, and
+creation identity is a question asked *within* a context. Two creations correspond because they
+occupy corresponding roles in corresponding branes, not because they were the n-th creation
+encountered by a walk. The rule:
+
+- Each pair of corresponding branes gets **its own table**, created when the walk enters them and
+  discarded when it leaves.
+- A creation pair is recorded in, and checked against, the table of the brane pair currently
+  being compared.
+- Nested branes get nested tables; an inner comparison does not pollute the outer one, and an
+  outer pairing does not constrain an inner one.
+
+This also makes subtree comparison fall out for free: comparing two branes directly is just the
+same algorithm entered at those branes, with a fresh table — which is precisely what one wants,
+and what a global map would make impossible without threading a whole program's history through.
+
+**What is left open.** Whether a creation shared *across* brane boundaries — reachable from two
+sibling branes, as `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}` — should be checked at
+the brane that defines it, at each brane that reaches it, or by consulting enclosing tables
+outward. Sharing across branes is exactly what §2's Property 3 cares about, so a strictly
+brane-local table risks missing it, while consulting outward reintroduces some of the global
+map's over-constraint. **This needs deciding before T2c is implemented**, and is called out in
+§Open Questions rather than settled here by an agent's guess.
+
+
 ## References
 
 - **FOOP-26** — `foolish-ubca2` marks / concatenation-as-operator / three-beat step. Draft,
@@ -1928,37 +2131,39 @@ it is its own FOOP rather than a rider on this one.
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: Added **§2.2 "The pipeline and its testable pairs"** (human, 2026-09-07). The
-properties are stated over `P` and `R`, but the pipeline between them has named intermediate
-stages — `P → pp → spp → R → pr → spr → sspr` — and naming them makes visible which
-comparisons exist, which are tested, and which are skipped. A table gives all five pairs: `R` vs `sspr`
-(tested, Property 2), **`spp` vs `spr` (the required new one, Property 3)**, `pp` vs `pr`
-(optional), `R` parses (tested, Property 1), and `P` vs `R` — **not testable, and that is the
-point**, since `P` is human-written source and `R` is Foolish Standard Formatting, so they are
-SUPPOSED to differ. **§2.2.1** carries the human's justification for the load-bearing pair:
-stepped Foolish is a limiting/fixed point, so `spp` and `spr` are two computations of the SAME
-limit, reached from human-written and from generated source — equality at the end of computation
-is the point. It is `spp` vs `spr` rather than `pp` vs `pr` because the unstepped pair cannot see
-any consequence of §3's rule, which is entirely about results, and the §N4 `⬤` defect lived
-inside exactly that decision. **§2.2.2** defines the relation, split per the human's "shape now,
-values later": structural equivalence over kind, arity, children (walking `foolish_children`, the
-written structure recoordination does not perturb), and the shape-bearing `FirSpec` fields
-(`Search`'s five flags, `Index`'s offset, `Operator`/`Comparison` op, `Statement` identifier —
-rendering `?x` as `~x` changes the program without changing the shape). It deliberately excludes
-values (`IndepInt`, creation identity), line numbers (the sequencer reformats by design),
-`FoolRef` referents (meaningless across arenas), NK prose, the concat rendering aid, and
-`ubc_children`/NYES. Records honestly what this catches — the fused `f1f2` defect, by arity — and
-what it does NOT: the `⬤` defect is a creation-IDENTITY fault, the deferred half, covered
-meanwhile by §N4's arena-identity tests. Also states a limit: `spr` is stepped from the
-sequencer's own output, so a systematic omission can be absent from both sides — the pair narrows
-the Property 2 loophole rather than closing it. **§Rejected Alternatives F** amended: its "no FIR
-equivalence relation exists, so Property 3 has no mechanical check" cost is now **only half
-true** — `FirSpec` already derives `PartialEq`, so this is a paired walk rather than a new
-equivalence theory, and Property 3 has PARTIAL mechanical coverage. **§Test Plan** gains **T2c**
-(assert `spp` ≡ `spr` inside T2's existing procedure, which already builds both arenas and
-discards them), and T2's six steps are annotated with §2.2's names so the two descriptions are
-visibly the same object. Prior entry: **§N4 RESOLVED** — §N4.b requires that a creation's
-null-characterized name also be IN CONTEXT at the rendering site, checked by running the real
-search engine (`contextful_search_scan` + `SearchPredicate::NameValue`) with no `Search` FIR
-constructed and nothing mutated, and placed in the SEQUENCER rather than `get_display_name`,
-which is FOOP-33's identity oracle.
+**Changes**: Added **§2.2 "The pipeline and its testable pairs"**, and **split FIR equality out to
+its own FOOP as §N6** (human, 2026-09-07: "take everything we have right now, and move it to a
+next-step section recommending a FOOP to implement FIR Equality").
+
+**§2.2 — what FOOP-36 keeps.** The properties are stated over `P` and `R`, but the pipeline
+between them has named intermediate stages — `P → pp → spp → R → pr → spr → sspr` — and naming
+them makes visible which comparisons exist, which are tested, and which are skipped. A table gives
+all five pairs: `R` vs `sspr` (tested, Property 2), **`spp` vs `spr`** (the pair that would check
+Property 3), `pp` vs `pr` (optional), `R` parses (tested, Property 1), and `P` vs `R` — **not
+testable, and that is the point**, since `P` is human-written source and `R` is Foolish Standard
+Formatting. **§2.2.1** carries the human's justification: stepped Foolish is a limiting/fixed
+point, so `spp` and `spr` are two computations of the SAME limit, reached from human-written and
+from generated source — equality at the end of computation is the point. It is that pair rather
+than `pp` vs `pr` because the unstepped pair cannot see any consequence of §3's rule, which is
+entirely about results, and the §N4 defect lived inside exactly that decision. A stated limit
+remains: `spr` is stepped from the sequencer's own output, so the pair narrows the Property 2
+fixed-point loophole rather than closing it.
+
+**§N6 — what moved out.** Defining FIR equality proved to be a feature in its own right, so §2.2
+now states only WHICH pair to compare and why, and the relation itself is recommended as a
+**dedicated FOOP**, with the design so far moved verbatim: **N6.1** the shape half (kind, arity,
+children over `foolish_children`, plus the shape-bearing `FirSpec` fields); **N6.2** the value
+half (integers by value; creations by an incrementally-built equality table with the human's three
+cases, built with respect to IDENTICAL TREE TRAVERSAL, so the tree match has to fail first); and
+**N6.3** the table is **PER-BRANE, not global** — a global map over-constrains and produces false
+negatives, while per-brane tables match the language and make subtree comparison fall out for
+free. N6.2 records that the pairing is redundant in T2c's narrow use — measured, not derived, per
+the human's "don't spend cycles deriving" — and that it goes in regardless because out-of-order
+execution, out-of-order comparison (concretely: comparing a brane's children in parallel, where
+check-and-record must be atomic), and N6.3's other uses each break the premise. Correcting an
+earlier draft: **both recorded defects are caught by the shape half**, not by the table.
+
+**§N6 is NOT a FOOP-36 blocker** — until it lands, Property 3 stays enforced by reading, which is
+the status quo this FOOP inherited. **T2c is accordingly DEFERRED**, and new **Q9** (how a
+creation shared ACROSS brane boundaries is checked) blocks §N6's FOOP, not this one. §Rejected
+Alternatives F amended: its "no FIR equivalence relation exists" cost is now only half true.
