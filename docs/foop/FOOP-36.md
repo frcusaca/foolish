@@ -381,7 +381,9 @@ Then:
 
 3. **`R` MEANS what `P` meant.** Re-parsing `R` yields a program with the same referential
    structure — the same sharing, the same element counts, the same creations. **This is a
-   REQUIREMENT of `Ubca2Sequencer`, not an aspiration** (human, 2026-09-04).
+   REQUIREMENT of `Ubca2Sequencer`, not an aspiration** (human, 2026-09-04). **§2.2 states
+   where this is checkable** — the pair `spp` vs `spr`, two computations of the same fixed
+   point — and §2.2.2 defines the structural relation that checks its decidable half.
 
 **Properties 1 and 2 are not sufficient, and this FOOP has the evidence.** Two defects satisfied
 both while meaning something else, and neither mechanical check could see it:
@@ -436,6 +438,99 @@ A pre-constanic node therefore renders exactly as every other node does under §
 written form — with the state in a `!!` comment per §4. Stepping changes the comments, not
 the source text. The comment is what carries `BRANING` vs `EMBRYONIC`, information that has
 no Foolish syntax and must not invent any.
+
+#### §2.2 The pipeline and its testable pairs
+
+The properties above are stated over `P` and `R`, but the pipeline between them has named
+intermediate stages, and naming them makes visible which comparisons are available, which are
+tested, and which are being skipped deliberately.
+
+```
+P  ──parse──▶  pp  ──step──▶  spp  ──seq──▶  R
+                                              │
+                                            parse
+                                              ▼
+R  ──parse──▶  pr  ──step──▶  spr  ──seq──▶  sspr
+```
+
+Seven objects in three sorts: **text** (`P`, `R`, `sspr`), **unstepped FIR** (`pp`, `pr`), and
+**stepped FIR** (`spp`, `spr`).
+
+| Pair | Sort | Comparison | Status | What it establishes |
+|---|---|---|---|---|
+| `R` vs `sspr` | text | `==` | **tested** (T2) | Property 2 — idempotence |
+| `spp` vs `spr` | stepped FIR | structural | **required, §2.2.1** | Property 3 — meaning preserved |
+| `pp` vs `pr` | unstepped FIR | structural | optional | the *written* form survives rendering |
+| `R` parses | — | — | **tested** (T3) | Property 1 |
+| `P` vs `R` | text | — | **not testable** | — |
+
+**`P` vs `R` is not a defect, it is the point.** `P` is human-written source with arbitrary
+whitespace, comments, and keyboard spellings (`{*}` for `⬤`); `R` is Foolish Standard Formatting
+(§4.1). They are *supposed* to differ. `P` is an input to the pipeline, never a comparand.
+
+##### §2.2.1 Why `spp` vs `spr` is the load-bearing pair
+
+**Because stepped Foolish is a limiting/fixed point, and equality at the end of computation is
+what the whole thing is for** (human, 2026-09-07).
+
+`spp` and `spr` are not two programs that happen to resemble each other. They are two
+computations of the **same limit**: `spp` reached it from human-written source, `spr` from
+generated source. The fixed point is the semantic object a Foolish program denotes, so if the
+sequencer preserved meaning, the two must arrive at the same place. That is Property 3 stated
+where it is actually checkable, rather than as a claim about text.
+
+This is also why the pair is `spp` vs `spr` and not `pp` vs `pr`. The unstepped comparison asks
+only whether the written form survived a parse-render-parse cycle; it is cheap and clean, but it
+cannot see any consequence of §3's rule, which is entirely about what happens to *results* — when
+one collapses to its value and when it reverts to its expression. The `⬤` defect of §N4 lived
+entirely inside that decision, and `pp` vs `pr` would have been blind to it. `pp` vs `pr` remains
+worth adding as a debugging convenience — when the stepped comparison fails, it isolates a
+parse/render fault from an evaluation fault — but it is not the property.
+
+##### §2.2.2 What the structural relation compares — shape now, values later
+
+Equality on FIR is not merely hard to implement; taken naively it is **ill-defined** (human,
+2026-09-07). Too strict — comparing arena indices, NYES, or produced values — fails on *correct*
+renderings, because recoordination may legitimately resolve an ECONSTANIC differently in a new
+context (§Rejected Alternatives F's surviving objection). Too loose, and it certifies nothing.
+Every choice of what to ignore is therefore a judgment about what rendering must preserve, which
+restates Property 3 rather than proving it.
+
+So the relation is split, and only the decidable half is in force now. **Structural equivalence**
+compares, recursively over `foolish_children` (the *written* structure, which recoordination does
+not perturb):
+
+1. **Kind** — the same `FirSpec` discriminant.
+2. **Arity** — `foolish_children().len()` agrees. A 3-statement brane is not equivalent to a
+   5-statement one; a `Concatenation` over 2 constituents is not one over 3.
+3. **Children**, pairwise, in order.
+4. **Shape-bearing `FirSpec` fields** — `Search { pattern, anchored, forward, is_value_search,
+   contexted }`, `Index { offset, anchored, contexted }`, `Operator { op }`,
+   `Comparison { op }`, `Statement { identifier }`. Rendering `?x` as `~x` leaves the shape
+   unchanged while changing the program, so these are part of shape.
+
+It deliberately does **not** compare:
+
+- **Values** — `IndepInt { value }` and creation identity. Deferred (human, 2026-09-07: "We can
+  address value equivalence later"). Under this relation `{x=3;}` ≡ `{x=4;}`, by design.
+- **`Statement { line_number }`** — the sequencer reformats to one statement per line (§4.1), so
+  these differ by design.
+- **`FoolRef { referent }`** — a raw `FirPointer`, meaningless across two arenas.
+- **`Nk { reason }`** — prose, not structure.
+- **`Concatenation { rendering_aid }`** — sequencing-only by construction (§N1).
+- **`ubc_children`** and NYES — produced values, which is the deferred half.
+
+**What this catches, and what it does not.** The fused `f1f2` concatenation defect is caught by
+arity (3 elements against 2). The `⬤` unnamed-creation defect of §N4 is **not** — both sides
+render a `Creation` node, and the fault is creation *identity*, which is precisely the deferred
+half. Until value equivalence lands, that case stays covered by the arena-identity unit tests
+(§N4.a/§N4.b), which assert on `FirPointer` equality within one arena.
+
+**A stated limit.** `spr` is stepped from `R`, which is already the sequencer's own output. If
+the sequencer systematically drops something, it can be absent from *both* sides and the
+comparison stays silent — the same fixed-point loophole as Property 2, one level up. A
+comparison immune by construction would have to derive one side from `P` alone, and no such
+derivation exists. `spp` vs `spr` narrows the gap; it does not close it.
 
 ### §3 What each FIR kind renders as
 
@@ -1247,12 +1342,15 @@ on the same FIR — §1's delegation contract, pinned so it cannot drift.
 
 **T2 — Round-trip properties (§2).** The load-bearing tests, as six literal steps:
 
-1. **Compile** the program `P`.
-2. **Step to finish** (settled).
-3. **Output** in `Foolish` mode → `R1`.
-4. **Compile `R1`** — that it compiles at all is Property 1.
-5. **Step to finish.**
-6. **Output** → `R2`. **Assert `R2 == R1`** (Property 2).
+1. **Compile** the program `P`.                          (§2.2's `pp`)
+2. **Step to finish** (settled).                         (§2.2's `spp`)
+3. **Output** in `Foolish` mode → `R1`.                  (§2.2's `R`)
+4. **Compile `R1`** — that it compiles at all is Property 1.  (§2.2's `pr`)
+5. **Step to finish.**                                   (§2.2's `spr`)
+6. **Output** → `R2`. **Assert `R2 == R1`** (Property 2). (§2.2's `sspr`)
+
+The parenthesized names are §2.2's, so the six steps and the pipeline table are the same
+object under two descriptions. Steps 2 and 5 produce the two stepped FIRs that T2c compares.
 
 Property 2 is the fixed point stated operationally, and it is far stronger than reading one
 rendering: a construct that renders to something even slightly different drifts on the second
@@ -1266,6 +1364,25 @@ the interesting one to watch. Property 2 is asserted **only** where the FIR is c
 (§2.1's table) — for pre-constanic FIR only steps 1–4 apply.
 
 This procedure also settles §Open Questions **Q7** empirically.
+
+**T2c — Structural equivalence of the stepped FIRs (§2.2, §2.2.2).** Inside T2's own procedure,
+which already builds both arenas and today discards them: **assert `spp` structurally equivalent
+to `spr`** — the two stepped FIRs from steps 2 and 5. This is Property 3's decidable half, and
+per §2.2.1 it is the load-bearing pair because both are computations of the *same* fixed point,
+reached from human-written and from generated source respectively.
+
+The relation is §2.2.2's: kind, arity, children pairwise over `foolish_children`, and the
+shape-bearing `FirSpec` fields. It does not compare values, line numbers, `FoolRef` referents,
+NK reasons, the concat rendering aid, `ubc_children`, or NYES — each for the reason §2.2.2 gives.
+
+Cover the same variety T2 does, and additionally the two defects on record: a multi-element
+concatenation (the fused `f1f2` case, caught by arity) and a creation reference
+(`{orig = ⬤; ref = orig;}`, NOT caught by this relation — it is a value/identity fault, covered
+meanwhile by §N4's arena-identity unit tests). Asserted **only** where the FIR is constanic, for
+§2.1's reason.
+
+Optionally also assert `pp` ≡ `pr` (§2.2's third row). Not a property in its own right, but when
+T2c fails it separates a parse/render fault from an evaluation fault.
 
 **T2b — Pre-constanic rendering (§2.1).** FIRs stepped a bounded number of steps rather than to
 settlement: each renders, **parses**, contains **no NYES token as syntax**, and names its state
@@ -1484,9 +1601,15 @@ this gap — the fused `f1f2` concatenation and the `⬤` unnamed creation (§N4
 Properties 1 and 2 while meaning something else. The entry is kept as the record of a position
 this FOOP held and abandoned.
 
-The original first objection stands as a **cost**, not a refutation: there is no FIR equivalence
-relation in the codebase, so Property 3 currently has no mechanical check and is enforced by
-reading. Building one is plausibly its own FOOP.
+The original first objection stood as a **cost**, not a refutation: there is no FIR equivalence
+relation in the codebase, so Property 3 had no mechanical check and was enforced by reading.
+**That is now only half true** (human, 2026-09-07). §2.2 names the pipeline's intermediate
+stages, which makes the checkable pair explicit — `spp` vs `spr`, two computations of the same
+fixed point — and §2.2.2 defines the decidable half of the relation: structural equivalence over
+kind, arity, children, and the shape-bearing `FirSpec` fields. `FirSpec` already derives
+`PartialEq`, so this is a paired walk, not a new equivalence theory. **Value** equivalence
+(integers, creation identity) remains deferred and remains enforced by reading, so Property 3
+has PARTIAL mechanical coverage rather than none.
 
 **The original second objection remains VALID and constrains how Property 3 must be defined.**
 Semantic identity is false in general if taken naively: a search that settled ECONSTANIC renders
@@ -1805,22 +1928,37 @@ it is its own FOOP rather than a rider on this one.
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: **§N4 RESOLVED.** Added **§N4.b — a name must be IN CONTEXT to be rendered**
-(human, 2026-09-07). N4.a alone was unsound: having a null-characterized name is not sufficient,
-because an original name is not unique across branes. The human's counterexample
-`{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}` renders a bare `'a` that re-resolves to
-B's creation rather than A's — parsing (Property 1) and round-tripping stably (Property 2) while
-denoting the WRONG object, which is exactly what Property 3 exists to catch. The rule: render the
-original name only when the search `?<name>=<that creation>`, performed at the rendering site,
-finds it. Implemented with the REAL search engine per the human's "We shoudl use search when
-possible" — `contextful_search_scan` + `SearchPredicate::NameValue`, whose value gate reduces to
-arena-pointer identity for creations, so the name and identity gates apply together atomically
-per FOOP-23 §C.3.1. **No `Search` FIR is constructed and nothing is mutated**: the scan takes
-`&FVMStorage`, which is what lets a read-only sequencer ask a genuine search question, so §UBC
-Step Impact stays **None**. Records that the check belongs in the SEQUENCER, not in
-`get_display_name`: implementing it there first silently disabled FOOP-33's no-rename rule (which
-uses that method as an identity oracle) and moved a `verified/`-backed `einmo_suite` baseline —
-rendering permission and creation identity are different questions and must not share one
-accessor. Reverted lines are annotated `!! This is Foolish because of out-of-context Creation
-Postulation application`, scoped to that case only. Prior entry: **N4's fix DECIDED (human): N4.a
-— revert to the original Foolish** whenever a creation value lacks a null-characterized name.
+**Changes**: Added **§2.2 "The pipeline and its testable pairs"** (human, 2026-09-07). The
+properties are stated over `P` and `R`, but the pipeline between them has named intermediate
+stages — `P → pp → spp → R → pr → spr → sspr` — and naming them makes visible which
+comparisons exist, which are tested, and which are skipped. A table gives all five pairs: `R` vs `sspr`
+(tested, Property 2), **`spp` vs `spr` (the required new one, Property 3)**, `pp` vs `pr`
+(optional), `R` parses (tested, Property 1), and `P` vs `R` — **not testable, and that is the
+point**, since `P` is human-written source and `R` is Foolish Standard Formatting, so they are
+SUPPOSED to differ. **§2.2.1** carries the human's justification for the load-bearing pair:
+stepped Foolish is a limiting/fixed point, so `spp` and `spr` are two computations of the SAME
+limit, reached from human-written and from generated source — equality at the end of computation
+is the point. It is `spp` vs `spr` rather than `pp` vs `pr` because the unstepped pair cannot see
+any consequence of §3's rule, which is entirely about results, and the §N4 `⬤` defect lived
+inside exactly that decision. **§2.2.2** defines the relation, split per the human's "shape now,
+values later": structural equivalence over kind, arity, children (walking `foolish_children`, the
+written structure recoordination does not perturb), and the shape-bearing `FirSpec` fields
+(`Search`'s five flags, `Index`'s offset, `Operator`/`Comparison` op, `Statement` identifier —
+rendering `?x` as `~x` changes the program without changing the shape). It deliberately excludes
+values (`IndepInt`, creation identity), line numbers (the sequencer reformats by design),
+`FoolRef` referents (meaningless across arenas), NK prose, the concat rendering aid, and
+`ubc_children`/NYES. Records honestly what this catches — the fused `f1f2` defect, by arity — and
+what it does NOT: the `⬤` defect is a creation-IDENTITY fault, the deferred half, covered
+meanwhile by §N4's arena-identity tests. Also states a limit: `spr` is stepped from the
+sequencer's own output, so a systematic omission can be absent from both sides — the pair narrows
+the Property 2 loophole rather than closing it. **§Rejected Alternatives F** amended: its "no FIR
+equivalence relation exists, so Property 3 has no mechanical check" cost is now **only half
+true** — `FirSpec` already derives `PartialEq`, so this is a paired walk rather than a new
+equivalence theory, and Property 3 has PARTIAL mechanical coverage. **§Test Plan** gains **T2c**
+(assert `spp` ≡ `spr` inside T2's existing procedure, which already builds both arenas and
+discards them), and T2's six steps are annotated with §2.2's names so the two descriptions are
+visibly the same object. Prior entry: **§N4 RESOLVED** — §N4.b requires that a creation's
+null-characterized name also be IN CONTEXT at the rendering site, checked by running the real
+search engine (`contextful_search_scan` + `SearchPredicate::NameValue`) with no `Search` FIR
+constructed and nothing mutated, and placed in the SEQUENCER rather than `get_display_name`,
+which is FOOP-33's identity oracle.
