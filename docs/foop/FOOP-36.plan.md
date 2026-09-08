@@ -1507,9 +1507,17 @@ green): the added comment does not break re-parsing. Full crate: **183/183**.
       parenthesized `(<-)`/`(->)` if those collide. Wanted on their own merits, NOT needed for
       §2 — N4.a is the round-trip fix. Its own FOOP; do not hold this one for it.
 - [ ] Merge `foop-36-foolish-rendering-sequencer` to `jia`
-  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
+  - [x] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
-    - [ ] Present the human with
+        **(Human approved 2026-09-07 18:20: "If all is set, please commit and merge to jia".)**
+    - [x] **Human attested `einmo_suite2` and requested the merge.** (Done 2026-09-07 18:20) The human
+          ran the interactive `checked → verified` promotion (181 cases, commit `aa22b82d`),
+          then asked for a fault-injection sanity check before approving: three inputs were
+          perturbed (`3 + 4`→`3 + 9`, `6 * 7`→`6 * 8`, `5`→`99`) and BOTH
+          `einmo_suite2_gate_checked` and `einmo_suite2_gate_verified` failed, each reporting
+          **INPUT and OUTPUT** divergence per case. Inputs restored; all five suite2 tests green
+          again. The gates demonstrably detect change rather than passing vacuously.
+    - [x] Present the human with
           `cd /home/agent/yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer` and ask
           them to review `einmo_suite2` BEFORE checking the parent checkbox. Say plainly that
           this FOOP **replaces `einmo_suite` with `einmo_suite2`** — 179 inputs copied across

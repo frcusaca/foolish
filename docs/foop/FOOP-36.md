@@ -2046,6 +2046,24 @@ Note what the table does NOT require: it never asks that a creation occupy the s
 or be reached by the same route. Only that the *pattern* of sharing agree. That is what makes it
 sound across two independently-built arenas.
 
+**Does the table ever need an identity entry, `A ≡ A`?** (human, 2026-09-07). **Not when the two
+sides are literally the same node** — if the walk reaches the same `FirPointer` on both sides,
+which can only happen when both subtrees are drawn from the SAME `FVMStorage`, the pair is
+trivially satisfied and recording it wastes an entry. Skipping reflexive pairs is a sound
+optimization, and it also keeps the residual of N6.4 minimal: a condition of the form "`A` must
+equal `A`" is no condition at all and should never appear in an answer handed to a caller.
+
+**But the table cannot be built on the assumption that identity is expressible.** Two creations
+from DIFFERENT arenas are always distinct `FirPointer`s even when they denote the same thing —
+`FirPointer` is arena-scoped by construction — so `A ≡ A` is not a case that arises there at all.
+That is the case N6.4 exists for, and it is the general one. The rule to implement:
+
+- **Same arena, same pointer** → equal, record nothing.
+- **Otherwise** → the three-case check above, on a pair of genuinely distinct pointers.
+
+The distinction matters because it says where the shortcut lives: it is an optimization inside
+the comparison of one pair, NOT a property the table's design may rely on.
+
 **On redundancy — noted, not derived** (human, 2026-09-07: "explore formalism but don't spend
 cycles deriving"). In T2c's particular use — two whole programs from the same source, stepped the
 same way, walked from their roots — the table looks redundant: the lockstep walk tends to hit a
