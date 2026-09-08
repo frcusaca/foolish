@@ -2,7 +2,7 @@
 foop: D63
 title: A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in
 author: Claude Code / claude-opus-5 (directed by the human)
-status: Draft
+status: Complete
 type: Standards
 created: 2026-09-01
 phase: phase-4
@@ -2308,7 +2308,16 @@ migration that directory exists to enable, not a special case.
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: Added **§2.2 "The pipeline and its testable pairs"**, and **split FIR equality out to
+**Changes**: **STATUS → `Complete`. Merged to `jia` 2026-09-07 as `d82a33b0`** (--no-ff, 33
+commits), after the human attested `einmo_suite2` (181 cases, `aa22b82d`) and approved the Phase
+8 STOP. Post-merge `cargo test --workspace` on `jia`: **791 passed, 0 failed**. Answered the
+human's §N6.2 question about the creation table: an identity entry `A ≡ A` is never needed when
+both sides are the SAME `FirPointer` (possible only within one `FVMStorage`) — skipping reflexive
+pairs is a sound optimization and keeps N6.4's residual minimal — but the table must not be BUILT
+on identity being expressible, since two creations from different arenas are always distinct
+pointers and that is the general case N6.4 exists for.
+
+Prior entry: added **§2.2 "The pipeline and its testable pairs"**, and **split FIR equality out to
 its own FOOP as §N6** (human, 2026-09-07: "take everything we have right now, and move it to a
 next-step section recommending a FOOP to implement FIR Equality").
 
