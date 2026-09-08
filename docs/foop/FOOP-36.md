@@ -1916,6 +1916,11 @@ natural users of it.
 starting design. It is NOT a blocker for FOOP-36: until it lands, Property 3 stays enforced by
 reading (§Rejected Alternatives F), which is the status quo this FOOP inherited.
 
+**There is PRIOR ART in the repository: `docs/vintage_legacy/EQUIVALENCE.md`** — a vintage
+taxonomy of equality operators for Foolish (`=s=`, `==`, `===`, `=n=`, `=v=`, …), unspecified and
+unimplemented, which FOOP-23 already defers to for value-search equality. **§N6's FOOP must
+reconcile with and update it** (human, 2026-09-07); see N6.5.
+
 **What the new FOOP must decide first — §Open Questions Q9.** How a creation shared ACROSS brane
 boundaries is checked, given N6.3's per-brane tables. That choice changes what the relation
 detects, not merely how it is coded, so it is a language-semantics judgment for the human.
@@ -2174,6 +2179,51 @@ cross-brane sharing question of **Q9**, seen from the other side: an inner compa
 condition that only an enclosing brane can discharge. Q9 and this section should be settled
 together, since the answer to one constrains the other.
 
+#### N6.5 The older equality document — `EQUIVALENCE.md` — must be updated by that FOOP
+
+**`docs/vintage_legacy/EQUIVALENCE.md` still exists, and §N6's FOOP must update it as part of its
+work** (human, 2026-09-07). It is not a stale note to ignore: it is a **taxonomy of equivalence
+relations as Foolish LANGUAGE OPERATORS**, with proposed surface syntax, and it is the closest
+thing the project has to a prior design for what N6 is now specifying. Writing N6 without
+reconciling it would leave two competing accounts of Foolish equality in the repository.
+
+**What it sketches** — an operator family, none of it specified or implemented:
+
+| operator | relation |
+|---|---|
+| `=s=` | syntactic — bitwise-identical source |
+| `==` | equal once the compared branes are no longer nye |
+| `===` | **semantic** — equal under ALL possible coordinations |
+| `=n=` / `=N=` | same names / same names in the same order |
+| `=c=` / `=C=` | same characterized names / in the same order |
+| `=v=` / `=V=` | same values appear / same values against the same names |
+
+**Why it is directly relevant, not merely adjacent.** Three points of contact:
+
+1. **N6 is a `==`-like relation** in that taxonomy — structural, over already-stepped FIR — and
+   should say so explicitly, in the document's own vocabulary, rather than inventing a parallel
+   one.
+2. **N6.4's conditional equality has no entry in the table**, and is arguably a better primitive
+   than several that do: `===` ("equal in all possible coordinations") is exactly the kind of
+   claim a residual can express *constructively*, as the conditions under which equality holds,
+   instead of quantifying over all contexts.
+3. **FOOP-23 already defers to it.** Its §Open Questions record that value-search equality
+   currently means **integer equality only, pending an equivalence FOOP**, and `FOOP-23.plan.md`
+   §D.4 carries an **unchecked** task: *"Note in `EQUIVALENCE.md` (or leave a pointer) that
+   value-search equality currently means integer equality only, pending an equivalence FOOP."*
+   **§N6's FOOP is that equivalence FOOP**, so it inherits that task and should close it.
+
+**Concretely, §N6's FOOP should:**
+
+- Read `EQUIVALENCE.md` before designing, and state where N6's relation sits in its taxonomy.
+- Update it — either specifying the operators it defines, or marking the rest as unimplemented
+  sketch with a pointer to the FOOP, so a reader is not left believing `===` exists.
+- Close `FOOP-23.plan.md` §D.4's outstanding `EQUIVALENCE.md` checkbox, and revisit FOOP-23 §Open
+  Questions' "equality maturation" note, which anticipates exactly this work.
+- Decide whether the vintage operators are still wanted as Foolish surface syntax at all, or
+  whether N6 is a Rust-side relation only. That is a scope question for the human, and the
+  document's existence is the reason it must be asked.
+
 
 ## References
 
@@ -2191,6 +2241,10 @@ together, since the answer to one constrains the other.
 - **FOOP-75** §4 — attached-search `=$` canonical spelling, retained in §3.
 - **FOOP-23** — search semantics; NK vs ECONSTANIC miss outcomes, which §4/§5 render.
 - **FOOP-64** — the einmo three-stage pipeline and gates this FOOP's baselines flow through.
+- `docs/vintage_legacy/EQUIVALENCE.md` — the vintage equality-operator taxonomy (`=s=`, `==`,
+  `===`, `=n=`, `=c=`, `=v=`, …), unspecified and unimplemented. **Prior art for §N6**, which
+  must reconcile with and update it; see N6.5. FOOP-23 already defers to it for value-search
+  equality, and `FOOP-23.plan.md` §D.4 leaves an unchecked task against it.
 - `foolish-core/src/sequencer.rs` — the current renderer; `Detailed` delegates to it.
 - `foolish-ubca2/src/ubca_snapshot_tester.rs` — the einmo adapter that calls the sequencer.
 - `foolish-parser/src/lexer.rs` `is_id_sep` — why `ˍ`-mangled names round-trip.
@@ -2247,6 +2301,22 @@ that requires two creations to be identified is one that lost the distinction. N
 it opens (composing residuals across comparisons, caller-supplied seed assumptions, whether the
 residual is minimal or merely sufficient, cross-arena comparison) and that Q9 should be settled
 together with it, since a residual escaping a brane pair is Q9 seen from the other side.
+
+**N6.5 — the older equality document must be updated by that FOOP** (human, 2026-09-07). Checked
+and it still exists: `docs/vintage_legacy/EQUIVALENCE.md`, a taxonomy of equality relations as
+Foolish LANGUAGE OPERATORS (`=s=` syntactic, `==` once not nye, `===` semantic/all-coordinations,
+`=n=`/`=N=` names, `=c=`/`=C=` characterized names, `=v=`/`=V=` values), none specified or
+implemented. It is prior art rather than a stale note, and §N6's FOOP must reconcile with it or
+the repository carries two competing accounts of Foolish equality. Three contact points recorded:
+N6's relation is a `==`-like one in that taxonomy and should say so in the document's own
+vocabulary; **N6.4's conditional equality has no entry in the table** and is arguably a better
+primitive than `===`, since a residual expresses constructively what "equal in all possible
+coordinations" quantifies over; and **FOOP-23 already defers to it** — its Open Questions record
+that value-search equality means integer equality only "pending an equivalence FOOP", and
+`FOOP-23.plan.md` §D.4 carries an UNCHECKED task to note that in `EQUIVALENCE.md`. §N6's FOOP is
+that equivalence FOOP and inherits the task. Also flags a scope question for the human: whether
+the vintage operators are still wanted as Foolish surface syntax, or whether N6 is a Rust-side
+relation only.
 
 **§N6 is NOT a FOOP-36 blocker** — until it lands, Property 3 stays enforced by reading, which is
 the status quo this FOOP inherited. **T2c is accordingly DEFERRED**, and new **Q9** (how a
