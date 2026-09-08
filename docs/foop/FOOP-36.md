@@ -1919,7 +1919,16 @@ reading (§Rejected Alternatives F), which is the status quo this FOOP inherited
 **There is PRIOR ART in the repository: `docs/vintage_legacy/EQUIVALENCE.md`** — a vintage
 taxonomy of equality operators for Foolish (`=s=`, `==`, `===`, `=n=`, `=v=`, …), unspecified and
 unimplemented, which FOOP-23 already defers to for value-search equality. **§N6's FOOP must
-reconcile with and update it** (human, 2026-09-07); see N6.5.
+reconcile with it, REFRESH it, and bring it OUT of `vintage_legacy/` into the live documentation
+tree** (human, 2026-09-07); see N6.5. That is a deliverable of the FOOP, not a side errand: the
+refresh is only possible once N6 supplies real definitions where the vintage document had
+sketches.
+
+**So this FOOP has a documentation deliverable alongside its implementation**, and its value is
+not only in testing. The human's framing: the equivalence definitions are useful **for testing
+AND for comprehending programs** — "under what identifications are these two branes the same?"
+is a question a Foolisher asks while READING code, which is what makes this language
+documentation rather than a test utility.
 
 **What the new FOOP must decide first — §Open Questions Q9.** How a creation shared ACROSS brane
 boundaries is checked, given N6.3's per-brane tables. That choice changes what the relation
@@ -2213,11 +2222,36 @@ reconciling it would leave two competing accounts of Foolish equality in the rep
    value-search equality currently means integer equality only, pending an equivalence FOOP."*
    **§N6's FOOP is that equivalence FOOP**, so it inherits that task and should close it.
 
+**REFRESH THE DOCUMENT AND BRING IT OUT OF `vintage_legacy/` — as part of the proposed FOOP**
+(human, 2026-09-07). Not a side errand and not work for FOOP-36: it is a **deliverable of §N6's
+FOOP**, because that FOOP is what makes the refresh possible. The reason is that there are now
+**several substantive equivalence definitions** — N6.1's structural relation, N6.2's creation
+correspondence, N6.3's per-brane scoping, N6.4's conditional/residual form — where the vintage
+document had only sketches. They are useful for two distinct purposes, and the human named both:
+
+- **For testing** — the FOOP-36 use, Property 3, and any future check that two FIRs agree.
+- **For COMPREHENDING PROGRAMS** — the larger reason. "Under what identifications are these two
+  branes the same?" is a question a Foolisher asks while *reading* code, not only while testing
+  it. That is what lifts this from a test utility to language documentation, and it is why the
+  document belongs in the live tree rather than in the legacy pile.
+
+`vintage_legacy/` is explicitly transitional — `docs/README.md` describes it as "Pre-reorganization
+files, being migrated into the above" — so promoting `EQUIVALENCE.md` out of it is exactly the
+migration that directory exists to enable, not a special case.
+
 **Concretely, §N6's FOOP should:**
 
 - Read `EQUIVALENCE.md` before designing, and state where N6's relation sits in its taxonomy.
-- Update it — either specifying the operators it defines, or marking the rest as unimplemented
-  sketch with a pointer to the FOOP, so a reader is not left believing `===` exists.
+- **Rewrite it against the definitions N6 actually establishes**, and **move it out of
+  `vintage_legacy/`** into the live documentation tree. Destination is the FOOP's call —
+  `docs/ubc1/how/` if it reads as engineering reference, `docs/why/` if the emphasis is the
+  design rationale for what equality MEANS in Foolish — and `docs/README.md`'s index must be
+  updated with it.
+- Mark clearly which operators are specified-and-implemented, which are specified-only, and which
+  remain sketch, so a reader is never left believing `===` exists when it does not.
+- Note that `docs/howto/03_howto_foolish_todo.foo` already lists **equivalence** among its
+  unwritten chapters. A refreshed document makes that tutorial writable, and the FOOP should
+  consider whether writing it is in scope or a follow-on.
 - Close `FOOP-23.plan.md` §D.4's outstanding `EQUIVALENCE.md` checkbox, and revisit FOOP-23 §Open
   Questions' "equality maturation" note, which anticipates exactly this work.
 - Decide whether the vintage operators are still wanted as Foolish surface syntax at all, or
@@ -2316,7 +2350,14 @@ that value-search equality means integer equality only "pending an equivalence F
 `FOOP-23.plan.md` §D.4 carries an UNCHECKED task to note that in `EQUIVALENCE.md`. §N6's FOOP is
 that equivalence FOOP and inherits the task. Also flags a scope question for the human: whether
 the vintage operators are still wanted as Foolish surface syntax, or whether N6 is a Rust-side
-relation only.
+relation only. **The document is to be REFRESHED and brought OUT of `vintage_legacy/`** into the
+live tree as a **deliverable of that FOOP** (human, 2026-09-07), because there are now several
+substantive equivalence definitions where the vintage document had only sketches — useful **for
+testing AND for comprehending programs**, the latter being what makes it language documentation
+rather than a test utility. `docs/README.md` calls `vintage_legacy/` "being migrated into the
+above", so this is that migration rather than a special case; `docs/howto/03_howto_foolish_todo.foo`
+already lists equivalence among its unwritten chapters, which a refreshed document would make
+writable.
 
 **§N6 is NOT a FOOP-36 blocker** — until it lands, Property 3 stays enforced by reading, which is
 the status quo this FOOP inherited. **T2c is accordingly DEFERRED**, and new **Q9** (how a
