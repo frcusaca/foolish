@@ -1621,7 +1621,9 @@ OPEN and blocks T2c's implementation.**
   sit in one brane. **This must be decided before T2c is written** — it changes what the check
   detects, not merely how it is coded, and it is a language-semantics judgment rather than an
   implementation convenience, so it is for the human, not an agent. **Q9 belongs to §N6's FOOP,
-  not to FOOP-36** — it blocks that work, not this one.
+  not to FOOP-36** — it blocks that work, not this one. **Settle it together with N6.4**: a
+  residual escaping a brane pair is this same question seen from the other side, since an inner
+  comparison may need a condition only an enclosing brane can discharge.
 
 - **Q1 — RESOLVED (human, 2026-09-02): out of scope. This FOOP targets einmo only.** The
   einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
@@ -1918,6 +1920,14 @@ reading (§Rejected Alternatives F), which is the status quo this FOOP inherited
 boundaries is checked, given N6.3's per-brane tables. That choice changes what the relation
 detects, not merely how it is coded, so it is a language-semantics judgment for the human.
 
+**The relation is richer than a boolean — see N6.4.** Rather than answering "are these equal?",
+it can return **the mapping of creations that would have to be equal for the two FIRs to be
+equal** (human, 2026-09-07), leaving the caller to judge whether those identifications are
+acceptable for their purpose. The boolean is then just "is the residual empty?", so N6.4 is the
+general form and N6.1–N6.3 a special case of it. **Whoever writes this FOOP should design for
+N6.4 from the start**, since retrofitting a residual onto a boolean means changing the return
+type of every path.
+
 **Scope beyond what is written below**, for whoever picks this up: whether the relation is a test
 helper or a language-level notion Foolish itself can express; whether it belongs in
 `foolish-ubca2` or lower; and whether `pp` vs `pr` (§2.2's third row) is worth implementing
@@ -2103,6 +2113,67 @@ brane-local table risks missing it, while consulting outward reintroduces some o
 map's over-constraint. **This needs deciding before T2c is implemented**, and is called out in
 §Open Questions rather than settled here by an agent's guess.
 
+#### N6.4 Equality with CONDITIONS — return the mapping, not a boolean
+
+**The interesting resultant system** (human, 2026-09-07): take two subtrees, compare them, and
+**return the mapping of which creations would have to be equal for the two FIRs to be equal.**
+Equality then comes *with conditions*, and the caller decides whether those conditions are
+acceptable for their purpose.
+
+This inverts the relation's shape. N6.1–N6.3 answer a yes/no question by building the creation
+table internally and discarding it. Here the table **is the answer**:
+
+| | question | result |
+|---|---|---|
+| N6.1–N6.3 | are these two FIRs equal? | `true` / `false` |
+| N6.4 | under what identifications are they equal? | a set of required creation pairs, or "impossible" |
+
+Three outcomes rather than two:
+
+1. **Unconditionally equal** — the walk completes with an empty residual. Nothing needed to be
+   assumed.
+2. **Conditionally equal** — the walk completes, and the residual is the set of creation pairs it
+   had to assume. "These are equal *provided* `L₁≡R₁` and `L₂≡R₂`."
+3. **Not equal** — a shape mismatch, or an integer mismatch, or a creation pairing that
+   contradicts one already required. No set of identifications can rescue it.
+
+**Why this is more useful than a boolean.** Two subtrees plucked from the same FVM — or from
+different ones — will routinely reach creations that are distinct objects, so a plain comparison
+answers `false` and tells the caller nothing about *why* or *how close*. The residual says
+exactly what would have to hold, and **under some conditions the user may decide certain creations
+really are equal for their purpose**. The relation supplies the facts; the caller supplies the
+judgment. That is a much better division than baking one notion of creation identity into the
+comparison and forcing every user to accept it.
+
+**It subsumes the boolean.** N6.1–N6.3's answer is just "is the residual empty?" — so this is a
+generalization, not a competing design, and the boolean version should be implemented as a thin
+wrapper over it rather than as separate code. Notably, **the FOOP-36 use wants the strict
+reading**: for Property 3, a non-empty residual is a FAILURE, because a rendering that requires
+two creations to be identified is a rendering that lost the distinction. Other callers will want
+the residual itself.
+
+**What this opens up.** Once conditions are first-class, natural follow-ons appear — none of which
+need deciding now, but which the FOOP should consider so the return type does not have to change
+later:
+
+- **Composing residuals.** Comparing many pairs of subtrees and asking whether their conditions
+  are jointly satisfiable — a union-find over creations across comparisons.
+- **Caller-supplied assumptions.** Seeding the table before the walk: "treat `L₁` and `R₁` as the
+  same creation, now compare." Falls out of the same machinery, since seeding is just
+  pre-populating the residual.
+- **Minimality.** Whether the residual returned is guaranteed to be the *smallest* set of
+  identifications sufficient for equality, or merely *a* sufficient set. With the lockstep walk
+  and per-brane tables the natural construction is already minimal, but that should be stated and
+  tested rather than assumed.
+- **Cross-arena comparison.** The residual is a set of pairs, so it is meaningful whether both
+  subtrees came from one `FVMStorage` or two — which is what makes "descendant FIRs that may or
+  may not share FIR from the same FVM" a coherent thing to ask about.
+
+**Interaction with N6.3's per-brane scoping.** A residual escaping a brane pair is exactly the
+cross-brane sharing question of **Q9**, seen from the other side: an inner comparison may need a
+condition that only an enclosing brane can discharge. Q9 and this section should be settled
+together, since the answer to one constrains the other.
+
 
 ## References
 
@@ -2162,6 +2233,20 @@ the human's "don't spend cycles deriving" — and that it goes in regardless bec
 execution, out-of-order comparison (concretely: comparing a brane's children in parallel, where
 check-and-record must be atomic), and N6.3's other uses each break the premise. Correcting an
 earlier draft: **both recorded defects are caught by the shape half**, not by the table.
+
+**N6.4 — equality with CONDITIONS** (human, 2026-09-07). The relation is richer than a boolean:
+given two subtrees it can **return the mapping of which creations would have to be equal for the
+two FIRs to be equal**, leaving the caller to judge whether those identifications are acceptable
+for their purpose — which matters for comparing descendant FIRs that may or may not share FIR
+from the same FVM. Three outcomes replace two: unconditionally equal (empty residual),
+conditionally equal (the residual is the set of creation pairs assumed), and not equal (no
+identifications can rescue it). It **subsumes** N6.1–N6.3, whose boolean is just "is the residual
+empty?", so the FOOP should design for it from the start rather than retrofit it. FOOP-36's own
+use wants the strict reading — for Property 3 a non-empty residual is a FAILURE, since a rendering
+that requires two creations to be identified is one that lost the distinction. Notes the follow-ons
+it opens (composing residuals across comparisons, caller-supplied seed assumptions, whether the
+residual is minimal or merely sufficient, cross-arena comparison) and that Q9 should be settled
+together with it, since a residual escaping a brane pair is Q9 seen from the other side.
 
 **§N6 is NOT a FOOP-36 blocker** — until it lands, Property 3 stays enforced by reading, which is
 the status quo this FOOP inherited. **T2c is accordingly DEFERRED**, and new **Q9** (how a
