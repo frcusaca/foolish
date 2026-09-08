@@ -88,6 +88,51 @@ mod einmo_tests {
         );
     }
 
+    /// **Verified gate**: `checked/` matches `verified/` under the human
+    /// reviewer's key. Escalates from the Checked level — evaluates all
+    /// inputs, asserts output↔checked correspondence, then asserts
+    /// checked↔verified correspondence with human attestation.
+    ///
+    /// Deliberately NOT `#[ignore]`d, and it must stay that way:
+    /// `einmo_suite2/verified/` holds human-signed artifacts (attested
+    /// 2026-09-07, 181 cases), and AGENTS.md forbids an agent from adding
+    /// `#[ignore]` to a Verified-tier gate. The suite's `einmo.toml`
+    /// deliberately leaves `[signing.verified]` unconfigured so only an
+    /// interactive human promotion can create this tier.
+    #[test]
+    fn einmo_suite2_gate_verified() {
+        let _gate = gate_lock();
+        let config = config(ValidationLevel::Verified)
+            .require_correspondence(Stage::Output, Stage::Checked)
+            .require_correspondence(Stage::Checked, Stage::Verified);
+        let results = EinmoSuite::new(config)
+            .evaluate_all(&Ubca2FoolishAdapter)
+            .expect("evaluate_all must not fail at the filesystem level");
+
+        assert!(
+            !results.files.is_empty(),
+            "einmo suite2 discovered no inputs — check einmo_suite2/input/"
+        );
+        for file in &results.files {
+            assert!(
+                file.written_and_verified,
+                "{} was not written+verified: {:?}",
+                file.rel_path.display(),
+                file.detail
+            );
+        }
+        assert!(
+            results.integrity.is_clean(),
+            "einmo_suite2 is not sound at the Verified level:\n{}",
+            results.integrity.report()
+        );
+        assert!(
+            results.correspondence_failures.is_empty(),
+            "suite2 correspondence failure — output/checked/verified must agree:\n  {}",
+            results.correspondence_failures.join("\n  ")
+        );
+    }
+
     /// Every `.foo` file under a directory, relative to that directory,
     /// with the OS-specific separator normalized to `/` for comparison.
     fn foo_inputs_under(dir: &std::path::Path) -> std::collections::BTreeSet<String> {

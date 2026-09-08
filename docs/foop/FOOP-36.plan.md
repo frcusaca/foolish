@@ -696,6 +696,14 @@ a fixed, human-authored target.
   - [x] Do **not** add an `einmo_suite2_gate_verified` yet: `verified/` is empty and AGENTS.md
         forbids an agent marking a Verified-tier test `#[ignore]`. Adding a gate that must fail
         is a decision for the human — raise it, do not make it. (2026-09-03 07:49)
+  - [x] **RESOLVED — the human attested the suite and the gate is now in.** (Done 2026-09-07 18:05)
+        The human ran `einmo promote checked to verified foolish-ubca2/einmo_suite2
+        --interactive` and committed the result (`aa22b82d`): **181 verified artifacts matching
+        181 checked**, signed with the reviewer key (`stage:verified` pubkey `cbdd8bb4…`,
+        distinct from output's `5b846599…` and checked's `63e36903…`, so not the well-known
+        computer key). `einmo_suite2_gate_verified` was then added to
+        `ubca_snapshot_tester2.rs` and **passes 1/1 with NO `#[ignore]`** — which is exactly why
+        the gate was withheld until the human acted rather than added-and-silenced.
 - [x] **Now implement the renderer** (§3, §3.1, §4, §5) until this one case passes. This is the
       whole development loop for the sequencer: one hand-authored target, iterate against it.
       (2026-09-03 — `einmo_suite2_gate_checked` passes: the renderer reproduces the
@@ -1084,6 +1092,8 @@ that it matches what the renderer emitted. Two questions specific to this FOOP:
 
 - [x] Confirm the rest of the tree is green — `foolish-ubca`'s gates and `einmo_suite/`'s
       three gates all still pass, unchanged (T5)
+- [x] **`einmo_suite2/verified/` WAS empty; the human attested it 2026-09-07 18:05** (181 cases, commit
+      `aa22b82d`), and `einmo_suite2_gate_verified` now exists and passes. Original note follows.
 - [x] **`einmo_suite2/verified/` is EMPTY** — it is a brand-new suite, so no case here has a
       frozen twin and nothing is at risk of being overwritten. (Contrast `einmo_suite/`, whose
       `verified/` holds all 179 human-signed artifacts and which this FOOP does not touch.)
