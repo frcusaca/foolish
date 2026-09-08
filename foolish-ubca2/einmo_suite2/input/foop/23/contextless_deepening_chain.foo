@@ -1,0 +1,10 @@
+{
+	some_brane = {
+		some_aspect = {
+			some_thing_else = {
+				some_value = 42;
+			};
+		};
+	};
+	final = some_brane.some_aspect.some_thing_else.some_value;
+}

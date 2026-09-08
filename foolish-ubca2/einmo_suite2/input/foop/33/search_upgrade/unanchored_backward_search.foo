@@ -1,0 +1,18 @@
+{
+	x = 3;
+	local_hit = ?x;
+
+	tag'y = 5;
+	plain_y = 9;
+	quoted_hit = ?tag'y;
+	quoted_miss = ?y;
+
+	miss = ?nonexistent;
+
+	miss_ref = ?miss;
+
+	deep = 11;
+	inner'{
+		found_in_ancestor = ?deep;
+	};
+}

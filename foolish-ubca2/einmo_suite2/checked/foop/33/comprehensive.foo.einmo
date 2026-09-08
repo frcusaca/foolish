@@ -1,0 +1,83 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/33/comprehensive.foo
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 5cad954d
+producer-diff: sha256:112cb3887a678f318d56e3629560a72ea68eb87269e61c13c9b75a23af6c4105
+generated: 2026-09-07T23:26:44.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+	!! FOOP-33 comprehensive: creation, equality, characterizations,
+	!! null-constants, nested branes. (Comparisons dropped pending new infix design;
+	!! see FOOP-33.md §5.0.)
+
+    test_number = 1;
+	a = ⬤;
+    test_number = 2;
+	b = {*};
+    test_number = 3;
+	c = a;
+	same = ?=a&#-1; !! 3
+	diff = ?=b&#-1; !! 2
+
+    !! Same test anchored
+    brn = {
+        test_number = 1;
+	    a = ⬤;
+        test_number = 2;
+	    b = {*};
+        test_number = 3;
+	    c = a;
+    }
+    find_a = brn~=(brn.a)&#-1; !! 1
+    find_a = brn?=(brn.a)&#-1; !! 3
+    find_b = brn~=(brn.b)&#-1; !! 2
+    find_b = brn?=(brn.b)&#-1; !! 2
+    find_c = brn~=(brn.c)&#-1; !! 1
+    find_c = brn?=(brn.c)&#-1; !! 3
+
+	tag'x = 7;
+	plain_x = 9;
+	hit = ?tag'x;
+	miss = ?x;
+
+	inner = {deep = True;};
+}
+①
+{
+  testˍnumber = 1;
+  a = ⬤;
+  testˍnumber = 2;
+  b = ⬤;
+  testˍnumber = 3;
+  c = a;
+  same = 3;
+  diff = 2;
+  brn = {
+    testˍnumber = 1;
+    a = ⬤;
+    testˍnumber = 2;
+    b = ⬤;
+    testˍnumber = 3;
+    c = a
+  };
+  findˍa = 1;
+  findˍa = 3;
+  findˍb = 2;
+  findˍb = 2;
+  findˍc = 1;
+  findˍc = 3;
+  tag'x = 7;
+  plainˍx = 9;
+  hit = 7;
+  miss = x;
+  inner = {
+    deep = True
+  }
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:44.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:44.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"8/plFdmSLOKlZYSOC9b5AIahG8MIHrKFvikto9BFFD9HiCsDWyDlB+m8Xkn4FQNV3Zz2YhB+zR6AI6xQpHmJAg==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:44.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"ax+m3w6vnrei+dZfk8IHFDs2xq0QDfSwtj5iWXnMljBPsRGftP2MqmrzmsaIQlTypmWYeMBj6ll+WkY/YlKsCg==","produced_by":"einmo 0.1.0 sha256:d86a04bede04d2b43382d6c0e75f019f7a45913551ceca2631543ff24225a42f","timestamp":"2026-09-07T23:30:15.000000000Z"}

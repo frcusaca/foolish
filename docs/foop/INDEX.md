@@ -392,11 +392,20 @@ cannot run in parallel worktrees. The order is dependency-driven, not preference
    prove sufficient in practice, 46 may be reduced or dropped — decide after 26 merges, not
    before.
 
-**Interaction to watch:** FOOP-36 §3.2 specifies how concatenation *renders* (merged → the
-merged brane; unmerged → the juxtaposition with each constituent recursively simplified),
-keyed on `hs_concatenation()`'s `merged` slot being `Some`. FOOP-26 and FOOP-46 change what
-concatenation *means*. If either changes **when** that slot is populated, §3.2's rendering
-follows automatically; if either changes the slot's **shape**, §3.2 needs revisiting.
+**Interaction to watch — now written down in all three FOOPs (2026-09-04).** FOOP-36 §3.2
+specifies how concatenation *renders* (merged → the merged brane; unmerged → the juxtaposition
+with each constituent recursively simplified), keyed on `hs_concatenation()`'s `merged` slot
+being `Some`. FOOP-26 and FOOP-46 change what concatenation *means*. If either changes **when**
+that slot is populated, §3.2's rendering follows automatically; if either changes the slot's
+**shape**, §3.2 needs revisiting.
+
+Rather than leave that to whoever lands last, the requirement is now stated in each: **FOOP-26
+§4.5.1** and **FOOP-46 §4.2** ("TODO — rendering requirements from FOOP-36"), each pointing back
+to FOOP-36 §3.2/§3.2.1. Writing them confirmed the designs still agree — §3.2 needs no revision.
+Two concrete obligations came out of it: the merged-or-not question must stay askable once
+concatenation is an operator, and **`rendering_aid: ConcatRenderingAid`** (the sequencing-only
+field recording which elements wrote their SF/SFF marker in source) must survive the rewrite —
+FOOP-46 §4.1 carries that one.
 
 ### Track 4 — independent, parallel with Tracks 2/3.
 

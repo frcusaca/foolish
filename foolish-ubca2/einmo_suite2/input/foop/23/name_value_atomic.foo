@@ -1,0 +1,9 @@
+{
+	b = {
+		setting = 11;
+		mid = 0;
+		setting = 10;
+	};
+	atomic = b~setting=10;
+	before = b~setting=10&#-1;
+}

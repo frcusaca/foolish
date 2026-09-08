@@ -1,0 +1,59 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: misc/concat_sf_f_more.foo
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: c371eb67
+producer-diff: sha256:9f4003c6ec5b403a0899e101c4f7ad4af29c6cc49cfd46a84a06f191d45d3970
+generated: 2026-09-04T18:24:49.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+  a=1;
+  b=2;
+  c=3;
+  x=-10;
+  y=-20;
+  z=-30;
+
+  f1 = {
+     b = <<x+y>> + <<a>> + <b + c>;
+     a = <x+y> + a + b;
+  }
+
+  f2 = {
+     b= <<x+z>> + <a + <<b>> + <c> >;
+  }
+
+  f3 = {
+     c= <a + <<b + <x + y + z> >> + <c> >;
+  }
+
+  o = f1 <f2> <<f3>>;
+
+  oo = o$;
+}
+①
+{
+  a = 1;
+  b = 2;
+  c = 3;
+  x = -10;
+  y = -20;
+  z = -30;
+  f1 = {
+    b = <<x + y>> + <<a>> + <5>;
+    a = -53
+  };
+  f2 = {
+    b = <<x + z>> + <1 + <<b>> + <c> >
+  };
+  f3 = {
+    c = <1 + <<b + <x + y + z> >> + <c> >
+  };
+  o = f1 <f2> <<f3>>;
+  oo = -54
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-04T18:24:49.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-04T18:24:49.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"k0nbLISB3VfSkWJDkZqHmEqAkhFF4K/OtWVbJHlhlmAcuJDC6CTkTOqU+PGpFCGNW4I2SB7gjjCejyPFm9DFBQ==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-04T18:24:49.000000000Z"}

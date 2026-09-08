@@ -1,0 +1,37 @@
+{
+	!! FOOP-33 comprehensive: creation, equality, characterizations,
+	!! null-constants, nested branes. (Comparisons dropped pending new infix design;
+	!! see FOOP-33.md §5.0.)
+
+    test_number = 1;
+	a = ⬤;
+    test_number = 2;
+	b = {*};
+    test_number = 3;
+	c = a;
+	same = ?=a&#-1; !! 3
+	diff = ?=b&#-1; !! 2
+
+    !! Same test anchored
+    brn = {
+        test_number = 1;
+	    a = ⬤;
+        test_number = 2;
+	    b = {*};
+        test_number = 3;
+	    c = a;
+    }
+    find_a = brn~=(brn.a)&#-1; !! 1
+    find_a = brn?=(brn.a)&#-1; !! 3
+    find_b = brn~=(brn.b)&#-1; !! 2
+    find_b = brn?=(brn.b)&#-1; !! 2
+    find_c = brn~=(brn.c)&#-1; !! 1
+    find_c = brn?=(brn.c)&#-1; !! 3
+
+	tag'x = 7;
+	plain_x = 9;
+	hit = ?tag'x;
+	miss = ?x;
+
+	inner = {deep = True;};
+}

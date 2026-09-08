@@ -271,11 +271,79 @@ so it is worth confirming each of these behaves:
   confirm with FOOP-36 rather than assuming.
 - The `provenance: ConcatProvenance` field, which records whether the operator was written as a
   juxtaposition or a tail-concatenation, stays on the **operator**, not on the produced brane.
+- **`rendering_aid: ConcatRenderingAid` must be carried over** — it lives beside `provenance` on
+  `FirSpec::Concatenation` today and has the same character (sequencing only, never evaluation),
+  so it belongs on the **operator** too. See §4.1 below for why dropping it silently breaks
+  rendering.
+
+### §4.1 Carry `ConcatRenderingAid` onto the new operator
+
+`FirSpec::Concatenation` gained a second sequencing-only field alongside `provenance`
+(FOOP-36, implemented): **`rendering_aid: ConcatRenderingAid`**, recording which elements wrote
+their SF/SFF marker in source.
+
+**Why it exists.** `build_concat_element` normalizes elements: a BARE search (`f2`) gets a
+`StayFoolish` wrapper SYNTHESIZED around it, while an SF-wrapped one (`<f2>`) already has one.
+Both reach the same FIR shape — by design, since a bare search in concatenation position *means*
+the SF-wrapped thing — so afterward the FIR cannot tell them apart. A renderer reading the FIR
+alone must therefore either invent markers the Foolisher never wrote or drop the ones they did.
+It dropped them: `o = f1 <f2> <<f3>>` rendered `o = f1 f2 <<f3>>`.
+
+The aid records the `foolish_children` indices whose marker was **written in source**, and the
+sequencer puts back exactly those. It is sparse — bare is the common case, so the usual value is
+empty.
+
+**What this FOOP must do.** Whatever shape §3 and §4 settle on, the new operator carries the aid
+and populates it the same way, from the same `ConcatElemKind` classification that already
+distinguishes `SfSearch`/`SfBrane` from `BareSearch`/`BareBrane`. Two failure modes to avoid:
+
+- **Dropping the field.** Rendering silently loses source markers again. Nothing fails loudly:
+  the output still parses and still round-trips, because it is *consistently* wrong.
+- **Re-indexing without re-recording.** The indices are into `foolish_children` as STORED. Tail
+  concatenation already stores its elements reversed (§5.2 of FOOP-65), and FOOP-36's builder
+  records the stored index accordingly. Any change to element ordering or nesting must move the
+  recorded indices with it.
+
+**Note the interaction with the conclusive rule.** A MERGED concatenation is conclusive and
+renders its VALUE (the joined brane), so the aid is consulted only on the unmerged, written-form
+path. Under this FOOP's phases that is exactly the **Gathering** case; **Joined** renders the
+brane and never reads the aid.
+
+### §4.2 TODO — rendering requirements from FOOP-36
+
+**Start from the convergence.** FOOP-36 §3.2.1 observes that this FOOP's two phases and §3.2's
+two renderings are the same distinction, reached from opposite directions:
+
+| This FOOP's phase | What the FIR holds | FOOP-36 §3.2 renders |
+|---|---|---|
+| **Gathering** | unmerged constituents | the juxtaposition, each constituent recursively simplified |
+| **Joined** | one brane in `ubc_children` | that brane, `{…}` |
+
+So the rendering is the natural display of what §4 builds, and §4 needs **no new mechanism** for
+it: as §4's own text observes, `settled_constanic_result`/`value()` already return the brane once
+constanic. Both renderings are implemented and their baselines promoted, so this is stated from
+real output rather than speculation.
+
+**The one detail §4's implementation must settle.** §4's option 1 populates `ubc_children` with a
+`FirSpec::Brane` and **deletes `FirSpec::ConcatHelper` entirely**. But §3.2 renders a merged
+concatenation and a plain brane **differently**, and that difference is information about the
+program — a reader of the output should be able to tell that `o` was built by concatenating
+rather than written as a brane literal.
+
+So either the FIR keeps something that says so, or §3.2 is amended to render them alike.
+**Either answer is acceptable; the requirement is that it be DECIDED rather than lapse
+unnoticed** — which is the whole reason this section exists rather than being left to whoever
+lands last.
+
+Reasoning: `FOOP-36.md` §3.2 and §3.2.1.
 
 ## FIR Impact
 
 - `FirSpec::BraneConcatOp` is rewritten. Whether it keeps `ConcatHelper` as a separate kind, or
   owns a hidden `Brane`, is §3's open question.
+- Both sequencing-only fields on today's `FirSpec::Concatenation` — `provenance:
+  ConcatProvenance` and `rendering_aid: ConcatRenderingAid` — carry over onto the rewritten
+  operator unchanged (§4.1). Neither affects evaluation.
 - No new NYES state.
 
 ## UBC Step Impact
@@ -299,6 +367,16 @@ Review Gate.
    is a **failing test to write first**.
 6. **The nested-concatenation cases from FOOP-26 §4.3**, since an inner operator's phases are
    nested inside the outer one's.
+7. **`ConcatRenderingAid` survives the rewrite** (§4.1). Assert that
+   `o = f1 <f2> <<f3>>` still renders with each source-written marker restored, and that an
+   all-bare concatenation still renders bare with no marker invented. FOOP-36 ships
+   `foolish_concat_rendering_aid_restores_only_source_written_markers` pinning both directions;
+   it must keep passing.
+8. **FOOP-36's deferred unmerged-rendering case.** After the BraneConcatOp behavior is in place,
+   `{f=3; a={a=1,aa=f}{b=notfound}not_found_brane{d=f}}` must retain conclusive results for
+   `aa=f` and `d=f`, so Foolish sequencing renders `aa=3` and `d=3` while the unresolved
+   constituents remain written. The sequencer must consume recorded conclusive results; it must
+   not re-run searches merely to format them.
 
 ## Plan of Execution for Plan
 
@@ -344,10 +422,23 @@ Keeping them apart lets FOOP-26 land and be measured before a rewrite begins.
 
 ## Last Updated
 
-**Date**: 2026-09-02
-**Updated By**: Codex / GPT-5.6
-**Changes**: FOOP-56 vocabulary pass: qualified the concatenation phases and value-access prose,
-and updated the live accessor name to `settled_constanic_result`.
+**Date**: 2026-09-04
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Propagated FOOP-36's implemented sequencing-aid decision. New **§4.1**: the rewritten
+operator must carry `rendering_aid: ConcatRenderingAid` — the field FOOP-36 added beside
+`provenance` on `FirSpec::Concatenation`, recording which elements wrote their SF/SFF marker in
+source. It exists because `build_concat_element` SYNTHESIZES a `StayFoolish` around a bare
+element, so the FIR alone cannot tell `f2` from `<f2>` and a renderer must either invent markers
+or drop them. §4.1 names the two failure modes (dropping the field, which fails silently since
+the wrong output still parses and still round-trips; and re-indexing without re-recording, which
+matters because tail concatenation stores its elements reversed) and notes that the aid is read
+only on the unmerged/**Gathering** path — a **Joined** concatenation is conclusive and renders
+its brane value. Added the matching bullet to §"Things to check", a §FIR Impact bullet stating
+both sequencing-only fields carry over, and Test Plan item 7 pinning FOOP-36's
+`foolish_concat_rendering_aid_restores_only_source_written_markers` (renumbering the deferred
+unmerged-rendering case to 8). Prior entry: FOOP-56 vocabulary pass: qualified the concatenation
+phases and value-access prose, and updated the live accessor name to
+`settled_constanic_result`.
 
 §3 traces the fall-through for a bare-name constituent and establishes that **the phases chain,
 and can only chain one way**: a concatenation cannot be Joined while any constituent is
