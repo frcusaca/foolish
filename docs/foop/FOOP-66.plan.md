@@ -70,7 +70,7 @@ before wondering where the gates went.
 ## How to work this plan
 
 1. **Read `docs/foop/FOOP-66.md` first.** §1 (what tree calculus is), §2 (the reading plan), §3
-   (the questions Q1–Q7) and §5 (the scope boundaries) are load-bearing for every phase.
+   (the questions Q1–Q8) and §5 (the scope boundaries) are load-bearing for every phase.
 2. **Work top to bottom.** Phases are ordered by dependency: each depth of reading feeds the next.
 3. **Check each box as you finish it, with a timestamp on the next indented line** —
    `(YYYY-MM-DD HH:MM)`.
@@ -213,7 +213,7 @@ claims are interesting.
 
 ---
 
-## Phase 2 — D1: provisional answers to Q1–Q7
+## Phase 2 — D1: provisional answers to Q1–Q8
 
 *First interpretation. **Larger model.** This is where the FOOP starts earning its keep.*
 
@@ -225,7 +225,7 @@ to direct the deeper reading, and explicitly marked as not yet checked against t
       serves which question. At minimum: `AGENTS.md` §"Foolish Terminology" and §"Searches
       (FOOP-23)", `README.md` §"The Unknown", and **`FOOP-36.md` §N6 in full**.
 - [ ] Draft `docs/why/TREE_CALCULUS.md` with the §4 structure: (1) what tree calculus is,
-      (2) Q1–Q7 one section each, (3) worked correspondences, (4) ranked findings, (5) what was
+      (2) Q1–Q8 one section each, (3) worked correspondences, (4) ranked findings, (5) what was
       not read and why, (6) "## Last Updated". Sections 3–5 are stubs at this stage.
 - [ ] Write section (1) — "What tree calculus is" — self-contained, at §1's depth, for a
       Foolisher who has never heard of it. Every claim cited.
@@ -242,6 +242,12 @@ to direct the deeper reading, and explicitly marked as not yet checked against t
       state precisely what would have to be true of Jay's equality for it to bear on Foolish's
       problem. **This is the specification against which Phases 3 and 4 read.**
 - [ ] Provisional **Q6** — simplification, or confirmation of a choice already made.
+- [ ] Provisional **Q8** — idealized definition vs approximated implementation (human,
+      2026-09-15). Does tree calculus distinguish the two, and where does it draw the line? Its
+      values are finite trees, so an infinite construction cannot be a value — how does the
+      theory talk about such objects, if at all? Carry the `integers.foo` / `reals.foo` vs
+      IEEE example as the concrete case, and focus on **the seam**: where must an approximation
+      be VISIBLE to a Foolisher?
 - [ ] Provisional **Q7** — what tree calculus is NOT about. Expected to be one of the longer
       sections; name the Foolish concerns with no counterpart at all.
 - [ ] Mark every provisional answer clearly as provisional, with the depth it rests on (D1).
@@ -250,7 +256,7 @@ to direct the deeper reading, and explicitly marked as not yet checked against t
       defending it** — §Open Questions already says the study's value does not depend on the dates.
 - [ ] Report accumulated doubts from Phases 1–2 to the human in ONE statement — or record
       "no doubts".
-- [ ] Commit: `Major: FOOP-66 Learn Tree Calculus, Phase: D1 provisional Q1-Q7--complete`.
+- [ ] Commit: `Major: FOOP-66 Learn Tree Calculus, Phase: D1 provisional Q1-Q8--complete`.
 
 ---
 
@@ -283,7 +289,7 @@ depth exists. **You are not proving anything and not evaluating anything.**
       its own equality", **STOP and report.** Do not guess which definition is meant. §1 flags
       that claim as publisher-description provenance, the weakest tier in the FOOP; this phase is
       where it is confirmed or withdrawn.
-- [ ] Update the provisional Q1–Q7 answers with everything D2 established, marking each upgraded
+- [ ] Update the provisional Q1–Q8 answers with everything D2 established, marking each upgraded
       answer with its new depth.
 - [ ] Commit: `Major: FOOP-66 Learn Tree Calculus, Phase: D2 Coq repository--complete`.
 
@@ -322,7 +328,7 @@ reflection chapter, and read others only where D1/D2 raised a question that need
       possible coordinations"), the member of that taxonomy with no obvious decision procedure?
       **Record the answer in this FOOP's assessment only — do not edit `EQUIVALENCE.md`**; FOOP-36
       §N6.5 assigns that refresh to N6's FOOP.
-- [ ] Revisit Q1, Q2, Q3, Q4, Q6, Q7 with whatever the book added; where it added nothing, say so
+- [ ] Revisit Q1, Q2, Q3, Q4, Q6, Q7, Q8 with whatever the book added; where it added nothing, say so
       and close the question at its D1/D2 answer.
 - [ ] Explicitly declare any question **"could not determine"**, with what was read and what would
       be needed. This is a legitimate outcome and must not be disguised as a weak finding.
@@ -339,7 +345,7 @@ reflection chapter, and read others only where D1/D2 raised a question that need
 ***Larger model. NOT delegable*** *(§Plan of Execution for Plan). Every finding here is a claim
 about Foolish's design.*
 
-- [ ] Finalize `docs/why/TREE_CALCULUS.md` sections (1) and (2) — the summary and Q1–Q7 — so each
+- [ ] Finalize `docs/why/TREE_CALCULUS.md` sections (1) and (2) — the summary and Q1–Q8 — so each
       question carries **a finding, a "no correspondence" with its argument, or a "could not
       determine" with what was tried.** No question silently dropped.
 - [ ] **Source-fidelity pass** — walk the document and confirm **every technical claim about tree
@@ -444,7 +450,7 @@ this FOOP with a genuine test subset.*
 **Updated By**: Claude Code / claude-opus-5
 **Changes**: Created the plan for FOOP-66 (tree calculus study). Eight phases following §2's
 outside-in reading plan: Phase 0 begin + worktree; Phase 1 verify §1 against the spec page
-(smaller model, pure comparison); Phase 2 provisional Q1–Q7 (larger model, first interpretation);
+(smaller model, pure comparison); Phase 2 provisional Q1–Q8 (larger model, first interpretation);
 Phase 3 the Coq repo, transcribing the equality program's definition and theorem (smaller model,
 hard stop condition if no equality program is identifiable); Phase 4 the book's equality and
 reflection chapters only (larger model — the hardest phase, where **Q5b** and **Q5d** may return

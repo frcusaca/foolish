@@ -40,6 +40,15 @@ is the study's highest-value target. **But the FOOP does not assume the answer i
 that tree calculus has nothing to offer Foolish is an acceptable and useful result, provided the
 finding is argued.
 
+**The study aims at programmable and computable systems, while keeping some concepts open for
+implementation by approximation** (human, 2026-09-15). Some things are most honestly stated in an
+idealized form — a countably-long `integers.foo` creating the integers, an `aleph_1`-cardinality
+`reals.foo` creating the reals — and then implemented approximately in the FVM with IEEE integers
+and floats. Tree calculus is rigorous about exactly the layer where that idealization lives, so
+how it separates a definition from its implementation is a question this study asks directly
+(§3 Q8). The practical target is the *seam*: how an ideal definition and its finite stand-in
+relate, and where the approximation must be visible to a Foolisher.
+
 ## Motivation
 
 **Two people started building tree-based systems at about the same time, and took opposite
@@ -276,6 +285,38 @@ candidates: names and name resolution, statement order and position, context and
 alarms and diagnostics, source rendering. This section protects the team from over-applying the
 analogy later, and is expected to be one of the longer ones.
 
+**Q8 — Idealized definition versus approximated implementation.** (human, 2026-09-15) **The
+study must lead toward programmable and computable systems, while keeping some concepts open for
+implementation by approximation.** Foolish already has this pattern in view: one can imagine a
+countably-long `integers.foo` that *creates* the integers, and an `aleph_1`-cardinality
+`reals.foo` that creates the reals — idealized definitions that say what the things ARE — while
+the FVM implements them approximately, with IEEE integers and floats. The idealized definition is
+the specification; the machine representation is a finite stand-in for it.
+
+This is a question tree calculus is well placed to inform, because it is rigorous about exactly
+the layer where the idealization lives. Ask:
+
+- Does tree calculus distinguish an idealized definition from its implementation, and if so
+  where does it draw the line? Its values are finite trees, so an infinite construction cannot be
+  a value — how does the theory talk about such objects, if at all?
+- Foolish's `⬤` creation is already a "make a new thing" primitive with no internal structure.
+  Is it the right foundation for an idealized `integers.foo`, or does tree calculus suggest a
+  different construction?
+- **Where must an approximation be VISIBLE?** If the FVM substitutes an IEEE float for an
+  idealized real, a Foolisher reading the program should be able to tell. Does tree calculus
+  offer any discipline for marking the seam between a definition and its approximation — or is
+  this a place where Foolish needs an idea that tree calculus does not supply?
+- What does it cost to state the ideal and implement the approximation *separately*, rather than
+  defining numbers as whatever the machine does? This is the question that decides whether the
+  pattern is worth adopting broadly.
+
+**The point of the question is the seam, not the arithmetic.** Numbers are the clearest example,
+but the pattern generalizes: any construction whose honest definition is infinite, or merely
+larger than a machine can hold, will need an idealized statement and an approximate
+implementation. Establishing how those two relate is the practical payoff this study is aiming
+at — programmable and computable systems, with the idealizations kept open rather than defined
+away.
+
 ### 4. The deliverable
 
 **One document: `docs/why/TREE_CALCULUS.md`.**
@@ -290,7 +331,7 @@ Required structure:
 1. **What tree calculus is** — a correct, self-contained summary, at the depth of §1 above,
    written so a Foolisher who has never heard of it can follow the rest. Corrected against the
    sources actually read.
-2. **Q1 through Q7, one section each**, each with a finding, a "no correspondence", or a "could
+2. **Q1 through Q8, one section each**, each with a finding, a "no correspondence", or a "could
    not determine" — and its evidence.
 3. **Worked correspondences.** At least **two**, at most about five: a small tree-calculus
    expression set beside the nearest Foolish program, with an explicit statement of what the
@@ -306,307 +347,28 @@ Required structure:
    the reason is argued.
 5. **What was not read, and why.** Explicit. A study that quietly skipped the book's second half
    must say so.
-6. **A "## Last Updated" section**, per AGENTS.md §Markdown File Update Protocol.
-
-**The assessment is written for the human and for the next agent, not for a grade.** Negative
-findings are first-class: "tree calculus does not help here, because X" is a result that saves
-the project time, and the FOOP is complete if that is what it honestly concludes.
-
-### 5. Hard scope boundaries
-
-These are stated as rules, not preferences, because the temptation to drift is real.
-
-- **No crate is modified.** Not `foolish-core`, not `foolish-parser`, not `foolish-ubca`, not
-  `foolish-ubca2`, not `foolish-cli`, not `einmo`, not `zweimomo`. If a task appears to require
-  it, **STOP and report** — the study has drifted into implementation and the drift needs a
-  human decision, not an agent's.
-- **No einmo baseline is created, changed or promoted.** This FOOP has **no** `input/foop/66/`
-  directory and **no** comprehensive snapshot test. §Test Plan explains why, and that omission is
-  deliberate and reasoned, not an oversight.
-- **No language change is decided here.** The study may *recommend*; it may not *adopt*. Any
-  adoption is a separate FOOP with its own specification and its own human review.
-- **No code is copied from the Coq development.** It is MIT-licensed, so copying would be legally
-  permissible — that is not the reason. The reason is that Foolish gains nothing from transplanted
-  Coq, and a copied proof would misrepresent the project's own understanding. **Ideas may be
-  imported; text and code may not.** Anything learned is restated in Foolish's own terms, with the
-  source cited.
-- **Do not fabricate technical claims about tree calculus.** If a source is unreachable or a
-  passage is not understood, write "could not determine" and say what was tried. A confidently
-  wrong sentence about Jay's work is worse for this project than a blank, because the next reader
-  will believe it. This rule outranks completeness.
-
-## FIR Impact
-
-**None.**
-
-This FOOP adds no FIR variant, changes no NYES state or transition, touches no `FirSpec` field,
-and has no serialization implication. It is a study; the FIR tree is its *subject* in Q2 and Q5,
-never its *object*.
-
-Stated explicitly rather than omitted so that a reader diffing this FOOP against the template can
-see the question was asked and answered, not skipped.
-
-## UBC Step Impact
-
-**None.**
-
-No step rule is added, removed or changed. No evaluator in any crate is modified. Nothing
-interacts with constanic coordination, because nothing executes.
-
-Stated explicitly for the same reason as §FIR Impact.
-
-## Test Plan
-
-**A study FOOP has no tests in the usual sense, and this one installs none.** There is no
-behavior to pin, because no behavior changes. Manufacturing einmo cases or unit tests here would
-create the *appearance* of verification while verifying nothing — which is worse than admitting
-there is nothing to verify, since a green test on an unchanged evaluator is evidence of nothing
-at all.
-
-Specifically, and deliberately:
-
-- **No `foolish-ubca/einmo_suite/input/foop/66/` directory**, and **no
-  `foop/66/comprehensive.foo`.** `foop.md` §"Comprehensive FOOP Tests" grants every FOOP the right
-  *and the obligation* to write one — but that obligation presupposes a *feature* to exercise
-  against existing features. This FOOP ships no feature. Writing a comprehensive test here would
-  mean writing a test of the status quo and signing it as this FOOP's contribution, which is a
-  false record. **The obligation is discharged by this paragraph, which states the reason.** If
-  the human disagrees, the fix is a one-line instruction and the plan gains a phase.
-- **No `output → checked` promotion**, and therefore **no Promotion Review Gate** in the plan.
-  Nothing is generated, so there is nothing to review or promote. The plan must contain no
-  `einmo promote` invocation of any kind.
-- **No "Establish relevant tests" checkbox on the reading phases.** `foop.md` §"Sub-Section Test
-  Subsets" requires one at the start of every sub-section, and the requirement is sound for
-  implementation work — but a phase whose entire content is *reading a web page and writing
-  prose* has no relevant test subset, and naming an arbitrary one would be exactly the empty
-  ritual the rule exists to prevent. The plan states this in-line where the checkbox would
-  otherwise sit, so the omission reads as a decision rather than a lapse. **The one phase where
-  a real test subset exists — the phase that writes `.foo` snippets — carries a real one.**
-
-**What stands in place of tests:**
-
-1. **The written assessment itself** (§4), reviewed by the human. The review question is not "did
-   it pass?" but "is this an accurate account of tree calculus, and are the correspondences
-   argued rather than asserted?"
-2. **Source fidelity.** Every technical claim about tree calculus in the assessment cites the
-   source it came from — spec page, repo file, or book chapter and page. A claim without a
-   citation is a defect and is repaired before the human review, not after. This is the study's
-   analogue of a passing test, and it is the one an executing agent can check itself.
-3. **Worked examples as executable checks.** Any Foolish `.foo` snippet written to illustrate a
-   correspondence **must actually parse and run** —
-   `cargo run -p foolish-cli -- run <path>` — and its real behavior is what the assessment
-   reports. A snippet that does not run is removed or fixed; it is never reported as if it ran.
-   This is the only phase with a genuine test subset, and it gets one.
-4. **The repository stays green.** The study changes no code, so `cargo test --workspace` must
-   pass identically before and after — **791 tests passing on `jia` at `93afcee3`, the baseline
-   this FOOP starts from.** The merge gate keeps a checkbox for it. If that number moves, the
-   scope boundary of §5 was crossed and the crossing must be explained.
-
-## Plan of Execution for Plan
-
-**How this FOOP's plan gets executed, and by whom.** Model selection is **per-phase, not
-per-FOOP**. This FOOP splits unusually cleanly, because reading-and-summarizing and
-judging-a-correspondence are genuinely different jobs.
-
-| Phase | Character | Needs |
-|-------|-----------|-------|
-| 0 — Begin, worktree | Mechanical: commit, check `begun`, `git worktree add`. | **Smaller model.** Fixed commands, given verbatim in the plan. |
-| 1 — Verify §1 against the spec page (D1) | Comparison against a fixed target: does §1 match the source, line by line? | **Smaller model.** The target is written down; the job is to diff prose against a web page and report mismatches. It does **not** interpret. |
-| 2 — Provisional answers to Q1–Q7 from D1 | First interpretation. Requires holding Foolish's semantics and tree calculus's side by side. | **Larger model.** These are the judgments the FOOP exists to make. |
-| 3 — Read the repo (D2); transcribe the equality program and its theorem | Mostly extraction: locate definitions in Coq source, transcribe verbatim. | **Smaller model**, with a named stop condition: if the equality program cannot be located, STOP and report rather than guessing which definition it is. |
-| 4 — Read the book's equality and reflection chapters (D3) | Deep reading of formal mathematics, against Foolish's own unfinished design. | **Larger model.** The hardest phase in the FOOP. |
-| 5 — Write the assessment, answer Q1–Q7, rank the findings | The deliverable. Every finding is a claim about Foolish's design. | **Larger model.** Not delegable — see below. |
-| 6 — Write and run the `.foo` worked examples | Fixed target: the snippet must parse and run; its output is reported as-is. | **Smaller model.** The only phase with a real test subset, and it is a mechanical one. |
-| 7 — Human review, merge, cleanup | Judgment plus mechanics; gated by a human STOP. | **Larger model** for the report; the human holds the gate. |
-
-**What makes the small-model phases safe here**, built in deliberately:
-
-1. **Facts inline, not referenced.** §1 carries the five reduction rules, the three node names,
-   the confluence claim and the encoding example verbatim, and the plan carries the URLs, the
-   file list of the Coq repo, and the exact `cargo` commands. A Phase 1 or Phase 3 agent needs no
-   rediscovery. **Every such fact is marked *verify, don't re-derive*.**
-2. **A fixed target per phase.** Phase 1 diffs prose against a page. Phase 3 transcribes a
-   definition that either exists or does not. Phase 6's snippet either parses or does not. None
-   of these requires the agent to judge whether an answer is *good*.
-3. **Named stop conditions.** Each small-model phase states what wrong looks like: Phase 1 — "the
-   spec page is unreachable, or §1 contradicts it in a way that changes a Q3/Q5 premise"; Phase 3
-   — "no equality program is identifiable in the repo"; Phase 6 — "the snippet does not parse."
-   In every case the instruction is **STOP and report**, never improvise.
-
-**What must not be delegated, at any model size** (AGENTS.md §"The agent is responsible for
-correctness"):
-
-- **Phase 5's findings and their ranking.** Each is a claim about Foolish's design and a
-  recommendation about its future; this is precisely the judgment the human relies on.
-- **Any statement that a synergy EXISTS.** A negative or "could not determine" finding may be
-  recorded by any agent; an *affirmative* claim that tree calculus offers Foolish something must
-  be argued by the judgment-phase agent, with the source cited, because it is the claim most
-  likely to be believed downstream and acted on.
-- **Any decision to touch a crate**, which §5 forbids outright — an agent that thinks it needs to
-  stops and asks.
-- **The Open Question in §Open Questions about follow-on scope.** That is the human's call, not an
-  agent's, and it changes what this FOOP is.
-
-**On sub-agents.** Phases 1 and 3 are good candidates for parallel sub-agents (two sources, no
-dependency between them), and the human's own standing preference is to delegate small mechanical
-work. Phases 2, 4 and 5 are not: they need the whole picture in one context, and splitting them
-produces an assessment that contradicts itself between sections.
-
-## Rejected Alternatives
-
-### A. Do nothing — never read tree calculus
-
-The status quo. Rejected because the cost is asymmetric. Reading is a handful of days; *not*
-reading risks the project re-deriving, badly, something already proved — and FOOP-36 §N6's
-equality design is queued right now and is exactly the kind of work where that would happen. The
-BDFL has also explicitly asked for the study, which settles it. **Doing nothing is worse than
-doing this even if the study concludes there is no synergy**, because a documented negative
-finding stops the question being reopened every six months.
-
-### B. Skip the study; go straight to an implementation FOOP importing tree-calculus ideas
-
-Tempting because it looks like faster progress. Rejected outright: **nobody on the project has
-read tree calculus**, so an implementation FOOP would be specifying against an imagined source.
-The likeliest outcome is a Foolish feature justified by a misremembered claim — the exact failure
-AGENTS.md §"The agent is responsible for correctness" is written against, and one that is very
-expensive to unwind once a baseline is signed.
-
-### C. Fold the study into FOOP-36 §N6's equality FOOP as a research phase
-
-Plausible, and the two are genuinely related — §N6 is this study's highest-value consumer.
-Rejected on three grounds. **Scope:** tree calculus bears on Q1–Q4, Q6 and Q7 as well, none of
-which N6 is about; the study would be truncated to serve one consumer. **Sequencing:** N6 is
-blocked on FOOP-36 §Open Questions **Q9** (cross-brane creation identity), a human decision that
-has not been made; chaining an unblocked study behind a blocked FOOP delays it for no reason.
-**Deliverable shape:** N6 produces a relation with an implementation; this produces a document in
-`docs/why/`. Different artifacts, different review criteria, different readers. They should
-**reference** each other — and this FOOP is written to feed N6 — not be merged.
-
-### D. Read the book cover to cover before writing anything
-
-Rejected as poor sequencing, not as wrong. The book is long and only some of it bears on Foolish.
-The §2 outside-in plan reaches the equality question — the highest-value one — within D2, and
-lets D3 be narrowed to the chapters that matter. **A study that stalls in chapter 4 of a book
-nobody asked for delivers nothing**, whereas an early-terminated study that states what it did
-not read delivers most of the value at a fraction of the cost. If the narrow read raises
-questions that need the whole book, the plan can gain a phase; the reverse is not recoverable.
-
-### E. Write the study as a blog-style essay rather than a FOOP
-
-Rejected because it would not be tracked, not be reviewed, not be numbered, and not be findable.
-The FOOP process exists so that design-relevant reasoning is discoverable by the next agent and
-the next human. An essay outside it is invisible within a month. The `docs/why/` document *is*
-essay-shaped — the FOOP is the process wrapper that gets it written, reviewed and indexed.
-
-## Open Questions
-
-- **Should this remain purely a study, or may it produce a follow-on implementation FOOP if a
-  strong synergy is found?** §5 currently forbids adoption and confines the FOOP to
-  recommendation. That is the conservative reading of the request ("learn … and perhaps discover
-  synergies"), but it is **the human's call, not an agent's**, and it changes what this FOOP is.
-  Three options: **(i)** study only, findings recorded, any follow-on proposed separately and
-  numbered separately (the current text); **(ii)** study, plus authority to *write* a follow-on
-  FOOP spec — not to implement it — if a finding warrants; **(iii)** study, plus authority to
-  implement a small, bounded change if one is obviously right. **The FOOP is written for (i)** and
-  the plan's final phase asks the human to confirm or change it. *Answering this before execution
-  begins would be better than answering it at the end.*
-- **Is `docs/why/TREE_CALCULUS.md` the right home and the right filename?** §4 argues for it from
-  AGENTS.md's own description of `docs/why/`. An alternative is `docs/why/` for the philosophical
-  comparison plus a separate `docs/how/` note for anything with engineering consequence, but
-  splitting a short document across two directories seems worse than one document with a
-  findings section. **Provisionally settled as one file; reopen only if the assessment grows past
-  roughly 600 lines.**
-- **How close is the "same time" claim, and does it matter?** The motivation rests on Jay and the
-  BDFL having started on tree-based systems at about the same time. Jay's book is dated 2021 and
-  the underlying calculus is older. **The exact chronology is not established, and this FOOP does
-  not assert it as fact** — Phase 2 should record what the sources actually say about when tree
-  calculus was developed, and if the parallel turns out to be loose, the motivation is corrected
-  rather than defended. Nothing in the study's value depends on the dates lining up; the
-  comparison stands on the ideas.
-- **Does the study need a Coq toolchain?** D2 reads Coq *statements*, which is a reading task and
-  needs no toolchain. **Building the proofs is explicitly out of scope** — but if a Phase 3 or
-  Phase 4 question turns out to be answerable only by running Coq, that is a new dependency and a
-  new tool on the machine, so it is a STOP-and-ask, not an agent's decision.
-- **Should the assessment be shown to Barry Jay?** Out of scope for this FOOP and recorded only so
-  it is not forgotten. If the study produces something substantive about the two systems'
-  relationship, contacting the author is a reasonable next step and entirely the human's call —
-  the repository lists a contact address. **No agent initiates outside contact.**
-
-## References
-
-**Tree calculus — primary sources** (the first was read while writing this FOOP; the second and
-third are to be read *during* execution, per §2):
-
-- **Specification** — https://treecalcul.us/specification/ — the grammar, the three node kinds,
-  the five reduction rules, values, confluence, the boolean encoding. **Fetched and reachable
-  2026-09-15**; §1 above is drawn from it and from the site's front page (https://treecalcul.us/).
-- **Coq development** — https://github.com/barry-jay-personal/tree-calculus — machine-checked
-  proofs for the book. MIT-licensed. Files noted in §1. **Not read at authoring time.**
-- **Book (PDF)** — https://github.com/barry-jay-personal/tree-calculus/blob/master/tree_book.pdf —
-  *Reflective Programs in Tree Calculus*, Barry Jay with Jose Vergara, 2021. **Not read at
-  authoring time.**
-
-**Foolish — the design this study feeds:**
-
-- **FOOP-36 §N6** (`docs/foop/FOOP-36.md`) — "FIR equality — its own FOOP." **The single most
-  relevant prior FOOP**, and the reason §3's Q5 is the study's highest-value target. Read
-  §N6.1 (shape half), §N6.2 (value half — creations by dynamic programming over an equality
-  table), §N6.3 (the table is per-brane), **§N6.4 (equality with conditions — return the mapping,
-  not a boolean)**, and §N6.5 (the `EQUIVALENCE.md` obligation). Its §Open Questions **Q9**
-  (cross-brane creation identity) blocks N6 and is the human's decision.
-- **FOOP-62** — UBCa two-store ProtoBrane tree and uniform two-phase stepping; §Terminology is
-  the authoritative definition of *constanic* and *constantew*. Background for Q4.
-- **FOOP-56** — NYES groups and the four predicates (`is_preconstanic`, `is_constanic`,
-  `is_constantew`, `is_conclusive`). Background for Q4.
-- **FOOP-23** — value search and contexted `&`-searches; the one-engine
-  cursor-source × predicate model and the `FoolRefFir` two-child invariant. Background for Q3.
-- **FOOP-33** — the Creation Postulate: `⬤`, named creations, and `'True`/`'False` in
-  `system.foo`. Background for Q1, Q5b, and the boolean worked example of §4.3.
-- **FOOP-34** — Recursion Upgrades. Cited as **process precedent**: an existing standalone
-  research FOOP, deliberately under-specified, whose content is discovered during execution.
-  FOOP-66 follows its shape.
-
-**Foolish — documentation:**
-
-- `docs/vintage_legacy/EQUIVALENCE.md` — the vintage taxonomy of Foolish equality operators
-  (`=s=`, `==`, `===`, `=n=`, `=c=`, `=v=`, …), unspecified and unimplemented. FOOP-36 §N6.5
-  requires N6's FOOP to refresh it and bring it out of `vintage_legacy/`. **This FOOP does not
-  move or rewrite it** — but Q5e asks what tree calculus says about `===` ("equal under ALL
-  possible coordinations"), which is the member of that family with no obvious decision procedure.
-- `docs/vintage_legacy/ECOSYSTEM.md` — UBC architecture; detachment and recoordination semantics.
-  Background for Q2's AB/IB asymmetry.
-- `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md` — name resolution and search. Background for
-  Q3 and Q7.
-- `README.md` §"The Unknown" — NK versus ECONSTANIC. Background for Q3's miss-outcome comparison.
-- `AGENTS.md` §"Foolish Terminology" and §"Searches (FOOP-23)" — the vocabulary the assessment
-  must use consistently.
-
-**Process:**
-
-- `foop.md` — the authoritative FOOP process reference.
-- `docs/foop/FOOP-1.md` — the meta-FOOP defining the process.
-- `docs/foop/INDEX.md` — where FOOP-66 is listed (phase-5, with FOOP-34).
-
-## Last Updated
+6. **A "## Last Updated
 
 **Date**: 2026-09-15
+
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created FOOP-66 — a **learning/research FOOP** committing the Foolish team to study
-Barry Jay's **tree calculus** and produce one written assessment (`docs/why/TREE_CALCULUS.md`) of
-where it and Foolish correspond, where the analogy is false, and whether anything is worth
-borrowing. Explicitly **not** an implementation FOOP: §FIR Impact and §UBC Step Impact are both
-"None", §5 forbids touching any crate or einmo baseline, and §Test Plan states plainly that no
-tests are installed and **why** — including the reasoned omission of the otherwise-obligatory
-`foop/66/comprehensive.foo`. §1 is grounded in the tree calculus specification page, fetched and
-reachable 2026-09-15 (grammar `E ::= △ | E E`, leaf/stem/fork, the five reduction rules, values
-as irreducible expressions, confluence, the `false`/`true`/`not` encoding). §2 sets an outside-in
-three-depth reading plan (spec page → Coq repo → the book's relevant chapters only) that may
-terminate early. §3 poses Q1–Q7, with **Q5 (equality) as the highest-value target**, cross-
-referenced in detail to **FOOP-36 §N6** — including §N6.4's equality-with-conditions design and
-§N6.5's `EQUIVALENCE.md` obligation — and with Q5b and Q5d written so that a **negative** finding
-(creation identity and the absence of a normal form may put Foolish's problem outside what Jay's
-equality addresses) counts as a first-class result. §Plan of Execution for Plan assigns phases by
-complexity: extraction and verification to a smaller model with named stop conditions, the
-interpretive and assessment phases to a larger one. §Open Questions leads with the human's call
-on whether the FOOP may produce a follow-on implementation FOOP; the spec is written for the
-conservative "study only" reading.
+
+**Changes**: Added **§3 Q8 — idealized definition versus approximated implementation** (human,
+2026-09-15), and stated the study's practical aim in the Abstract: **it must lead toward
+programmable and computable systems, while keeping some concepts open for implementation by
+approximation.** The worked example is numbers — a countably-long `integers.foo` creating the
+integers, an `aleph_1`-cardinality `reals.foo` creating the reals, idealized definitions saying
+what the things ARE, with the FVM implementing them approximately as IEEE integers and floats.
+Q8 asks whether tree calculus distinguishes an idealized definition from its implementation and
+where it draws the line (its values are finite trees, so an infinite construction cannot be a
+value); whether `⬤` is the right foundation for an idealized `integers.foo`; **where an
+approximation must be VISIBLE to a Foolisher**; and what it costs to state the ideal and
+implement the approximation separately rather than defining numbers as whatever the machine does.
+The question is about **the seam**, not the arithmetic — any construction whose honest definition
+is infinite will need the same treatment. Q8 is threaded through the deliverable (§4), the
+Plan of Execution table, and the plan's Phase 2 and Phase 4 checkboxes, so it cannot be silently
+dropped.
+
+Prior entry: FOOP-66 authored — specification and plan for a structured study of Barry Jay's tree
+calculus, grounded in the specification page fetched 2026-09-15, with **Q5 (equality)** as the
+highest-value target cross-referenced to FOOP-36 §N6.

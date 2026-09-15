@@ -1608,23 +1608,18 @@ reflected in the plan); **Q2 and Q5 are for Phase 1 to answer before any renderi
 written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the human. **Q9 is
 OPEN and blocks T2c's implementation.**
 
-- **Q9 — How does the per-brane creation table (§N6.3) handle a creation shared ACROSS brane
-  boundaries?** `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}` reaches one creation from
-  two sibling branes. A strictly brane-local table would compare `ba`'s and `bb`'s occurrences in
-  separate tables and never notice if they had been split into two distinct creations — missing
-  exactly the cross-brane sharing §2's Property 3 exists to protect. Consulting enclosing tables
-  outward catches it, but reintroduces some of the global map's over-constraint (§N6.3). Three
-  candidate rules, none yet chosen: (a) check at the brane that DEFINES the creation, treating a
-  reference as deferring to the defining brane's table; (b) consult tables outward from the
-  current brane to the root, recording at the outermost brane that can see both; (c) keep tables
-  strictly per-brane and accept that cross-brane sharing is checked only where both occurrences
-  sit in one brane. **This must be decided before T2c is written** — it changes what the check
-  detects, not merely how it is coded, and it is a language-semantics judgment rather than an
-  implementation convenience, so it is for the human, not an agent. **Q9 belongs to §N6's FOOP,
-  not to FOOP-36** — it blocks that work, not this one. **Settle it together with N6.4**: a
-  residual escaping a brane pair is this same question seen from the other side, since an inner
-  comparison may need a condition only an enclosing brane can discharge.
-
+- **Q9 — DISSOLVED (human, 2026-09-15), not answered.** The question asked how per-brane
+  creation tables should handle a creation shared ACROSS brane boundaries
+  (`{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}`), and offered three candidate rules.
+  **It was mis-posed.** `shared` is created ONCE and referenced from every context below it —
+  nothing in Foolish splits one creation into two, and the human challenged the premise directly:
+  "I don't understand why shared is two creations." The apparent dilemma was an artifact of an
+  invented mechanism (tables created on brane entry, discarded on exit), not of the language.
+  Under **ordinary nested scoping** — each brane's map consulted before falling back outward, or
+  equivalently the FVM's own `ib_search`/`ab_search` — both `ba` and `bb` resolve to the same
+  defining statement, there is no table lifetime, and nothing escapes. §N6.3 is rewritten
+  accordingly. The residual of §N6.4 still records cross-tree creation pairs, but that list
+  carries no scoping duty, which is the conflation Q9 arose from.
 - **Q1 — RESOLVED (human, 2026-09-02): out of scope. This FOOP targets einmo only.** The
   einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
   they are. `Ubca2Sequencer` is additive, so nothing outside the adapter changes behavior
@@ -1931,14 +1926,15 @@ is a question a Foolisher asks while READING code, which is what makes this lang
 documentation rather than a test utility.
 
 **What the new FOOP must decide first — §Open Questions Q9.** How a creation shared ACROSS brane
-boundaries is checked, given N6.3's per-brane tables. That choice changes what the relation
+boundaries would be checked. **Q9 is now DISSOLVED** (human, 2026-09-15) — see §Open Questions.
+**What the new FOOP must decide first is instead N6.4's shape**, since that choice changes what
 detects, not merely how it is coded, so it is a language-semantics judgment for the human.
 
 **The relation is richer than a boolean — see N6.4.** Rather than answering "are these equal?",
 it can return **the mapping of creations that would have to be equal for the two FIRs to be
 equal** (human, 2026-09-07), leaving the caller to judge whether those identifications are
 acceptable for their purpose. The boolean is then just "is the residual empty?", so N6.4 is the
-general form and N6.1–N6.3 a special case of it. **Whoever writes this FOOP should design for
+general form and N6.1–N6.2 a special case of it. **Whoever writes this FOOP should design for
 N6.4 from the start**, since retrofitting a residual onto a boolean means changing the return
 type of every path.
 
@@ -2085,65 +2081,78 @@ an observation about T2c's inputs.
   state, and two children racing to record `(L→R₁)` and `(L→R₂)` is a real violation that can be
   LOST unless check-and-record is one atomic step. The resulting bijection is then also
   run-to-run nondeterministic, so pairing detail in a failure message is diagnostic only.
-- **N6.3's other uses** — subtrees, and non-identical source — where the table is load-bearing
+- **N6.3's two-FVM setting** — subtrees from different arenas, and non-identical source — where
+  pointer identity is meaningless and the pair list is load-bearing
   from the first comparison.
 
 It is cheap (a map consulted at creation nodes), correct today, and already correct under those
 changes. The one thing that must not happen is a future reader seeing an assertion that rarely
 fires, concluding it is dead, and deleting it — hence this note.
 
-#### N6.3 The table is PER-BRANE, not global
+#### N6.3 Two FVMs is the defining case; name lookup is ordinary scoping
 
-**Because this equality will be applied to other situations — where the source Foolish was not an
-identical tree, or where it is applied to SUBTREES — a per-brane map is needed, not a global one**
-(human, 2026-09-07).
+**Take the most disjoint case: TWO FVMs produce TWO trees, and we are given a subtree from each**
+(human, 2026-09-15). That is the general setting, and every other use is a specialization of it.
+Framing the relation this way settles several things at once that earlier drafts of this section
+got wrong.
 
-The redundancy argument above quietly assumes T2c's setup: two whole programs from the *same*
-source text, stepped by the same evaluator, walked from their roots. That is one use of this
-relation and it is not the general one. Two others are already foreseeable:
+**Pointer identity is meaningless across the pair, by construction.** `FirPointer` is
+arena-scoped, so `fvm1_creation1` and `fvm2_creation10` are incomparable as values even when they
+denote the same thing. A record of *pairs* is therefore not an optimization — it is the only
+thing that can relate the two sides at all.
 
-- **Subtree comparison.** Comparing two branes, or two statements, rather than two programs.
-  There is no shared root to anchor positions against, so positional correspondence carries no
-  information about referential correspondence. The table is the *only* thing relating the two
-  sides.
-- **Non-identical source.** Asking whether two programs a Foolisher wrote differently denote the
-  same thing — the natural generalization of this relation, and the reason to define it carefully
-  rather than as a test helper. Here the trees may agree in shape while having been built by
-  entirely different routes, and nothing about traversal order implies anything about identity.
+**Two mechanisms, two distinct jobs.** An earlier draft conflated them, and the conflation is
+what produced the now-dissolved Q9:
 
-In both, the table is load-bearing from the first comparison, and the "provably redundant"
-paragraph does not apply.
+| mechanism | job | scope |
+|---|---|---|
+| name lookup | what does this name mean **here**? | *within* one tree |
+| the pair list | which creation corresponds to which? | *between* two trees |
 
-**Why the map must be per-brane.** A single global map forces every creation encountered anywhere
-into ONE bijection spanning the whole comparison. That over-constrains: two creations in
-*unrelated* branes have no reason to correspond, and a global map will happily pair them on first
-encounter and then reject a later, legitimate pairing as case 3. The comparison fails on trees
-that are in fact equivalent — a false negative, which is the worse failure for a correctness
-check, since it makes the tool untrustworthy exactly when it is doing its job.
+**Name lookup is ordinary nested scoping — nothing bespoke is needed** (human, 2026-09-15). The
+conceptual model: every brane builds a map as it walks its statements in order; a name is looked
+up in the current brane's map first and falls back outward to the parent's. Re-stating a name in
+one brane overwrites, which is correct, because that is the evaluation order. **Or, more simply,
+use the FVM's own search language** — `ib_search`, `ab_search`, backward search — which already
+implements exactly this: IB is the context accumulated so far, AB is the parent chain. Preferring
+the existing machinery over a reimplementation is the same discipline §N4.b followed ("we shoudl
+use search when possible", human 2026-09-07), and for the same reason: the language already
+answers this question correctly, and a parallel implementation can only drift from it.
 
-Scoping the map **per brane** matches the language: a brane is Foolish's unit of context, and
-creation identity is a question asked *within* a context. Two creations correspond because they
-occupy corresponding roles in corresponding branes, not because they were the n-th creation
-encountered by a walk. The rule:
+**Q9 is DISSOLVED, not answered.** The earlier draft specified per-brane tables created on brane
+entry and discarded on exit, then asked what happens to a creation that outlives the table which
+recorded it — e.g. `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}`, where one creation is
+reached from two sibling branes. **That question was an artifact of the invented mechanism, not
+of the language.** `shared` is created once and referenced from every context below it; nothing
+in Foolish splits it. Under ordinary scoping both `ba` and `bb` miss locally, fall back outward,
+and reach the same defining statement — there is no table lifetime, so nothing escapes it. The
+three candidate rules the draft offered were three ways to patch a self-inflicted problem. See
+§Open Questions Q9 for the record.
 
-- Each pair of corresponding branes gets **its own table**, created when the walk enters them and
-  discarded when it leaves.
-- A creation pair is recorded in, and checked against, the table of the brane pair currently
-  being compared.
-- Nested branes get nested tables; an inner comparison does not pollute the outer one, and an
-  outer pairing does not constrain an inner one.
+##### N6.3.1 System equality — the comparison starts seeded, not empty
 
-This also makes subtree comparison fall out for free: comparing two branes directly is just the
-same algorithm entered at those branes, with a fresh table — which is precisely what one wants,
-and what a global map would make impossible without threading a whole program's history through.
+**FVM1's definition of numbers is already equal to FVM2's definition of numbers** (human,
+2026-09-15). Every FVM composes the *same* `system_foo::SYSTEM_FOO_SRC` — one compile-time source
+string, run through the same deterministic composer (`compose_program_with_system`). So two FVMs
+are never fully disjoint: they share a common ancestor, and their system creations correspond by
+construction rather than by anyone's declaration.
 
-**What is left open.** Whether a creation shared *across* brane boundaries — reachable from two
-sibling branes, as `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}` — should be checked at
-the brane that defines it, at each brane that reaches it, or by consulting enclosing tables
-outward. Sharing across branes is exactly what §2's Property 3 cares about, so a strictly
-brane-local table risks missing it, while consulting outward reintroduces some of the global
-map's over-constraint. **This needs deciding before T2c is implemented**, and is called out in
-§Open Questions rather than settled here by an agent's guess.
+**This is a seeding rule.** Before comparing two subtrees from different FVMs, the pair list
+starts **pre-populated** with every system creation paired to its counterpart — `fvm1`'s `'True`
+↔ `fvm2`'s `'True`, their number definitions, and so on. Three consequences:
+
+- **Seeded pairs never appear in the residual.** `YES-provided […]` lists only what the *users'*
+  programs introduced. A residual cluttered with "provided `'True` equals `'True`" would be
+  noise, and would bury the conditions that actually matter.
+- **A system creation paired against a non-system one is a hard NO**, not a condition. If
+  `fvm1`'s `'True` would have to equal some user creation in `fvm2`, no caller judgment can
+  rescue it — it is a contradiction, not a negotiable identification.
+- **The seeding is mechanical.** Because the system brane is composed identically in both,
+  the pairs can be established by walking the two system branes in lockstep and pairing
+  creation to creation. Names are not needed for this, though they make it checkable.
+
+Without this shared ancestry every comparison of two independently-built trees would begin with
+zero known correspondences. System equality is what gives the relation a foothold to start from.
 
 #### N6.4 Equality with CONDITIONS — return the mapping, not a boolean
 
@@ -2152,12 +2161,26 @@ map's over-constraint. **This needs deciding before T2c is implemented**, and is
 Equality then comes *with conditions*, and the caller decides whether those conditions are
 acceptable for their purpose.
 
-This inverts the relation's shape. N6.1–N6.3 answer a yes/no question by building the creation
+**The signature, from the human's own worked example** (2026-09-15) — two FVMs, two subtrees:
+
+```
+NO
+YES
+YES, provided [(fvm1_creation1, fvm2_creation10), (fvm1_creation3, fvm2_creation2), ...]
+```
+
+`YES` is just the third answer with an empty list, so there is **one** function returning the
+residual and the boolean is a convenience wrapper asking "is it empty?". That is why the residual
+must be designed in from the start: retrofitting it onto a boolean changes every return path.
+Per N6.3.1 the list is seeded with the system creations and those pairs are never reported, so a
+residual names only what the users' own programs introduced.
+
+This inverts the relation's shape. N6.1–N6.2 answer a yes/no question by building the creation
 table internally and discarding it. Here the table **is the answer**:
 
 | | question | result |
 |---|---|---|
-| N6.1–N6.3 | are these two FIRs equal? | `true` / `false` |
+| N6.1–N6.2 | are these two FIRs equal? | `true` / `false` |
 | N6.4 | under what identifications are they equal? | a set of required creation pairs, or "impossible" |
 
 Three outcomes rather than two:
@@ -2177,7 +2200,7 @@ really are equal for their purpose**. The relation supplies the facts; the calle
 judgment. That is a much better division than baking one notion of creation identity into the
 comparison and forcing every user to accept it.
 
-**It subsumes the boolean.** N6.1–N6.3's answer is just "is the residual empty?" — so this is a
+**It subsumes the boolean.** N6.1–N6.2's answer is just "is the residual empty?" — so this is a
 generalization, not a competing design, and the boolean version should be implemented as a thin
 wrapper over it rather than as separate code. Notably, **the FOOP-36 use wants the strict
 reading**: for Property 3, a non-empty residual is a FAILURE, because a rendering that requires
@@ -2195,16 +2218,16 @@ later:
   pre-populating the residual.
 - **Minimality.** Whether the residual returned is guaranteed to be the *smallest* set of
   identifications sufficient for equality, or merely *a* sufficient set. With the lockstep walk
-  and per-brane tables the natural construction is already minimal, but that should be stated and
+  and ordinary scoping the natural construction is already minimal, but that should be stated and
   tested rather than assumed.
 - **Cross-arena comparison.** The residual is a set of pairs, so it is meaningful whether both
   subtrees came from one `FVMStorage` or two — which is what makes "descendant FIRs that may or
   may not share FIR from the same FVM" a coherent thing to ask about.
 
-**Interaction with N6.3's per-brane scoping.** A residual escaping a brane pair is exactly the
-cross-brane sharing question of **Q9**, seen from the other side: an inner comparison may need a
-condition that only an enclosing brane can discharge. Q9 and this section should be settled
-together, since the answer to one constrains the other.
+**Interaction with N6.3.** The residual records CROSS-TREE creation pairs and carries no scoping
+duty — name resolution inside each tree is ordinary nested lookup (N6.3). Conflating those two
+roles is what produced the now-dissolved Q9. Per N6.3.1 the list is seeded with system creations,
+which are never reported, so a residual names only what the users' programs introduced.
 
 #### N6.5 The older equality document — `EQUIVALENCE.md` — must be updated by that FOOP
 
@@ -2231,9 +2254,12 @@ reconciling it would leave two competing accounts of Foolish equality in the rep
    should say so explicitly, in the document's own vocabulary, rather than inventing a parallel
    one.
 2. **N6.4's conditional equality has no entry in the table**, and is arguably a better primitive
-   than several that do: `===` ("equal in all possible coordinations") is exactly the kind of
-   claim a residual can express *constructively*, as the conditions under which equality holds,
-   instead of quantifying over all contexts.
+   than several that do. `===` ("equal in all possible coordinations") **quantifies over every
+   context**, which is correspondingly hard to check. `YES-provided […]` is the **constructive**
+   form of that same instinct: rather than asserting equality under all coordinations, it hands
+   back the exact conditions under which equality holds, and lets the caller judge them. The
+   refreshed document should say so, and should carry N6.3.1's system-equality rule, which is
+   what makes a cross-FVM comparison start seeded rather than empty.
 3. **FOOP-23 already defers to it.** Its §Open Questions record that value-search equality
    currently means **integer equality only, pending an equivalence FOOP**, and `FOOP-23.plan.md`
    §D.4 carries an **unchecked** task: *"Note in `EQUIVALENCE.md` (or leave a pointer) that
@@ -2244,7 +2270,7 @@ reconciling it would leave two competing accounts of Foolish equality in the rep
 (human, 2026-09-07). Not a side errand and not work for FOOP-36: it is a **deliverable of §N6's
 FOOP**, because that FOOP is what makes the refresh possible. The reason is that there are now
 **several substantive equivalence definitions** — N6.1's structural relation, N6.2's creation
-correspondence, N6.3's per-brane scoping, N6.4's conditional/residual form — where the vintage
+correspondence, N6.3's two-FVM framing, N6.4's conditional/residual form — where the vintage
 document had only sketches. They are useful for two distinct purposes, and the human named both:
 
 - **For testing** — the FOOP-36 use, Property 3, and any future check that two FIRs agree.
@@ -2304,89 +2330,33 @@ migration that directory exists to enable, not a special case.
 
 ## Last Updated
 
-**Date**: 2026-09-07
+**Date**: 2026-09-15
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: **STATUS → `Complete`. Merged to `jia` 2026-09-07 as `d82a33b0`** (--no-ff, 33
-commits), after the human attested `einmo_suite2` (181 cases, `aa22b82d`) and approved the Phase
-8 STOP. Post-merge `cargo test --workspace` on `jia`: **791 passed, 0 failed**. Answered the
-human's §N6.2 question about the creation table: an identity entry `A ≡ A` is never needed when
-both sides are the SAME `FirPointer` (possible only within one `FVMStorage`) — skipping reflexive
-pairs is a sound optimization and keeps N6.4's residual minimal — but the table must not be BUILT
-on identity being expressible, since two creations from different arenas are always distinct
-pointers and that is the general case N6.4 exists for.
+**Changes**: **Rewrote §N6.3 and DISSOLVED Q9** (human, 2026-09-15). Q9 asked how per-brane
+creation tables should handle a creation shared across brane boundaries; the human challenged the
+premise — "I don't understand why shared is two creations. It is created once and used in all
+context below." That is correct: nothing in Foolish splits one creation into two, and the dilemma
+was an artifact of an invented mechanism (tables created on brane entry, discarded on exit),
+not of the language. §N6.3 is rebuilt on the human's framing: **two FVMs producing two trees, with
+a subtree given from each, is the DEFINING case**, and every other use is a specialization.
+Pointer identity is meaningless across that pair by construction, so the pair list is the only
+thing relating the two sides — but **name lookup inside each tree is ordinary nested scoping**
+(each brane's map consulted before falling back outward), or more simply the FVM's own
+`ib_search`/`ab_search`, which already implements exactly that. Separating those two jobs — lookup
+resolves names WITHIN a tree, the pair list relates creations BETWEEN trees — is what dissolves
+Q9; conflating them is what created it. Adds **§N6.3.1 system equality**: every FVM composes the
+same `SYSTEM_FOO_SRC`, so two FVMs are never fully disjoint and the pair list starts **seeded**
+with system creations paired to their counterparts (`'True` ↔ `'True`, the number definitions, …).
+Seeded pairs never appear in a residual, a system creation paired against a user creation is a
+hard NO rather than a condition, and the seeding is mechanical because both system branes are
+composed identically. §N6.4 gains the human's explicit signature — `NO` / `YES` /
+`YES, provided [(fvm1_creation1, fvm2_creation10), …]` — with `YES` as the empty-residual case, so
+there is one function and the boolean is a wrapper. §N6.5 records that `YES-provided` is the
+**constructive** form of the vintage `===`: where "equal in all possible coordinations" quantifies
+over every context, a residual hands back the exact conditions under which equality holds.
 
-Prior entry: added **§2.2 "The pipeline and its testable pairs"**, and **split FIR equality out to
-its own FOOP as §N6** (human, 2026-09-07: "take everything we have right now, and move it to a
-next-step section recommending a FOOP to implement FIR Equality").
-
-**§2.2 — what FOOP-36 keeps.** The properties are stated over `P` and `R`, but the pipeline
-between them has named intermediate stages — `P → pp → spp → R → pr → spr → sspr` — and naming
-them makes visible which comparisons exist, which are tested, and which are skipped. A table gives
-all five pairs: `R` vs `sspr` (tested, Property 2), **`spp` vs `spr`** (the pair that would check
-Property 3), `pp` vs `pr` (optional), `R` parses (tested, Property 1), and `P` vs `R` — **not
-testable, and that is the point**, since `P` is human-written source and `R` is Foolish Standard
-Formatting. **§2.2.1** carries the human's justification: stepped Foolish is a limiting/fixed
-point, so `spp` and `spr` are two computations of the SAME limit, reached from human-written and
-from generated source — equality at the end of computation is the point. It is that pair rather
-than `pp` vs `pr` because the unstepped pair cannot see any consequence of §3's rule, which is
-entirely about results, and the §N4 defect lived inside exactly that decision. A stated limit
-remains: `spr` is stepped from the sequencer's own output, so the pair narrows the Property 2
-fixed-point loophole rather than closing it.
-
-**§N6 — what moved out.** Defining FIR equality proved to be a feature in its own right, so §2.2
-now states only WHICH pair to compare and why, and the relation itself is recommended as a
-**dedicated FOOP**, with the design so far moved verbatim: **N6.1** the shape half (kind, arity,
-children over `foolish_children`, plus the shape-bearing `FirSpec` fields); **N6.2** the value
-half (integers by value; creations by an incrementally-built equality table with the human's three
-cases, built with respect to IDENTICAL TREE TRAVERSAL, so the tree match has to fail first); and
-**N6.3** the table is **PER-BRANE, not global** — a global map over-constrains and produces false
-negatives, while per-brane tables match the language and make subtree comparison fall out for
-free. N6.2 records that the pairing is redundant in T2c's narrow use — measured, not derived, per
-the human's "don't spend cycles deriving" — and that it goes in regardless because out-of-order
-execution, out-of-order comparison (concretely: comparing a brane's children in parallel, where
-check-and-record must be atomic), and N6.3's other uses each break the premise. Correcting an
-earlier draft: **both recorded defects are caught by the shape half**, not by the table.
-
-**N6.4 — equality with CONDITIONS** (human, 2026-09-07). The relation is richer than a boolean:
-given two subtrees it can **return the mapping of which creations would have to be equal for the
-two FIRs to be equal**, leaving the caller to judge whether those identifications are acceptable
-for their purpose — which matters for comparing descendant FIRs that may or may not share FIR
-from the same FVM. Three outcomes replace two: unconditionally equal (empty residual),
-conditionally equal (the residual is the set of creation pairs assumed), and not equal (no
-identifications can rescue it). It **subsumes** N6.1–N6.3, whose boolean is just "is the residual
-empty?", so the FOOP should design for it from the start rather than retrofit it. FOOP-36's own
-use wants the strict reading — for Property 3 a non-empty residual is a FAILURE, since a rendering
-that requires two creations to be identified is one that lost the distinction. Notes the follow-ons
-it opens (composing residuals across comparisons, caller-supplied seed assumptions, whether the
-residual is minimal or merely sufficient, cross-arena comparison) and that Q9 should be settled
-together with it, since a residual escaping a brane pair is Q9 seen from the other side.
-
-**N6.5 — the older equality document must be updated by that FOOP** (human, 2026-09-07). Checked
-and it still exists: `docs/vintage_legacy/EQUIVALENCE.md`, a taxonomy of equality relations as
-Foolish LANGUAGE OPERATORS (`=s=` syntactic, `==` once not nye, `===` semantic/all-coordinations,
-`=n=`/`=N=` names, `=c=`/`=C=` characterized names, `=v=`/`=V=` values), none specified or
-implemented. It is prior art rather than a stale note, and §N6's FOOP must reconcile with it or
-the repository carries two competing accounts of Foolish equality. Three contact points recorded:
-N6's relation is a `==`-like one in that taxonomy and should say so in the document's own
-vocabulary; **N6.4's conditional equality has no entry in the table** and is arguably a better
-primitive than `===`, since a residual expresses constructively what "equal in all possible
-coordinations" quantifies over; and **FOOP-23 already defers to it** — its Open Questions record
-that value-search equality means integer equality only "pending an equivalence FOOP", and
-`FOOP-23.plan.md` §D.4 carries an UNCHECKED task to note that in `EQUIVALENCE.md`. §N6's FOOP is
-that equivalence FOOP and inherits the task. Also flags a scope question for the human: whether
-the vintage operators are still wanted as Foolish surface syntax, or whether N6 is a Rust-side
-relation only. **The document is to be REFRESHED and brought OUT of `vintage_legacy/`** into the
-live tree as a **deliverable of that FOOP** (human, 2026-09-07), because there are now several
-substantive equivalence definitions where the vintage document had only sketches — useful **for
-testing AND for comprehending programs**, the latter being what makes it language documentation
-rather than a test utility. `docs/README.md` calls `vintage_legacy/` "being migrated into the
-above", so this is that migration rather than a special case; `docs/howto/03_howto_foolish_todo.foo`
-already lists equivalence among its unwritten chapters, which a refreshed document would make
-writable.
-
-**§N6 is NOT a FOOP-36 blocker** — until it lands, Property 3 stays enforced by reading, which is
-the status quo this FOOP inherited. **T2c is accordingly DEFERRED**, and new **Q9** (how a
-creation shared ACROSS brane boundaries is checked) blocks §N6's FOOP, not this one. §Rejected
-Alternatives F amended: its "no FIR equivalence relation exists" cost is now only half true.
+Prior entry: **STATUS → `Complete`. Merged to `jia` 2026-09-07 as `d82a33b0`** (--no-ff, 33
+commits), after the human attested `einmo_suite2` (181 cases, `aa22b82d`) and approved the Phase 8
+STOP. Post-merge `cargo test --workspace` on `jia`: **791 passed, 0 failed**.
