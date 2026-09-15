@@ -77,6 +77,7 @@ ls | rev | sort -V | rev
 | [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
+| [FOOP-76](FOOP-76.md) | Revival of Equality — FIR equivalence with conditions | Draft | phase-4 | 2026-09-15 | Claude Code / claude-opus-5 |
 
 ---
 
@@ -140,7 +141,23 @@ ls | rev | sort -V | rev
   equality-with-conditions design); Q5b and Q5d are written so a **negative** finding — creation
   identity and the absence of a normal form may put Foolish's problem outside what Jay's equality
   addresses — counts as a first-class result. **Independent of every track**; best read before
-  N6's FOOP is written
+  FOOP-76 (see below) is executed — FOOP-76 §Open Questions Q2 records that as the human's call
+- [FOOP-76](FOOP-76.md) — **Revival of Equality** — FIR equivalence with conditions. **Broken out
+  of FOOP-36 §N6 on 2026-09-15** at the human's request. A relation over two FIR subtrees
+  answering `NO` / `YES` / `YES, provided [(fvm1_creation1, fvm2_creation10), …]` — the residual
+  names the creation identifications that would have to hold, and the boolean is recovered as "is
+  it empty?". A **shape** half (kind, arity, children over `foolish_children`, shape-bearing
+  `FirSpec` fields) and a **value** half (integers by value; creations by a correspondence
+  discovered during a lockstep walk). Its defining case is **two FVMs**, where pointer identity is
+  meaningless by construction; the pair list starts **seeded** with system creations, since every
+  FVM composes the same `SYSTEM_FOO_SRC`; and the residual must be a **bijection**, derived from
+  the **Creation Postulate** (FOOP-33). v1 requires **constanic** subtrees as a stated
+  precondition. **FIR Impact adds nothing to `FirSpec`** (it already derives `PartialEq`) and
+  **UBC Step Impact is None** (read-only, `&FVMStorage`, constructs nothing). Delivers FOOP-36's
+  deferred **T2c** and closes `FOOP-23.plan.md` §D.4. Carries a **documentation deliverable**:
+  refresh `docs/vintage_legacy/EQUIVALENCE.md` against real definitions and bring it OUT of
+  `vintage_legacy/`. **Two open scope calls are the human's** — how far the vintage operator
+  taxonomy goes (Q1), and whether it waits on FOOP-66 §3 Q5 (Q2)
 - [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
 - [FOOP-45](FOOP-45.md) — Deadbrane (useless-element detection: directly useless, transitively
@@ -266,7 +283,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md), [FOOP-76](FOOP-76.md)
 
 ### phase-5
 
@@ -373,7 +390,7 @@ parallel worktrees will merge with friction (see P4). Order and why:
    (Track 3), and it consumes 93's `EconstanicReason::Detached`. Schedule after both tracks'
    cores merge.
 
-### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26 → 46.
+### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26 → 46, then 76.
 
 **Foundation (already landed):** **FOOP-16** built `foolish-ubca2` — arena-backed FIR storage
 via copy-migration. Status `complete`; the crate is 134/134 with all three einmo gates passing.
@@ -420,6 +437,22 @@ Two concrete obligations came out of it: the merged-or-not question must stay as
 concatenation is an operator, and **`rendering_aid: ConcatRenderingAid`** (the sequencing-only
 field recording which elements wrote their SF/SFF marker in source) must survive the rewrite —
 FOOP-46 §4.1 carries that one.
+
+5. **FOOP-76** — **Revival of Equality**: FIR equivalence returning `NO` / `YES` /
+   `YES, provided [(creation, creation), …]`, plus the refresh and relocation of
+   `docs/vintage_legacy/EQUIVALENCE.md`. **Broken out of FOOP-36 §N6 on 2026-09-15** at the
+   human's request; FOOP-36 keeps §2.2/§2.2.1 (WHICH pair to compare — `spp` vs `spr`), and
+   FOOP-76 defines HOW. **In this track because it edits `foolish-ubca2`** — it reads
+   `FVMStorage`, `foolish_children` and `SYSTEM_FOO_SRC` — so it cannot run in a parallel
+   worktree against the four above. **Last in the order, but loosely so**: it changes no FIR,
+   no step rule and no step count (§FIR Impact and §UBC Step Impact are `None` and additive),
+   so it neither blocks nor is blocked by 26 and 46 on semantics. What it *is* coupled to is
+   **FOOP-36's T2c** — the deferred `spp` vs `spr` structural-equivalence test that FOOP-76
+   supplies the relation for — which is why it follows 36 rather than preceding it. **Two
+   scope calls are the human's** and are its Phase 0: whether the vintage operator taxonomy
+   (`=s=`, `==`, `===`, `=n=`, `=c=`, `=v=`) is in scope as *language operators* or only as
+   honest documentation, and whether it waits on **FOOP-66 §3 Q5** (tree calculus's equality
+   machinery) or proceeds in parallel — FOOP-66 calls that dependency **soft**.
 
 ### Track 4 — independent, parallel with Tracks 2/3.
 
@@ -535,19 +568,28 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-09-15
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-66** (Learn Tree Calculus) to the master table, the Draft list, and the
-**phase-5** By-Phase list. Placed in phase-5 beside **FOOP-34** (Recursion Upgrades) — the two are
-the project's only *standalone research* FOOPs, deliberately under-specified documents whose
-content is discovered during execution rather than specified up front, and FOOP-66 is written to
-FOOP-34's shape. It is **independent of every implementation track**: it modifies no crate, no
-einmo suite and no language semantics, so it can run in parallel with anything. Its one scheduling
-note is a *soft* one — its **Q5 (equality)** findings are an input to the FIR-equality FOOP that
-FOOP-36 §N6 recommends, so reading it before N6's FOOP is written costs days and saves a possible
-rewrite. Deliberately not filed under `meta`: it is not about the FOOP process or the tooling, but
-about the language's ideas, which is what phase-5 research already holds. Prior entry: added
-**FOOP-26**, **FOOP-36**, **FOOP-46** and **FOOP-56** to the table and the phase-4 list, and added
-**Track 6 — the `foolish-ubca2` chain**, strictly sequential **56 → 36 → 26 → 46**, on the
-foundation of the already-complete FOOP-16; also corrected FOOP-16's row from `Draft` to
-`complete`, matching its own frontmatter. FOOP-56 goes first because it is the vocabulary the
-other two are written in; FOOP-36 goes before FOOP-26 so that FOOP-26's baseline diffs read as
-language rather than FIR dumps; FOOP-46 is fourth, implementing FOOP-26 §4.
+**Changes**: Added **FOOP-76** (Revival of Equality — FIR equivalence with conditions) to the
+master table, the Draft list, the **phase-4** By-Phase list, and **Track 6** as its fifth entry.
+It was **broken out of FOOP-36 §N6 on 2026-09-15** at the human's request; FOOP-36 §N6 is now a
+pointer to it, and every FOOP-36 reference that pointed into N6's subsections was repointed.
+
+**Placed in Track 6 (the `foolish-ubca2` chain, 56 → 36 → 26 → 46, then 76) and phase-4, matching
+FOOP-36's own phase.** The track is the operative placement: Track 6's membership rule is that its
+FOOPs all edit `foolish-ubca2`, most of it `fvm_storage.rs`, so they cannot run in parallel
+worktrees — and FOOP-76 reads `FVMStorage`, `foolish_children` and `SYSTEM_FOO_SRC`, which puts it
+squarely inside that constraint. It is **last in the order but only loosely so**: unlike 26 and 46
+it changes no FIR, no step rule and no step count (its §FIR Impact and §UBC Step Impact are `None`
+and purely additive), so it neither blocks nor is blocked by them on semantics. What genuinely
+orders it after **FOOP-36** is **T2c** — the `spp` vs `spr` structural-equivalence test FOOP-36
+deferred, which FOOP-76 supplies the relation for. Not filed under `meta` (it is language
+semantics, not process or tooling) and not phase-5 beside FOOP-66 (FOOP-66 is a *study* shipping
+prose; FOOP-76 ships a relation and its tests). Its **Q2** records the soft dependency in the
+other direction: FOOP-66 §3 **Q5** studies tree calculus's equality machinery, and whether FOOP-76
+waits for that finding or proceeds in parallel is the human's call — so FOOP-66's Draft entry now
+points forward to FOOP-76 rather than to "N6's FOOP".
+
+Prior entry: added **FOOP-66** (Learn Tree Calculus) to the master table, the Draft list, and the
+**phase-5** By-Phase list, beside **FOOP-34** (Recursion Upgrades) — the project's only two
+*standalone research* FOOPs. The entry before that added **FOOP-26**, **FOOP-36**, **FOOP-46** and
+**FOOP-56** to the table and the phase-4 list, and created **Track 6 — the `foolish-ubca2`
+chain**, strictly sequential on the foundation of the already-complete FOOP-16.

@@ -60,7 +60,8 @@ comparisons are available and which are being skipped. The load-bearing one is *
 the two stepped FIRs: because stepped Foolish is a limiting/fixed point, they are two computations
 of the *same* limit, reached from human-written and from generated source, and equality at the end
 of computation is the point. HOW to compare two FIRs is a feature in its own right and is
-**split out to its own FOOP** (§N6); until it lands, Property 3 stays enforced by reading.
+**split out to its own FOOP** — [FOOP-76](FOOP-76.md), *Revival of Equality*; until it lands,
+Property 3 stays enforced by reading.
 
 The approval suite is **replaced rather than edited**: a new `einmo_suite2` receives the 179
 inputs, renders them under the new sequencer, and becomes what `cargo test` exercises.
@@ -394,7 +395,8 @@ Then:
    structure — the same sharing, the same element counts, the same creations. **This is a
    REQUIREMENT of `Ubca2Sequencer`, not an aspiration** (human, 2026-09-04). **§2.2 states
    where this is checkable** — the pair `spp` vs `spr`, two computations of the same fixed
-   point. The relation that would check it is split out to its own FOOP (§N6).
+   point. The relation that would check it is split out to its own FOOP,
+   [FOOP-76](FOOP-76.md).
 
 **Properties 1 and 2 are not sufficient, and this FOOP has the evidence.** Two defects satisfied
 both while meaning something else, and neither mechanical check could see it:
@@ -507,8 +509,9 @@ derivation exists. `spp` vs `spr` narrows the gap; it does not close it.
 **The relation itself is NOT specified here.** Defining FIR equality — what shape comparison
 covers, how creation identity is decided, how the tables are scoped — turned out to be a feature
 in its own right, with an open semantics question at its centre. It is therefore **split out to
-its own FOOP**; see §N6, which carries the full design worked out so far. This section states
-only WHICH PAIR to compare and why, which is a property of the round trip and belongs to §2.
+its own FOOP** — see **[FOOP-76](FOOP-76.md)**, *Revival of Equality*, which carries the full
+design (its §1 shape, §2 value, §3 two-FVM framing, §4 equality-with-conditions). This section
+states only WHICH PAIR to compare and why, which is a property of the round trip and belongs to §2.
 Until that FOOP lands, Property 3 remains enforced by reading, as §Rejected Alternatives F says.
 
 ### §3 What each FIR kind renders as
@@ -1344,18 +1347,17 @@ the interesting one to watch. Property 2 is asserted **only** where the FIR is c
 
 This procedure also settles §Open Questions **Q7** empirically.
 
-**T2c — Structural equivalence of the stepped FIRs — DEFERRED to §N6's FOOP.** §2.2 identifies
-`spp` vs `spr` as the pair that would check Property 3, and T2's own procedure already builds both
-arenas and discards them, so the hook is cheap. But the relation itself is not specified in this
-FOOP (§N6). **Not a FOOP-36 deliverable**; recorded here so the connection to T2's six steps is
+**T2c — Structural equivalence of the stepped FIRs — DEFERRED to [FOOP-76](FOOP-76.md).** §2.2
+identifies `spp` vs `spr` as the pair that would check Property 3, and T2's own procedure already
+builds both arenas and discards them, so the hook is cheap. But the relation itself is not specified
+in this FOOP. **Not a FOOP-36 deliverable**; recorded here so the connection to T2's six steps is
 not lost.
 
-When that FOOP writes the relation, two of its tests are already specified and must be carried:
-**§N6.3.2's bijectivity counterexample** — two distinct VM1 creations against one VM2 creation
-reached twice must answer `NO`, in both directions, because the Creation Postulate makes the
-identification impossible — and **N6.3.1's seeding**, where system creations pair by construction
-and never appear in a residual. Per **N6.3.3**, v1 requires constanic subtrees as inputs and says
-so as a precondition.
+FOOP-76 writes the relation, and carries these tests as its own: **its §3.2's bijectivity
+counterexample** — two distinct VM1 creations against one VM2 creation reached twice must answer
+`NO`, in both directions, because the Creation Postulate makes the identification impossible — and
+**its §3.1's seeding**, where system creations pair by construction and never appear in a residual.
+Per **FOOP-76 §3.3**, v1 requires constanic subtrees as inputs and says so as a precondition.
 
 **T2b — Pre-constanic rendering (§2.1).** FIRs stepped a bounded number of steps rather than to
 settlement: each renders, **parses**, contains **no NYES token as syntax**, and names its state
@@ -1542,7 +1544,8 @@ Property 2's text comparison certifies "the output is stable Foolish"; it cannot
 output is THIS program", because a fixed point of a consistently-wrong rendering is still a fixed
 point — two defects entered through exactly that gap. §2.2 adds the pair that can see the
 difference, comparing the FIRs themselves before either is rendered: shape by kind, arity and
-children, values by integer equality and a creation table — a relation split out to §N6's FOOP.
+children, values by integer equality and a creation table — a relation split out to
+[FOOP-76](FOOP-76.md).
 
 **What does not change.** `Detailed` mode (§1, §6) reaches byte-identical output to today, and
 `foolish-ubca` is untouched.
@@ -1592,8 +1595,9 @@ The original first objection stood as a **cost**, not a refutation: there is no 
 relation in the codebase, so Property 3 had no mechanical check and was enforced by reading.
 **That is now only half true** (human, 2026-09-07). §2.2 names the pipeline's intermediate
 stages, which makes the checkable pair explicit — `spp` vs `spr`, two computations of the same
-fixed point — and §N6 carries the worked design for the relation itself, split out to its own
-FOOP: structural equivalence over kind, arity, children, and the shape-bearing `FirSpec` fields.
+fixed point — and **[FOOP-76](FOOP-76.md)** carries the worked design for the relation itself,
+split out to its own FOOP: structural equivalence over kind, arity, children, and the
+shape-bearing `FirSpec` fields.
 `FirSpec` already derives
 `PartialEq`, so this is a paired walk, not a new equivalence theory. **Value** equivalence
 (integers, creation identity) remains deferred and remains enforced by reading, so Property 3
@@ -1624,9 +1628,9 @@ DISSOLVED** — it was mis-posed; see its entry.
   invented mechanism (tables created on brane entry, discarded on exit), not of the language.
   Under **ordinary nested scoping** — each brane's map consulted before falling back outward, or
   equivalently the FVM's own `ib_search`/`ab_search` — both `ba` and `bb` resolve to the same
-  defining statement, there is no table lifetime, and nothing escapes. §N6.3 is rewritten
-  accordingly. The residual of §N6.4 still records cross-tree creation pairs, but that list
-  carries no scoping duty, which is the conflation Q9 arose from.
+  defining statement, there is no table lifetime, and nothing escapes. **[FOOP-76](FOOP-76.md)
+  §3** carries that rewrite. Its §4 residual still records cross-tree creation pairs, but that
+  list carries no scoping duty, which is the conflation Q9 arose from.
 - **Q1 — RESOLVED (human, 2026-09-02): out of scope. This FOOP targets einmo only.** The
   einmo adapter switches to `Foolish`; the REPL and every other caller are left exactly as
   they are. `Ubca2Sequencer` is additive, so nothing outside the adapter changes behavior
@@ -1902,487 +1906,26 @@ useful well beyond the creation case that prompted it, and it needs no rendering
 is new syntax to lex, parse, and specify against the existing `&`-contexted forms, which is why
 it is its own FOOP rather than a rider on this one.
 
-### N6. FIR equality — its own FOOP
-
-**Split out of §2.2 (human, 2026-09-07): "Let's take everything we have right now, and move it to
-a next-step section recommending a FOOP to implement FIR Equality."**
-
-§2.2 establishes WHICH pair to compare — `spp` vs `spr`, the two stepped FIRs — and why. Defining
-the comparison itself turned out to be a feature in its own right: a relation over FIR with a
-shape half, a value half, a scoping rule, and an open semantics question at its centre (Q9). It
-is too large to ride on a rendering FOOP, and it is wanted well beyond this one — subtree
-comparison and "do these two differently-written programs denote the same thing?" are both
-natural users of it.
-
-**Recommendation: a dedicated FOOP defining FIR equality**, taking everything below as its
-starting design. It is NOT a blocker for FOOP-36: until it lands, Property 3 stays enforced by
-reading (§Rejected Alternatives F), which is the status quo this FOOP inherited.
-
-**There is PRIOR ART in the repository: `docs/vintage_legacy/EQUIVALENCE.md`** — a vintage
-taxonomy of equality operators for Foolish (`=s=`, `==`, `===`, `=n=`, `=v=`, …), unspecified and
-unimplemented, which FOOP-23 already defers to for value-search equality. **§N6's FOOP must
-reconcile with it, REFRESH it, and bring it OUT of `vintage_legacy/` into the live documentation
-tree** (human, 2026-09-07); see N6.5. That is a deliverable of the FOOP, not a side errand: the
-refresh is only possible once N6 supplies real definitions where the vintage document had
-sketches.
-
-**So this FOOP has a documentation deliverable alongside its implementation**, and its value is
-not only in testing. The human's framing: the equivalence definitions are useful **for testing
-AND for comprehending programs** — "under what identifications are these two branes the same?"
-is a question a Foolisher asks while READING code, which is what makes this language
-documentation rather than a test utility.
-
-**What the new FOOP must decide first — §Open Questions Q9.** How a creation shared ACROSS brane
-boundaries would be checked. **Q9 is now DISSOLVED** (human, 2026-09-15) — see §Open Questions.
-**What the new FOOP must decide first is instead N6.4's shape**, since that choice changes what
-detects, not merely how it is coded, so it is a language-semantics judgment for the human.
-
-**The relation is richer than a boolean — see N6.4.** Rather than answering "are these equal?",
-it can return **the mapping of creations that would have to be equal for the two FIRs to be
-equal** (human, 2026-09-07), leaving the caller to judge whether those identifications are
-acceptable for their purpose. The boolean is then just "is the residual empty?", so N6.4 is the
-general form and N6.1–N6.2 a special case of it. **Whoever writes this FOOP should design for
-N6.4 from the start**, since retrofitting a residual onto a boolean means changing the return
-type of every path.
-
-**Scope beyond what is written below**, for whoever picks this up: whether the relation is a test
-helper or a language-level notion Foolish itself can express; whether it belongs in
-`foolish-ubca2` or lower; and whether `pp` vs `pr` (§2.2's third row) is worth implementing
-alongside as a debugging aid.
-
-**The design so far follows, moved verbatim from §2.2 apart from renumbering.**
-
-#### N6.1 The shape half — kind, arity, children
-
-Equality on FIR is not merely hard to implement; taken naively it is **ill-defined** (human,
-2026-09-07). Too strict — comparing arena indices, NYES, or produced values — fails on *correct*
-renderings, because recoordination may legitimately resolve an ECONSTANIC differently in a new
-context (§Rejected Alternatives F's surviving objection). Too loose, and it certifies nothing.
-Every choice of what to ignore is therefore a judgment about what rendering must preserve, which
-restates Property 3 rather than proving it.
-
-So the relation is split into a **shape** half (N6.1) and a **value** half (N6.2), each
-decidable on its own terms. **Structural equivalence** compares, recursively over
-`foolish_children` (the *written* structure, which recoordination does not perturb):
-
-1. **Kind** — the same `FirSpec` discriminant.
-2. **Arity** — `foolish_children().len()` agrees. A 3-statement brane is not equivalent to a
-   5-statement one; a `Concatenation` over 2 constituents is not one over 3.
-3. **Children**, pairwise, in order.
-4. **Shape-bearing `FirSpec` fields** — `Search { pattern, anchored, forward, is_value_search,
-   contexted }`, `Index { offset, anchored, contexted }`, `Operator { op }`,
-   `Comparison { op }`, `Statement { identifier }`. Rendering `?x` as `~x` leaves the shape
-   unchanged while changing the program, so these are part of shape.
-
-It deliberately does **not** compare:
-
-- **Values** — `IndepInt { value }` and creation identity. Deferred at the time N6.1 was
-  written; **N6.2 now settles both** (human, 2026-09-07).
-- **`Statement { line_number }`** — the sequencer reformats to one statement per line (§4.1), so
-  these differ by design.
-- **`FoolRef { referent }`** — a raw `FirPointer`, meaningless across two arenas.
-- **`Nk { reason }`** — prose, not structure.
-- **`Concatenation { rendering_aid }`** — sequencing-only by construction (§N1).
-- **`ubc_children`** and NYES — produced values, which is the deferred half.
-
-**What each half catches.** The fused `f1f2` concatenation defect is caught by **arity** (3
-elements against 2). The `⬤` unnamed-creation defect of §N4 is caught by **N6.2's creation
-table** — shape alone cannot see it, since both sides render a `Creation` node and the fault is
-one of identity.
-
-#### N6.2 The value half — integers are easy, creations are dynamic programming
-
-**Integers.** `IndepInt { value }` compares by value. Two `3`s are equal; a `3` and a `4` are
-not. Nothing more is needed: an integer literal denotes itself, and re-parsing a rendered `3`
-yields a `3`.
-
-**Creations are the interesting case** (human, 2026-09-07). A creation denotes nothing but its
-own identity, and identity is arena-scoped — `FirPointer` is meaningless across `spp` and `spr`.
-So creation equality cannot be decided by looking at either node: it is a **correspondence
-discovered during the walk**, built by dynamic programming over an equality table.
-
-**It is built incrementally, but with respect to IDENTICAL TREE TRAVERSAL** (human,
-2026-09-07). This qualifier is what makes the table well-defined rather than arbitrary. The two
-trees are walked in **lockstep** — the same order, position by position, `foolish_children` index
-by index — so when the walk arrives at a pair of creations, those two nodes occupy *the same
-position in their respective trees*. That is the only reason it is meaningful to call them
-corresponding.
-
-The consequence is that the shape half is not merely a separate check that happens to run
-alongside: it is the **precondition** for the value half. The lockstep walk is what N6.1's kind
-and arity comparisons enforce, and it is what lets a creation pair mean anything at all. If the
-walk ever had to guess which right-hand node matches a given left-hand node, the table would be
-searching for an isomorphism rather than verifying one, and the linear-time incremental
-construction below would not apply.
-
-**Hence a strict order of failure: the tree match would have to fail first** (human,
-2026-09-07). At every position the walk checks kind, then arity, then — only if both agree —
-descends or compares values. A shape mismatch **fails immediately and the walk stops**; it never
-reaches the creation table at that position or below it. So a creation-table failure (case 3
-below) is only ever reported for two trees whose shape has already matched everywhere the walk
-has been. That makes the diagnosis unambiguous: a shape failure says *the structure differs*, and
-a table failure says *the structure agrees but the sharing does not* — which is exactly the
-distinction §N4's defect turned on, and it would be lost if the two halves could fail in either
-order.
-
-**The rule.** Whenever the walk compares two elements and both are creations, consult a table of
-pairs `(left creation, right creation)`:
-
-1. **Neither is in the table** — they are **equal**, and the pairing is **recorded**.
-2. **The pair is in the table** — great, **equal**.
-3. **Either is in the table but paired to something else** — **fail**: the two trees are not the
-   same.
-
-Case 3 is the whole point. It is what makes the table a **bijection** rather than a mere mapping:
-a left creation may correspond to exactly one right creation and vice versa, so the check must be
-consulted in both directions.
-
-**Why this catches the §N4 defect.** For `{orig = ⬤; ref = orig;}`, the left tree has ONE
-creation reached twice — once at `orig`'s definition and once through `ref`. A correct rendering
-also yields one creation reached twice: the first comparison records the pairing, the second
-finds exactly that pairing already present, and case 2 approves. The defective `⬤` rendering
-yields TWO distinct creations on the right; the second comparison finds the left creation already
-paired to the OTHER right creation, and case 3 fails. Sharing preserved passes; sharing split
-fails — which is precisely §2's "the same sharing, the same creations".
-
-Note what the table does NOT require: it never asks that a creation occupy the same arena index,
-or be reached by the same route. Only that the *pattern* of sharing agree. That is what makes it
-sound across two independently-built arenas.
-
-**Does the table ever need an identity entry, `A ≡ A`?** (human, 2026-09-07). **Not when the two
-sides are literally the same node** — if the walk reaches the same `FirPointer` on both sides,
-which can only happen when both subtrees are drawn from the SAME `FVMStorage`, the pair is
-trivially satisfied and recording it wastes an entry. Skipping reflexive pairs is a sound
-optimization, and it also keeps the residual of N6.4 minimal: a condition of the form "`A` must
-equal `A`" is no condition at all and should never appear in an answer handed to a caller.
-
-**But the table cannot be built on the assumption that identity is expressible.** Two creations
-from DIFFERENT arenas are always distinct `FirPointer`s even when they denote the same thing —
-`FirPointer` is arena-scoped by construction — so `A ≡ A` is not a case that arises there at all.
-That is the case N6.4 exists for, and it is the general one. The rule to implement:
-
-- **Same arena, same pointer** → equal, record nothing.
-- **Otherwise** → the three-case check above, on a pair of genuinely distinct pointers.
-
-The distinction matters because it says where the shortcut lives: it is an optimization inside
-the comparison of one pair, NOT a property the table's design may rely on.
-
-**On redundancy — noted, not derived** (human, 2026-09-07: "explore formalism but don't spend
-cycles deriving"). In T2c's particular use — two whole programs from the same source, stepped the
-same way, walked from their roots — the table looks redundant: the lockstep walk tends to hit a
-shape difference before it ever reaches a creation pair. A spot check bears that out; the correct
-tree for `{orig = ⬤; ref = orig;}` against the defective `⬤` rendering differs in node count (7
-against 5), because a `Search` carries its anchor child and a bare `Creation` does not. So **both
-recorded defects are caught by the shape half**, which corrects an earlier draft claiming the
-table catches §N4.
-
-That is as far as it is worth taking the argument. Proving it properly is slippery — stepping
-rewrites the tree as it goes — and the conclusion would not change what gets built. Treat it as
-an observation about T2c's inputs.
-
-**Include the table regardless**, for reasons that do not depend on the observation holding:
-
-- **Out-of-order execution** (how the trees are BUILT) and **out-of-order comparison** (how they
-  are WALKED) each break the assumption that position implies identity. The human's concrete
-  case: comparing every one of a brane's children **in parallel**. There the table becomes shared
-  state, and two children racing to record `(L→R₁)` and `(L→R₂)` is a real violation that can be
-  LOST unless check-and-record is one atomic step. The resulting bijection is then also
-  run-to-run nondeterministic, so pairing detail in a failure message is diagnostic only.
-- **N6.3's two-FVM setting** — subtrees from different arenas, and non-identical source — where
-  pointer identity is meaningless and the pair list is load-bearing
-  from the first comparison.
-
-It is cheap (a map consulted at creation nodes), correct today, and already correct under those
-changes. The one thing that must not happen is a future reader seeing an assertion that rarely
-fires, concluding it is dead, and deleting it — hence this note.
-
-#### N6.3 Two FVMs is the defining case; name lookup is ordinary scoping
-
-**Take the most disjoint case: TWO FVMs produce TWO trees, and we are given a subtree from each**
-(human, 2026-09-15). That is the general setting, and every other use is a specialization of it.
-Framing the relation this way settles several things at once that earlier drafts of this section
-got wrong.
-
-**Pointer identity is meaningless across the pair, by construction.** `FirPointer` is
-arena-scoped, so `fvm1_creation1` and `fvm2_creation10` are incomparable as values even when they
-denote the same thing. A record of *pairs* is therefore not an optimization — it is the only
-thing that can relate the two sides at all.
-
-**Two mechanisms, two distinct jobs.** An earlier draft conflated them, and the conflation is
-what produced the now-dissolved Q9:
-
-| mechanism | job | scope |
-|---|---|---|
-| name lookup | what does this name mean **here**? | *within* one tree |
-| the pair list | which creation corresponds to which? | *between* two trees |
-
-**Name lookup is ordinary nested scoping — nothing bespoke is needed** (human, 2026-09-15). The
-conceptual model: every brane builds a map as it walks its statements in order; a name is looked
-up in the current brane's map first and falls back outward to the parent's. Re-stating a name in
-one brane overwrites, which is correct, because that is the evaluation order. **Or, more simply,
-use the FVM's own search language** — `ib_search`, `ab_search`, backward search — which already
-implements exactly this: IB is the context accumulated so far, AB is the parent chain. Preferring
-the existing machinery over a reimplementation is the same discipline §N4.b followed ("we shoudl
-use search when possible", human 2026-09-07), and for the same reason: the language already
-answers this question correctly, and a parallel implementation can only drift from it.
-
-**Q9 is DISSOLVED, not answered.** The earlier draft specified per-brane tables created on brane
-entry and discarded on exit, then asked what happens to a creation that outlives the table which
-recorded it — e.g. `{shared = ⬤; ba = {v = shared;}; bb = {v = shared;};}`, where one creation is
-reached from two sibling branes. **That question was an artifact of the invented mechanism, not
-of the language.** `shared` is created once and referenced from every context below it; nothing
-in Foolish splits it. Under ordinary scoping both `ba` and `bb` miss locally, fall back outward,
-and reach the same defining statement — there is no table lifetime, so nothing escapes it. The
-three candidate rules the draft offered were three ways to patch a self-inflicted problem. See
-§Open Questions Q9 for the record.
-
-##### N6.3.1 System equality — the comparison starts seeded, not empty
-
-**FVM1's definition of numbers is already equal to FVM2's definition of numbers** (human,
-2026-09-15). Every FVM composes the *same* `system_foo::SYSTEM_FOO_SRC` — one compile-time source
-string, run through the same deterministic composer (`compose_program_with_system`). So two FVMs
-are never fully disjoint: they share a common ancestor, and their system creations correspond by
-construction rather than by anyone's declaration.
-
-**This is a seeding rule.** Before comparing two subtrees from different FVMs, the pair list
-starts **pre-populated** with every system creation paired to its counterpart — `fvm1`'s `'True`
-↔ `fvm2`'s `'True`, their number definitions, and so on. Three consequences:
-
-- **Seeded pairs never appear in the residual.** `YES-provided […]` lists only what the *users'*
-  programs introduced. A residual cluttered with "provided `'True` equals `'True`" would be
-  noise, and would bury the conditions that actually matter.
-- **A system creation paired against a non-system one is a hard NO**, not a condition. If
-  `fvm1`'s `'True` would have to equal some user creation in `fvm2`, no caller judgment can
-  rescue it — it is a contradiction, not a negotiable identification.
-- **The seeding is mechanical.** Because the system brane is composed identically in both,
-  the pairs can be established by walking the two system branes in lockstep and pairing
-  creation to creation. Names are not needed for this, though they make it checkable.
-
-Without this shared ancestry every comparison of two independently-built trees would begin with
-zero known correspondences. System equality is what gives the relation a foothold to start from.
-
-##### N6.3.2 The residual must be a BIJECTION — the Creation Postulate demands it
-
-**The creation pairs must be bijective within creations** (human, 2026-09-15). This residual is
-**not** producible, and an attempt to produce it is a `NO`:
-
-```
-[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]        ← IMPOSSIBLE
-```
-
-**Why, from the Creation Postulate** (`docs/why/creation_postulate.md`). Every `⬤` is a genuinely
-new thing, distinct from every creation before it. So within VM1, `vm1_a1 ≠ vm1_a2` — that is the
-postulate, not an implementation accident. Meanwhile `vm2_a1 = vm2_a1` trivially. The residual
-above therefore asserts that two things *known to differ* are both equal to one single thing,
-which is a contradiction no caller judgment can discharge. It is not a condition that happens to
-be unattractive; it is not a condition at all.
-
-The same argument runs in the other direction — one left creation paired to two different right
-creations is equally impossible — so the requirement is a **bijection**, and the check is made in
-**both** directions. This is why the pair list must be consulted before recording, and why a
-contradicted pairing is a hard `NO` rather than something to be reported and left to the caller.
-
-**Worked counterexample, to be a test.** The FOOP implementing this relation must carry this case
-explicitly:
-
-```foolish
-{ a1 = ⬤; a2 = ⬤; }        !! in VM1 — two DISTINCT creations, by the postulate
-{ a1 = ⬤; }                !! in VM2 — one creation
-```
-
-Comparing a structure that reaches both of VM1's creations against one that reaches VM2's single
-creation twice must answer **NO**. If an implementation instead returns
-`[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]`, it has silently identified two distinct creations, which
-is exactly the collapse §2's Property 3 exists to prevent — and it is the same failure shape as
-the `⬤` defect of §N4, one level up. Note this is also where §N6.3.1's seeding is load-bearing in
-reverse: the seeded system pairs are already a bijection, so a user creation colliding with a
-seeded one is caught by the same check.
-
-##### N6.3.3 NYES: require constanic inputs first, generalize later
-
-**Necessarily, the relation must either CHECK NYES equality or REQUIRE constanic subtrees as
-inputs** (human, 2026-09-15). There is no third option: a pre-constanic subtree is mid-flight, so
-two such subtrees may be structurally identical right now and diverge on the next step. Comparing
-them without regard to NYES would answer a question nobody asked.
-
-**The staging: define "constanic equivalence given creations" first; define the non-static
-version, where NYES states are not constanic, later** (human). Two reasons this ordering is the
-right one, not merely the easier one:
-
-- **The constanic case is the one with a stable answer.** Both sides have finished; what they are
-  is what they will remain. The relation is then a statement about two settled objects, which is
-  what an equivalence ought to be.
-- **It is what every known caller needs.** FOOP-36's own use (§2.2's `spp` vs `spr`) compares two
-  *stepped* trees; the `EQUIVALENCE.md` questions ask whether two programs denote the same thing,
-  which is likewise a question about settled meaning. No identified caller wants to compare two
-  half-evaluated trees.
-
-So **v1 takes constanic subtrees and states that as a precondition.** Whether it is enforced by
-the type system, asserted, or checked and returned as an error is an implementation choice for
-that FOOP; what matters is that it is a stated requirement rather than an unexamined assumption.
-
-**What the later, non-static version must then decide** — recorded now so v1 does not foreclose
-it:
-
-- Does NYES equality mean *the same state*, or *compatible* states? Two subtrees both BRANING at
-  different depths are in the same state but not obviously equivalent.
-- **ECONSTANIC is the interesting one.** It exists because a name might resolve later, in another
-  context (FOOP-23). Two ECONSTANIC subtrees are *unresolved in the same way*, which may be a
-  legitimate equivalence — or may be exactly where a residual should report a condition, since
-  "equal provided these two unresolved searches resolve alike" is the same shape of answer as
-  "equal provided these two creations are the same."
-- Does a residual over pre-constanic trees need to carry conditions about *searches* as well as
-  creations? If so, N6.4's pair list generalizes to pairs of unresolved things, not only pairs of
-  creations — which is a larger design and a good reason to keep it out of v1.
-
-#### N6.4 Equality with CONDITIONS — return the mapping, not a boolean
-
-**The interesting resultant system** (human, 2026-09-07): take two subtrees, compare them, and
-**return the mapping of which creations would have to be equal for the two FIRs to be equal.**
-Equality then comes *with conditions*, and the caller decides whether those conditions are
-acceptable for their purpose.
-
-**The signature, from the human's own worked example** (2026-09-15) — two FVMs, two subtrees:
-
-```
-NO
-YES
-YES, provided [(fvm1_creation1, fvm2_creation10), (fvm1_creation3, fvm2_creation2), ...]
-```
-
-`YES` is just the third answer with an empty list, so there is **one** function returning the
-residual and the boolean is a convenience wrapper asking "is it empty?". That is why the residual
-must be designed in from the start: retrofitting it onto a boolean changes every return path.
-Per N6.3.1 the list is seeded with the system creations and those pairs are never reported, so a
-residual names only what the users' own programs introduced.
-
-This inverts the relation's shape. N6.1–N6.2 answer a yes/no question by building the creation
-table internally and discarding it. Here the table **is the answer**:
-
-| | question | result |
-|---|---|---|
-| N6.1–N6.2 | are these two FIRs equal? | `true` / `false` |
-| N6.4 | under what identifications are they equal? | a set of required creation pairs, or "impossible" |
-
-Three outcomes rather than two:
-
-1. **Unconditionally equal** — the walk completes with an empty residual. Nothing needed to be
-   assumed.
-2. **Conditionally equal** — the walk completes, and the residual is the set of creation pairs it
-   had to assume. "These are equal *provided* `L₁≡R₁` and `L₂≡R₂`."
-3. **Not equal** — a shape mismatch, or an integer mismatch, or a creation pairing that
-   contradicts one already required. No set of identifications can rescue it.
-
-**Why this is more useful than a boolean.** Two subtrees plucked from the same FVM — or from
-different ones — will routinely reach creations that are distinct objects, so a plain comparison
-answers `false` and tells the caller nothing about *why* or *how close*. The residual says
-exactly what would have to hold, and **under some conditions the user may decide certain creations
-really are equal for their purpose**. The relation supplies the facts; the caller supplies the
-judgment. That is a much better division than baking one notion of creation identity into the
-comparison and forcing every user to accept it.
-
-**It subsumes the boolean.** N6.1–N6.2's answer is just "is the residual empty?" — so this is a
-generalization, not a competing design, and the boolean version should be implemented as a thin
-wrapper over it rather than as separate code. Notably, **the FOOP-36 use wants the strict
-reading**: for Property 3, a non-empty residual is a FAILURE, because a rendering that requires
-two creations to be identified is a rendering that lost the distinction. Other callers will want
-the residual itself.
-
-**What this opens up.** Once conditions are first-class, natural follow-ons appear — none of which
-need deciding now, but which the FOOP should consider so the return type does not have to change
-later:
-
-- **Composing residuals.** Comparing many pairs of subtrees and asking whether their conditions
-  are jointly satisfiable — a union-find over creations across comparisons.
-- **Caller-supplied assumptions.** Seeding the table before the walk: "treat `L₁` and `R₁` as the
-  same creation, now compare." Falls out of the same machinery, since seeding is just
-  pre-populating the residual.
-- **Minimality.** Whether the residual returned is guaranteed to be the *smallest* set of
-  identifications sufficient for equality, or merely *a* sufficient set. With the lockstep walk
-  and ordinary scoping the natural construction is already minimal, but that should be stated and
-  tested rather than assumed.
-- **Cross-arena comparison.** The residual is a set of pairs, so it is meaningful whether both
-  subtrees came from one `FVMStorage` or two — which is what makes "descendant FIRs that may or
-  may not share FIR from the same FVM" a coherent thing to ask about.
-
-**Interaction with N6.3.** The residual records CROSS-TREE creation pairs and carries no scoping
-duty — name resolution inside each tree is ordinary nested lookup (N6.3). Conflating those two
-roles is what produced the now-dissolved Q9. Per N6.3.1 the list is seeded with system creations,
-which are never reported, so a residual names only what the users' programs introduced.
-
-#### N6.5 The older equality document — `EQUIVALENCE.md` — must be updated by that FOOP
-
-**`docs/vintage_legacy/EQUIVALENCE.md` still exists, and §N6's FOOP must update it as part of its
-work** (human, 2026-09-07). It is not a stale note to ignore: it is a **taxonomy of equivalence
-relations as Foolish LANGUAGE OPERATORS**, with proposed surface syntax, and it is the closest
-thing the project has to a prior design for what N6 is now specifying. Writing N6 without
-reconciling it would leave two competing accounts of Foolish equality in the repository.
-
-**What it sketches** — an operator family, none of it specified or implemented:
-
-| operator | relation |
-|---|---|
-| `=s=` | syntactic — bitwise-identical source |
-| `==` | equal once the compared branes are no longer nye |
-| `===` | **semantic** — equal under ALL possible coordinations |
-| `=n=` / `=N=` | same names / same names in the same order |
-| `=c=` / `=C=` | same characterized names / in the same order |
-| `=v=` / `=V=` | same values appear / same values against the same names |
-
-**Why it is directly relevant, not merely adjacent.** Three points of contact:
-
-1. **N6 is a `==`-like relation** in that taxonomy — structural, over already-stepped FIR — and
-   should say so explicitly, in the document's own vocabulary, rather than inventing a parallel
-   one.
-2. **N6.4's conditional equality has no entry in the table**, and is arguably a better primitive
-   than several that do. `===` ("equal in all possible coordinations") **quantifies over every
-   context**, which is correspondingly hard to check. `YES-provided […]` is the **constructive**
-   form of that same instinct: rather than asserting equality under all coordinations, it hands
-   back the exact conditions under which equality holds, and lets the caller judge them. The
-   refreshed document should say so, and should carry N6.3.1's system-equality rule, which is
-   what makes a cross-FVM comparison start seeded rather than empty.
-3. **FOOP-23 already defers to it.** Its §Open Questions record that value-search equality
-   currently means **integer equality only, pending an equivalence FOOP**, and `FOOP-23.plan.md`
-   §D.4 carries an **unchecked** task: *"Note in `EQUIVALENCE.md` (or leave a pointer) that
-   value-search equality currently means integer equality only, pending an equivalence FOOP."*
-   **§N6's FOOP is that equivalence FOOP**, so it inherits that task and should close it.
-
-**REFRESH THE DOCUMENT AND BRING IT OUT OF `vintage_legacy/` — as part of the proposed FOOP**
-(human, 2026-09-07). Not a side errand and not work for FOOP-36: it is a **deliverable of §N6's
-FOOP**, because that FOOP is what makes the refresh possible. The reason is that there are now
-**several substantive equivalence definitions** — N6.1's structural relation, N6.2's creation
-correspondence, N6.3's two-FVM framing, N6.4's conditional/residual form — where the vintage
-document had only sketches. They are useful for two distinct purposes, and the human named both:
-
-- **For testing** — the FOOP-36 use, Property 3, and any future check that two FIRs agree.
-- **For COMPREHENDING PROGRAMS** — the larger reason. "Under what identifications are these two
-  branes the same?" is a question a Foolisher asks while *reading* code, not only while testing
-  it. That is what lifts this from a test utility to language documentation, and it is why the
-  document belongs in the live tree rather than in the legacy pile.
-
-`vintage_legacy/` is explicitly transitional — `docs/README.md` describes it as "Pre-reorganization
-files, being migrated into the above" — so promoting `EQUIVALENCE.md` out of it is exactly the
-migration that directory exists to enable, not a special case.
-
-**Concretely, §N6's FOOP should:**
-
-- Read `EQUIVALENCE.md` before designing, and state where N6's relation sits in its taxonomy.
-- **Rewrite it against the definitions N6 actually establishes**, and **move it out of
-  `vintage_legacy/`** into the live documentation tree. Destination is the FOOP's call —
-  `docs/ubc1/how/` if it reads as engineering reference, `docs/why/` if the emphasis is the
-  design rationale for what equality MEANS in Foolish — and `docs/README.md`'s index must be
-  updated with it.
-- Mark clearly which operators are specified-and-implemented, which are specified-only, and which
-  remain sketch, so a reader is never left believing `===` exists when it does not.
-- Note that `docs/howto/03_howto_foolish_todo.foo` already lists **equivalence** among its
-  unwritten chapters. A refreshed document makes that tutorial writable, and the FOOP should
-  consider whether writing it is in scope or a follow-on.
-- Close `FOOP-23.plan.md` §D.4's outstanding `EQUIVALENCE.md` checkbox, and revisit FOOP-23 §Open
-  Questions' "equality maturation" note, which anticipates exactly this work.
-- Decide whether the vintage operators are still wanted as Foolish surface syntax at all, or
-  whether N6 is a Rust-side relation only. That is a scope question for the human, and the
-  document's existence is the reason it must be asked.
-
+### N6. FIR equality — **now FOOP-76, "Revival of Equality"**
+
+**This section's design was BROKEN OUT into its own FOOP on 2026-09-15, at the human's request**
+("Can you please break it out of FOOP-36 call it Revival_of_Equality"). It is about **equality**:
+how to decide whether two FIR subtrees are the same, which turned out to be a feature in its own
+right rather than a rider on a rendering FOOP.
+
+**See [FOOP-76](FOOP-76.md) — *Revival of Equality — FIR equivalence with conditions*.** It carries
+the whole design formerly written here, renumbered: the **shape** half (kind, arity, children over
+`foolish_children`, plus the shape-bearing `FirSpec` fields) as its §1; the **value** half
+(integers by value, creations by an incrementally-built correspondence table) as its §2; the
+**two-FVM framing** and system-creation seeding as its §3; **equality with CONDITIONS** —
+`NO` / `YES` / `YES, provided [(fvm1_creation1, fvm2_creation10), …]` — as its §4; and the
+**`EQUIVALENCE.md` refresh** as its §5. Every reference below that pointed into N6's subsections
+now points there.
+
+**What stays here.** §2.2 and §2.2.1 remain FOOP-36's, because they establish WHICH pair to compare
+— `spp` vs `spr`, two computations of the same limiting fixed point — which is a property of this
+FOOP's round trip. FOOP-76 defines HOW to compare. **§Test Plan T2c** is still deferred to it, and
+**§Rejected Alternatives F** still records that Property 3 is enforced by reading until it lands.
 
 ## References
 
@@ -2401,9 +1944,10 @@ migration that directory exists to enable, not a special case.
 - **FOOP-23** — search semantics; NK vs ECONSTANIC miss outcomes, which §4/§5 render.
 - **FOOP-64** — the einmo three-stage pipeline and gates this FOOP's baselines flow through.
 - `docs/vintage_legacy/EQUIVALENCE.md` — the vintage equality-operator taxonomy (`=s=`, `==`,
-  `===`, `=n=`, `=c=`, `=v=`, …), unspecified and unimplemented. **Prior art for §N6**, which
-  must reconcile with and update it; see N6.5. FOOP-23 already defers to it for value-search
-  equality, and `FOOP-23.plan.md` §D.4 leaves an unchecked task against it.
+  `===`, `=n=`, `=c=`, `=v=`, …), unspecified and unimplemented. **Prior art for
+  [FOOP-76](FOOP-76.md)**, which must reconcile with and update it; see FOOP-76 §5. FOOP-23
+  already defers to it for value-search equality, and `FOOP-23.plan.md` §D.4 leaves an unchecked
+  task against it.
 - `foolish-core/src/sequencer.rs` — the current renderer; `Detailed` delegates to it.
 - `foolish-ubca2/src/ubca_snapshot_tester.rs` — the einmo adapter that calls the sequencer.
 - `foolish-parser/src/lexer.rs` `is_id_sep` — why `ˍ`-mangled names round-trip.
@@ -2415,35 +1959,28 @@ migration that directory exists to enable, not a special case.
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: Added **§N6.3.2 (bijectivity, from the Creation Postulate)** and **§N6.3.3 (NYES:
-constanic inputs first)**, completing the design §N6 recommends to its own FOOP.
+**Changes**: **§N6 was BROKEN OUT into its own FOOP — [FOOP-76](FOOP-76.md), "Revival of
+Equality"** — at the human's request ("Can you please break it out of FOOP-36 call it
+Revival_of_Equality"). §N6's body is replaced by a short pointer note; the `### N6.` heading is
+kept so existing cross-references still land somewhere sensible. The full design moved across
+intact and renumbered: N6.1 → FOOP-76 §1 (shape), N6.2 → §2 (value), N6.3/N6.3.1/N6.3.2/N6.3.3 →
+§3 (two-FVM framing, system seeding, the Creation-Postulate bijection, the constanic
+precondition), N6.4 → §4 (equality with conditions), N6.5 → §5 (the `EQUIVALENCE.md` refresh).
 
-**N6.3.2 — the residual must be a BIJECTION over creations** (human, 2026-09-15), justified from
-the **Creation Postulate** rather than as an implementation detail. The residual
-`[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]` is **not producible**: every `⬤` is a genuinely new thing,
-so within VM1 `vm1_a1 ≠ vm1_a2` by the postulate, while `vm2_a1 = vm2_a1` trivially — the pair
-list would assert that two things KNOWN to differ are both equal to one thing. That is a
-contradiction no caller judgment can discharge, so it is a hard `NO`, not an unattractive
-condition. The check runs in both directions. The human asked that the counterexample be written
-down to make certain it is handled, so it is carried as a **required test**, in T2c's note as
-well: two distinct VM1 creations against one VM2 creation reached twice must answer `NO`. It is
-the same collapse as §N4's `⬤` defect, one level up, and §N6.3.1's seeded pairs are covered by
-the same check.
+**Every reference that pointed INTO N6's subsections was repointed to FOOP-76** — the §Abstract
+line, §2 Property 3, §2.2.1's closing paragraph, §Test Plan's **T2c** note (which also carries the
+bijectivity counterexample and the seeding rule across), §7's summary line, §Rejected Alternatives
+**F**, §Open Questions **Q9**, and the `EQUIVALENCE.md` entry in §References. No reference to a
+subsection that no longer exists in this file remains.
 
-**N6.3.3 — NYES** (human, 2026-09-15): the relation must either check NYES equality or require
-constanic subtrees as inputs; there is no third option, since two pre-constanic subtrees may be
-identical now and diverge on the next step. **v1 is "constanic equivalence given creations"** and
-states the precondition; the non-static version comes later. Records why that ordering is right
-rather than merely easier — the constanic case is the one with a stable answer, and no identified
-caller (FOOP-36's `spp` vs `spr`, or `EQUIVALENCE.md`'s questions) wants to compare half-evaluated
-trees — and what the later version must decide, including whether **ECONSTANIC** subtrees
-"unresolved in the same way" are equivalent or should themselves produce residual conditions,
-which would generalize N6.4's pair list beyond creations. Also corrects two stale references to
-Q9 as open.
+**What stays in FOOP-36**, deliberately: **§2.2** and **§2.2.1**, which establish WHICH pair to
+compare (`spp` vs `spr`, two computations of the same limiting fixed point) — a property of this
+FOOP's round trip, where FOOP-76 defines HOW to compare; **T2c**, still deferred to FOOP-76;
+**Rejected Alternatives F**, still recording that Property 3 is enforced by reading until the
+relation lands; and **Q9**, still DISSOLVED. This FOOP's `status` is unchanged.
 
-Prior entry: rewrote §N6.3 on the human's **two-FVM framing** and **dissolved Q9** — name lookup
-inside a tree is ordinary nested scoping (or `ib_search`/`ab_search`), while the pair list relates
-creations between trees; conflating those two jobs is what created Q9. Added **§N6.3.1 system
-equality** (both FVMs compose the same `SYSTEM_FOO_SRC`, so the pair list starts seeded), the
-`NO` / `YES` / `YES, provided […]` signature in §N6.4, and the note in §N6.5 that `YES-provided`
-is the constructive form of the vintage `===`.
+Prior entry: added §N6.3.2 (bijectivity, from the Creation Postulate) and §N6.3.3 (NYES: constanic
+inputs first), completing the design §N6 recommended to its own FOOP — both now carried by FOOP-76
+§3.2 and §3.3 respectively. The entry before that recorded the two-FVM framing, the dissolution of
+Q9, system equality, the `NO` / `YES` / `YES, provided […]` signature, and the observation that
+`YES-provided` is the constructive form of the vintage `===`.
