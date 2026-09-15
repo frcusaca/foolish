@@ -73,7 +73,7 @@ ls | rev | sort -V | rev
 | [FOOP-95](FOOP-95.md) | Add Embryonic and Resequencing EINMO Sections | Draft | phase-2 | 2026-08-08 | Sisyphus / claude-opus-5 |
 | [FOOP-16](FOOP-16.md) | foolish-ubca2 — arena-backed FIR storage via copy-migration | complete | phase-2 | 2026-08-30 | Claude Code / claude-sonnet-5 |
 | [FOOP-26](FOOP-26.md) | Carrying FOOP-55's semantics onto foolish-ubca2 — marks, concatenation-as-operator, and the three-beat step | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
-| [FOOP-36](FOOP-36.md) | A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
+| [FOOP-36](FOOP-36.md) | A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in | Complete | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
 | [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
@@ -85,6 +85,11 @@ ls | rev | sort -V | rev
 
 ### Complete
 
+- [FOOP-36](FOOP-36.md) — A Foolish-rendering sequencer for `foolish-ubca2`. Merged to `jia`
+  2026-09-07 as `d82a33b0` (33 commits); `einmo_suite2` (181 cases) replaced `einmo_suite` as the
+  crate's approval suite and was human-attested at the `verified/` tier. Its §N6 equality design
+  was broken out to [FOOP-76](FOOP-76.md) on 2026-09-15; §N5 (arrow indexers) remains a
+  non-blocking next step.
 - [FOOP-92](FOOP-92.md) — Einmo (marked Complete as it stands 2026-07-14: MVP + hardening merged
   at 9bbdaf43; gates + console-review re-homed into FOOP-64; serve/SPA, MCP, algorithm corpus,
   use-case validation deferred to future FOOP(s))
@@ -568,7 +573,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-09-15
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-76** (Revival of Equality — FIR equivalence with conditions) to the
+**Changes**: Corrected FOOP-36's master-table status from `Draft` to **`Complete`** (it merged to
+`jia` on 2026-09-07 as `d82a33b0` and its frontmatter has said `Complete` since), and gave it an
+entry in the **Complete** list noting the merge, the human-attested `einmo_suite2`, and that its
+§N6 equality design was broken out to FOOP-76. Prior entry: added **FOOP-76 — Revival of
+Equality**, the break-out of FOOP-36 §N6.
 master table, the Draft list, the **phase-4** By-Phase list, and **Track 6** as its fifth entry.
 It was **broken out of FOOP-36 §N6 on 2026-09-15** at the human's request; FOOP-36 §N6 is now a
 pointer to it, and every FOOP-36 reference that pointed into N6's subsections was repointed.
