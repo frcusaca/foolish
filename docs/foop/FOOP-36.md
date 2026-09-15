@@ -1347,8 +1347,15 @@ This procedure also settles §Open Questions **Q7** empirically.
 **T2c — Structural equivalence of the stepped FIRs — DEFERRED to §N6's FOOP.** §2.2 identifies
 `spp` vs `spr` as the pair that would check Property 3, and T2's own procedure already builds both
 arenas and discards them, so the hook is cheap. But the relation itself is not specified in this
-FOOP (§N6), and it cannot be written before §Open Questions **Q9** is decided. **Not a FOOP-36
-deliverable**; recorded here so the connection to T2's six steps is not lost.
+FOOP (§N6). **Not a FOOP-36 deliverable**; recorded here so the connection to T2's six steps is
+not lost.
+
+When that FOOP writes the relation, two of its tests are already specified and must be carried:
+**§N6.3.2's bijectivity counterexample** — two distinct VM1 creations against one VM2 creation
+reached twice must answer `NO`, in both directions, because the Creation Postulate makes the
+identification impossible — and **N6.3.1's seeding**, where system creations pair by construction
+and never appear in a residual. Per **N6.3.3**, v1 requires constanic subtrees as inputs and says
+so as a precondition.
 
 **T2b — Pre-constanic rendering (§2.1).** FIRs stepped a bounded number of steps rather than to
 settlement: each renders, **parses**, contains **no NYES token as syntax**, and names its state
@@ -1606,7 +1613,7 @@ while ECONSTANIC recoordination does not.
 Ordered by number. **Q4 and Q6 are RESOLVED** (human decisions, recorded inline below and
 reflected in the plan); **Q2 and Q5 are for Phase 1 to answer before any rendering code is
 written** (Q7 alongside them); Q1 and Q3 are cosmetic and were settled by the human. **Q9 is
-OPEN and blocks T2c's implementation.**
+DISSOLVED** — it was mis-posed; see its entry.
 
 - **Q9 — DISSOLVED (human, 2026-09-15), not answered.** The question asked how per-brane
   creation tables should handle a creation shared ACROSS brane boundaries
@@ -2154,6 +2161,80 @@ starts **pre-populated** with every system creation paired to its counterpart �
 Without this shared ancestry every comparison of two independently-built trees would begin with
 zero known correspondences. System equality is what gives the relation a foothold to start from.
 
+##### N6.3.2 The residual must be a BIJECTION — the Creation Postulate demands it
+
+**The creation pairs must be bijective within creations** (human, 2026-09-15). This residual is
+**not** producible, and an attempt to produce it is a `NO`:
+
+```
+[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]        ← IMPOSSIBLE
+```
+
+**Why, from the Creation Postulate** (`docs/why/creation_postulate.md`). Every `⬤` is a genuinely
+new thing, distinct from every creation before it. So within VM1, `vm1_a1 ≠ vm1_a2` — that is the
+postulate, not an implementation accident. Meanwhile `vm2_a1 = vm2_a1` trivially. The residual
+above therefore asserts that two things *known to differ* are both equal to one single thing,
+which is a contradiction no caller judgment can discharge. It is not a condition that happens to
+be unattractive; it is not a condition at all.
+
+The same argument runs in the other direction — one left creation paired to two different right
+creations is equally impossible — so the requirement is a **bijection**, and the check is made in
+**both** directions. This is why the pair list must be consulted before recording, and why a
+contradicted pairing is a hard `NO` rather than something to be reported and left to the caller.
+
+**Worked counterexample, to be a test.** The FOOP implementing this relation must carry this case
+explicitly:
+
+```foolish
+{ a1 = ⬤; a2 = ⬤; }        !! in VM1 — two DISTINCT creations, by the postulate
+{ a1 = ⬤; }                !! in VM2 — one creation
+```
+
+Comparing a structure that reaches both of VM1's creations against one that reaches VM2's single
+creation twice must answer **NO**. If an implementation instead returns
+`[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]`, it has silently identified two distinct creations, which
+is exactly the collapse §2's Property 3 exists to prevent — and it is the same failure shape as
+the `⬤` defect of §N4, one level up. Note this is also where §N6.3.1's seeding is load-bearing in
+reverse: the seeded system pairs are already a bijection, so a user creation colliding with a
+seeded one is caught by the same check.
+
+##### N6.3.3 NYES: require constanic inputs first, generalize later
+
+**Necessarily, the relation must either CHECK NYES equality or REQUIRE constanic subtrees as
+inputs** (human, 2026-09-15). There is no third option: a pre-constanic subtree is mid-flight, so
+two such subtrees may be structurally identical right now and diverge on the next step. Comparing
+them without regard to NYES would answer a question nobody asked.
+
+**The staging: define "constanic equivalence given creations" first; define the non-static
+version, where NYES states are not constanic, later** (human). Two reasons this ordering is the
+right one, not merely the easier one:
+
+- **The constanic case is the one with a stable answer.** Both sides have finished; what they are
+  is what they will remain. The relation is then a statement about two settled objects, which is
+  what an equivalence ought to be.
+- **It is what every known caller needs.** FOOP-36's own use (§2.2's `spp` vs `spr`) compares two
+  *stepped* trees; the `EQUIVALENCE.md` questions ask whether two programs denote the same thing,
+  which is likewise a question about settled meaning. No identified caller wants to compare two
+  half-evaluated trees.
+
+So **v1 takes constanic subtrees and states that as a precondition.** Whether it is enforced by
+the type system, asserted, or checked and returned as an error is an implementation choice for
+that FOOP; what matters is that it is a stated requirement rather than an unexamined assumption.
+
+**What the later, non-static version must then decide** — recorded now so v1 does not foreclose
+it:
+
+- Does NYES equality mean *the same state*, or *compatible* states? Two subtrees both BRANING at
+  different depths are in the same state but not obviously equivalent.
+- **ECONSTANIC is the interesting one.** It exists because a name might resolve later, in another
+  context (FOOP-23). Two ECONSTANIC subtrees are *unresolved in the same way*, which may be a
+  legitimate equivalence — or may be exactly where a residual should report a condition, since
+  "equal provided these two unresolved searches resolve alike" is the same shape of answer as
+  "equal provided these two creations are the same."
+- Does a residual over pre-constanic trees need to carry conditions about *searches* as well as
+  creations? If so, N6.4's pair list generalizes to pairs of unresolved things, not only pairs of
+  creations — which is a larger design and a good reason to keep it out of v1.
+
 #### N6.4 Equality with CONDITIONS — return the mapping, not a boolean
 
 **The interesting resultant system** (human, 2026-09-07): take two subtrees, compare them, and
@@ -2334,29 +2415,35 @@ migration that directory exists to enable, not a special case.
 
 **Updated By**: Claude Code / claude-opus-5
 
-**Changes**: **Rewrote §N6.3 and DISSOLVED Q9** (human, 2026-09-15). Q9 asked how per-brane
-creation tables should handle a creation shared across brane boundaries; the human challenged the
-premise — "I don't understand why shared is two creations. It is created once and used in all
-context below." That is correct: nothing in Foolish splits one creation into two, and the dilemma
-was an artifact of an invented mechanism (tables created on brane entry, discarded on exit),
-not of the language. §N6.3 is rebuilt on the human's framing: **two FVMs producing two trees, with
-a subtree given from each, is the DEFINING case**, and every other use is a specialization.
-Pointer identity is meaningless across that pair by construction, so the pair list is the only
-thing relating the two sides — but **name lookup inside each tree is ordinary nested scoping**
-(each brane's map consulted before falling back outward), or more simply the FVM's own
-`ib_search`/`ab_search`, which already implements exactly that. Separating those two jobs — lookup
-resolves names WITHIN a tree, the pair list relates creations BETWEEN trees — is what dissolves
-Q9; conflating them is what created it. Adds **§N6.3.1 system equality**: every FVM composes the
-same `SYSTEM_FOO_SRC`, so two FVMs are never fully disjoint and the pair list starts **seeded**
-with system creations paired to their counterparts (`'True` ↔ `'True`, the number definitions, …).
-Seeded pairs never appear in a residual, a system creation paired against a user creation is a
-hard NO rather than a condition, and the seeding is mechanical because both system branes are
-composed identically. §N6.4 gains the human's explicit signature — `NO` / `YES` /
-`YES, provided [(fvm1_creation1, fvm2_creation10), …]` — with `YES` as the empty-residual case, so
-there is one function and the boolean is a wrapper. §N6.5 records that `YES-provided` is the
-**constructive** form of the vintage `===`: where "equal in all possible coordinations" quantifies
-over every context, a residual hands back the exact conditions under which equality holds.
+**Changes**: Added **§N6.3.2 (bijectivity, from the Creation Postulate)** and **§N6.3.3 (NYES:
+constanic inputs first)**, completing the design §N6 recommends to its own FOOP.
 
-Prior entry: **STATUS → `Complete`. Merged to `jia` 2026-09-07 as `d82a33b0`** (--no-ff, 33
-commits), after the human attested `einmo_suite2` (181 cases, `aa22b82d`) and approved the Phase 8
-STOP. Post-merge `cargo test --workspace` on `jia`: **791 passed, 0 failed**.
+**N6.3.2 — the residual must be a BIJECTION over creations** (human, 2026-09-15), justified from
+the **Creation Postulate** rather than as an implementation detail. The residual
+`[(vm1_a1, vm2_a1), (vm1_a2, vm2_a1)]` is **not producible**: every `⬤` is a genuinely new thing,
+so within VM1 `vm1_a1 ≠ vm1_a2` by the postulate, while `vm2_a1 = vm2_a1` trivially — the pair
+list would assert that two things KNOWN to differ are both equal to one thing. That is a
+contradiction no caller judgment can discharge, so it is a hard `NO`, not an unattractive
+condition. The check runs in both directions. The human asked that the counterexample be written
+down to make certain it is handled, so it is carried as a **required test**, in T2c's note as
+well: two distinct VM1 creations against one VM2 creation reached twice must answer `NO`. It is
+the same collapse as §N4's `⬤` defect, one level up, and §N6.3.1's seeded pairs are covered by
+the same check.
+
+**N6.3.3 — NYES** (human, 2026-09-15): the relation must either check NYES equality or require
+constanic subtrees as inputs; there is no third option, since two pre-constanic subtrees may be
+identical now and diverge on the next step. **v1 is "constanic equivalence given creations"** and
+states the precondition; the non-static version comes later. Records why that ordering is right
+rather than merely easier — the constanic case is the one with a stable answer, and no identified
+caller (FOOP-36's `spp` vs `spr`, or `EQUIVALENCE.md`'s questions) wants to compare half-evaluated
+trees — and what the later version must decide, including whether **ECONSTANIC** subtrees
+"unresolved in the same way" are equivalent or should themselves produce residual conditions,
+which would generalize N6.4's pair list beyond creations. Also corrects two stale references to
+Q9 as open.
+
+Prior entry: rewrote §N6.3 on the human's **two-FVM framing** and **dissolved Q9** — name lookup
+inside a tree is ordinary nested scoping (or `ib_search`/`ab_search`), while the pair list relates
+creations between trees; conflating those two jobs is what created Q9. Added **§N6.3.1 system
+equality** (both FVMs compose the same `SYSTEM_FOO_SRC`, so the pair list starts seeded), the
+`NO` / `YES` / `YES, provided […]` signature in §N6.4, and the note in §N6.5 that `YES-provided`
+is the constructive form of the vintage `===`.
