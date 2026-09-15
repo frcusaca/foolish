@@ -76,6 +76,7 @@ ls | rev | sort -V | rev
 | [FOOP-36](FOOP-36.md) | A Foolish-rendering sequencer for foolish-ubca2 — output that parses back in | Draft | phase-4 | 2026-09-01 | Claude Code / claude-opus-5 |
 | [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
+| [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
 
 ---
 
@@ -127,6 +128,19 @@ ls | rev | sort -V | rev
 - [FOOP-24](FOOP-24.md) — **Coordination detachment** = parameterized SF/SFF marker (`[patterns]<...>` / `[patterns]<<...>>`; the `Detachment` struct, `decide_to_detach`, `[patterns]` parsing). **The live spec for the feature** — renamed from plain "Detachment" per FOOP-84 §Part 3. FOOP-84 supersedes its *mechanism* only (Implementation Plan → Phase A's `_ab_search`-override, and the scan-loop prefilter locus) — build on FOOP-84 Part 2's `resolve_boundary_effect`/`CopyMode` instead. "Nested markers" resolved (FOOP-84 §2.3/§2.6); "Exclusive detachment" reframed under "Required Searches". Scope is narrow (FOOP-84 §0.6/§2.2.4): **affects only descendant searches of the marker, as they cross the marker's boundary outward** — never contexted (`&`) searches, never locally-resolving ones. **Needs FOOP-84** (hard dependency) **and FOOP-43** (its SFF-marked→ECONSTANIC rule + `EconstanicReason::Detached`, so full-detachment exhaustion defers rather than settling NK). Independent of FOOP-93/FOOP-04/FOOP-14.
 - [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite — FOOP-84/93/04/14/85; `↑`; no cycle detection)
 - [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
+- [FOOP-66](FOOP-66.md) — Learn Tree Calculus (**standalone research / learning FOOP**; deliverable is
+  understanding, not code): study Barry Jay's tree calculus — one primitive `△`, grammar
+  `E ::= △ | E E`, leaf/stem/fork, five reduction rules, confluent, intensional — and write ONE
+  assessment at `docs/why/TREE_CALCULUS.md` of where it and Foolish genuinely correspond, where
+  the analogy is false, and what (if anything) is worth borrowing. FIR Impact and UBC Step Impact
+  are both **None**; no crate and no einmo baseline is touched, and it deliberately ships no
+  `foop/66/comprehensive.foo` (§Test Plan states why). Outside-in reading plan — spec page → Coq
+  repo → the book's relevant chapters only — that may terminate early. Q1–Q7, with **Q5
+  (equality) the highest-value target**, cross-referenced to **FOOP-36 §N6** (and its §N6.4
+  equality-with-conditions design); Q5b and Q5d are written so a **negative** finding — creation
+  identity and the absence of a normal form may put Foolish's problem outside what Jay's equality
+  addresses — counts as a first-class result. **Independent of every track**; best read before
+  N6's FOOP is written
 - [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
 - [FOOP-45](FOOP-45.md) — Deadbrane (useless-element detection: directly useless, transitively
@@ -256,7 +270,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-5
 
-- [FOOP-34](FOOP-34.md)
+- [FOOP-34](FOOP-34.md), [FOOP-66](FOOP-66.md)
 
 ### phase-6
 
@@ -519,17 +533,21 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-09-02
+**Date**: 2026-09-15
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-26**, **FOOP-36**, **FOOP-46** and **FOOP-56** to the table and the
-phase-4 list, and added **Track 6 — the `foolish-ubca2` chain**, strictly sequential
-**56 → 36 → 26 → 46**, on the foundation of the already-complete FOOP-16. Also corrected
-FOOP-16's row from `Draft` to `complete`, matching its own frontmatter. FOOP-56 (NYES groups: one predicate per group, every bare "settled"
-qualified) goes first because it is the vocabulary the other two are written in and is a
-~20-site rename best done before they diverge. FOOP-36 (the Foolish-rendering sequencer, and
-`einmo_suite2` replacing `einmo_suite`) goes before FOOP-26 so that FOOP-26's baseline diffs
-read as language rather than FIR dumps; FOOP-36 moves no FIR, step rule or step count, so it
-costs FOOP-26 nothing. FOOP-46 (BraneConcatOp) is fourth, not a parallel item: its own spec states
-"Dependencies: FOOP-26. Order: after it" — it implements FOOP-26 §4, and may be reduced or
-dropped if 26's changes prove sufficient. Prior entry: added FOOP-16 (foolish-ubca2 — arena-backed
-FIR storage via copy-migration).
+**Changes**: Added **FOOP-66** (Learn Tree Calculus) to the master table, the Draft list, and the
+**phase-5** By-Phase list. Placed in phase-5 beside **FOOP-34** (Recursion Upgrades) — the two are
+the project's only *standalone research* FOOPs, deliberately under-specified documents whose
+content is discovered during execution rather than specified up front, and FOOP-66 is written to
+FOOP-34's shape. It is **independent of every implementation track**: it modifies no crate, no
+einmo suite and no language semantics, so it can run in parallel with anything. Its one scheduling
+note is a *soft* one — its **Q5 (equality)** findings are an input to the FIR-equality FOOP that
+FOOP-36 §N6 recommends, so reading it before N6's FOOP is written costs days and saves a possible
+rewrite. Deliberately not filed under `meta`: it is not about the FOOP process or the tooling, but
+about the language's ideas, which is what phase-5 research already holds. Prior entry: added
+**FOOP-26**, **FOOP-36**, **FOOP-46** and **FOOP-56** to the table and the phase-4 list, and added
+**Track 6 — the `foolish-ubca2` chain**, strictly sequential **56 → 36 → 26 → 46**, on the
+foundation of the already-complete FOOP-16; also corrected FOOP-16's row from `Draft` to
+`complete`, matching its own frontmatter. FOOP-56 goes first because it is the vocabulary the
+other two are written in; FOOP-36 goes before FOOP-26 so that FOOP-26's baseline diffs read as
+language rather than FIR dumps; FOOP-46 is fourth, implementing FOOP-26 §4.
