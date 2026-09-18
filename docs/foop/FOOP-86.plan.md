@@ -214,34 +214,91 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > **Judgment phase — larger model.** §1.2's trap is one a small model walks into, because the
 > wrong version compiles and the tests pass.
 
-- [ ] (read §1 of [`FOOP-86.md`](FOOP-86.md), all four sub-sections)
-- [ ] Establish relevant tests for this
+- [x] (read §1 of [`FOOP-86.md`](FOOP-86.md), all four sub-sections)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the `foolish-ubca2/einmo_suite2` suite via `einmo_suite2_gate_checked`; run unit tests:
      `foolish-ubca2::einmo_suite2_gate_checked`,
      `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`, and (once written)
      `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`.
-- [ ] Resolve **Q2** by reading: inspect `foolish_core::fir_to_json`'s signature and what
+      (2026-09-18 00:00)
+- [x] Resolve **Q2** by reading: inspect `foolish_core::fir_to_json`'s signature and what
       `cmd_compile` actually needs. Write the decision and its reasoning into this plan.
       **If the answer is "retain a `core_fir` conversion", STOP and ask the human** — it
       contradicts deliverable 3.
-- [ ] Add `foolish-ubca2 = { path = "../foolish-ubca2" }` to `foolish-cli/Cargo.toml` and
+
+      **Decision: retire `cmd_compile` from the CLI.** Reading `foolish-core/src/serialization.rs:42`,
+      `fir_to_json(fir: &Fir) -> Result<String, SerdeError>` takes `foolish_core::fir::Fir` (the
+      `core_fir` representation) and derives its shape from serde on that type directly — it is
+      not a thin adapter, it is *of* that representation, so there is no "just repoint it at the
+      arena" move available. `cmd_run`/`cmd_step`/`cmd_repl` need a renderer over
+      `(FVMStorage, FirPointer)`; `cmd_compile` needs a *serializer*, a different capability that
+      does not exist yet for the arena and would need to be built from nothing. Cross-checked
+      against the tree: `grep` for `fir_to_json`/`cmd_compile`/`compile` across `README.md` and
+      all of `docs/foop/*.md` (excluding this FOOP's own draft) returns **zero** hits — no
+      README example, no einmo case, no other FOOP referencing this subcommand's behavior.
+      §1.4's third disposition ("retire `compile`... its user base may be zero") is exactly this
+      case, measured rather than assumed. The first disposition (arena-native JSON serializer)
+      would be new production surface built to serve a need nothing in the tree currently
+      demonstrates; the second (retain a `core_fir` conversion) is explicitly the one that
+      contradicts deliverable 3 and requires asking the human. Retiring the subcommand is the
+      only option that neither invents an unrequested serializer nor keeps the bridge alive.
+      **Not escalated to the human** — the chosen answer is not "retain a conversion," so per
+      this checkbox's own instruction, resolving by reading was sufficient.
+      (2026-09-18 00:00)
+- [x] Add `foolish-ubca2 = { path = "../foolish-ubca2" }` to `foolish-cli/Cargo.toml` and
       **remove** the `foolish-ubca` line
-- [ ] Replace `foolish-cli/src/main.rs`'s `evaluate()` helper with an `evaluate_arena()` helper
+      (2026-09-18 00:00)
+- [x] Replace `foolish-cli/src/main.rs`'s `evaluate()` helper with an `evaluate_arena()` helper
       returning `(FVMStorage, Vec<FirPointer>)` (§1.3)
-- [ ] Repoint `cmd_run` to render each `FirPointer` with
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_run` to render each `FirPointer` with
       `Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)`
-- [ ] Repoint `cmd_step` the same way
-- [ ] Repoint `cmd_repl` the same way
-- [ ] Apply Q2's decision to `cmd_compile`
-- [ ] Remove now-unused `foolish_core` imports (`Evaluator`, `FirSequencer`, `clone_steppable`,
-      and `fir_to_json` if Q2 retired it) from `main.rs:6`
-- [ ] **Self-check the trap**: `grep -n '\.evaluate(' foolish-cli/src/` must return NOTHING.
-      If it returns a hit, the wrong API is in use — STOP (§1.2).
-- [ ] `cargo build --workspace` and `cargo run -p foolish-cli -- run` on a small `.foo`; confirm
-      by eye that the output is Foolish, not FIR internals
-- [ ] `cargo fmt` and `cargo clippy -p foolish-cli -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_step` the same way
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_repl` the same way
+      (2026-09-18 00:00)
+- [x] Apply Q2's decision to `cmd_compile` — **retired**: removed the `Compile` variant from
+      `Commands`, the `cmd_compile` function, and the `Commands::Compile { file } => cmd_compile(&file)`
+      dispatch arm.
+      (2026-09-18 00:00)
+- [x] Remove now-unused `foolish_core` imports (`Evaluator`, `FirSequencer`, `clone_steppable`,
+      and `fir_to_json` if Q2 retired it) from `main.rs:6` — **all four removed**; `main.rs` no
+      longer imports `foolish_core` at all (it now imports only `foolish_ubca2::{fvm_storage::{FVMStorage,
+      FirPointer}, SequenceMode, Ubca2Sequencer, UbcaEvaluator}`). `foolish-core` remains a
+      transitive dependency (via `foolish-ubca2`) but is no longer a direct one in `main.rs`'s
+      `use` list.
+      (2026-09-18 00:00)
+- [x] **Self-check the trap**: `grep -n '\.evaluate(' foolish-cli/src/` must return NOTHING.
+      If it returns a hit, the wrong API is in use — STOP (§1.2). **CONFIRMED: zero matches.**
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace` and `cargo run -p foolish-cli -- run` on a small `.foo`; confirm
+      by eye that the output is Foolish, not FIR internals. Built clean; ran
+      `foolish-ubca2/einmo_suite2/input/foop/9/unary_operator.foo` (`{a=-42;}`) through both
+      `run` and `step` — output was `{\n  a = -42\n}` in both cases: valid Foolish, no
+      `?(pattern=`, no bare NYES tokens, no FIR-internal syntax.
+      (2026-09-18 00:00)
+- [x] `cargo fmt` and `cargo clippy -p foolish-cli -- -D warnings`. `cargo fmt -p foolish-cli`
+      applied cleanly (one reformatting of the two `println!` call sites to multi-line form).
+      `cargo clippy -p foolish-cli --all-targets --all-features -- -D warnings` **fails**, but
+      not on anything in `foolish-cli`: it fails on the same 4 pre-existing
+      `clippy::iter_next_slice` errors in `foolish-core/src/sequencer.rs` recorded in Phase 0,
+      now reached because `foolish-cli` depends on `foolish-core` transitively (through
+      `foolish-ubca2`) where it did not need to build `foolish-core`'s lib target under `-D
+      warnings` with the old `foolish-ubca` dependency in exactly the same way. Confirmed
+      `foolish-cli`'s own code is lint-clean: `cargo clippy -p foolish-cli --all-targets
+      --all-features` (without `-D warnings`) produces zero diagnostics on any `foolish-cli`
+      file — the 4 errors are the entirety of the output, all attributed to
+      `foolish-core/src/sequencer.rs` lines 187/537/563/743, identical to Phase 0's baseline.
+      Per §3.3's scope guard (never edit `foolish-core/src/` in this FOOP) and T5's instruction
+      not to be blamed for pre-existing errors, this is left as-is; it is `foolish-core`'s
+      own known debt (MEMORY), not something Phase 1 introduced or must fix.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (workspace test run recorded below, after T3 tests exist in Phase 6 — `foolish-cli` has no
+      test module yet per §T3's own premise; Phase 1 re-confirms the einmo suite is undisturbed)
 
 ## Phase 2 — Do the two evaluators AGREE? (§4.1, Q5)
 

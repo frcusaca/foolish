@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 foolish-core = { path = "../foolish-core" }
-foolish-ubca = { path = "../foolish-ubca" }
+foolish-ubca2 = { path = "../foolish-ubca2" }
 clap = { workspace = true }
 anyhow = { workspace = true }
 

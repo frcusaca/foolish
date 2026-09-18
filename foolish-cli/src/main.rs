@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use foolish_core::{Evaluator, FirSequencer, clone_steppable, fir_to_json};
-use foolish_ubca::UbcaEvaluator;
+use foolish_ubca2::fvm_storage::{FVMStorage, FirPointer};
+use foolish_ubca2::{SequenceMode, Ubca2Sequencer, UbcaEvaluator};
 
 #[derive(Parser)]
 #[command(name = "foolish")]
@@ -20,11 +20,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Compile and evaluate .foo source, printing the settled FIR as JSON
-    Compile {
-        /// Path to .foo source file
-        file: PathBuf,
-    },
     /// Evaluate .foo source and print result
     Run {
         /// Path to .foo source file
@@ -42,40 +37,30 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Compile { file } => cmd_compile(&file),
         Commands::Run { file } => cmd_run(&file),
         Commands::Step { file } => cmd_step(&file),
         Commands::Repl => cmd_repl(),
     }
 }
 
-/// Evaluate source through the UBCa engine, returning settled core-FIR refs
-/// (bridged into the shared sequencer IR). UBCa is the sole reference engine;
-/// the `Evaluator` trait keeps the door open for additional implementations
-/// that render through the same sequencer.
-fn evaluate(source: &str) -> anyhow::Result<Vec<foolish_core::FirRef>> {
+/// Evaluate source through `foolish-ubca2`, retaining the full arena so
+/// rendering can use every field the compatibility bridge would otherwise
+/// drop (search direction and contexting among them).
+fn evaluate_arena(source: &str) -> anyhow::Result<(FVMStorage, Vec<FirPointer>)> {
     UbcaEvaluator
-        .evaluate(source)
+        .evaluate_arena(source)
         .map_err(|e| anyhow::anyhow!("{}", e))
-}
-
-fn cmd_compile(file: &PathBuf) -> anyhow::Result<()> {
-    let source = std::fs::read_to_string(file)
-        .with_context(|| format!("Failed to read {}", file.display()))?;
-    for fir_ref in evaluate(&source)? {
-        let fir = clone_steppable(&fir_ref);
-        let json = fir_to_json(&fir).map_err(|e| anyhow::anyhow!("{}", e))?;
-        println!("{}", json);
-    }
-    Ok(())
 }
 
 fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
     let source = std::fs::read_to_string(file)
         .with_context(|| format!("Failed to read {}", file.display()))?;
-    for fir_ref in evaluate(&source)? {
-        let final_fir = clone_steppable(&fir_ref);
-        println!("{}", FirSequencer::format(&final_fir));
+    let (storage, firs) = evaluate_arena(&source)?;
+    for fir in firs {
+        println!(
+            "{}",
+            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)
+        );
     }
     Ok(())
 }
@@ -83,10 +68,13 @@ fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
 fn cmd_step(file: &PathBuf) -> anyhow::Result<()> {
     let source = std::fs::read_to_string(file)
         .with_context(|| format!("Failed to read {}", file.display()))?;
-    for (i, fir_ref) in evaluate(&source)?.iter().enumerate() {
-        let final_fir = clone_steppable(fir_ref);
+    let (storage, firs) = evaluate_arena(&source)?;
+    for (i, fir) in firs.into_iter().enumerate() {
         println!("[{}] RESULT:", i);
-        println!("{}", FirSequencer::format(&final_fir));
+        println!(
+            "{}",
+            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)
+        );
     }
     Ok(())
 }
@@ -124,11 +112,13 @@ fn cmd_repl() -> anyhow::Result<()> {
         buf.push_str(&line);
 
         if depth <= 0 && !buf.trim().is_empty() {
-            match evaluate(&buf) {
-                Ok(firs) => {
-                    for fir_ref in &firs {
-                        let final_fir = clone_steppable(fir_ref);
-                        println!("=> {}", FirSequencer::format(&final_fir));
+            match evaluate_arena(&buf) {
+                Ok((storage, firs)) => {
+                    for fir in firs {
+                        println!(
+                            "=> {}",
+                            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)
+                        );
                     }
                 }
                 Err(e) => eprintln!("Error: {}", e),

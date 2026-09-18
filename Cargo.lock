@@ -412,7 +412,7 @@ dependencies = [
  "anyhow",
  "clap",
  "foolish-core",
- "foolish-ubca",
+ "foolish-ubca2",
 ]
 
 [[package]]
