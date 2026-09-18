@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::{SequenceMode, Ubca2Sequencer, UbcaEvaluator};
 
-fn einmo_suite2_dir() -> PathBuf {
+fn einmo_suite_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite")
 }
 
@@ -14,9 +14,8 @@ mod einmo_tests {
     use einmo::{EinmoSuite, Evaluator, Stage, TestConfig, ValidationLevel};
     use std::sync::{Mutex, MutexGuard, PoisonError};
 
-    // These two gates share suite2/output and therefore serialize with each
-    // other. They do not share files with einmo_suite's three gates, so a
-    // cross-module lock would add latency without protecting any resource.
+    // These three gates share einmo_suite/output and therefore serialize
+    // with each other to avoid concurrent writers racing on the same files.
     static GATE_LOCK: Mutex<()> = Mutex::new(());
 
     fn gate_lock() -> MutexGuard<'static, ()> {
@@ -37,7 +36,7 @@ mod einmo_tests {
     }
 
     fn config(level: ValidationLevel) -> TestConfig {
-        TestConfig::new(einmo_suite2_dir(), level)
+        TestConfig::new(einmo_suite_dir(), level)
     }
 
     fn assert_evaluation(level: ValidationLevel) -> einmo::TestResults {
@@ -53,7 +52,7 @@ mod einmo_tests {
 
         assert!(
             !results.files.is_empty(),
-            "einmo suite2 discovered no inputs"
+            "einmo suite discovered no inputs"
         );
         for file in &results.files {
             assert!(
@@ -65,25 +64,25 @@ mod einmo_tests {
         }
         assert!(
             results.integrity.is_clean(),
-            "einmo_suite2 is not sound at {level:?}:\n{}",
+            "einmo_suite is not sound at {level:?}:\n{}",
             results.integrity.report()
         );
         results
     }
 
     #[test]
-    fn einmo_suite2_gate_output() {
+    fn einmo_gate_output() {
         let _gate = gate_lock();
         let _results = assert_evaluation(ValidationLevel::Output);
     }
 
     #[test]
-    fn einmo_suite2_gate_checked() {
+    fn einmo_gate_checked() {
         let _gate = gate_lock();
         let results = assert_evaluation(ValidationLevel::Checked);
         assert!(
             results.correspondence_failures.is_empty(),
-            "suite2 output differs from the hand-authored rendering contract:\n  {}",
+            "suite output differs from the hand-authored rendering contract:\n  {}",
             results.correspondence_failures.join("\n  ")
         );
     }
@@ -94,13 +93,13 @@ mod einmo_tests {
     /// checked↔verified correspondence with human attestation.
     ///
     /// Deliberately NOT `#[ignore]`d, and it must stay that way:
-    /// `einmo_suite2/verified/` holds human-signed artifacts (attested
+    /// `einmo_suite/verified/` holds human-signed artifacts (attested
     /// 2026-09-07, 181 cases), and AGENTS.md forbids an agent from adding
     /// `#[ignore]` to a Verified-tier gate. The suite's `einmo.toml`
     /// deliberately leaves `[signing.verified]` unconfigured so only an
     /// interactive human promotion can create this tier.
     #[test]
-    fn einmo_suite2_gate_verified() {
+    fn einmo_gate_verified() {
         let _gate = gate_lock();
         let config = config(ValidationLevel::Verified)
             .require_correspondence(Stage::Output, Stage::Checked)
@@ -111,7 +110,7 @@ mod einmo_tests {
 
         assert!(
             !results.files.is_empty(),
-            "einmo suite2 discovered no inputs — check einmo_suite2/input/"
+            "einmo suite discovered no inputs — check einmo_suite/input/"
         );
         for file in &results.files {
             assert!(
@@ -123,12 +122,12 @@ mod einmo_tests {
         }
         assert!(
             results.integrity.is_clean(),
-            "einmo_suite2 is not sound at the Verified level:\n{}",
+            "einmo_suite is not sound at the Verified level:\n{}",
             results.integrity.report()
         );
         assert!(
             results.correspondence_failures.is_empty(),
-            "suite2 correspondence failure — output/checked/verified must agree:\n  {}",
+            "suite correspondence failure — output/checked/verified must agree:\n  {}",
             results.correspondence_failures.join("\n  ")
         );
     }
@@ -158,20 +157,20 @@ mod einmo_tests {
     }
 
     /// T3 (FOOP-36 §2, §Test Plan) — corpus-wide Property 1. Walks every
-    /// `einmo_suite2` input directly (not through einmo's signed-output
+    /// `einmo_suite` input directly (not through einmo's signed-output
     /// machinery — this must run BEFORE any output is generated, per the
     /// plan, as the cheapest possible check that the renderer survives the
     /// whole corpus) and asserts the Foolish-mode rendering re-parses.
     /// Property 1 only, not idempotence (§2.1) — some inputs may not settle.
     #[test]
-    fn einmo_suite2_corpus_wide_foolish_rendering_parses() {
-        let suite2_dir = einmo_suite2_dir();
-        let inputs = foo_inputs_under(&suite2_dir.join("input"));
-        assert!(!inputs.is_empty(), "no einmo_suite2 inputs found to check");
+    fn einmo_corpus_wide_foolish_rendering_parses() {
+        let suite_dir = einmo_suite_dir();
+        let inputs = foo_inputs_under(&suite_dir.join("input"));
+        assert!(!inputs.is_empty(), "no einmo_suite inputs found to check");
 
         let mut failures = Vec::new();
         for rel in &inputs {
-            let path = suite2_dir.join("input").join(rel);
+            let path = suite_dir.join("input").join(rel);
             let source = match std::fs::read_to_string(&path) {
                 Ok(source) => source,
                 Err(err) => {

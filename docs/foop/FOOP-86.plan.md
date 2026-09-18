@@ -558,24 +558,54 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       byte-identical to the pre-move file (`git diff` shows the move/rename with no content
       change). Not touched.
       (2026-09-18 00:00)
-- [ ] Commit this step on its own, so the rename is bisectable
+- [x] Commit this step on its own, so the rename is bisectable
+      (2026-09-18 00:00, commit "Major: Retire UBCa, Phase: 3b--complete")
 
 ### 3c — Re-point the names
 
-- [ ] Rename the three gate functions: `einmo_suite2_gate_output` → `einmo_gate_output`,
+- [x] Rename the three gate functions: `einmo_suite2_gate_output` → `einmo_gate_output`,
       `einmo_suite2_gate_checked` → `einmo_gate_checked`, `einmo_suite2_gate_verified` →
       `einmo_gate_verified` (§4.4 — the substring every document already uses must keep
       selecting the real gate)
-- [ ] Rename `einmo_suite2_dir()` → `einmo_suite_dir()`, and
+      (2026-09-18 00:00)
+- [x] Rename `einmo_suite2_dir()` → `einmo_suite_dir()`, and
       `einmo_suite2_corpus_wide_foolish_rendering_parses` → `einmo_corpus_wide_..._parses`
-- [ ] Update the assertion messages that name "suite2"
-- [ ] **Preserve verbatim** the doc comment on the verified gate explaining it is deliberately
+      (2026-09-18 00:00, landed as `einmo_corpus_wide_foolish_rendering_parses`)
+- [x] Update the assertion messages that name "suite2" — all updated (`"einmo suite2 discovered
+      no inputs"` → `"einmo suite discovered no inputs"`, `"einmo_suite2 is not sound..."` →
+      `"einmo_suite is not sound..."`, `"suite2 output differs..."` → `"suite output
+      differs..."`, `"suite2 correspondence failure..."` → `"suite correspondence
+      failure..."`, the `GATE_LOCK` comment's "suite2/output" → "einmo_suite/output", and the
+      corpus test's doc comment and inline messages). Confirmed with
+      `grep -rn "einmo_suite2\|suite2"` over `foolish-ubca2/src/` and `foolish-cli/src/`: zero
+      hits.
+      (2026-09-18 00:00)
+- [x] **Preserve verbatim** the doc comment on the verified gate explaining it is deliberately
       NOT `#[ignore]`d (currently `ubca_snapshot_tester2.rs:94-100`) — updating only the suite
-      name inside it
-- [ ] `git mv foolish-ubca2/src/ubca_snapshot_tester2.rs foolish-ubca2/src/ubca_snapshot_tester.rs`
+      name inside it. Preserved word-for-word except `` `einmo_suite2/verified/` `` →
+      `` `einmo_suite/verified/` `` (the one suite-name token); every other word, including "AGENTS.md
+      forbids an agent from adding `#[ignore]` to a Verified-tier gate," is untouched.
+      (2026-09-18 00:00)
+- [x] `git mv foolish-ubca2/src/ubca_snapshot_tester2.rs foolish-ubca2/src/ubca_snapshot_tester.rs`
       and update `lib.rs`'s `mod` declaration
-- [ ] `cargo fmt`; run all three gates again
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; run all three gates again. **CONFIRMED**: same result as Phase 3b's rename
+      verification, now under the canonical names — `einmo_gate_output` and
+      `einmo_corpus_wide_foolish_rendering_parses` PASS; `einmo_gate_checked`/`einmo_gate_verified`
+      fail on exactly the one known case, same diagnostic text. `cargo test -p foolish-ubca2
+      --lib -- einmo_gate_checked` — the exact command form AGENTS.md/README/every FOOP plan
+      already uses — now correctly selects the real gate in the surviving crate.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+177(+2 known-red)+0(doctests) — every crate's count is UNCHANGED
+      from before Phase 3 except `foolish-ubca2`, which moved from Phase 0's baseline of 184 to
+      179 (177 passed + 2 known-red), a drop of exactly **5**, fully accounted for by Phase 3a's
+      deletions: the OLD suite's 3 gate tests (`einmo_suite2_gate_output/checked/verified`),
+      `einmo_suite2_has_every_einmo_suite_input` (1), and
+      `t12_report_value_differences_old_vs_new` (1) = 5. Holding steady through 3b/3c's pure
+      renames, as expected (renaming a test doesn't change how many exist). No unexpected
+      change anywhere else.
+      (2026-09-18 00:00)
 
 ## Phase 4 — Arena-native `Detailed`, then remove the bridge (§3)
 
