@@ -3,7 +3,6 @@ members = [
     "foolish-parser",
     "foolish-core",
     "foolish-cli",
-    "foolish-ubca",
     "foolish-ubca2",
     "einmo",
 ]

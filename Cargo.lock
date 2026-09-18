@@ -446,20 +446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "foolish-ubca"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "einmo",
- "foolish-core",
- "foolish-parser",
- "num_cpus",
- "regex",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "foolish-ubca2"
 version = "0.1.0"
 dependencies = [

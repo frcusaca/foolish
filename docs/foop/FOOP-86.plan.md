@@ -867,25 +867,76 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > **Execution phase — smaller model.** Stop condition: if anything OUTSIDE `foolish-ubca/` must
 > change in order to delete it, STOP — that is an undiscovered dependency.
 
-- [ ] (read §2 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §2 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates; run unit tests: the whole `foolish-ubca2` crate,
      plus `cargo test --workspace`.
-- [ ] **Q3 is decided: delete outright, no tag, no archive** (human, 2026-09-16). Record the
+      (2026-09-18 00:00)
+- [x] **Q3 is decided: delete outright, no tag, no archive** (human, 2026-09-16). Record the
       commit SHA immediately before the deletion in this plan — git history retains the crate
-      regardless, so this is a convenience note, not a safety net
-- [ ] Remove `"foolish-ubca",` from the workspace `Cargo.toml:6`
-- [ ] `git rm -r foolish-ubca/` (14 171 lines of source + the 178/178/178/178 einmo suite)
-- [ ] `grep -rn "foolish.ubca\b" --include='*.rs' --include='*.toml' --include='*.sh' .` —
-      expect no hits outside `docs/` and historical FOOP plans
-- [ ] `cargo build --workspace` and `cargo test --workspace`
-- [ ] Record the **after** test count and **account for the difference** against Phase 0's
+      regardless, so this is a convenience note, not a safety net.
+      **Commit immediately before deletion: `6c2fced8`** ("Major: Retire UBCa, Phase: 4b--complete").
+      (2026-09-18 00:00)
+- [x] Remove `"foolish-ubca",` from the workspace `Cargo.toml:6`
+      (2026-09-18 00:00)
+- [x] `git rm -r foolish-ubca/` (14 171 lines of source + the 178/178/178/178 einmo suite).
+      Measured immediately before deletion: `wc -l foolish-ubca/src/*.rs` gave **14,162** lines
+      (close to §2.1's stated 14,171 — small drift from intervening commits, not a discrepancy
+      worth chasing) and the suite's four tiers were confirmed 178/178/178/178
+      (input/checked/verified/output, using einmo-file counts for checked/verified/output and
+      `.foo` count for input) immediately before deletion.
+      (2026-09-18 00:00)
+- [x] `grep -rn "foolish.ubca\b" --include='*.rs' --include='*.toml' --include='*.sh' .` —
+      expect no hits outside `docs/` and historical FOOP plans. **Found, read, and judged
+      harmless**: (1) `einmo/Cargo.toml:9` — a comment, not a real dependency; (2) two comments
+      in `foolish-parser/src/parser.rs` and two in `foolish-core/src/fir.rs` attributing an
+      algorithm's origin to `foolish-ubca` historically — prose, not code, harmless to leave;
+      (3) four standalone shell scripts at the repo root (`poor_einmo.sh`, `foolish_review.sh`,
+      `check_foolish_ubca.sh`, `accept_approved.sh`) reference `foolish-ubca` in example/usage
+      text. **`check_foolish_ubca.sh` was inspected closely** since its name names the crate
+      directly — it references `foolish-ubca/snapshot_tests/approved/*.new` and `cargo insta
+      test`, neither of which matches this repo's current einmo-based workflow at all; it
+      appears to already be stale tooling from an earlier (pre-einmo) testing approach,
+      unrelated to and not broken BY this FOOP. Flagged as a documentation/cleanup finding
+      (same category as Q7's `zweimomo` staleness), not fixed — out of scope per §2.2/§3.3.
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace` and `cargo test --workspace`. Build clean.
+      (2026-09-18 00:00)
+- [x] Record the **after** test count and **account for the difference** against Phase 0's
       baseline of 791 — foolish-ubca's tests, the bridge's ~7, and §4.5's two instruments.
       "Fewer tests pass" must never be mistaken for "tests were lost."
-- [ ] `cargo clippy --workspace -- -D warnings` — compare against Phase 0's pre-existing count;
-      **this FOOP must not add any new error**
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+      **After**: `foolish-parser` 62, `foolish-core` 84, `einmo` 133, `foolish-ubca2` 173
+      (170 passed + 3 known-red), `foolish-cli` 0 = **452** (133+84+62+173).
+
+      **Full accounting from Phase 0's 791**:
+      | Change | Count | Running total |
+      |---|---|---|
+      | Baseline (Phase 0) | — | 791 |
+      | `foolish-ubca`'s own tests removed (this phase) | −328 | 463 |
+      | Phase 3a: old suite's 3 gate tests removed | −3 | 460 |
+      | Phase 3a: 2 migration instruments removed (`einmo_suite2_has_every_einmo_suite_input`, `t12_report_value_differences_old_vs_new`) | −2 | 458 |
+      | Phase 4a: 4 new T4b `Detailed` tests added | +4 | 462 |
+      | Phase 4a: 5 old `detailed_delegates_for_*` tests removed | −5 | 457 |
+      | Phase 4b: 5 `proto_to_core_fir_*` bridge tests removed | −5 | 452 |
+      | **Final** | | **452** |
+
+      Every removal is a bridge/old-suite artifact (tested the removed code, not surviving
+      behavior) or an explicitly-retired migration instrument (§4.5); every test that exercised
+      REAL evaluator/renderer behavior through the bridge was ported in Phase 4b, not deleted.
+      **452 matches exactly** — no unaccounted-for loss.
+      (2026-09-18 00:00)
+- [x] `cargo clippy --workspace -- -D warnings` — compare against Phase 0's pre-existing count;
+      **this FOOP must not add any new error**. **CONFIRMED**: still exactly the same 4
+      `clippy::iter_next_slice` errors in `foolish-core/src/sequencer.rs` (lines 187/537/563/743)
+      recorded in Phase 0. Zero new errors from removing `foolish-ubca`.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **452 tests, 449
+      passed, 3 known-red** (the two einmo gates plus the ported regression case — same
+      tracked bug throughout this FOOP).
+      (2026-09-18 00:00)
 
 ## Phase 6 — CLI tests and the exercise recording (§T3, §T4)
 
