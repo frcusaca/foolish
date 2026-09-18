@@ -1481,7 +1481,7 @@ mod tests {
             sanitize_reason("first①\nsecond\rthird"),
             "first second third"
         );
-        let contract = include_str!("../einmo_suite2/input/foop/36/rendering_contract.foo");
+        let contract = include_str!("../einmo_suite/input/foop/36/rendering_contract.foo");
         assert!(!contract.contains('①'));
         assert!(contract.contains("\n  !!!\n"));
         assert!(contract.contains("!!!\n\n  leaves"));

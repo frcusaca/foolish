@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::{SequenceMode, Ubca2Sequencer, UbcaEvaluator};
 
 fn einmo_suite2_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite2")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite")
 }
 
 #[cfg(test)]

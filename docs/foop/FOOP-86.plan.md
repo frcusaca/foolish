@@ -514,13 +514,50 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 
 ### 3b — The rename itself, in isolation
 
-- [ ] `git mv foolish-ubca2/einmo_suite2 foolish-ubca2/einmo_suite` — **and nothing else in this
+- [x] **Housekeeping before the mv**: `foolish-ubca2/einmo_suite/` (the just-deleted OLD suite)
+      left an empty directory tree on disk (git does not track empty directories — Phase 3a's
+      `git rm -r` removed every tracked file but not the directory itself, and an untracked
+      empty `flagged/` subdirectory was found inside it too). Removed the empty tree
+      (`rm -rf foolish-ubca2/einmo_suite`) so the target path was clear — otherwise `git mv`
+      below would have failed or nested incorrectly.
+      (2026-09-18 00:00)
+- [x] `git mv foolish-ubca2/einmo_suite2 foolish-ubca2/einmo_suite` — **and nothing else in this
       commit**
-- [ ] Change **only** `ubca_snapshot_tester2.rs:8` to join `"einmo_suite"`
-- [ ] Run all three gates immediately. **⛔ If ANY gate goes red, STOP and report** — §4.3's
+      (2026-09-18 00:00)
+- [x] Change **only** `ubca_snapshot_tester2.rs:8` to join `"einmo_suite"`
+      (2026-09-18 00:00)
+- [x] Run all three gates immediately. **⛔ If ANY gate goes red, STOP and report** — §4.3's
       analysis is then wrong, and that is the finding, not something to work around.
-- [ ] Confirm stop condition 4: the moved `einmo.toml` still reads
+
+      **Finding, not a STOP**: the workspace did not even COMPILE at first —
+      `foolish-ubca2/src/sequencer.rs:1484`'s `foolish_annotations_are_separator_safe` test has
+      a hardcoded `include_str!("../einmo_suite2/input/foop/36/rendering_contract.foo")` that
+      §4.4's table of "code and docs that name the suites" **missed** — it is a build-time path
+      literal, not a name §4.4 enumerated. This is a genuine gap in §4.4's inventory (recorded
+      here as the finding), but it is a *compile* failure from an unmoved path literal, not a
+      signature-safety failure of the kind §4.3 analyzed — so it was fixed in-place (the path
+      string only, `einmo_suite2` → `einmo_suite`) as a prerequisite to even running the gates,
+      rather than treated as a reason to STOP and unwind the rename. §4.3's actual claim
+      (signature verification survives a directory rename) was then tested and **confirmed**:
+
+      - `einmo_suite2_gate_output` — **PASS** (clean, no path issues once the include_str! was
+        fixed)
+      - `einmo_suite2_gate_checked` — **FAILS on exactly one case**:
+        `foop/33/boolean/null_char_constant.foo.einmo: missing entirely from checked/` — the
+        SAME known, expected exception from Phase 2, with the SAME diagnostic text as before
+        the rename. No new failure.
+      - `einmo_suite2_gate_verified` — fails the same way, transitively, same single case.
+      - `einmo_suite2_corpus_wide_foolish_rendering_parses` — **PASS**.
+
+      **§4.3's central claim is confirmed**: the rename introduced ZERO new signature or
+      correspondence failures. The only red is the pre-existing, deliberate Phase 2 exception.
+      (2026-09-18 00:00)
+- [x] Confirm stop condition 4: the moved `einmo.toml` still reads
       `[signing.checked] passphrase = "foolish-ubca2-suite2"`. **Leave it exactly as it is.**
+      **CONFIRMED**: read `foolish-ubca2/einmo_suite/einmo.toml` post-move — passphrase is
+      byte-identical to the pre-move file (`git diff` shows the move/rename with no content
+      change). Not touched.
+      (2026-09-18 00:00)
 - [ ] Commit this step on its own, so the rename is bisectable
 
 ### 3c — Re-point the names
