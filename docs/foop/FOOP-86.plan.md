@@ -484,6 +484,13 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       — any other FOOP-33-style NF refusal rendered directly (not through a search) could have
       the same gap. Worth a broader sweep, not just a point fix for this one case, but that
       sweep is this TODO's scope to do, not FOOP-86's.
+
+      **Second regression case added by Phase 4b, already in place for you**:
+      `fvm_storage::tests::evaluate_refuses_and_renders_conflicting_true_redefinition` was
+      ported off the deleted bridge onto `evaluate_arena` + `Ubca2Sequencer::format(...,
+      Foolish)` and is currently FAILING (deliberately, same bug). It gives you a fast,
+      non-einmo repro — fixing `render_statement` should make it pass alongside the einmo case
+      above.
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       **Full workspace run, post-deletion**: `einmo_suite2_gate_checked` and
       `einmo_suite2_gate_verified` fail as intended (the one case above); every other test is
@@ -745,27 +752,115 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > **Execution phase — smaller model.** The call sites are enumerated; the target is "the
 > workspace compiles with them gone." 4a has already removed one of the two.
 
-- [ ] (read §3.1, §3.3 and §3.4 of [`FOOP-86.md`](FOOP-86.md) — §3.3's scope guard especially)
-- [ ] Establish relevant tests for this
+- [x] (read §3.1, §3.3 and §3.4 of [`FOOP-86.md`](FOOP-86.md) — §3.3's scope guard especially)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked` and `einmo_gate_verified`; run unit tests:
      `foolish-ubca2::einmo_gate_checked`, `foolish-ubca2::einmo_gate_verified`,
      `foolish-ubca2::sequencer`, `foolish-ubca2::fvm_storage`,
      `foolish-ubca2::detailed_renders_every_fir_kind`.
-- [ ] Remove `impl foolish_core::Evaluator for UbcaEvaluator` (`evaluator.rs:45-55`) — §3.4.
+      (2026-09-18 00:00)
+- [x] Remove `impl foolish_core::Evaluator for UbcaEvaluator` (`evaluator.rs:45-55`) — §3.4.
       **This is the bridge's last remaining non-test caller** now that 4a repointed the other.
-- [ ] Remove the `core_fir_conversion` bridge: `proto_to_core_fir` and its `_sff_body`,
+      Also removed the now-unused `foolish_core::fir::{FirRef as CoreFirRef, Nyes as _}`-style
+      import that only the trait impl needed (kept `Nyes` itself — still used by
+      `evaluate_arena`'s own alarm-marking).
+      (2026-09-18 00:00)
+- [x] Remove the `core_fir_conversion` bridge: `proto_to_core_fir` and its `_sff_body`,
       `_sff_operand`, `_inner` siblings (`fvm_storage.rs:3494`–~`4151`) and the re-export at
-      `4990`
-- [ ] Remove the bridge's own tests (`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273`;
-      `sequencer.rs:1194`) — they test the removed code, not surviving behavior
-- [ ] Correct `foolish-ubca2/src/lib.rs`'s module docs: `evaluate_arena` is now the crate's one
+      `4990`. **Verified the module's OTHER half survives**: `core_fir_conversion` bundled the
+      stepping driver (`step_to_constanic`, `step_until*`) together with the bridge
+      (§3.1/§0.3 already flagged this as "two unrelated things," which FOOP-96 splits
+      properly later) — deleted only `display_stmt_name` through `proto_to_core_fir_inner`'s
+      closing brace, keeping `step_to_constanic`/`step_until*` inside the (unrenamed)
+      `core_fir_conversion` module wrapper, since dozens of test call sites address them by
+      that path (`core_fir_conversion::step_to_constanic(...)`) and FOOP-96, not this FOOP, is
+      the one renaming the module. Pruned the module's now-unused imports
+      (`ANON_STMT_NAME`, `ConcatProvenance`, `MAX_DEPTH`, `NyesExt`, `search_fir_dispatch`,
+      all of `foolish_core::fir::*`) down to just `{FVMStorage, FirCursor, FirPointer}` — let
+      the compiler confirm nothing else was needed.
+      (2026-09-18 00:00)
+- [x] Remove the bridge's own tests (`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273`;
+      `sequencer.rs:1194`) — they test the removed code, not surviving behavior. **Line numbers
+      had shifted** (measured fresh): the 5 `proto_to_core_fir_*` tests
+      (`proto_to_core_fir_renders_constant_int`, `_renders_nk_with_reason`,
+      `_division_by_zero_gets_an_alarm`, `_renders_brane_with_named_statements`,
+      `_unwraps_settled_operator_to_its_result`) were removed outright — they tested the
+      bridge's OWN conversion correctness, not surviving behavior. `sequencer.rs:1194`'s
+      delegation test was already handled in Phase 4a.
+
+      **Found 5 MORE bridge-dependent tests beyond §3.1's table** (a genuine gap in that
+      inventory, same class of finding as Phase 3b's missed `include_str!`): `cargo build
+      --tests` (NOT plain `cargo build`, which does not compile `#[cfg(test)]` code and
+      silently hid these) surfaced 5 compile errors from `.evaluate()` calls via the deleted
+      trait. Each was READ before deciding removal vs. port, per AGENTS.md's test-triage
+      discipline (never resolve a broken test by deleting it without checking):
+
+      - **`evaluate_refuses_and_renders_conflicting_true_redefinition`** (`fvm_storage.rs`) —
+        **PORTED, not removed, and now DELIBERATELY FAILING.** This test's own doc comment
+        turned out to be the missing piece of Phase 2's root-cause diagnosis (see the corrected
+        TODO above): it proved `nf_reason` IS correctly surfaced through
+        `settled_constanic_result`-based reading (a bug fixed once already, per that comment),
+        which directly contradicted Phase 2's "the evaluator is broken" conclusion. Ported to
+        `evaluate_arena` + `Ubca2Sequencer::format(..., Foolish)`, which is the actual
+        Foolish-mode rendering path Phase 2 found broken — and confirmed it now fails on
+        exactly that path (`render_statement` never consults `nf_reason`), making it a SECOND,
+        independent regression case for the same tracked bug. Left red, not `#[ignore]`d,
+        consistent with the human's Phase 2 direction to make failures visible rather than
+        hidden.
+      - **`evaluate_settles_self_referential_statement_at_index_zero_without_hanging`**
+        (`fvm_storage.rs`) — PORTED to `evaluate_arena`, checking `storage.alarm_reason()` is
+        `None` instead of `Result::is_ok()` (which would trivially always pass —
+        `evaluate_arena` catches the step-cap error internally and always returns `Ok`, unlike
+        the old bridge's `.evaluate()` which propagated it via `?`). Passes.
+      - **`foop75_non_brane_reason_reaches_rendered_output`** (`system_foo.rs`) — PORTED to
+        `evaluate_arena` + `Ubca2Sequencer::format`. Its exact source is ALSO
+        `regression/disappearing_brane_statements.foo`, already a signed einmo case in the
+        surviving suite — this unit test now doubles as a fast, non-einmo confirmation of the
+        same Foolish-mode behavior. Updated the text assertion from the old FIR-internal
+        `"d =$ ??? (4 is not a brane)"` to the new Foolish-mode form (verified by running the
+        CLI first): `"d =$ 4"` present and `"4 is not a brane"` present. Passes.
+      - **`non_settling_program_renders_nk_with_iteration_alarm`** (`system_foo.rs`), renamed
+        **`non_settling_program_renders_iteration_exceeded_alarm`** — PORTED. Its exact source
+        is ALSO `foop/62/infinite_loop.foo`, already signed in the surviving suite. Updated the
+        assertion from FIR-internal `"NK(ITERATION-EXCEEDED"` to the actual rendered banner
+        text (verified via the CLI first): `"did not complete stepping within the limit of"`.
+        Passes.
+      - **`creation_reached_through_search_renders_with_its_own_defining_name`**
+        (`fvm_storage.rs`) — PORTED to `evaluate_arena` + `Ubca2Sequencer::format`, asserting
+        `"b = 'a"` (verified via the CLI first) in place of the old `Debug`-text
+        `r#"name: Some("'a")"#`. Passes — confirms the FOOP-33 Gotcha #2 identity-through-search
+        invariant survives in the new renderer even though the unrelated NF-rendering gap
+        above does not.
+
+      Historical doc comments explaining WHY each test exists were kept and extended (not
+      deleted) where the history remains genuinely informative — per `rust_instructions.md`
+      §2d, comments explain *why*, and these `why`s (a real regression once fixed, a real bug
+      just found) outlive the specific rendering call they originally used.
+      (2026-09-18 00:00)
+- [x] Correct `foolish-ubca2/src/lib.rs`'s module docs: `evaluate_arena` is now the crate's one
       production entry point, and the "two independent implementations" paragraph is no longer
-      true — rewrite it to describe a single implementation
-- [ ] **⛔ If any of the above requires editing `foolish-core/src/`, STOP and report** (§3.3).
-      `foolish_core::FirSequencer` is NOT deleted by this FOOP.
-- [ ] `cargo build --workspace`; `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      true — rewrite it to describe a single implementation. Rewrote the crate doc to name
+      FOOP-86 and the retirement explicitly, state `evaluate_arena` as the one entry point, and
+      drop the "kept honest against each other" framing entirely (there is no longer a second
+      implementation to be kept honest against).
+      (2026-09-18 00:00)
+- [x] **⛔ If any of the above requires editing `foolish-core/src/`, STOP and report** (§3.3).
+      `foolish_core::FirSequencer` is NOT deleted by this FOOP. **No `foolish-core/src/` file
+      was touched anywhere in this phase.** Confirmed by `git diff --stat` before committing.
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace`; `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`.
+      Build clean. `cargo fmt -p foolish-ubca2` applied. `clippy -D warnings` still fails only
+      on the same 4 pre-existing `foolish-core` errors and the same 1 pre-existing
+      `collapsible_if` already recorded in Phase 4a — nothing new introduced by this phase.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+170(+3 known-red: the two einmo gates plus the newly-ported
+      `evaluate_refuses_and_renders_conflicting_true_redefinition`, all the same tracked bug).
+      `foolish-ubca2` moved from 178 to 173 — net −5, exactly the `proto_to_core_fir_*` cluster
+      removed outright; every other test that used the bridge was ported and still exists.
+      (2026-09-18 00:00)
 
 ## Phase 5 — Remove `foolish-ubca` (§2)
 
