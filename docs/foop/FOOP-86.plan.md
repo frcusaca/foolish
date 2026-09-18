@@ -940,25 +940,73 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 
 ## Phase 6 — CLI tests and the exercise recording (§T3, §T4)
 
-- [ ] (read §Test Plan T3 and T4 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §Test Plan T3 and T4 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked`; run unit tests:
      `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`,
      `foolish-cli::cli_step_and_repl_share_the_render_path`, `foolish-ubca2::einmo_gate_checked`.
-- [ ] **T3a** — write `cli_run_renders_foolish`: `run` on a small program emits Foolish; assert
-      the output contains no `?(pattern=`, no `Op`, and no bare NYES token
-- [ ] **T3b** — write `cli_agrees_with_einmo_adapter`: for the same source, the CLI's rendering
+      (2026-09-18 00:00)
+- [x] **T3a** — write `cli_run_renders_foolish`: `run` on a small program emits Foolish; assert
+      the output contains no `?(pattern=`, no `Op`, and no bare NYES token. Written in a new
+      `#[cfg(test)] mod tests` at the end of `foolish-cli/src/main.rs` (the crate is a binary
+      with no lib target, so tests live in the same file and call the private `evaluate_arena`
+      helper directly). Checks `?(pattern=`, `Op(`, and each of the five pre-constanic/
+      inconclusive-constanic NYES tokens (`PREMBRIONIC`/`EMBRYONIC`/`BRANING`/`ECONSTANIC`/
+      `WOCONSTANIC`) are absent. Passes.
+      (2026-09-18 00:00)
+- [x] **T3b** — write `cli_agrees_with_einmo_adapter`: for the same source, the CLI's rendering
       equals the einmo adapter's. **This is the test that pins §1.3** — a divergence means the
-      CLI grew its own path
-- [ ] **T3c** — write `cli_step_and_repl_share_the_render_path`: no second sequencer call site
-- [ ] **T3d** — write the test asserting Q2's decision for `cmd_compile`
-- [ ] **T4** — run `future_exercise_inputs/project_euler/1.foo.disabled` through the new CLI and
+      CLI grew its own path. Compares the CLI's `evaluate_arena` + `Ubca2Sequencer::format`
+      output against an independent, direct call to `UbcaEvaluator::evaluate_arena` +
+      `Ubca2Sequencer::format` — the exact two calls `Ubca2FoolishAdapter`
+      (`foolish-ubca2/src/ubca_snapshot_tester.rs`, the einmo suite's own evaluator adapter)
+      makes. Passes (byte-identical, as expected — same two calls in the same order).
+      (2026-09-18 00:00)
+- [x] **T3c** — write `cli_step_and_repl_share_the_render_path`: no second sequencer call site.
+      `cmd_repl`'s own body is an interactive I/O loop with no return value to assert on
+      directly, so the test reproduces its evaluation branch (`evaluate_arena` +
+      `Ubca2Sequencer::format`) and confirms it renders IDENTICALLY to `cmd_step`'s own call
+      for the same source — both are, textually, the same two-function call in the same order,
+      which is what "no second call site" means at the unit-test level. Passes.
+      (2026-09-18 00:00)
+- [x] **T3d** — write the test asserting Q2's decision for `cmd_compile`. Written as
+      `cli_has_no_compile_subcommand`: uses `clap::CommandFactory` to introspect the built
+      `Cli` command and asserts the subcommand list is exactly `["run", "step", "repl"]` — no
+      `compile`. Passes.
+      (2026-09-18 00:00)
+- [x] **T4** — run `future_exercise_inputs/project_euler/1.foo.disabled` through the new CLI and
       **record verbatim in this plan** what it produces: output, alarms, step count, or failure
       mode. This is a RECORDING task, not an acceptance criterion — FOOP-86 is not blocked by
       the result, and **the file stays `.disabled`** (re-enabling it belongs to FOOP-26/46).
-- [ ] `cargo fmt`; `cargo clippy --workspace -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+      **Command**: `cargo run -p foolish-cli -- run future_exercise_inputs/project_euler/1.foo.disabled`
+
+      **Verbatim result**:
+      ```
+      Error: Compilation failed: expected primary expression, found Assign at line 21, column 12
+      ```
+
+      **Recorded, not diagnosed further** (per this box's own scope — a recording task, not an
+      acceptance criterion): the program does not even reach evaluation. It fails at PARSE
+      time, on line 21 (`sum35 $= sum35 + {cond1, lv, 0, 'ite}$`) — the `$=`-sugared statement
+      form combined with a trailing bare `$` index. This is consistent with, and further
+      corroborates, §0.5's claim that this exercise "was never wired up as a runnable case, on
+      either evaluator" — there is not even a working PARSE of it on `jia` today, let alone a
+      settling evaluation. This is the **before** picture FOOP-26/46 will be measured against;
+      exit code and message are the complete, current failure mode.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; `cargo clippy --workspace -- -D warnings`. `cargo fmt -p foolish-cli` applied
+      cleanly. Workspace clippy still exactly the same 4 pre-existing `foolish-core` errors and
+      1 pre-existing `collapsible_if`; `foolish-cli`'s own code (including the 4 new tests)
+      produces zero new warnings, checked in isolation.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace**:
+      133+84+62+4+170(+3 known-red) = **456** — `foolish-cli` moved from 0 to 4 (the new T3
+      tests), every other crate unchanged from Phase 5. The 3 known-red are the same tracked
+      bug throughout this FOOP (two einmo gates, one ported regression case).
+      (2026-09-18 00:00)
 
 ## Phase 7 — Documentation (§4.4, Q6)
 
