@@ -264,6 +264,76 @@ retroactively: an existing `#[ignore]` on a Verified-tier test that an agent add
 explicit human direction has not been properly authorized and should be raised with the human,
 not treated as settled precedent.
 
+### Deferring an incidental bug found mid-refactor
+
+A complex feature or refactor sometimes surfaces a bug that is **not** what the current work is
+about — incidental to it, or found only because the refactor happened to exercise the affected
+code path. The bug may be serious, but stopping the main task to fix it immediately is not
+always the right call, especially mid-Phase when the fix itself would be a separate, non-trivial
+piece of work. The preferred way to handle this is a **two-checkbox pattern** in the FOOP's
+`FOOP-#.plan.md` (see `## Task Management` above — the plan **is** the todo list, so the
+deferral belongs there, not in a side note or a comment).
+
+- **The first checkbox, checked immediately, records the finding and the decision.** It must do
+  three things, all in the checkbox text itself, not left to surrounding prose: name exactly
+  which case(s) are the accepted exception; state — unmistakably — that every OTHER existing
+  test, gate, and quality bar remains in force unchanged, so the entry cannot be misread as
+  blanket permission to relax discipline generally; and confirm that a test actually pins the
+  bug. On that last point: if no einmo case or unit test yet demonstrates the bug, **create one
+  now, as part of checking this box** — not deferred to the later fix task. A bug found but not
+  yet covered by a failing case is not yet "found" in the sense this rule means:
+
+  ```markdown
+  - [x] Found a bug during this work: <describe>. It impacts einmo cases A, B and D
+        (created case D now, since no existing case covered this). Removed checked/verified
+        for A, B, D after consulting the human. All OTHER test/gate requirements remain in
+        force unchanged — only A, B, D are the accepted exceptions. Continuing with the
+        current task now; see the later checkbox for the fix.
+  ```
+
+- **The second checkbox, left unchecked, is placed later in the plan — before merge — and is
+  the commitment to come back.** It restates the bug in enough detail that a future session (or
+  a future agent with no memory of this one) can pick it up cold, and it closes against the
+  cases the first checkbox created or named — cases that, because of the first checkbox, already
+  have failing coverage rather than needing it invented retroactively:
+
+  ```markdown
+  - [ ] Fix the bug found above affecting cases A, B, D (deferred earlier in this plan) —
+        here's what I know: <notes>. Confirm the fix makes A, B, D pass (they already have
+        failing coverage) before this box is checked.
+  ```
+
+  Together, the pair says: this was a deliberate, reviewed decision to let specific, named cases
+  fail — with real failing test coverage backing each one — because they don't block the feature
+  under development, and everything else stays held to the usual bar; not a case slipping through
+  unnoticed, and not a general relaxation, while still insisting, in the plan itself, that they
+  get fixed before the FOOP is considered done.
+
+**This pattern does not create an exception to the rules above — it is how those rules get
+satisfied when the discovery happens mid-task.** In particular:
+
+- If the bug's evidence lives in einmo baselines, **touching `checked/` or `verified/` still
+  requires the same human involvement the rules above already demand.** An agent does not
+  unilaterally edit or hand-author a `verified/` artifact to make it agree with wrong behavior,
+  and does not silently `#[ignore]` a Verified-tier gate (see "Agents must never mark a
+  Verified-tier test `#[ignore]`" just above) — ask the human first, every time. What an agent
+  *may* do, once the human has weighed in, is remove the affected `checked/`/`verified/`
+  artifacts outright so the gate fails loudly (missing baseline) instead of quietly asserting a
+  wrong answer — deletion-to-fail-loud is not the same act as editing a baseline to agree with
+  the bug, and it still needs the same human sign-off before touching a Verified-tier artifact.
+- This is not licence to start a Phase or larger segment with known-broken tests (see **NEVER**
+  above) — the two checkboxes are how an agent gets from "broken test discovered just now" back
+  to "no tests are broken" without either stopping the current task cold or leaving the breakage
+  undocumented: the loud failure plus the checkbox pair *is* the accepted, tracked state, not a
+  quiet exception to it.
+- The first checkbox is only honest if the decision was actually reviewed with the human before
+  it was checked — the same "acceptance is non-delegable" principle above applies: checking that
+  box is an assertion that the deferral was a considered choice, not a shortcut.
+- The requirement to create a covering case when none exists is not optional scope-creep — it
+  is the same "write the tests first" discipline from `## Development process` above, applied at
+  the moment a bug is discovered rather than at the moment a feature is planned. Deferring the
+  *fix* is sanctioned by this pattern; deferring the *test that proves the bug exists* is not.
+
 ## How To Write Rust Code
 
 > ## ⛔ STOP — READ `rust_instructions.md` BEFORE TOUCHING ANY RUST ⛔
@@ -890,9 +960,40 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-09-03
+**Date**: 2026-09-18
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Amended §MISC "Concluding Paragraphs Are an Index, Not a Summary" with a
+**Changes**: Added §Development Rules "Deferring an incidental bug found mid-refactor",
+placed directly after "The agent is responsible for correctness" (before "How To Write Rust
+Code"), documenting the two-checkbox pattern for handling a serious bug discovered incidentally
+during a complex feature or refactor, then revised the pattern twice over for two gaps found on
+re-review. First, the checked-immediately checkbox must now state, in the checkbox text itself
+(not merely implied by surrounding prose), that every OTHER existing test/gate/quality
+requirement stays in force unchanged and that ONLY the explicitly named case(s) are the accepted
+exception — closing the risk of the entry being misread as general permission to relax
+discipline once one bug is deferred. Second, the same first checkbox now requires that a real
+einmo case or unit test actually pin the discovered bug, and mandates creating that case AT THE
+MOMENT OF DISCOVERY (as part of checking the box) if none already exists — not inventing test
+coverage retroactively when the later fix checkbox is reached. The worked example is now: `[x]
+Found a bug during this work: <describe>. It impacts einmo cases A, B and D (created case D now,
+since no existing case covered this). Removed checked/verified for A, B, D after consulting the
+human. All OTHER test/gate requirements remain in force unchanged — only A, B, D are the
+accepted exceptions. Continuing with the current task now; see the later checkbox for the fix.`
+paired with `[ ] Fix the bug found above affecting cases A, B, D (deferred earlier in this
+plan) — here's what I know: <notes>. Confirm the fix makes A, B, D pass (they already have
+failing coverage) before this box is checked.` A new trailing bullet ties the test-creation
+requirement back to the existing "write the tests first" rule in `## Development process`:
+deferring the fix is sanctioned, deferring the test that proves the bug exists is not. The rest
+of the section is unchanged: this remains the mechanism for satisfying the existing rules mid-
+task, not a new exception to them — touching `checked/`/`verified/` einmo artifacts still
+requires the same human involvement the "Agents must never mark a Verified-tier test
+`#[ignore]`" rule already demands, and deleting a baseline to fail loudly is a different,
+still-human-gated act from editing one to agree with wrong behavior. Motivated by a live case in
+this session: while executing FOOP-86, a Phase 2 comparison found `foolish-ubca2` silently
+accepting a conflicting redefinition of a named creation that FOOP-33 says must refuse: the
+`checked/`/`verified/` einmo artifacts for that one case were deleted (after asking the human)
+so the gate fails loudly, and a `[ ] TODO` checkbox naming the fix was added to
+`FOOP-86.plan.md` for a follow-on session. Prior entry: amended §MISC "Concluding Paragraphs Are
+an Index, Not a Summary" with a
 WHETHER-to-write-one rule, placed near the top of the subsection (after the "what serves the
 reader is an INDEX" paragraph, before the labelling how-to) so a reader learns whether the
 section applies before reading how to apply it. A concluding section is NOT automatic — use best
