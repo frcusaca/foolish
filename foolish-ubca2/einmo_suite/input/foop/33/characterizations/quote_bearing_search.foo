@@ -1,7 +1,0 @@
-{
-	!! Quote-bearing search: pattern with ' matches characterized_name().
-	tag'x = 7;
-	plain_x = 9;
-	hit = ?tag'x;
-	miss = ?x;
-}

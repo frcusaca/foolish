@@ -413,29 +413,45 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
         **STOPPED. Reported to the human.** The other 35 cases and the parity re-confirmation
         are recorded above and are not in question.
         (2026-09-18 00:00)
-- [x] **Human directed (2026-09-18): handled one broken test** — `foop/33/boolean/null_char_constant.foo`
-      is kept in `einmo_suite2/input/` (it already was, as one of the 178 shared inputs — no
-      change needed there) and now **fails visibly** rather than silently passing a wrong
-      answer: `foolish-ubca2/einmo_suite2/checked/foop/33/boolean/null_char_constant.foo.einmo`
-      and its `verified/` twin were **deleted outright** (`git rm`, not edited — no hand-authored
-      replacement content). Re-ran the gates to confirm: `einmo_suite2_gate_checked` now fails
-      with `[checked] foop/33/boolean/null_char_constant.foo.einmo: missing entirely from
-      checked/ (present in output/)`; `einmo_suite2_gate_verified` fails the same way
-      (transitively, since it escalates from Checked). Both are honest, specific, named
-      failures — not a silent wrong-answer pass and not an `#[ignore]` (which AGENTS.md forbids
-      an agent from adding to a Verified-tier gate regardless). Removed the temporary
+- [x] **Found a bug during this work (human directed, 2026-09-18): `foolish-ubca2` accepts a
+      conflicting redefinition of a named creation (`'True = 3`) that FOOP-33 §4 says must
+      refuse.** It impacts exactly **one** einmo case:
+      `foop/33/boolean/null_char_constant.foo` — this case already existed (one of the 178
+      shared inputs) and already demonstrates the bug end-to-end (its own input comment states
+      the rule, UBCa's checked baseline shows the correct refusal), so **no new covering case
+      needed to be created** — the existing case IS the failing-test requirement this pattern
+      demands. `checked/` and its `verified/` twin were **deleted outright** (`git rm`, not
+      edited — no hand-authored replacement content), after consulting the human, so the case
+      **fails visibly** instead of silently passing a wrong answer:
+      `einmo_suite2_gate_checked` now fails with `[checked]
+      foop/33/boolean/null_char_constant.foo.einmo: missing entirely from checked/ (present in
+      output/)`; `einmo_suite2_gate_verified` fails the same way (transitively, since it
+      escalates from Checked). Both are honest, specific, named failures — not a silent
+      wrong-answer pass and not an `#[ignore]` (which AGENTS.md forbids an agent from adding to
+      a Verified-tier gate regardless).
+
+      **All OTHER test/gate requirements remain in force unchanged — `foop/33/boolean/null_char_constant.foo`
+      is the ONLY accepted exception.** Every other case in every gate, and every other test in
+      the workspace, must stay green through the rest of this FOOP exactly as before; this entry
+      is not blanket permission to relax discipline anywhere else. Removed the temporary
       `temporary_foop86_answer_comparison` module from `ubca_snapshot_tester2.rs` — its job
-      (producing this finding) is done.
+      (producing this finding) is done. Continuing with FOOP-86 now; see the TODO checkbox below
+      for the fix.
       (2026-09-18 00:00)
-- [ ] **TODO (not this FOOP's scope — see §3.3-style guard): fix `check_rename_of_named_creation`**
-      (`foolish-ubca2/src/fvm_storage.rs:2744`) so it also refuses a conflicting redefinition of
-      a null-characterized name to a non-creation value (currently it only refuses when the RHS
-      resolves to a creation reference, so `'True = 3` slips through un-refused). Once fixed,
-      restore `foop/33/boolean/null_char_constant.foo`'s `checked/` (and, with a human's
+- [ ] **Fix the bug found above affecting `foop/33/boolean/null_char_constant.foo` (deferred
+      earlier in this plan) — not this FOOP's scope (see §3.3-style guard), flagged here for
+      whichever FOOP or session picks it up next.** Here's what is known: the bug is in
+      `check_rename_of_named_creation` (`foolish-ubca2/src/fvm_storage.rs:2744`) — it only
+      refuses when the RHS resolves to a creation reference (it is written to catch renaming a
+      creation to a SECOND name, e.g. `'other = 'True`), so it returns early, un-refused, when
+      the RHS is a plain non-creation value like `3`. It needs a second condition: also refuse
+      when a null-characterized name's existing value is a creation and the new RHS is a
+      **different** value of any kind, not only when the new RHS is itself a creation. Once
+      fixed, restore `foop/33/boolean/null_char_constant.foo`'s `checked/` (and, with a human's
       signing key, `verified/`) artifacts reflecting the CORRECT NK/refusal answer — do not
       hand-author them without running the fixed code, per this project's promotion discipline.
-      This is a follow-on task, flagged here for whichever FOOP or session picks it up next;
-      FOOP-86 does not fix it.
+      **Confirm the fix makes this case pass** (it already has failing coverage — the deletion
+      above — so the fix has something concrete to make green) before this box is checked.
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       **Full workspace run, post-deletion**: `einmo_suite2_gate_checked` and
       `einmo_suite2_gate_verified` fail as intended (the one case above); every other test is
@@ -450,27 +466,51 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > green. Do the `git mv` and NOTHING ELSE first, so that if §4.3's analysis is wrong it is
 > wrong in isolation and immediately visible.
 
-- [ ] (read §4.3 and §4.4 of [`FOOP-86.md`](FOOP-86.md) — especially stop condition 4)
-- [ ] Establish relevant tests for this
+- [x] (read §4.3 and §4.4 of [`FOOP-86.md`](FOOP-86.md) — especially stop condition 4)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates; run unit tests:
      `foolish-ubca2::einmo_suite2_gate_output`, `foolish-ubca2::einmo_suite2_gate_checked`,
      `foolish-ubca2::einmo_suite2_gate_verified`,
      `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`.
 
+     **Known exception carried in from Phase 2**: `einmo_suite2_gate_checked` and
+     `einmo_suite2_gate_verified` are EXPECTED to fail on exactly one case
+     (`foop/33/boolean/null_char_constant.foo`, missing-from-checked by deliberate deletion,
+     per the human-directed TODO). Every OTHER case in every gate must stay green throughout
+     Phase 3; that one case's continued (expected) redness is not itself a new STOP, but any
+     ADDITIONAL failure is.
+      (2026-09-18 00:00)
+
 ### 3a — Retire the old suite and its gates
 
-- [ ] Record the final green run of `einmo_suite2_has_every_einmo_suite_input` — this is the
+- [x] Record the final green run of `einmo_suite2_has_every_einmo_suite_input` — this is the
       **record that parity held** before the comparand is removed (§4.5)
-- [ ] Delete `foolish-ubca2/src/ubca_snapshot_tester.rs` (231 lines — the OLD suite's three
-      gates and its lossy-bridge adapter, §4.2)
-- [ ] Delete `foolish-ubca2/einmo_suite/` (179 inputs, 179 checked, **179 verified**)
-- [ ] Delete `einmo_suite2_has_every_einmo_suite_input` from `ubca_snapshot_tester2.rs` (§4.5 —
+      (2026-09-18 00:00, see result below)
+- [x] Delete `foolish-ubca2/src/ubca_snapshot_tester.rs` (231 lines — the OLD suite's three
+      gates and its lossy-bridge adapter, §4.2). Confirmed 231 lines exactly before deletion,
+      matching §4.2.
+      (2026-09-18 00:00)
+- [x] Delete `foolish-ubca2/einmo_suite/` (179 inputs, 179 checked, **179 verified**)
+      (2026-09-18 00:00)
+- [x] Delete `einmo_suite2_has_every_einmo_suite_input` from `ubca_snapshot_tester2.rs` (§4.5 —
       its referent is gone; its purpose is discharged by the run recorded above)
-- [ ] Delete the `t12_value_diff` module and `t12_report_value_differences_old_vs_new` (§4.5 —
+      (2026-09-18 00:00)
+- [x] Delete the `t12_value_diff` module and `t12_report_value_differences_old_vs_new` (§4.5 —
       FOOP-36's old-vs-new instrument; there is no old side)
-- [ ] Remove `#[cfg(test)] mod ubca_snapshot_tester;` from `foolish-ubca2/src/lib.rs`
-- [ ] `cargo test -p foolish-ubca2` — the remaining suite2 gates must still be green
+      (2026-09-18 00:00)
+- [x] Remove `#[cfg(test)] mod ubca_snapshot_tester;` from `foolish-ubca2/src/lib.rs`
+      (2026-09-18 00:00)
+- [x] `cargo test -p foolish-ubca2` — the remaining suite2 gates must still be green (**modulo**
+      the one known-red case carried in from Phase 2). **CONFIRMED**: 177 passed, 2 failed
+      (only `einmo_suite2_gate_checked`/`einmo_suite2_gate_verified`, both on the single known
+      case). One transient "catastrophe crumb" flake hit a DIFFERENT case
+      (`foop/13/concat_brane_nested_shadowed_resolution.foo`, `status: output-error`) on the
+      first run — same diagnosis as Phase 0's flake (parallel/resource-timing artifact, not a
+      code regression): restored `output/` with `git checkout --` and re-ran; the second run
+      was clean at exactly 177/2/0 with no new crumb. No additional STOP triggered.
+      (2026-09-18 00:00)
 
 ### 3b — The rename itself, in isolation
 
