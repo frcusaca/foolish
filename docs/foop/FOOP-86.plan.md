@@ -307,30 +307,119 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > different reason: it is the **last moment both signed corpora exist**, so it is the last chance
 > to ask whether the two implementations actually agree about what those 178 programs mean.
 
-- [ ] (read §4.1 of [`FOOP-86.md`](FOOP-86.md) — note the measured parity table)
-- [ ] Establish relevant tests for this
+- [x] (read §4.1 of [`FOOP-86.md`](FOOP-86.md) — note the measured parity table)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      both suites' full input listings and their `checked` artifacts (no gate change expected in this
      phase); run unit tests: `foolish-ubca2::einmo_suite2_has_every_einmo_suite_input`,
      `foolish-ubca::einmo_gate_checked`.
-- [ ] **Confirm input parity one last time, as the record**: diff `foolish-ubca/einmo_suite/input/**.foo`
+      (2026-09-18 00:00)
+- [x] **Confirm input parity one last time, as the record**: diff `foolish-ubca/einmo_suite/input/**.foo`
       against `foolish-ubca2/einmo_suite2/input/**.foo` by relative path. **Expected: 0 missing,
       3 extra** (`foop/16/comprehensive.foo`, `foop/36/comprehensive.foo`,
       `foop/36/rendering_contract.foo`). Write the result into this plan.
       **⛔ If anything IS missing, STOP** — §4.1's central claim would be wrong.
-- [ ] **Compare the two evaluators' attested ANSWERS** for the 178 shared inputs: UBCa's
+      **CONFIRMED, re-measured**: 0 missing, exactly 3 extra (the same three named above). No
+      STOP triggered on parity.
+      (2026-09-18 00:00)
+- [x] **Compare the two evaluators' attested ANSWERS** for the 178 shared inputs: UBCa's
       `checked/` OUTPUT against the survivor's, normalized for the rendering difference (the
       two suites render differently by design — FOOP-36's whole subject — so compare *meaning*,
       not bytes; `t12_value_diff`'s `normalize` in `ubca_snapshot_tester2.rs` is prior art for
-      exactly this and may be reused before it is deleted in Phase 3a)
+      exactly this and may be reused before it is deleted in Phase 3a).
+
+      **Method**: added a temporary test, `temporary_foop86_do_the_two_evaluators_agree` (in
+      `foolish-ubca2/src/ubca_snapshot_tester2.rs`, to be removed before this phase closes — it
+      is a one-off comparison instrument, not a surviving test, per this phase's own scope). It
+      reused `t12_value_diff`'s `normalize` (whitespace/comment stripping, NYES-token removal)
+      and its digit-extraction technique after additionally stripping the old renderer's
+      `?(pattern=..., ECONSTANIC)`-style "machinery" groups, comparing all 178 shared inputs'
+      `checked/` OUTPUT sections between `foolish-ubca/einmo_suite` and `foolish-ubca2/einmo_suite2`.
+
+      **Result: 178 shared inputs, 0 missing on either side (confirms parity again); 77 differ
+      textually after normalization (expected — genuinely different renderers); of those, 36
+      differ even at the digit-stream level.** All 36 were read case-by-case (input semantics
+      checked against each rendered output, via a forked review) and classified:
+
+      - **35 are rendering-only artifacts**, not disagreements: (a) UBCa's old FIR-internal
+        renderer re-embeds an already-shown sub-value's digits inside `?(result=…, pattern=…)`/
+        `⨃(elements=…)`/`Op+(…)` machinery dumps that ubca2's terser Foolish-mode sugar
+        (`<x>`, `pt <<nowhere>>`) doesn't repeat — same value, shown twice on one side;
+        (b) ubca2's Foolish-mode NK/failure annotations name the literal operand in the
+        `!! NK: …` comment (`d = #-100 !! NK: unknown`) where UBCa's old renderer omitted it
+        (`d=#(offset=-100, UNANCHORED, NK)`) — both sides agree the result is NK, one just says
+        more about why; (c) one case (`foop/62/infinite_loop.foo`) is an artifact of the
+        comparison script itself, not the evaluators — my `normalize` strips ubca2's
+        `!!`-comment-only iteration-limit banner line entirely, losing its "9999" digits, while
+        both evaluators actually agree the program hits the step cap unsettled.
+      - **1 is a genuine semantic disagreement — independently re-verified directly (not just
+        taking the forked review's word for it) by reading both full checked `.einmo` files
+        byte-for-byte:**
+
+        **`foop/33/boolean/null_char_constant.foo`** — identical input on both sides:
+        ```
+        restate = 'True;
+        'True = 'True;
+        conflict = 'True;
+        'True = 3;
+        ```
+        with the input's own comment stating the rule under test (FOOP-33 §4): a
+        null-characterized name already bound may be **re-stated to an equal value** but a
+        **conflicting redefinition must refuse** (NF, `'True not-foolish`).
+
+        **UBCa's checked OUTPUT** (`foolish-ubca/einmo_suite/checked/foop/33/boolean/null_char_constant.foo.einmo`):
+        ```
+        {NK
+          restate='True;
+          'True='True;
+          conflict='True;
+          'True=??? ('True not-foolish)
+        }
+        ```
+        Refuses `'True = 3` exactly as the comment specifies; brane settles NK.
+
+        **ubca2's checked OUTPUT** (`foolish-ubca2/einmo_suite2/checked/foop/33/boolean/null_char_constant.foo.einmo`):
+        ```
+        {
+          restate = 'True;
+          'True = 'True;
+          conflict = 'True;
+          'True = 3
+        }
+        ```
+        `status: normal` — accepts the literal RHS `3`, no refusal, brane not NK. **The two
+        evaluators disagree about whether this program is even legal Foolish.** This baseline
+        has a `verified/` twin on **both** sides (human-attested 2026-09-07 for ubca2's), so a
+        human signed off on ubca2's answer here too — the disagreement was not caught at
+        attestation time.
+
+        **Root cause, read but not fixed** (identifying it is useful context, fixing it is not
+        this phase's call): `foolish-ubca2/src/fvm_storage.rs:2744`'s
+        `check_rename_of_named_creation` only refuses when the RHS *resolves to a creation
+        reference* (`matches!(storage.get(resolved), FirSpec::Creation)`) — it is written to
+        catch renaming a creation to a SECOND name (`'other = 'True`), and returns early,
+        un-refusing, when the RHS is a plain value like `3` that is not a creation at all. It
+        appears to be checking the wrong condition for THIS rule (conflicting redefinition to
+        a non-creation value), not merely missing a case.
 - [ ] Report the result to the human in ONE message.
   - [ ] **If the answers agree** (the expected outcome): record it and proceed. This is the
         closing record of the two implementations' agreement.
-  - [ ] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
+  - [x] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
         differing about what a program means is a bug in at least one of them (AGENTS.md), and
         it is information that **cannot be recovered after the merge**. It is not an agent's
         call which evaluator was right.
+
+        **STOPPED. Reported to the human below. Phase 2 does not proceed past this box until
+        the human responds** — per this checkbox's own instruction and the plan's standing
+        rule that a genuine disagreement is never an agent's call to resolve. The other 35
+        cases and the parity re-confirmation are recorded above and are not in question.
+        (2026-09-18 00:00)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
+      **Blocked pending the human's response to the STOP above** — the temporary comparison
+      test and its module are still present in `foolish-ubca2/src/ubca_snapshot_tester2.rs` and
+      must be removed (they were never meant to survive this phase) once Phase 2 is cleared to
+      close; leaving them in briefly does not affect any existing test's pass/fail.
 
 ## Phase 3 — The einmo suite rename (§4.3, §4.4)
 
