@@ -113,41 +113,76 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 
 ## Phase 0 — Begin, baseline, and the open questions
 
-- [ ] Read [`FOOP-86.md`](FOOP-86.md) in full — especially §0.3 (why this order), §0.5 (what is
+- [x] Read [`FOOP-86.md`](FOOP-86.md) in full — especially §0.3 (why this order), §0.5 (what is
       actually in the tree re Euler-1), §1.2 (the trap), §4.3 (rename mechanics).
-- [ ] Establish relevant tests for this
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the
      whole `foolish-ubca2/einmo_suite2` suite via its three gates, and the whole
      `foolish-ubca/einmo_suite` suite via its three gates; run unit tests:
      `foolish-ubca2::einmo_suite2_gate_output`, `foolish-ubca2::einmo_suite2_gate_checked`,
      `foolish-ubca2::einmo_suite2_gate_verified`,
      `foolish-ubca2::einmo_suite2_has_every_einmo_suite_input`, `foolish-ubca::einmo_gate_checked`.
-- [ ] Record the **before** baseline in this plan, as literal numbers:
-  - [ ] `cargo test --workspace` total passing (expected **791**)
-  - [ ] Per-crate test counts for `foolish-ubca`, `foolish-ubca2`, `foolish-core`, `einmo`
-  - [ ] `cargo clippy --workspace -- -D warnings` — record the **pre-existing** error count and
-        the files. MEMORY notes 4 pre-existing errors in `foolish-core/src/sequencer.rs`. This
-        FOOP does not fix them (§3.3) and must not be blamed for them.
-  - [ ] Verify the three suites' counts against the Orientation table
-- [ ] Verify §0.5's claim against the tree: confirm `future_exercise_inputs/project_euler/` holds
+      (2026-09-18 00:00)
+- [x] Record the **before** baseline in this plan, as literal numbers:
+  - [x] `cargo test --workspace` total passing (expected **791**) — **CONFIRMED: 791 passed, 0
+        failed, 1 ignored** (the ignored one is a doctest in `foolish-ubca`,
+        `evaluator.rs::step_until`). Matches the plan's expected baseline exactly.
+        (2026-09-18 00:00)
+  - [x] Per-crate test counts for `foolish-ubca`, `foolish-ubca2`, `foolish-core`, `einmo` (all
+        via `--lib`): `foolish-core` 84, `foolish-parser` 62, `foolish-ubca` 328, `foolish-ubca2`
+        184, `einmo` 133, `foolish-cli` 0 (no test module yet, matches §T3's premise). Sum =
+        84+62+328+184+133 = **791**.
+        (2026-09-18 00:00)
+  - [x] `cargo clippy --workspace --all-targets --all-features -- -D warnings` — recorded the
+        **pre-existing** error count: exactly **4** errors, all
+        `clippy::iter_next_slice` ("using `.iter_mut().next()` on an array"), all in
+        `foolish-core/src/sequencer.rs` at lines **187, 537, 563, 743**. This matches MEMORY's
+        note precisely. The build stops at `foolish-core` (blocking clippy from even reaching
+        later crates in that invocation), but this is pre-existing and out of scope — §3.3
+        forbids editing `foolish-core/src/` in this FOOP. Not blamed on this FOOP.
+        (2026-09-18 00:00)
+  - [x] Verify the three suites' counts against the Orientation table — **CONFIRMED exactly**:
+        `foolish-ubca/einmo_suite` 178/178/178 (input/checked/verified), `foolish-ubca2/einmo_suite`
+        (old) 179/179/179, `foolish-ubca2/einmo_suite2` 181/181/181.
+        (2026-09-18 00:00)
+- [x] Verify §0.5's claim against the tree: confirm `future_exercise_inputs/project_euler/` holds
       only `1.foo.disabled` and `1.py`, and that neither suite's `input/` has an `exercises/`
       tree. **If a euler or fib einmo case IS found, STOP** — §0.5's reasoning would be wrong.
-- [ ] Record the **already-decided** items in the plan log so they are not reopened (see
+      **CONFIRMED**: `future_exercise_inputs/project_euler/` contains exactly `1.py` and
+      `1.foo.disabled`, nothing else in the tree matches `*euler*`/`*fib*`. Both suites'
+      `input/` trees hold only `regression/`, `misc/`, `foop/` — no `exercises/` directory
+      anywhere. No STOP triggered.
+      (2026-09-18 00:00)
+- [x] Confirmed input parity ahead of Phase 2 (measurement re-used there): diffing
+      `foolish-ubca/einmo_suite/input/**.foo` against `foolish-ubca2/einmo_suite2/input/**.foo`
+      by relative path gives **0 missing, 3 extra** (`foop/16/comprehensive.foo`,
+      `foop/36/comprehensive.foo`, `foop/36/rendering_contract.foo`) — exactly as §4.1 states.
+      Also confirmed **Q7**: `zweimomo` does not exist anywhere under `/yolo/foolish` (only an
+      unrelated worktree, `.claude/worktrees/foop-55-event-handlers/zweimomo`, has a directory
+      by that name, and it is not a member of this workspace's `Cargo.toml`). AGENTS.md's crate
+      list is indeed stale on this point, as §Q7 already flagged.
+      (2026-09-18 00:00)
+- [x] Record the **already-decided** items in the plan log so they are not reopened (see
       Orientation §"Decisions already made"): **Q1** discard UBCa's attestations; **Q3** delete
       outright, no tag; **Q4** keep `Detailed`, rewrite arena-native; **naming** the crate stays
       `foolish-ubca2` and public types keep their names (FOOP-86 §5)
-- [ ] Put the four REMAINING questions to the human in ONE message, with FOOP-86's
+      (2026-09-18 00:00)
+- [x] Put the four REMAINING questions to the human in ONE message, with FOOP-86's
       recommendations — **none of these blocks starting work**, so do not wait on them:
-  - [ ] **Q2** — `cmd_compile`'s fate. Phase 1 reads first and decides; ask the human only if
+  - [x] **Q2** — `cmd_compile`'s fate. Phase 1 reads first and decides; ask the human only if
         the answer is "retain a `core_fir` conversion", which would contradict deliverable 3
-  - [ ] **Q5** — do the two evaluators' attested answers agree on the 178 shared inputs?
+  - [x] **Q5** — do the two evaluators' attested answers agree on the 178 shared inputs?
         Phase 2 produces it; informational unless a disagreement surfaces
-  - [ ] **Q6** — do README/AGENTS.md updates belong here? (rec: yes; `foop.md` and old plans no)
-  - [ ] **Q7** — `zweimomo` is listed in AGENTS.md but absent from the tree — documentation
-        finding, raised not fixed
-- [ ] Remind the human: *"Above message comes from FOOP-86, retiring UBCa so foolish-ubca2
+  - [x] **Q6** — do README/AGENTS.md updates belong here? (rec: yes; `foop.md` and old plans no)
+  - [x] **Q7** — `zweimomo` is listed in AGENTS.md but absent from the tree — documentation
+        finding, raised not fixed. Confirmed above: not present anywhere under `/yolo/foolish`,
+        not a workspace member.
+      (2026-09-18 00:00, message sent to human in this session per below)
+- [x] Remind the human: *"Above message comes from FOOP-86, retiring UBCa so foolish-ubca2
       becomes the implementation; the worktree is at
       /yolo/foolish_worktrees/foop-86-retire-ubca. PTAL"*
+      (2026-09-18 00:00)
 - [ ] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
       frontmatter of `FOOP-86.md`
 - [ ] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`

@@ -7,7 +7,7 @@ type: Standards
 created: 2026-09-16
 phase: phase-4
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-86: Retire UBCa — `foolish-ubca2` becomes the implementation
