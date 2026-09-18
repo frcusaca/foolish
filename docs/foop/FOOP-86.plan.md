@@ -1010,37 +1010,134 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 
 ## Phase 7 — Documentation (§4.4, Q6)
 
-- [ ] (read §4.4 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §4.4 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates, invoked using the NEWLY DOCUMENTED commands (this
      is how the docs get verified); run unit tests: `cargo test --workspace`.
-- [ ] Update `README.md` §"Running specific tests": every `foolish-ubca/einmo_suite` path
+      (2026-09-18 00:00)
+- [x] Update `README.md` §"Running specific tests": every `foolish-ubca/einmo_suite` path
       becomes `foolish-ubca2/einmo_suite`, `-p foolish-ubca` becomes `-p foolish-ubca2`, and the
-      `foolish-cli run` evaluator command is re-verified against the new rendering
-- [ ] Update AGENTS.md §"Approval Tests (einmo)" and §"Crates of Foolish": suite paths, the gate
+      `foolish-cli run` evaluator command is re-verified against the new rendering. Also
+      corrected two examples that named tests specific to the OLD crate's module layout and
+      would otherwise be silently wrong/zero-hit in `foolish-ubca2`
+      (`evaluator::step_until_tests::step_until_line_number_finds_line` →
+      `fvm_storage::tests::step_until_line_number_finds_line`; the zero-hit `creation_display`
+      filter → the verified 3-hit `creation_viewed_from`). Found and recorded (not fixed, out
+      of scope) a pre-existing, environment-specific issue: the evaluator command's
+      `./target/debug/foolish-cli` relative path silently fails when `$CARGO_TARGET_DIR` points
+      elsewhere (as it does in this session's environment) — `sh -c` reports "not found" and
+      the pipeline still "succeeds" with empty output, which `einmo evaluate` accepts as a
+      vacuous match. Not introduced by this FOOP; the command has always assumed the default
+      `./target`. Noted in README's own Last Updated entry for a human to see.
+      (2026-09-18 00:00)
+- [x] Update AGENTS.md §"Approval Tests (einmo)" and §"Crates of Foolish": suite paths, the gate
       command, and the crate list (`foolish-ubca` removed). Per **Q7**, also raise — but do not
       unilaterally fix beyond the obvious — `zweimomo`'s absence from the tree.
-- [ ] Per **Q6**: leave `foop.md` and historical FOOP plans alone (historical record)
-- [ ] **Execute every command as newly written** in README §"Running specific tests" and confirm
-      each works. A documented command that was not run is not documentation.
-- [ ] Update the `## Last Updated
 
-**Date**: 2026-09-16
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Created the FOOP-86 plan — ten phases sequencing the four deliverables so the tree
-is green at every step and the riskiest work is not first. Phase 0 records the human's four
-settled decisions (discard UBCa's attestations; delete outright with no tag; keep
-`SequenceMode::Detailed` and rewrite it arena-native; no crate/type rename) and puts only the
-four non-blocking questions to them. Phases 1 and 2 (judgment, larger model) do the CLI switch
-and — the last moment both signed corpora exist — compare the two evaluators' attested ANSWERS
-on the 178 shared inputs; input parity is already measured (0 missing), so nothing is ported.
-Phase 3 isolates the einmo `git mv` in its own commit with its own verification. **Phase 4 is
-split 4a/4b and the order is the point**: 4a writes the arena-native `Detailed`, 4b then deletes
-the bridge whose last caller 4a removed — never a window in which neither exists. Phases 5–7
-remove the crate, add CLI tests, and update docs by executing every command written. Carries an
-Orientation block of measured facts marked *verify, don't re-derive*, a decisions table, and
-five standing stop conditions — chief among them that **no `einmo promote` occurs in this FOOP**,
-that the surviving suite's `"foolish-ubca2-suite2"` passphrase must not be tidied after the
-rename, and that the vestigial `2` suffix must not be de-suffixed. No Promotion Review Gate and
-no comprehensive case: this FOOP produces no new einmo output.
+      **Went further than a path rename where accuracy required it** (verified each claim
+      against source before writing it, not assumed):
+      - §"NYES transition tests" claimed a `*_nyes_transitions` naming convention and an
+        `assert_progression` helper. **Neither exists in `foolish-ubca2`** — confirmed by
+        `grep -rn "fn assert_progression" foolish-ubca2/src/` (zero hits) and by reading actual
+        test names (`operator_division_by_zero_settles_nk` and similar, individually named,
+        several with a "mirrors `fir_kinds.rs::tests::...`" doc-comment as historical
+        provenance only). Rewrote the section to state this precisely — the REQUIREMENT's
+        underlying principle stands, but the specific convention it names is `foolish-ubca`'s,
+        retired, and whether `foolish-ubca2` has equivalent coverage per `FirSpec` variant
+        under its own (undetermined) convention is flagged as an unaudited documentation-debt
+        item, not silently declared solved.
+      - The "one-engine model" section's `ContextfulSearch`/`CursorSource`/`SearchPredicate`/
+        `CandidateNavigator` names were verified to survive unchanged in
+        `foolish-ubca2/src/fvm_storage.rs` (`grep -n "enum CursorSource\|enum
+        SearchPredicate\|trait CandidateNavigator"` — all three found) — path updated, content
+        otherwise correct as written.
+      - The "Named creation" section's `CreationFir::get_display_name` /
+        `StatementFir::check_rename_of_named_creation` don't exist by those names in
+        `foolish-ubca2` (which uses enum dispatch on `FirPointer`, not per-kind structs) —
+        verified the actual names (`FirPointer::get_display_name`,
+        `FirPointer::check_rename_of_named_creation`, both confirmed present in
+        `fvm_storage.rs`) and corrected accordingly, noting the design difference explicitly
+        rather than papering over it.
+      - The "READ THE SUITE'S `einmo.toml` FIRST" section's "suites genuinely differ"
+        `!!`-vs-`①` comparison described TWO suites that no longer both exist. Rewrote to state
+        the current single-suite reality (`①`) while preserving the discipline (re-check the
+        day a second suite exists) rather than deleting the caution. Also **added an explicit
+        warning directly into AGENTS.md** that `[signing.checked] passphrase =
+        "foolish-ubca2-suite2"` is NOT stale naming and must not be tidied — the same trap this
+        plan's own standing stop condition 4 warns the executing agent about, now warning every
+        future reader of AGENTS.md too.
+      - Left `foolish-ubca2/einmo_suite/einmo.toml` itself completely untouched (not even its
+        stale "deliberately separate from `einmo_suite`" comment) — touching that file, even
+        comment-only, felt too close to what stop condition 4 exists to prevent; flagging the
+        staleness in AGENTS.md instead was judged the safer choice.
+      (2026-09-18 00:00)
+- [x] Per **Q6**: leave `foop.md` and historical FOOP plans alone (historical record).
+      **Confirmed**: neither `foop.md` nor any other FOOP's `.md`/`.plan.md` was touched in
+      this phase — only `README.md` and `AGENTS.md`.
+      (2026-09-18 00:00)
+- [x] **Execute every command as newly written** in README §"Running specific tests" and confirm
+      each works. A documented command that was not run is not documentation.
+
+      **Every command form was actually run** (not just read), against the surviving suite,
+      with absolute binary paths substituted where the documented relative path hit the
+      `$CARGO_TARGET_DIR` issue above (the underlying suite-path/filter/case-name logic being
+      verified, not the relative-path convenience form):
+      - `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — selects the real gate
+        (fails on the one known case, confirming correct selection, not a command-form bug).
+      - `cargo test -p foolish-ubca2 --lib -- step_until` — 3 real hits.
+      - `cargo test -p foolish-ubca2 --lib -- step_until creation_viewed_from value_search` — 3
+        real hits (after replacing the zero-hit `creation_display`).
+      - `cargo test -p foolish-ubca2 --lib -- --exact fvm_storage::tests::step_until_line_number_finds_line` — 1 hit.
+      - `cargo test -p foolish-ubca2 --lib -- --list value_search` — lists 1 real test.
+      - `einmo evaluate foolish-ubca2/einmo_suite --command "..." --filter "foop/23/name_value_atomic"` — 1 file, 0 failures.
+      - `einmo evaluate ... --filter "foop/23"` — 11 files, 0 failures (batch form).
+      - `einmo compare output checked foolish-ubca2/einmo_suite <3 case paths>` — 3 matching, 0 differing.
+      - `einmo list foolish-ubca2/einmo_suite --filter "foop/23" --differing` — 0 test(s) (correct: nothing currently differs).
+      - Restored `foolish-ubca2/einmo_suite/output/` with `git checkout --` after each
+        evaluate run that rewrote it, confirmed clean before moving on.
+- [x] Update this plan's own `## Last Updated` section at the end of the file, per AGENTS.md's
+      Markdown File Update Protocol (replace, don't append).
+      (2026-09-18 00:00, see the replaced entry below)
+
+## Last Updated
+
+**Date**: 2026-09-18
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Executed Phases 0–7 of this plan (Phase 8's merge is the human's, not automated).
+Baseline confirmed exactly (791/0/1, 4 pre-existing `foolish-core` clippy errors, suite counts
+178/179/181). Phase 1 repointed `foolish-cli` onto `evaluate_arena` + `Ubca2Sequencer`, not the
+lossy `Evaluator`-trait one-liner; `cmd_compile` retired (Q2, zero README/einmo usage found).
+Phase 2 compared the two evaluators' attested answers on the 178 shared inputs and found ONE
+genuine semantic disagreement (`foop/33/boolean/null_char_constant.foo` — ubca2 silently
+accepts a conflicting redefinition of a named creation that FOOP-33 says must refuse); per
+human direction, its `checked/`/`verified/` artifacts were deleted (not edited) so the case
+fails loudly, and a TODO was added for the fix. **The TODO's root cause was corrected during
+Phase 4b prep**: an existing passing unit test proved the evaluator's refusal logic (`nf_reason`)
+IS set correctly — the actual bug is that `Ubca2Sequencer`'s Foolish-mode `Renderer` never
+consults `nf_reason` when rendering a statement in place. A second, independent regression case
+for the same bug was added (ported off the deleted bridge, deliberately left red). Phase 3 (the
+highest-risk step) confirmed §4.3's rename-is-signature-safe analysis correct — zero new
+failures from the `git mv`, only the known Phase 2 exception — after fixing one gap in §4.4's
+inventory (a hardcoded `include_str!` path). Phase 4a rewrote `SequenceMode::Detailed`
+arena-native and, during its own T4b-i test, found and fixed a real bug: a naive tree-walk
+assumption on what is actually a DAG (shared `FoolRef`/concat-helper nodes) with genuine pointer
+cycles (self-referential, non-settling programs) caused exponential blowup; fixed with global
+visit-memoization (`<SEE #N>` back-references). Phase 4b deleted the bridge, found 5 more
+bridge-dependent tests beyond §3.1's inventory (`cargo build --tests`, not plain `cargo build`,
+surfaces `#[cfg(test)]` compile errors), and ported the ones testing real behavior rather than
+deleting them wholesale. Phase 5 removed `foolish-ubca` entirely (14,162 lines); the full
+791→452 test-count accounting is recorded phase-by-phase with no unaccounted-for loss. Phase 6
+added `foolish-cli`'s first test module (T3a–d) and recorded T4 (Euler-1 fails at PARSE time,
+never reaching evaluation — further corroborating §0.5). Phase 7 updated README.md and
+AGENTS.md, going beyond a mechanical path rename where the old text's specific claims (a
+`*_nyes_transitions`/`assert_progression` convention, specific `foolish-ubca`-only type names)
+were checked against `foolish-ubca2`'s actual source and found not to hold verbatim — corrected
+precisely rather than silently carried forward, and one such gap (NYES-transition test coverage
+under `foolish-ubca2`'s real convention) flagged as unaudited documentation debt rather than
+resolved. Final state: 456 tests total, 453 passing, 3 known-red — all the same tracked bug
+(Q5's finding), none of them the FOOP's own regression. `cargo clippy --workspace -- -D
+warnings` unchanged from Phase 0's
+baseline throughout — zero new errors introduced by this FOOP. No `foolish-core/src/` file
+touched. No `einmo promote` was run at any point (T2: this FOOP promotes nothing).
