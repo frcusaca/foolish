@@ -440,18 +440,50 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       (2026-09-18 00:00)
 - [ ] **Fix the bug found above affecting `foop/33/boolean/null_char_constant.foo` (deferred
       earlier in this plan) — not this FOOP's scope (see §3.3-style guard), flagged here for
-      whichever FOOP or session picks it up next.** Here's what is known: the bug is in
-      `check_rename_of_named_creation` (`foolish-ubca2/src/fvm_storage.rs:2744`) — it only
-      refuses when the RHS resolves to a creation reference (it is written to catch renaming a
-      creation to a SECOND name, e.g. `'other = 'True`), so it returns early, un-refused, when
-      the RHS is a plain non-creation value like `3`. It needs a second condition: also refuse
-      when a null-characterized name's existing value is a creation and the new RHS is a
-      **different** value of any kind, not only when the new RHS is itself a creation. Once
+      whichever FOOP or session picks it up next.**
+
+      **ROOT CAUSE CORRECTED (2026-09-18, discovered during Phase 4b prep) — the original
+      diagnosis above was WRONG and is superseded by this entry.** The original diagnosis
+      blamed `check_rename_of_named_creation`'s refusal *condition*. That is not the bug:
+      `nf_reason` IS correctly set to `"'True not-foolish"` on the `'True = 3` statement —
+      verified directly (`storage.nf_reason(stmt)` returns `Some("'True not-foolish")` for
+      this exact program) and independently corroborated by an EXISTING, PASSING unit test,
+      `fvm_storage::tests::evaluate_refuses_and_renders_conflicting_true_redefinition`
+      (`fvm_storage.rs`), which evaluates this identical source via
+      `foolish_core::Evaluator::evaluate` (the trait impl Phase 4b is about to delete) and
+      asserts the rendered result contains `reason: "'True not-foolish"` and `state: Nk` — and
+      that test PASSES today. So the evaluator's refusal logic is correct.
+
+      **The actual bug is in `Ubca2Sequencer`'s Foolish-mode `Renderer`
+      (`foolish-ubca2/src/sequencer.rs`), specifically `render_statement`.** It renders a
+      statement's body straight from `cursor.foolish_children().first()` (the raw WRITTEN RHS)
+      and never once calls `storage.nf_reason(statement)`. `nf_reason`'s substitution
+      (`clone_stmt_result` at `fvm_storage.rs:2645`, confirmed by reading) only fires for a
+      READER reaching the statement indirectly (a search result, a `FoolRef` clone) — never for
+      the statement rendered directly, in place, within its OWN defining brane. That is exactly
+      the difference between the two contradictory observations: the CLI/`einmo_suite` path
+      renders the brane directly (`Ubca2Sequencer::format(..., SequenceMode::Foolish)` →
+      `render_statement`) and shows the bug (`'True = 3`, no refusal); the passing unit test
+      evaluates through the OLD bridge (`.evaluate()` → `proto_to_core_fir`, a different
+      conversion path entirely) and happens to route through logic that DOES consult
+      `nf_reason`.
+
+      **The fix belongs in `render_statement` (or a shared helper it calls)**: before rendering
+      a statement's body, check `storage.nf_reason(statement)` and, if `Some(reason)`, render
+      an NK annotation carrying that reason instead of the raw written RHS — mirroring what
+      `clone_stmt_result` already does for indirect readers. `check_rename_of_named_creation`
+      itself needs **no change** — do not "fix" it; it was never broken. Once the renderer is
       fixed, restore `foop/33/boolean/null_char_constant.foo`'s `checked/` (and, with a human's
       signing key, `verified/`) artifacts reflecting the CORRECT NK/refusal answer — do not
       hand-author them without running the fixed code, per this project's promotion discipline.
       **Confirm the fix makes this case pass** (it already has failing coverage — the deletion
       above — so the fix has something concrete to make green) before this box is checked.
+
+      **A note of caution for whoever picks this up**: since `render_statement` never consults
+      `nf_reason` for ANY statement, this may not be unique to null-characterized-name refusal
+      — any other FOOP-33-style NF refusal rendered directly (not through a search) could have
+      the same gap. Worth a broader sweep, not just a point fix for this one case, but that
+      sweep is this TODO's scope to do, not FOOP-86's.
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       **Full workspace run, post-deletion**: `einmo_suite2_gate_checked` and
       `einmo_suite2_gate_verified` fail as intended (the one case above); every other test is
