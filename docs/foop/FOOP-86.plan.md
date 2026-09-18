@@ -402,7 +402,7 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
         un-refusing, when the RHS is a plain value like `3` that is not a creation at all. It
         appears to be checking the wrong condition for THIS rule (conflicting redefinition to
         a non-creation value), not merely missing a case.
-- [ ] Report the result to the human in ONE message.
+- [x] Report the result to the human in ONE message.
   - [ ] **If the answers agree** (the expected outcome): record it and proceed. This is the
         closing record of the two implementations' agreement.
   - [x] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
@@ -410,16 +410,39 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
         it is information that **cannot be recovered after the merge**. It is not an agent's
         call which evaluator was right.
 
-        **STOPPED. Reported to the human below. Phase 2 does not proceed past this box until
-        the human responds** — per this checkbox's own instruction and the plan's standing
-        rule that a genuine disagreement is never an agent's call to resolve. The other 35
-        cases and the parity re-confirmation are recorded above and are not in question.
+        **STOPPED. Reported to the human.** The other 35 cases and the parity re-confirmation
+        are recorded above and are not in question.
         (2026-09-18 00:00)
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-      **Blocked pending the human's response to the STOP above** — the temporary comparison
-      test and its module are still present in `foolish-ubca2/src/ubca_snapshot_tester2.rs` and
-      must be removed (they were never meant to survive this phase) once Phase 2 is cleared to
-      close; leaving them in briefly does not affect any existing test's pass/fail.
+- [x] **Human directed (2026-09-18): handled one broken test** — `foop/33/boolean/null_char_constant.foo`
+      is kept in `einmo_suite2/input/` (it already was, as one of the 178 shared inputs — no
+      change needed there) and now **fails visibly** rather than silently passing a wrong
+      answer: `foolish-ubca2/einmo_suite2/checked/foop/33/boolean/null_char_constant.foo.einmo`
+      and its `verified/` twin were **deleted outright** (`git rm`, not edited — no hand-authored
+      replacement content). Re-ran the gates to confirm: `einmo_suite2_gate_checked` now fails
+      with `[checked] foop/33/boolean/null_char_constant.foo.einmo: missing entirely from
+      checked/ (present in output/)`; `einmo_suite2_gate_verified` fails the same way
+      (transitively, since it escalates from Checked). Both are honest, specific, named
+      failures — not a silent wrong-answer pass and not an `#[ignore]` (which AGENTS.md forbids
+      an agent from adding to a Verified-tier gate regardless). Removed the temporary
+      `temporary_foop86_answer_comparison` module from `ubca_snapshot_tester2.rs` — its job
+      (producing this finding) is done.
+      (2026-09-18 00:00)
+- [ ] **TODO (not this FOOP's scope — see §3.3-style guard): fix `check_rename_of_named_creation`**
+      (`foolish-ubca2/src/fvm_storage.rs:2744`) so it also refuses a conflicting redefinition of
+      a null-characterized name to a non-creation value (currently it only refuses when the RHS
+      resolves to a creation reference, so `'True = 3` slips through un-refused). Once fixed,
+      restore `foop/33/boolean/null_char_constant.foo`'s `checked/` (and, with a human's
+      signing key, `verified/`) artifacts reflecting the CORRECT NK/refusal answer — do not
+      hand-author them without running the fixed code, per this project's promotion discipline.
+      This is a follow-on task, flagged here for whichever FOOP or session picks it up next;
+      FOOP-86 does not fix it.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      **Full workspace run, post-deletion**: `einmo_suite2_gate_checked` and
+      `einmo_suite2_gate_verified` fail as intended (the one case above); every other test is
+      unaffected. This is an EXPECTED failure this phase deliberately introduced per human
+      direction, not a regression to chase — Phase 3 onward must treat these two tests as
+      "red until the TODO above is fixed," not as something to silently work around or
+      `einmo promote` over.
 
 ## Phase 3 — The einmo suite rename (§4.3, §4.4)
 
