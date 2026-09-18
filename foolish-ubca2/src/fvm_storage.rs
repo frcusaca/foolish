@@ -1668,6 +1668,13 @@ impl<'s> FirCursor<'s> {
         Self { ptr, storage }
     }
 
+    /// The pointer this cursor wraps — for callers that need pointer
+    /// IDENTITY (e.g. cycle detection while walking a pre-constanic,
+    /// possibly self-referential tree), not just the node it addresses.
+    pub fn ptr(&self) -> FirPointer {
+        self.ptr
+    }
+
     /// This node's [`FirSpec`].
     pub fn node(&self) -> &'s FirSpec {
         self.storage.get(self.ptr)

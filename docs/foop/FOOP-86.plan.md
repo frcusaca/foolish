@@ -617,38 +617,96 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > **Judgment phase — larger model.** New code against the arena API, with no fixed target to
 > match: byte-compatibility with the old output is explicitly NOT required (§3.2).
 
-- [ ] (read §3.2 of [`FOOP-86.md`](FOOP-86.md) in full — what it must render, and why
+- [x] (read §3.2 of [`FOOP-86.md`](FOOP-86.md) in full — what it must render, and why
       byte-compatibility is not wanted)
-- [ ] Establish relevant tests for this
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked` (Detailed must not disturb Foolish-mode
      output); run unit tests: `foolish-ubca2::sequencer`, and as they are written
      `foolish-ubca2::detailed_renders_every_fir_kind`,
      `foolish-ubca2::detailed_shows_search_direction_and_contexting`,
      `foolish-ubca2::detailed_differs_from_foolish`, `foolish-ubca2::detailed_is_deterministic`.
-- [ ] **Keep `SequenceMode` two-variant.** Do NOT collapse the enum; do NOT change
-      `Ubca2Sequencer::format`'s signature. Only `format_detailed`'s body changes.
-- [ ] Rewrite `format_detailed` (`sequencer.rs:159-162`) to read `FVMStorage` / `FirSpec` /
+      (2026-09-18 00:00)
+- [x] **Keep `SequenceMode` two-variant.** Do NOT collapse the enum; do NOT change
+      `Ubca2Sequencer::format`'s signature. Only `format_detailed`'s body changes. **Confirmed**:
+      `SequenceMode` still has exactly `Foolish` and `Detailed`; `format`/`format_with`'s
+      signatures are byte-identical to before this phase.
+      (2026-09-18 00:00)
+- [x] Rewrite `format_detailed` (`sequencer.rs:159-162`) to read `FVMStorage` / `FirSpec` /
       `FirCursor` directly. Per §3.2 it renders, per node: the `FirSpec` variant, the NYES state
       by name, and the kind-specific fields — a search's `pattern`, `anchored`, `forward`,
       `is_value_search`, `contexted`; an operator's kind and operand order; a statement's name
-      and line number; and the `foolish_children` / `ubc_children` split
-- [ ] **Self-check**: `grep -n 'proto_to_core_fir' foolish-ubca2/src/sequencer.rs` must return
-      NOTHING outside `#[cfg(test)]`. If it does, 4b cannot proceed.
-- [ ] **T4b-i** — write `detailed_renders_every_fir_kind`: render the whole surviving corpus in
-      `Detailed`; every case must produce output without panicking
-- [ ] **T4b-ii** — write `detailed_shows_search_direction_and_contexting`: on a case with a
+      and line number; and the `foolish_children` / `ubc_children` split.
+
+      **Implemented as `DetailedRenderer`** (new struct in `sequencer.rs`), a recursive walker
+      over `FirCursor` with an exhaustive `match` on all 14 `FirSpec` variants (no catch-all
+      `_`, per `rust_instructions.md`) rendering each variant's own fields, the NYES state via
+      `Nyes`'s existing `Display` impl (`PREMBRIONIC`/`ECONSTANIC`/etc.), and separate
+      `ubc_children:`/`foolish_children:` sections per node exactly as §3.2 asks.
+
+      **Bug found and fixed during T4b-i, before any test was written to hide it**: a naive
+      first version walked the tree assuming it was a strict tree. It is not — the arena is a
+      DAG (a search's `FoolRef` and a `Concatenation`'s helper can each be reached from more
+      than one parent), and a pre-constanic, still-stepping program can hold a genuine pointer
+      CYCLE (`foop/62/infinite_loop.foo`'s `f1 = { f1 }` is exactly this, capped at the
+      9999-iteration limit and never settling). The naive version re-expanded shared subtrees
+      exponentially (confirmed: >20,000,000 node visits inside one second, capped depth 101,
+      real corpus is ~2,000 nodes) and hung on that one case. **Fixed with global
+      visit-memoization**: `render_node` labels every `FirPointer` the first time it is reached
+      (`#N`) and, on any LATER reach — whether sibling-shared or a genuine ancestor cycle, the
+      distinction does not matter for finiteness — prints a short `<SEE #N>` back-reference
+      instead of recursing again. Verified: `infinite_loop.foo`'s Detailed output is now finite
+      (78,301 bytes, terminates in milliseconds) and legible — it visibly shows the
+      self-referential `FoolRef` chain, which is exactly the debugging value §3.2 argues for.
+      Added a `FirCursor::ptr()` accessor (`fvm_storage.rs`) to make pointer identity available
+      for this — a small, justified widening (read-only identity access for a caller that
+      genuinely needs it), not a design change.
+      (2026-09-18 00:00)
+- [x] **Self-check**: `grep -n 'proto_to_core_fir' foolish-ubca2/src/sequencer.rs` must return
+      NOTHING outside `#[cfg(test)]`. If it does, 4b cannot proceed. **Confirmed**: the only two
+      hits are inside doc-comment prose referring to the OLD bridge by name for historical
+      context (not code, not a call, not `#[cfg(test)]`-gated either — but not a dependency on
+      the bridge). The functional import and the one call site are both gone. 4b may proceed.
+      (2026-09-18 00:00)
+- [x] **T4b-i** — write `detailed_renders_every_fir_kind`: render the whole surviving corpus in
+      `Detailed`; every case must produce output without panicking. **This is the test that
+      caught the DAG/cycle bug above** — it hung before the fix and passes in 0.18s after.
+      (2026-09-18 00:00)
+- [x] **T4b-ii** — write `detailed_shows_search_direction_and_contexting`: on a case with a
       contexted or forward search, assert the output names direction and contexting. **This is
       the test that proves the rewrite was worth doing** — those are fields §1.2 records the
-      bridge as dropping
-- [ ] **T4b-iii** — write `detailed_differs_from_foolish`: the two modes are genuinely different
+      bridge as dropping. Used `steps~bake&?prep` (anchored forward search, then a contexted
+      backward search from `bake`'s position) — verified this input settles correctly
+      (`back_step` = `7`, the value of `prep`) via the CLI before writing the assertion, rather
+      than assuming syntax.
+      (2026-09-18 00:00)
+- [x] **T4b-iii** — write `detailed_differs_from_foolish`: the two modes are genuinely different
       renderings of the same FIR (guards against the mode silently collapsing)
-- [ ] **T4b-iv** — write `detailed_is_deterministic`: rendering the same settled FIR twice is
+      (2026-09-18 00:00)
+- [x] **T4b-iv** — write `detailed_is_deterministic`: rendering the same settled FIR twice is
       identical
-- [ ] Replace the old delegation test at `sequencer.rs:1198` — it asserted delegation to the
-      code being deleted, so it is superseded by T4b-i…iv rather than kept
-- [ ] `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Replace the old delegation test at `sequencer.rs:1198` — it asserted delegation to the
+      code being deleted, so it is superseded by T4b-i…iv rather than kept. Removed
+      `assert_detailed_delegates` and its 5 `detailed_delegates_for_*` tests along with the
+      now-unused `proto_to_core_fir` test import.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`. `cargo fmt` applied cleanly.
+      `clippy -D warnings` still fails on the same 4 pre-existing `foolish-core` errors (Phase
+      0/1's known, out-of-scope debt) — **but also surfaces one pre-existing warning inside
+      `foolish-ubca2` itself**, `collapsible_if` at what is now `sequencer.rs:544` (nested
+      `if !suppress... { if let Some(first)... }`). Checked against `HEAD` (the commit before
+      any Phase 4a edit): this exact nested-if pattern already existed, untouched by this
+      phase's work. Left as-is — pre-existing style debt outside this FOOP's remit, same
+      discipline as the `foolish-core` errors, and a `warn`-level lint anyway (not
+      `correctness`).
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+176(+2 known-red) — `foolish-ubca2` moved from 179 to 178 (net −1:
+      +4 new T4b tests, −5 old delegation tests). `einmo_gate_checked` re-confirmed to fail on
+      only the one known case — Detailed's rewrite did not disturb Foolish-mode output.
+      (2026-09-18 00:00)
 
 ### 4b — Delete the bridge (§3.1, §3.4)
 
