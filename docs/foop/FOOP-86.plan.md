@@ -183,12 +183,31 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       becomes the implementation; the worktree is at
       /yolo/foolish_worktrees/foop-86-retire-ubca. PTAL"*
       (2026-09-18 00:00)
-- [ ] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
+- [x] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
       frontmatter of `FOOP-86.md`
-- [ ] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`
+      (2026-09-18 00:00, commit 5e4dbd88 "Major: Retire UBCa, Phase: 0--begun")
+- [x] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`
       — from here on, **ALL work including edits to FOOP-86.md and this plan happens ONLY in
       the worktree**
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      **Note on a transient flake observed here**: the first `cargo test --workspace` run in the
+      fresh worktree showed 3 failures in `foolish-ubca` (`einmo_gate_output/checked/verified`),
+      each due to a "catastrophe crumb" (`status: output-error`, "TEST IN PROGRESS — test harness
+      crashed during evaluation") written for `regression/deep_nesting_does_not_lose_values.foo`
+      and `regression/operator_does_not_block_search.foo`, with an iteration-exceeded (9999) alarm
+      on the first. Diagnosed as **parallel-execution resource contention**, not a code
+      regression: (1) no source had been touched yet, only doc/frontmatter edits; (2) running
+      `foolish-ubca`'s einmo gate in isolation (`cargo test -p foolish-ubca --lib -- einmo_gate_checked`)
+      passed cleanly; (3) the full `foolish-ubca` lib suite standalone passed 328/328; (4) a
+      second full `cargo test --workspace` run, after restoring the two mutated `output/`
+      artifacts with `git checkout --`, passed cleanly at **791 passed, 0 failed, 1 ignored** with
+      no leftover crumb. Recorded here rather than silently retried, per AGENTS.md's doubt-recording
+      discipline — future full-workspace runs in this FOOP should be re-run once before treating a
+      failure as real, and any leftover `output/` diff after a run must be checked against
+      `git status` and reverted if it is crumb noise from an interrupted parallel run, not a
+      genuine baseline change.
+      (2026-09-18 00:00)
 
 ## Phase 1 — `foolish-cli` evaluates through `foolish-ubca2` (§1)
 
