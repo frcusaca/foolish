@@ -1,0 +1,432 @@
+# FOOP-86.plan — retire-ubca
+
+**Read [`FOOP-86.md`](FOOP-86.md) in full before executing any checkbox below.** This plan
+assumes the specification's context and is meaningless without it. Work the boxes top to bottom.
+
+- **Worktree branch**: `foop-86-retire-ubca`
+- **Worktree path**: `/yolo/foolish_worktrees/foop-86-retire-ubca`
+- **Origin branch**: `jia`
+- **Origin path**: `/yolo/foolish`
+
+---
+
+## Orientation — facts measured on `jia` at `8c9043d8`
+
+**Verify, don't re-derive.** Every fact below was measured while this plan was written. If a
+check disagrees with a fact here, that is a finding: STOP and report it, do not silently adopt
+the new value.
+
+### The two APIs the CLI must use (§1.3)
+
+```rust
+// foolish-ubca2/src/evaluator.rs:16 — already pub
+pub fn evaluate_arena(&self, source: &str) -> Result<(FVMStorage, Vec<FirPointer>), String>
+
+// foolish-ubca2/src/sequencer.rs:142 — already pub
+pub fn format(storage: &FVMStorage, fir: FirPointer, mode: SequenceMode) -> String
+```
+
+Both re-exported from `foolish-ubca2/src/lib.rs`:
+`pub use sequencer::{SequenceMode, SequenceOptions, Ubca2Sequencer};` and
+`pub use evaluator::UbcaEvaluator;`. **No new public API is needed.**
+
+### The trap (§1.2) — the wrong version COMPILES and PASSES
+
+`foolish-ubca2` also implements `foolish_core::Evaluator` (`evaluator.rs:45`), and both crates
+name the type `UbcaEvaluator`. Changing `foolish-cli/src/main.rs:7` to
+`use foolish_ubca2::UbcaEvaluator;` builds and runs — and is **WRONG**, because that impl
+converts out through the lossy `proto_to_core_fir` (`evaluator.rs:52`). **If at any point the
+CLI calls `.evaluate(` rather than `.evaluate_arena(`, the phase is wrong. STOP.**
+
+### The bridge's non-test call sites (§3.1) — exactly two
+
+| File:line | Context |
+|---|---|
+| `foolish-ubca2/src/sequencer.rs:160` | `format_detailed`, reached only by `SequenceMode::Detailed` |
+| `foolish-ubca2/src/evaluator.rs:52` | `impl foolish_core::Evaluator for UbcaEvaluator` |
+
+Definitions: `fvm_storage.rs:3494` (`proto_to_core_fir`), `3504` (`_sff_body`), `3551`
+(`_sff_operand`), `3599` (`_inner`) — running to roughly `4151`, ~650 lines, module
+`core_fir_conversion`, re-exported at `fvm_storage.rs:4990`. Test-only callers:
+`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273` and `sequencer.rs:1194`.
+
+### `SequenceMode::Detailed` — KEPT, rewritten arena-native (§3.2)
+
+Declared `sequencer.rs:22`, dispatched `sequencer.rs:155`, **one** reference outside the enum —
+the test at `sequencer.rs:1198`.
+
+**Q4 is RESOLVED (human, 2026-09-16): `Detailed` STAYS.** `SequenceMode` keeps both variants and
+`Ubca2Sequencer::format`'s signature is unchanged. Only `format_detailed`'s *implementation*
+changes — from `proto_to_core_fir` + `foolish_core::FirSequencer` to an arena-native dump reading
+`FVMStorage`/`FirSpec`/`FirCursor`. **That rewrite is what lets the bridge be deleted**, which is
+why Phase 4a (write it) precedes Phase 4b (delete the bridge) and why there is never a window in
+which neither exists. **Byte-compatibility with the old output is NOT required** and the output
+is expected to differ — it can show fields the bridge dropped.
+
+### Suite counts (§4.1) — verify these before touching anything
+
+| Suite | inputs | checked | verified |
+|---|---|---|---|
+| `foolish-ubca/einmo_suite` | 178 | 178 | 178 |
+| `foolish-ubca2/einmo_suite` | 179 | 179 | 179 |
+| `foolish-ubca2/einmo_suite2` | 181 | 181 | 181 |
+
+### Why the rename is signature-safe (§4.3)
+
+- `einmo/src/verify.rs:39-45` — `verify_bytes` checks the stamp chain against the **stored file
+  bytes**. `git mv` changes no byte.
+- `einmo/src/einmo_suite.rs:605-607` — correspondence "compares only the configured sections —
+  STAMPS and metadata are excluded by design."
+- `einmo/src/config.rs:63-64` — default `MatchSections::InputOutput`.
+- Live proof: every `einmo_suite2/verified/*.einmo` already carries
+  `suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/...` — a path that no
+  longer exists — and `einmo_suite2_gate_verified` passes today.
+
+### Decisions already made — do not reopen
+
+| # | Decision | Source |
+|---|---|---|
+| **Q1** | Discard UBCa's 178 human attestations. Accepted. | human, 2026-09-16 |
+| **Q3** | `foolish-ubca` deleted outright — no tag, no archive. Git history retains it. | human, 2026-09-16 |
+| **Q4** | `SequenceMode::Detailed` KEPT, re-implemented arena-native. | human, 2026-09-16 |
+| **naming** | The crate stays `foolish-ubca2`; public types keep their names. No de-suffixing. | human, 2026-09-16 |
+
+Still open, none blocking: **Q2** (`cmd_compile`), **Q5** (do the two evaluators' attested
+answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is absent from the tree).
+
+### ⛔ Stop conditions — standing, for every phase
+
+1. **Any einmo gate goes red** → a regression THIS FOOP introduced. Fix the code. **NEVER
+   `einmo promote`** (§T2 — this FOOP promotes nothing).
+2. **Any edit needed in `foolish-core/src/`** → STOP and report (§3.3 scope guard).
+3. **Tempted to add `#[ignore]` to `einmo_gate_verified`** → STOP. Never an agent's call
+   (AGENTS.md), and this FOOP is exactly the situation that would tempt it.
+4. **The surviving `einmo.toml`'s `[signing.checked] passphrase = "foolish-ubca2-suite2"` looks
+   like stale naming after the rename** → **DO NOT CHANGE IT.** The 181 `checked/` stamps were
+   made under that string; changing it invalidates all of them.
+5. **Tempted to de-suffix `foolish-ubca2` / `Ubca2Sequencer` now that the "2" looks vestigial**
+   → **DON'T.** The human decided 2026-09-16 that the crate and its public types keep their
+   names (FOOP-86 §5). The two renames that DO happen are the suite directory and its test
+   file — nothing else.
+
+---
+
+## Phase 0 — Begin, baseline, and the open questions
+
+- [ ] Read [`FOOP-86.md`](FOOP-86.md) in full — especially §0.3 (why this order), §0.5 (what is
+      actually in the tree re Euler-1), §1.2 (the trap), §4.3 (rename mechanics).
+- [ ] Establish relevant tests for this
+     phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: the
+     whole `foolish-ubca2/einmo_suite2` suite via its three gates, and the whole
+     `foolish-ubca/einmo_suite` suite via its three gates; run unit tests:
+     `foolish-ubca2::einmo_suite2_gate_output`, `foolish-ubca2::einmo_suite2_gate_checked`,
+     `foolish-ubca2::einmo_suite2_gate_verified`,
+     `foolish-ubca2::einmo_suite2_has_every_einmo_suite_input`, `foolish-ubca::einmo_gate_checked`.
+- [ ] Record the **before** baseline in this plan, as literal numbers:
+  - [ ] `cargo test --workspace` total passing (expected **791**)
+  - [ ] Per-crate test counts for `foolish-ubca`, `foolish-ubca2`, `foolish-core`, `einmo`
+  - [ ] `cargo clippy --workspace -- -D warnings` — record the **pre-existing** error count and
+        the files. MEMORY notes 4 pre-existing errors in `foolish-core/src/sequencer.rs`. This
+        FOOP does not fix them (§3.3) and must not be blamed for them.
+  - [ ] Verify the three suites' counts against the Orientation table
+- [ ] Verify §0.5's claim against the tree: confirm `future_exercise_inputs/project_euler/` holds
+      only `1.foo.disabled` and `1.py`, and that neither suite's `input/` has an `exercises/`
+      tree. **If a euler or fib einmo case IS found, STOP** — §0.5's reasoning would be wrong.
+- [ ] Record the **already-decided** items in the plan log so they are not reopened (see
+      Orientation §"Decisions already made"): **Q1** discard UBCa's attestations; **Q3** delete
+      outright, no tag; **Q4** keep `Detailed`, rewrite arena-native; **naming** the crate stays
+      `foolish-ubca2` and public types keep their names (FOOP-86 §5)
+- [ ] Put the four REMAINING questions to the human in ONE message, with FOOP-86's
+      recommendations — **none of these blocks starting work**, so do not wait on them:
+  - [ ] **Q2** — `cmd_compile`'s fate. Phase 1 reads first and decides; ask the human only if
+        the answer is "retain a `core_fir` conversion", which would contradict deliverable 3
+  - [ ] **Q5** — do the two evaluators' attested answers agree on the 178 shared inputs?
+        Phase 2 produces it; informational unless a disagreement surfaces
+  - [ ] **Q6** — do README/AGENTS.md updates belong here? (rec: yes; `foop.md` and old plans no)
+  - [ ] **Q7** — `zweimomo` is listed in AGENTS.md but absent from the tree — documentation
+        finding, raised not fixed
+- [ ] Remind the human: *"Above message comes from FOOP-86, retiring UBCa so foolish-ubca2
+      becomes the implementation; the worktree is at
+      /yolo/foolish_worktrees/foop-86-retire-ubca. PTAL"*
+- [ ] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
+      frontmatter of `FOOP-86.md`
+- [ ] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`
+      — from here on, **ALL work including edits to FOOP-86.md and this plan happens ONLY in
+      the worktree**
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 1 — `foolish-cli` evaluates through `foolish-ubca2` (§1)
+
+> **Judgment phase — larger model.** §1.2's trap is one a small model walks into, because the
+> wrong version compiles and the tests pass.
+
+- [ ] (read §1 of [`FOOP-86.md`](FOOP-86.md), all four sub-sections)
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the `foolish-ubca2/einmo_suite2` suite via `einmo_suite2_gate_checked`; run unit tests:
+     `foolish-ubca2::einmo_suite2_gate_checked`,
+     `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`, and (once written)
+     `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`.
+- [ ] Resolve **Q2** by reading: inspect `foolish_core::fir_to_json`'s signature and what
+      `cmd_compile` actually needs. Write the decision and its reasoning into this plan.
+      **If the answer is "retain a `core_fir` conversion", STOP and ask the human** — it
+      contradicts deliverable 3.
+- [ ] Add `foolish-ubca2 = { path = "../foolish-ubca2" }` to `foolish-cli/Cargo.toml` and
+      **remove** the `foolish-ubca` line
+- [ ] Replace `foolish-cli/src/main.rs`'s `evaluate()` helper with an `evaluate_arena()` helper
+      returning `(FVMStorage, Vec<FirPointer>)` (§1.3)
+- [ ] Repoint `cmd_run` to render each `FirPointer` with
+      `Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)`
+- [ ] Repoint `cmd_step` the same way
+- [ ] Repoint `cmd_repl` the same way
+- [ ] Apply Q2's decision to `cmd_compile`
+- [ ] Remove now-unused `foolish_core` imports (`Evaluator`, `FirSequencer`, `clone_steppable`,
+      and `fir_to_json` if Q2 retired it) from `main.rs:6`
+- [ ] **Self-check the trap**: `grep -n '\.evaluate(' foolish-cli/src/` must return NOTHING.
+      If it returns a hit, the wrong API is in use — STOP (§1.2).
+- [ ] `cargo build --workspace` and `cargo run -p foolish-cli -- run` on a small `.foo`; confirm
+      by eye that the output is Foolish, not FIR internals
+- [ ] `cargo fmt` and `cargo clippy -p foolish-cli -- -D warnings`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 2 — Do the two evaluators AGREE? (§4.1, Q5)
+
+> **Judgment phase — larger model.** **No coverage is at risk and nothing needs porting** —
+> §4.1 measured it: 0 UBCa inputs are absent from the surviving suite. This phase exists for a
+> different reason: it is the **last moment both signed corpora exist**, so it is the last chance
+> to ask whether the two implementations actually agree about what those 178 programs mean.
+
+- [ ] (read §4.1 of [`FOOP-86.md`](FOOP-86.md) — note the measured parity table)
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     both suites' full input listings and their `checked` artifacts (no gate change expected in this
+     phase); run unit tests: `foolish-ubca2::einmo_suite2_has_every_einmo_suite_input`,
+     `foolish-ubca::einmo_gate_checked`.
+- [ ] **Confirm input parity one last time, as the record**: diff `foolish-ubca/einmo_suite/input/**.foo`
+      against `foolish-ubca2/einmo_suite2/input/**.foo` by relative path. **Expected: 0 missing,
+      3 extra** (`foop/16/comprehensive.foo`, `foop/36/comprehensive.foo`,
+      `foop/36/rendering_contract.foo`). Write the result into this plan.
+      **⛔ If anything IS missing, STOP** — §4.1's central claim would be wrong.
+- [ ] **Compare the two evaluators' attested ANSWERS** for the 178 shared inputs: UBCa's
+      `checked/` OUTPUT against the survivor's, normalized for the rendering difference (the
+      two suites render differently by design — FOOP-36's whole subject — so compare *meaning*,
+      not bytes; `t12_value_diff`'s `normalize` in `ubca_snapshot_tester2.rs` is prior art for
+      exactly this and may be reused before it is deleted in Phase 3a)
+- [ ] Report the result to the human in ONE message.
+  - [ ] **If the answers agree** (the expected outcome): record it and proceed. This is the
+        closing record of the two implementations' agreement.
+  - [ ] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
+        differing about what a program means is a bug in at least one of them (AGENTS.md), and
+        it is information that **cannot be recovered after the merge**. It is not an agent's
+        call which evaluator was right.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 3 — The einmo suite rename (§4.3, §4.4)
+
+> **Execution phase — smaller model.** High risk, fully specified, fixed target: three gates
+> green. Do the `git mv` and NOTHING ELSE first, so that if §4.3's analysis is wrong it is
+> wrong in isolation and immediately visible.
+
+- [ ] (read §4.3 and §4.4 of [`FOOP-86.md`](FOOP-86.md) — especially stop condition 4)
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through all three gates; run unit tests:
+     `foolish-ubca2::einmo_suite2_gate_output`, `foolish-ubca2::einmo_suite2_gate_checked`,
+     `foolish-ubca2::einmo_suite2_gate_verified`,
+     `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`.
+
+### 3a — Retire the old suite and its gates
+
+- [ ] Record the final green run of `einmo_suite2_has_every_einmo_suite_input` — this is the
+      **record that parity held** before the comparand is removed (§4.5)
+- [ ] Delete `foolish-ubca2/src/ubca_snapshot_tester.rs` (231 lines — the OLD suite's three
+      gates and its lossy-bridge adapter, §4.2)
+- [ ] Delete `foolish-ubca2/einmo_suite/` (179 inputs, 179 checked, **179 verified**)
+- [ ] Delete `einmo_suite2_has_every_einmo_suite_input` from `ubca_snapshot_tester2.rs` (§4.5 —
+      its referent is gone; its purpose is discharged by the run recorded above)
+- [ ] Delete the `t12_value_diff` module and `t12_report_value_differences_old_vs_new` (§4.5 —
+      FOOP-36's old-vs-new instrument; there is no old side)
+- [ ] Remove `#[cfg(test)] mod ubca_snapshot_tester;` from `foolish-ubca2/src/lib.rs`
+- [ ] `cargo test -p foolish-ubca2` — the remaining suite2 gates must still be green
+
+### 3b — The rename itself, in isolation
+
+- [ ] `git mv foolish-ubca2/einmo_suite2 foolish-ubca2/einmo_suite` — **and nothing else in this
+      commit**
+- [ ] Change **only** `ubca_snapshot_tester2.rs:8` to join `"einmo_suite"`
+- [ ] Run all three gates immediately. **⛔ If ANY gate goes red, STOP and report** — §4.3's
+      analysis is then wrong, and that is the finding, not something to work around.
+- [ ] Confirm stop condition 4: the moved `einmo.toml` still reads
+      `[signing.checked] passphrase = "foolish-ubca2-suite2"`. **Leave it exactly as it is.**
+- [ ] Commit this step on its own, so the rename is bisectable
+
+### 3c — Re-point the names
+
+- [ ] Rename the three gate functions: `einmo_suite2_gate_output` → `einmo_gate_output`,
+      `einmo_suite2_gate_checked` → `einmo_gate_checked`, `einmo_suite2_gate_verified` →
+      `einmo_gate_verified` (§4.4 — the substring every document already uses must keep
+      selecting the real gate)
+- [ ] Rename `einmo_suite2_dir()` → `einmo_suite_dir()`, and
+      `einmo_suite2_corpus_wide_foolish_rendering_parses` → `einmo_corpus_wide_..._parses`
+- [ ] Update the assertion messages that name "suite2"
+- [ ] **Preserve verbatim** the doc comment on the verified gate explaining it is deliberately
+      NOT `#[ignore]`d (currently `ubca_snapshot_tester2.rs:94-100`) — updating only the suite
+      name inside it
+- [ ] `git mv foolish-ubca2/src/ubca_snapshot_tester2.rs foolish-ubca2/src/ubca_snapshot_tester.rs`
+      and update `lib.rs`'s `mod` declaration
+- [ ] `cargo fmt`; run all three gates again
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 4 — Arena-native `Detailed`, then remove the bridge (§3)
+
+> **Two sub-phases, and the ORDER is the point.** 4a writes the replacement; 4b deletes what it
+> replaced. There is never a window in which neither exists.
+
+### 4a — Re-implement `format_detailed` over the arena (§3.2)
+
+> **Judgment phase — larger model.** New code against the arena API, with no fixed target to
+> match: byte-compatibility with the old output is explicitly NOT required (§3.2).
+
+- [ ] (read §3.2 of [`FOOP-86.md`](FOOP-86.md) in full — what it must render, and why
+      byte-compatibility is not wanted)
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through `einmo_gate_checked` (Detailed must not disturb Foolish-mode
+     output); run unit tests: `foolish-ubca2::sequencer`, and as they are written
+     `foolish-ubca2::detailed_renders_every_fir_kind`,
+     `foolish-ubca2::detailed_shows_search_direction_and_contexting`,
+     `foolish-ubca2::detailed_differs_from_foolish`, `foolish-ubca2::detailed_is_deterministic`.
+- [ ] **Keep `SequenceMode` two-variant.** Do NOT collapse the enum; do NOT change
+      `Ubca2Sequencer::format`'s signature. Only `format_detailed`'s body changes.
+- [ ] Rewrite `format_detailed` (`sequencer.rs:159-162`) to read `FVMStorage` / `FirSpec` /
+      `FirCursor` directly. Per §3.2 it renders, per node: the `FirSpec` variant, the NYES state
+      by name, and the kind-specific fields — a search's `pattern`, `anchored`, `forward`,
+      `is_value_search`, `contexted`; an operator's kind and operand order; a statement's name
+      and line number; and the `foolish_children` / `ubc_children` split
+- [ ] **Self-check**: `grep -n 'proto_to_core_fir' foolish-ubca2/src/sequencer.rs` must return
+      NOTHING outside `#[cfg(test)]`. If it does, 4b cannot proceed.
+- [ ] **T4b-i** — write `detailed_renders_every_fir_kind`: render the whole surviving corpus in
+      `Detailed`; every case must produce output without panicking
+- [ ] **T4b-ii** — write `detailed_shows_search_direction_and_contexting`: on a case with a
+      contexted or forward search, assert the output names direction and contexting. **This is
+      the test that proves the rewrite was worth doing** — those are fields §1.2 records the
+      bridge as dropping
+- [ ] **T4b-iii** — write `detailed_differs_from_foolish`: the two modes are genuinely different
+      renderings of the same FIR (guards against the mode silently collapsing)
+- [ ] **T4b-iv** — write `detailed_is_deterministic`: rendering the same settled FIR twice is
+      identical
+- [ ] Replace the old delegation test at `sequencer.rs:1198` — it asserted delegation to the
+      code being deleted, so it is superseded by T4b-i…iv rather than kept
+- [ ] `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 4b — Delete the bridge (§3.1, §3.4)
+
+> **Execution phase — smaller model.** The call sites are enumerated; the target is "the
+> workspace compiles with them gone." 4a has already removed one of the two.
+
+- [ ] (read §3.1, §3.3 and §3.4 of [`FOOP-86.md`](FOOP-86.md) — §3.3's scope guard especially)
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through `einmo_gate_checked` and `einmo_gate_verified`; run unit tests:
+     `foolish-ubca2::einmo_gate_checked`, `foolish-ubca2::einmo_gate_verified`,
+     `foolish-ubca2::sequencer`, `foolish-ubca2::fvm_storage`,
+     `foolish-ubca2::detailed_renders_every_fir_kind`.
+- [ ] Remove `impl foolish_core::Evaluator for UbcaEvaluator` (`evaluator.rs:45-55`) — §3.4.
+      **This is the bridge's last remaining non-test caller** now that 4a repointed the other.
+- [ ] Remove the `core_fir_conversion` bridge: `proto_to_core_fir` and its `_sff_body`,
+      `_sff_operand`, `_inner` siblings (`fvm_storage.rs:3494`–~`4151`) and the re-export at
+      `4990`
+- [ ] Remove the bridge's own tests (`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273`;
+      `sequencer.rs:1194`) — they test the removed code, not surviving behavior
+- [ ] Correct `foolish-ubca2/src/lib.rs`'s module docs: `evaluate_arena` is now the crate's one
+      production entry point, and the "two independent implementations" paragraph is no longer
+      true — rewrite it to describe a single implementation
+- [ ] **⛔ If any of the above requires editing `foolish-core/src/`, STOP and report** (§3.3).
+      `foolish_core::FirSequencer` is NOT deleted by this FOOP.
+- [ ] `cargo build --workspace`; `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 5 — Remove `foolish-ubca` (§2)
+
+> **Execution phase — smaller model.** Stop condition: if anything OUTSIDE `foolish-ubca/` must
+> change in order to delete it, STOP — that is an undiscovered dependency.
+
+- [ ] (read §2 of [`FOOP-86.md`](FOOP-86.md))
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through all three gates; run unit tests: the whole `foolish-ubca2` crate,
+     plus `cargo test --workspace`.
+- [ ] **Q3 is decided: delete outright, no tag, no archive** (human, 2026-09-16). Record the
+      commit SHA immediately before the deletion in this plan — git history retains the crate
+      regardless, so this is a convenience note, not a safety net
+- [ ] Remove `"foolish-ubca",` from the workspace `Cargo.toml:6`
+- [ ] `git rm -r foolish-ubca/` (14 171 lines of source + the 178/178/178/178 einmo suite)
+- [ ] `grep -rn "foolish.ubca\b" --include='*.rs' --include='*.toml' --include='*.sh' .` —
+      expect no hits outside `docs/` and historical FOOP plans
+- [ ] `cargo build --workspace` and `cargo test --workspace`
+- [ ] Record the **after** test count and **account for the difference** against Phase 0's
+      baseline of 791 — foolish-ubca's tests, the bridge's ~7, and §4.5's two instruments.
+      "Fewer tests pass" must never be mistaken for "tests were lost."
+- [ ] `cargo clippy --workspace -- -D warnings` — compare against Phase 0's pre-existing count;
+      **this FOOP must not add any new error**
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 6 — CLI tests and the exercise recording (§T3, §T4)
+
+- [ ] (read §Test Plan T3 and T4 of [`FOOP-86.md`](FOOP-86.md))
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through `einmo_gate_checked`; run unit tests:
+     `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`,
+     `foolish-cli::cli_step_and_repl_share_the_render_path`, `foolish-ubca2::einmo_gate_checked`.
+- [ ] **T3a** — write `cli_run_renders_foolish`: `run` on a small program emits Foolish; assert
+      the output contains no `?(pattern=`, no `Op`, and no bare NYES token
+- [ ] **T3b** — write `cli_agrees_with_einmo_adapter`: for the same source, the CLI's rendering
+      equals the einmo adapter's. **This is the test that pins §1.3** — a divergence means the
+      CLI grew its own path
+- [ ] **T3c** — write `cli_step_and_repl_share_the_render_path`: no second sequencer call site
+- [ ] **T3d** — write the test asserting Q2's decision for `cmd_compile`
+- [ ] **T4** — run `future_exercise_inputs/project_euler/1.foo.disabled` through the new CLI and
+      **record verbatim in this plan** what it produces: output, alarms, step count, or failure
+      mode. This is a RECORDING task, not an acceptance criterion — FOOP-86 is not blocked by
+      the result, and **the file stays `.disabled`** (re-enabling it belongs to FOOP-26/46).
+- [ ] `cargo fmt`; `cargo clippy --workspace -- -D warnings`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 7 — Documentation (§4.4, Q6)
+
+- [ ] (read §4.4 of [`FOOP-86.md`](FOOP-86.md))
+- [ ] Establish relevant tests for this
+     sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
+     the full surviving suite through all three gates, invoked using the NEWLY DOCUMENTED commands (this
+     is how the docs get verified); run unit tests: `cargo test --workspace`.
+- [ ] Update `README.md` §"Running specific tests": every `foolish-ubca/einmo_suite` path
+      becomes `foolish-ubca2/einmo_suite`, `-p foolish-ubca` becomes `-p foolish-ubca2`, and the
+      `foolish-cli run` evaluator command is re-verified against the new rendering
+- [ ] Update AGENTS.md §"Approval Tests (einmo)" and §"Crates of Foolish": suite paths, the gate
+      command, and the crate list (`foolish-ubca` removed). Per **Q7**, also raise — but do not
+      unilaterally fix beyond the obvious — `zweimomo`'s absence from the tree.
+- [ ] Per **Q6**: leave `foop.md` and historical FOOP plans alone (historical record)
+- [ ] **Execute every command as newly written** in README §"Running specific tests" and confirm
+      each works. A documented command that was not run is not documentation.
+- [ ] Update the `## Last Updated
+
+**Date**: 2026-09-16
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Created the FOOP-86 plan — ten phases sequencing the four deliverables so the tree
+is green at every step and the riskiest work is not first. Phase 0 records the human's four
+settled decisions (discard UBCa's attestations; delete outright with no tag; keep
+`SequenceMode::Detailed` and rewrite it arena-native; no crate/type rename) and puts only the
+four non-blocking questions to them. Phases 1 and 2 (judgment, larger model) do the CLI switch
+and — the last moment both signed corpora exist — compare the two evaluators' attested ANSWERS
+on the 178 shared inputs; input parity is already measured (0 missing), so nothing is ported.
+Phase 3 isolates the einmo `git mv` in its own commit with its own verification. **Phase 4 is
+split 4a/4b and the order is the point**: 4a writes the arena-native `Detailed`, 4b then deletes
+the bridge whose last caller 4a removed — never a window in which neither exists. Phases 5–7
+remove the crate, add CLI tests, and update docs by executing every command written. Carries an
+Orientation block of measured facts marked *verify, don't re-derive*, a decisions table, and
+five standing stop conditions — chief among them that **no `einmo promote` occurs in this FOOP**,
+that the surviving suite's `"foolish-ubca2-suite2"` passphrase must not be tidied after the
+rename, and that the vestigial `2` suffix must not be de-suffixed. No Promotion Review Gate and
+no comprehensive case: this FOOP produces no new einmo output.

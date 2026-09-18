@@ -78,6 +78,8 @@ ls | rev | sort -V | rev
 | [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
 | [FOOP-76](FOOP-76.md) | Revival of Equality — FIR equivalence with conditions | Draft | phase-4 | 2026-09-15 | Claude Code / claude-opus-5 |
+| [FOOP-86](FOOP-86.md) | Retire UBCa — foolish-ubca2 becomes the implementation | Draft | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
+| [FOOP-96](FOOP-96.md) | Split fvm_storage.rs — one file per concern | Draft | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
 
 ---
 
@@ -163,6 +165,39 @@ ls | rev | sort -V | rev
   refresh `docs/vintage_legacy/EQUIVALENCE.md` against real definitions and bring it OUT of
   `vintage_legacy/`. **Two open scope calls are the human's** — how far the vintage operator
   taxonomy goes (Q1), and whether it waits on FOOP-66 §3 Q5 (Q2)
+- [FOOP-86](FOOP-86.md) — **Retire UBCa — `foolish-ubca2` becomes the implementation.** Four
+  bundled deliverables: `foolish-cli` evaluates through `foolish-ubca2`; `foolish-ubca` (14 171
+  lines, 178-case suite) is removed; the `proto_to_core_fir` bridge (~650 lines) and
+  `SequenceMode::Detailed` are removed; `foolish-ubca2/einmo_suite` retires and `einmo_suite2`
+  is renamed onto the canonical name. **FIRST in Track 6's revised order** (see Track 6) — it
+  clears the ground so FOOP-26 and FOOP-46 add semantics against ONE evaluator, ONE sequencer
+  and ONE einmo suite. **Reverses FOOP-36 §6 ("Nothing is removed")**, which deliberately kept
+  every layer this FOOP deletes. The **CLI must use `evaluate_arena` + `Ubca2Sequencer`, NOT the
+  `foolish_core::Evaluator` trait** — the trait impl converts out through the lossy bridge, so
+  the one-line switch compiles, passes, and delivers none of FOOP-36 (§1.2). Discards **357
+  human-signed `verified/` artifacts** (178 + 179); the 181 that survive are `einmo_suite2`'s,
+  attested 2026-09-07. §4.3 determines from einmo's source that the directory rename is
+  **signature-safe** (`verify_bytes` checks stored bytes; correspondence excludes metadata —
+  INDEX's property **P6**). **Seven open questions**, two of them human calls: accepting the
+  loss of the 178-case independent cross-check (Q1) and whether `foolish-ubca` is tagged before
+  deletion (Q3)
+- [FOOP-96](FOOP-96.md) — **Split `fvm_storage.rs` — one file per concern.** A **mechanical,
+  behavior-preserving** decomposition of `foolish-ubca2/src/fvm_storage.rs` (8 282 lines — 70% of
+  the crate) along the module seams it already has: `search_engine` (377), `search_dispatch`
+  (744), `stepping` (~105), `core_fir_bridge` (~660), `compiler` (801) and `tests` (3 290) become
+  files under `fvm_storage/`, leaving a ~2 240-line core (arena, `FirSpec`, `fir_op_step`,
+  cursors). **Fills Track 6 member 4** — the "refactoring FOOP — NOT YET WRITTEN" that member and
+  FOOP-86 §N1 both record. Same shape as **FOOP-05**'s split of `fir_kinds.rs`, verified the same
+  way: the einmo gate is a byte-identity oracle, and the **791 existing tests are the whole test
+  plan** — same tests, same count, same results after every commit. **FIR Impact and UBC Step
+  Impact are both None**; there is **no Promotion Review Gate and no `comprehensive.foo`**
+  (nothing is generated, and a changed baseline would be the signal of a regression). Two
+  findings make it safe, both re-verified: every inner module already declares its needs via
+  explicit `use super::{…}`, and there are **ZERO private-internal reaches** from any inner
+  module or the test block — so no field needs widening. Separates the misnamed
+  `core_fir_conversion`, which bundles the **stepping driver** (`step_until*`, the
+  `foolish-debugging` entry points) with the **lossy bridge** FOOP-86 deletes. **Does NOT make
+  Euler-1 or fibonacci run** — that stays 26/46's deliverable
 - [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
 - [FOOP-45](FOOP-45.md) — Deadbrane (useless-element detection: directly useless, transitively
@@ -288,7 +323,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md), [FOOP-76](FOOP-76.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md), [FOOP-76](FOOP-76.md), [FOOP-86](FOOP-86.md), [FOOP-96](FOOP-96.md)
 
 ### phase-5
 
@@ -395,14 +430,35 @@ parallel worktrees will merge with friction (see P4). Order and why:
    (Track 3), and it consumes 93's `EconstanicReason::Detached`. Schedule after both tracks'
    cores merge.
 
-### Track 6 — the `foolish-ubca2` chain. Strictly sequential: 56 → 36 → 26 → 46, then 76.
+### Track 6 — the `foolish-ubca2` chain. 56 → 36 → **86** → **96** → 26 ∥ 46, then 76.
 
 **Foundation (already landed):** **FOOP-16** built `foolish-ubca2` — arena-backed FIR storage
 via copy-migration. Status `complete`; the crate is 134/134 with all three einmo gates passing.
 Everything below builds on it.
 
-All four FOOPs below edit `foolish-ubca2`, most of it the same file (`fvm_storage.rs`), so they
-cannot run in parallel worktrees. The order is dependency-driven, not preference:
+Most of this track edits `foolish-ubca2`, much of it the same file (`fvm_storage.rs`), so its
+members generally cannot run in parallel worktrees. The order is dependency-driven.
+
+> **⚠ Order revised 2026-09-16 (the human's call).** FOOP-56 and FOOP-36 have landed. The
+> **remaining** order is:
+>
+> 1. **[FOOP-86](FOOP-86.md)** — retire UBCa (**next**)
+> 2. **[FOOP-96](FOOP-96.md)** — split `foolish-ubca2/src/fvm_storage.rs` (**written 2026-09-16**)
+> 3. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
+>
+> This **supersedes** the "26 → 46 strictly sequential" statement in items 3 and 4 below and
+> FOOP-36 §"Why this should land before FOOP-26"'s implication that 26 comes straight after 36.
+> **Why**: FOOP-86 first means 26 and 46 are written against ONE evaluator, ONE sequencer and
+> ONE einmo suite — no cross-evaluator non-regression burden, no lossy `proto_to_core_fir`
+> bridge to keep in sync as they invent new FIR shapes, and one corpus to re-baseline instead of
+> three (178 + 179 + 181). The refactoring FOOP then splits a file FOOP-86 has already shrunk by
+> ~650 lines and by a whole module. **The criterion is cleanliness, not capability** — neither
+> evaluator runs Euler-1 or fibonacci, which are not einmo cases in any suite (FOOP-86 §0.5), so
+> retiring UBCa gives up no working capability. **What it does cost** is `foolish-ubca` as an
+> independent cross-check over its 178 passing cases; that is given up deliberately, before the
+> semantic FOOPs rather than after (FOOP-86 §0.4).
+
+The members, in order:
 
 1. **FOOP-56** — NYES groups: one predicate per group (`is_preconstanic` with `is_nye` as its
    alias, `is_constanic`, `is_constantew`, `is_conclusive`) and every bare "settled" qualified
@@ -418,15 +474,40 @@ cannot run in parallel worktrees. The order is dependency-driven, not preference
    26's diffs read as language rather than as FIR dumps, and its reviewers can predict expected
    output from its own spec. FOOP-36 moves no FIR, no step rule and no step count, so it costs
    26 nothing.
-3. **FOOP-26** — marks (SF/SFF as a counter), concatenation-as-operator, the three-beat step.
-   The only one of the four that changes what programs *mean*, so it should land onto a suite
-   that is already readable and a vocabulary that is already settled.
-4. **FOOP-46** — `BraneConcatOp`, a rewritten concatenation operator with phased search
-   resolution. **Split out of FOOP-26, and implements FOOP-26 §4** — its own spec states
-   "Dependencies: FOOP-26. Order: after it." FOOP-26 lands the operator's *contract* against
-   the existing implementation; 46 rewrites the implementation underneath it. If 26's changes
-   prove sufficient in practice, 46 may be reduced or dropped — decide after 26 merges, not
-   before.
+3. **[FOOP-86](FOOP-86.md)** — **retire UBCa.** `foolish-cli` moves onto `foolish-ubca2` (via
+   `evaluate_arena` + `Ubca2Sequencer`, **not** the lossy `foolish_core::Evaluator` trait);
+   `foolish-ubca` is removed; the `proto_to_core_fir` bridge and `SequenceMode::Detailed` are
+   removed; `foolish-ubca2/einmo_suite` retires and `einmo_suite2` takes the canonical name.
+   **After 36** because it retires the suite and the `Detailed` delegation that FOOP-36 §6
+   deliberately kept — this is the FOOP that reverses "Nothing is removed". **Before 26 and
+   46** because it is what lets them be written against one of everything (see the revised-order
+   note above). Discards 357 human-signed `verified/` artifacts; 181 survive.
+4. **[FOOP-96](FOOP-96.md)** — **split `fvm_storage.rs`** (written 2026-09-16; this was the
+   "refactoring FOOP — NOT YET WRITTEN" placeholder). Splits `foolish-ubca2/src/fvm_storage.rs`
+   (8 282 lines) along its existing module seams — a mechanical, zero-behavior-change
+   decomposition of the same shape as FOOP-05's split of `fir_kinds.rs`, verified the same way
+   (the einmo gate is a byte-identity oracle; the 791 existing tests are the whole test plan, and
+   there is no promotion gate because nothing is generated). **Placed here** because FOOP-86
+   first removes ~650 lines of it (the `core_fir_conversion` bridge) and removes that module
+   entirely, so the split is both smaller and free of finding a home for code that is about to
+   die — though FOOP-96 §3.1 gives the bridge its own file so the split **works either way** if
+   the schedule moves. **Its own reason to exist** is that 26 ∥ 46 cannot run in parallel
+   worktrees over one 8 000-line file without merge conflicts that are line-proximity accidents
+   rather than real disagreements. **Does NOT make Euler-1 or fibonacci run** (FOOP-96 §Abstract).
+5. **FOOP-26 ∥ FOOP-46** — **executed in parallel** (revised 2026-09-16; previously
+   "26 then 46, strictly sequential").
+   - **FOOP-26** — marks (SF/SFF as a counter), concatenation-as-operator, the three-beat step.
+     The one that changes what programs *mean*, so it lands onto a suite that is already
+     readable and a vocabulary that is already settled.
+   - **FOOP-46** — `BraneConcatOp`, a rewritten concatenation operator with phased search
+     resolution. **Split out of FOOP-26, and implements FOOP-26 §4** — its own spec still states
+     "Dependencies: FOOP-26. Order: after it.", which the parallel execution revises; the
+     dependency on 26's *contract* is unchanged, only the scheduling is. If 26's changes prove
+     sufficient in practice, 46 may be reduced or dropped.
+   - Together these are what finally make **Project Euler 1 and fibonacci run** — the goal the
+     whole chain serves. Neither is an einmo case in any suite today; the only artifact on `jia`
+     is `future_exercise_inputs/project_euler/1.foo.disabled` plus a Python reference
+     (FOOP-86 §0.5). **Re-enabling it is 26/46's acceptance test**, not FOOP-86's.
 
 **Interaction to watch — now written down in all three FOOPs (2026-09-04).** FOOP-36 §3.2
 specifies how concatenation *renders* (merged → the merged brane; unmerged → the juxtaposition
@@ -443,13 +524,13 @@ concatenation is an operator, and **`rendering_aid: ConcatRenderingAid`** (the s
 field recording which elements wrote their SF/SFF marker in source) must survive the rewrite —
 FOOP-46 §4.1 carries that one.
 
-5. **FOOP-76** — **Revival of Equality**: FIR equivalence returning `NO` / `YES` /
+6. **FOOP-76** — **Revival of Equality**: FIR equivalence returning `NO` / `YES` /
    `YES, provided [(creation, creation), …]`, plus the refresh and relocation of
    `docs/vintage_legacy/EQUIVALENCE.md`. **Broken out of FOOP-36 §N6 on 2026-09-15** at the
    human's request; FOOP-36 keeps §2.2/§2.2.1 (WHICH pair to compare — `spp` vs `spr`), and
    FOOP-76 defines HOW. **In this track because it edits `foolish-ubca2`** — it reads
    `FVMStorage`, `foolish_children` and `SYSTEM_FOO_SRC` — so it cannot run in a parallel
-   worktree against the four above. **Last in the order, but loosely so**: it changes no FIR,
+   worktree against the members above. **Last in the order, but loosely so**: it changes no FIR,
    no step rule and no step count (§FIR Impact and §UBC Step Impact are `None` and additive),
    so it neither blocks nor is blocked by 26 and 46 on semantics. What it *is* coupled to is
    **FOOP-36's T2c** — the deferred `spp` vs `spr` structural-equivalence test that FOOP-76
@@ -571,34 +652,52 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-09-15
+**Date**: 2026-09-16
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Corrected FOOP-36's master-table status from `Draft` to **`Complete`** (it merged to
-`jia` on 2026-09-07 as `d82a33b0` and its frontmatter has said `Complete` since), and gave it an
-entry in the **Complete** list noting the merge, the human-attested `einmo_suite2`, and that its
-§N6 equality design was broken out to FOOP-76. Prior entry: added **FOOP-76 — Revival of
-Equality**, the break-out of FOOP-36 §N6.
-master table, the Draft list, the **phase-4** By-Phase list, and **Track 6** as its fifth entry.
-It was **broken out of FOOP-36 §N6 on 2026-09-15** at the human's request; FOOP-36 §N6 is now a
-pointer to it, and every FOOP-36 reference that pointed into N6's subsections was repointed.
+**Changes**: Added **FOOP-96 — Split `fvm_storage.rs`; one file per concern** to the master
+table, the Draft list, the **phase-4** By-Phase list, and **Track 6**, where it **fills the
+"refactoring FOOP — NOT YET WRITTEN" placeholder** that the previous entry recorded as member 4.
+Four additive edits plus the placeholder fill: the Track 6 heading becomes
+`56 → 36 → 86 → 96 → 26 ∥ 46, then 76` (the parenthetical *(refactor)* is now a number), the
+revised-order note's item 2 names FOOP-96, and member 4's paragraph keeps its original reasoning
+while recording that the FOOP now exists. FOOP-96 is a **mechanical, behavior-preserving** split
+of the 8 282-line `foolish-ubca2/src/fvm_storage.rs` (70% of the crate) along seams it already
+has, leaving a ~2 240-line core. **FIR Impact and UBC Step Impact are both None**, the **791
+existing tests are the whole test plan**, and there is **no Promotion Review Gate and no
+`comprehensive.foo`** — nothing is generated, so a changed baseline would signal a regression
+rather than a promotion. Two re-verified findings make it safe: explicit `use super::{…}` per
+inner module, and **ZERO private-internal reaches** from any inner module or the 3 290-line test
+block, so no visibility widening is required. It **does not** make Euler-1 or fibonacci run —
+that remains 26/46's deliverable.
 
-**Placed in Track 6 (the `foolish-ubca2` chain, 56 → 36 → 26 → 46, then 76) and phase-4, matching
-FOOP-36's own phase.** The track is the operative placement: Track 6's membership rule is that its
-FOOPs all edit `foolish-ubca2`, most of it `fvm_storage.rs`, so they cannot run in parallel
-worktrees — and FOOP-76 reads `FVMStorage`, `foolish_children` and `SYSTEM_FOO_SRC`, which puts it
-squarely inside that constraint. It is **last in the order but only loosely so**: unlike 26 and 46
-it changes no FIR, no step rule and no step count (its §FIR Impact and §UBC Step Impact are `None`
-and purely additive), so it neither blocks nor is blocked by them on semantics. What genuinely
-orders it after **FOOP-36** is **T2c** — the `spp` vs `spr` structural-equivalence test FOOP-36
-deferred, which FOOP-76 supplies the relation for. Not filed under `meta` (it is language
-semantics, not process or tooling) and not phase-5 beside FOOP-66 (FOOP-66 is a *study* shipping
-prose; FOOP-76 ships a relation and its tests). Its **Q2** records the soft dependency in the
-other direction: FOOP-66 §3 **Q5** studies tree calculus's equality machinery, and whether FOOP-76
-waits for that finding or proceeds in parallel is the human's call — so FOOP-66's Draft entry now
-points forward to FOOP-76 rather than to "N6's FOOP".
+Prior entry: Added **FOOP-86 — Retire UBCa; `foolish-ubca2` becomes the implementation** to the
+master table, the Draft list, the **phase-4** By-Phase list, and **Track 6**, and **revised
+Track 6's order** to record the human's stated sequence (2026-09-16).
 
-Prior entry: added **FOOP-66** (Learn Tree Calculus) to the master table, the Draft list, and the
-**phase-5** By-Phase list, beside **FOOP-34** (Recursion Upgrades) — the project's only two
-*standalone research* FOOPs. The entry before that added **FOOP-26**, **FOOP-36**, **FOOP-46** and
-**FOOP-56** to the table and the phase-4 list, and created **Track 6 — the `foolish-ubca2`
-chain**, strictly sequential on the foundation of the already-complete FOOP-16.
+**The order is now `56 → 36 → 86 → (refactor) → 26 ∥ 46, then 76`**, replacing
+"strictly sequential: 56 → 36 → 26 → 46, then 76". Three changes to the track: FOOP-86 is
+inserted as member 3; a **not-yet-written refactoring FOOP** (splitting the 8 282-line
+`foolish-ubca2/src/fvm_storage.rs` along its existing module seams) is recorded as member 4 so
+the gap in the sequence is visible — it does not exist and FOOP-86 does not create it; and
+FOOP-26 and FOOP-46 are merged into member 5 as a **parallel** pair, which supersedes both the
+old "26 then 46, strictly sequential" statement and FOOP-46's own spec line "Dependencies:
+FOOP-26. Order: after it." (the *contract* dependency is unchanged; only the scheduling is).
+FOOP-76 renumbers 5 → 6 and its "the four above" becomes "the members above" — no other change
+to its entry.
+
+**Why FOOP-86 first**, recorded in the track's revised-order note: 26 and 46 then develop against
+ONE evaluator, ONE sequencer and ONE einmo suite — no cross-evaluator non-regression burden, no
+lossy `proto_to_core_fir` bridge to keep in sync as they invent new FIR shapes, and one corpus to
+re-baseline instead of three (178 + 179 + 181). **The criterion is cleanliness, not capability**:
+neither evaluator runs Euler-1 or fibonacci, which are **not einmo cases in any suite** — the
+only artifact on `jia` is `future_exercise_inputs/project_euler/1.foo.disabled` plus a Python
+reference — so retiring UBCa gives up no working capability. What it **does** cost is
+`foolish-ubca` as an independent cross-check over its 178 passing cases, given up deliberately
+before the semantic FOOPs rather than after. Making the exercises run is **26/46's** deliverable
+and re-enabling that disabled input is **their** acceptance test.
+
+Prior entry: corrected FOOP-36's master-table status from `Draft` to **`Complete`** (it merged to
+`jia` on 2026-09-07 as `d82a33b0`) and gave it an entry in the **Complete** list noting the merge,
+the human-attested `einmo_suite2`, and that its §N6 equality design was broken out to FOOP-76. The
+entry before that added **FOOP-76 — Revival of Equality**, the break-out of FOOP-36 §N6, placed in
+Track 6 and phase-4.

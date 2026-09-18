@@ -47,8 +47,20 @@ existing baseline moves. → **§2**
 
 The Unstay Foolishness Mark is a mark to the Foolisher and an **operator** to the evaluator: it
 copies its single content FIR with **every** SF/SFF mark on every path below stripped, then
-lets it step again. Where `<<X>>` removes one layer of deferral, `<<< X >>>` removes all of
-them. It is consumed producing its result, like any operator. → **§3**
+lets it step again. It is consumed producing its result, like any operator.
+
+**UFM runs OPPOSITE to SF/SFF, not further along the same axis** (human, 2026-09-16). SF and SFF
+**add** deferral: SF sets `under-sfm` so a copy's NYES is preserved verbatim and the subtree does
+*not* re-evaluate in its new brane; SFF defers at compile time, birthing every search beneath it
+`Econstanic`. UFM **removes** deferral — it copies under `under-ufm`, which *resets* NYES so the
+subtree re-evaluates, and it does so **even when enclosed by an SF** that would otherwise have
+preserved. It is SF/SFF's inverse, not a bulk version of them.
+
+An earlier draft of this line read "where `<<X>>` removes one layer of deferral, `<<<X>>>`
+removes all of them." **That was backwards in both halves** and is corrected here: `<<X>>` does
+not remove deferral, it creates it; and since §2 establishes that **nested marks do not defer**
+(the strip budget is deliberately not carried over), there is no ladder of layers for UFM to be
+the "all" of. → **§3**
 
 ### Change 3 — Concatenation becomes an operator, with defined ergonomics
 
