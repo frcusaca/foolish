@@ -90,14 +90,24 @@ pub(crate) struct ProtoBrane {
     /// Task queue driving this node's stepping.
     tasks: VecDeque<FirPointer>,
     alarm_reason: Option<String>,
-    /// Set only on `FirSpec::Statement` nodes, by the null-characterized
-    /// name-constant rule (`check_null_const_conflict`) or the named-creation
-    /// no-rename rule (`check_rename_of_named_creation`) — both discovered
-    /// during `fir_op_step`, never known at construction time, which is why
-    /// this lives as a runtime-set field rather than a `FirSpec::Statement`
-    /// constructor input. `None` in the common case; once set, terminal
-    /// (never cleared) — a statement refused once stays refused.
-    nf_reason: Option<String>,
+    /// The **unsteppable cause** (FOOP-86 §6.4): set only on **brane-like**
+    /// nodes, naming the statement whose presence made the rest of this
+    /// brane unsteppable — a null-characterized name given a meaning it
+    /// cannot have in this brane's context (§6.2's four routes). `None` in
+    /// the common case; once set, terminal.
+    ///
+    /// It lives on the BRANE, not on the offending statement, and that is
+    /// the whole point (§6.4): the statement itself is fine — `3` in
+    /// `'K = 3` is an honest `IndepInt`/`Independent` and must not be
+    /// marked NK — while the brane is the thing that could not finish its
+    /// work. Recording it on the statement (the superseded `nf_reason`)
+    /// put the fault exactly where readers resolve to it, which is what
+    /// leaked NK into every later reader of the name.
+    ///
+    /// Stores the CAUSE, not the boundary (§6.6 Q-A): the rendering reads
+    /// its name for the annotation, and the first unsteppable statement is
+    /// simply the next one.
+    unsteppable_cause: Option<FirPointer>,
     /// Mirrors `ConcatenationFir::_helpers_populated`. Applies ONLY to
     /// `FirSpec::Concatenation` nodes. A monotonic one-way gate distinct
     /// from "`ubc_children` is non-empty": the real field must flip `true`
@@ -199,17 +209,19 @@ impl ProtoBrane {
         self.alarm_reason.as_deref()
     }
 
-    /// `None` unless this is a `FirSpec::Statement` node that a
-    /// null-characterized-name rule has refused.
-    pub(crate) fn nf_reason(&self) -> Option<&str> {
-        self.nf_reason.as_deref()
+    /// `None` unless this brane was halted by an unsteppable statement
+    /// (FOOP-86 §6.4); then, the statement that caused it.
+    pub(crate) fn unsteppable_cause(&self) -> Option<FirPointer> {
+        self.unsteppable_cause
     }
 
-    /// The caller must check `nf_reason().is_some()` itself first — this
-    /// setter does not guard against re-setting, so a refusal already
-    /// recorded is never re-alarmed only if the caller checks before calling.
-    pub(crate) fn set_nf_reason(&mut self, reason: String) {
-        self.nf_reason = Some(reason);
+    /// Terminal and first-writer-wins: only the FIRST unsteppable statement
+    /// is recorded (§6.4 — the brane halts there, so no later one is ever
+    /// reached anyway, but a merge-time route could try twice).
+    pub(crate) fn set_unsteppable_cause(&mut self, cause: FirPointer) {
+        if self.unsteppable_cause.is_none() {
+            self.unsteppable_cause = Some(cause);
+        }
     }
 
     /// See the `helpers_populated` field's own doc comment for why this
@@ -424,22 +436,20 @@ impl FVMStorage {
         self.slots[index].payload.alarm_reason()
     }
 
-    /// Retrieve this pointer's NF (Not Foolish) reason, if any (FOOP-33 §4).
-    /// `None` for every kind other than `FirSpec::Statement`, and `None`
-    /// there too unless a null-characterized-name rule has refused this
-    /// statement. Consulted by [`FirPointer::settled_constanic_result`] to substitute
-    /// the refusal NK in place of the written body — see that method's doc
-    /// comment.
-    pub fn nf_reason(&self, ptr: FirPointer) -> Option<&str> {
+    /// This BRANE's unsteppable cause, if it was halted (FOOP-86 §6.4):
+    /// the statement that gave a null-characterized name a meaning it could
+    /// not have here. `None` for every brane that stepped to completion, and
+    /// for every non-brane kind.
+    pub fn unsteppable_cause(&self, ptr: FirPointer) -> Option<FirPointer> {
         let index = self.validate(ptr);
-        self.slots[index].payload.nf_reason()
+        self.slots[index].payload.unsteppable_cause()
     }
 
-    /// Terminal (FOOP-33 §4) — the caller owns the "already set" guard, see
-    /// `ProtoBrane::set_nf_reason`.
-    pub(crate) fn set_nf_reason(&mut self, ptr: FirPointer, reason: String) {
+    /// Records the halt (FOOP-86 §6.3). First-writer-wins — see
+    /// `ProtoBrane::set_unsteppable_cause`.
+    pub(crate) fn set_unsteppable_cause(&mut self, ptr: FirPointer, cause: FirPointer) {
         let index = self.validate(ptr);
-        self.slots[index].payload.set_nf_reason(reason);
+        self.slots[index].payload.set_unsteppable_cause(cause);
     }
 
     /// Retrieve, modify, and return in one call — the "retrieve a payload, be
@@ -576,7 +586,7 @@ impl FVMStorage {
                 ubc_children: Vec::new(),
                 tasks: VecDeque::new(),
                 alarm_reason: None,
-                nf_reason: None,
+                unsteppable_cause: None,
                 helpers_populated: false,
             },
             parent,
@@ -877,6 +887,15 @@ fn step_inner(
     if depth > MAX_DEPTH {
         return ptr;
     }
+    // FOOP-86 §6.3 — THE HALT, checked BEFORE draining the next task. A
+    // statement that became unsteppable recorded itself as this brane's
+    // cause while IT was being stepped; the remaining tasks in the queue are
+    // the statements after it, and they must never be stepped. Checking here
+    // (rather than in the brane's own `fir_op_step` arm, which only runs once
+    // the queue is already empty) is what makes "never stepped" true.
+    if halt_if_unsteppable(ptr, storage) {
+        return ptr;
+    }
     let front = storage.with_mut(ptr, |fir| fir.front_task());
     match front {
         Some(front_ptr) => {
@@ -1011,6 +1030,9 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 }
             }
             Nyes::Braning => {
+                // FOOP-86 §6.3's halt is checked in `step_inner`, before each
+                // task is drained — see there. By the time this arm runs the
+                // queue is already empty, so a halted brane never reaches it.
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
                 if let Some(nyes) = decide_nyes_due_to_children(storage, &children) {
                     storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
@@ -1498,6 +1520,64 @@ fn nyes_from_found(found: Nyes) -> Nyes {
         Nyes::Nk => Nyes::Nk,
         other => other,
     }
+}
+
+/// FOOP-86 §6.3's halt. Returns `true` when `brane` has an unsteppable cause
+/// and the halt was performed, `false` when there is nothing to halt.
+///
+/// What the halt does, in the order §6.3 specifies:
+///
+/// 1. **Stepping stops** — the remaining task queue is discarded, so no
+///    statement after the cause is ever stepped.
+/// 2. **The remainder settles `Nk`** — every statement strictly after the
+///    cause that has not reached a constanic state. This is BOOKKEEPING, not
+///    evaluation: no stepping is performed for them, no per-statement finding
+///    is computed. It is required because a literally-untouched statement sits
+///    at `Prembrionic`, which is pre-constanic — `decide_nyes_due_to_children`
+///    would then hold the brane at `Braning` forever (spinning to the
+///    iteration cap) and the renderer would annotate `!! PREMBRIONIC` instead
+///    of the NK §6.5a specifies. See §6.4's "⚠ Implementation tension".
+/// 3. **The brane takes `Nk` DIRECTLY** — not through
+///    `decide_nyes_due_to_children`. The brane is NK because it failed to
+///    finish its own work, not because a member is NK (§6.4c); a brane
+///    containing an NK value is perfectly valid. Setting it here rather than
+///    letting the rollup infer it also keeps this rule correct if the rollup's
+///    own NK-propagation is ever changed (§6.6b).
+///
+/// The statement named by `unsteppable_cause` is NOT touched — it stepped
+/// normally and reverts to Foolish with its honest value (§6.3).
+fn halt_if_unsteppable(brane: FirPointer, storage: &mut FVMStorage) -> bool {
+    let Some(cause) = storage.unsteppable_cause(brane) else {
+        return false;
+    };
+    if storage.get_nyes(brane) == Nyes::Nk {
+        return true; // already halted; nothing left to do, but still halted.
+    }
+    while storage.with_mut(brane, |fir| fir.front_task()).is_some() {
+        storage.with_mut(brane, |fir| fir.pop_front_task());
+    }
+    let statements: Vec<FirPointer> = storage.foolish_children(brane).to_vec();
+    let after_cause = statements
+        .iter()
+        .position(|&s| s == cause)
+        .map_or(statements.len(), |i| i + 1);
+    for &stmt in &statements[after_cause..] {
+        // The statement AND its body: the renderer annotates from the body
+        // (§6.5a), and `decide_nyes_due_to_children` walks statements, so
+        // both must leave the pre-constanic states or the brane spins and
+        // the output reads `!! PREMBRIONIC` instead of the specified NK.
+        let bodies: Vec<FirPointer> = storage.foolish_children(stmt).to_vec();
+        for body in bodies {
+            if !storage.get_nyes(body).is_constanic() {
+                storage.with_mut(body, |fir| fir.set_nyes(Nyes::Nk));
+            }
+        }
+        if !storage.get_nyes(stmt).is_constanic() {
+            storage.with_mut(stmt, |fir| fir.set_nyes(Nyes::Nk));
+        }
+    }
+    storage.with_mut(brane, |fir| fir.set_nyes(Nyes::Nk));
+    true
 }
 
 /// Classifies a Braning node's decided `Nyes` from its children's states, in
@@ -2636,24 +2716,24 @@ mod search_fir_dispatch {
         super::nyes_from_found(found)
     }
 
-    /// The statement a search found presents its NF-substitution value if
-    /// it's been refused (`nf_reason` set: a fresh, already-`Nk` node
-    /// instead of cloning its written RHS — `settled_constanic_result`'s own contract
-    /// requires the presented value already BE constanic, which a
-    /// `Prembrionic`-starting `FirSpec::Nk` node would not be), otherwise
-    /// its written body, cloned via `revive_constanic`.
+    /// The statement a search found presents its written body, cloned via
+    /// `revive_constanic`.
+    ///
+    /// **FOOP-86 §6.4 removed an NF-substitution branch here.** It used to
+    /// check the statement's `nf_reason` and present a fresh `Nk` node
+    /// instead of the written body — which is precisely the leak §6 exists
+    /// to close: a statement refused under FOOP-33 §4 poisoned every later
+    /// reader that resolved to it, destroying the very meaning the rule
+    /// exists to preserve. Under §6.3 the offending statement is NOT
+    /// refused at all (it reverts to Foolish and keeps its honest value);
+    /// the BRANE halts instead, so there is no poisoned value for a reader
+    /// to find.
     pub(super) fn clone_stmt_result(
         storage: &mut FVMStorage,
         stmt: FirPointer,
         new_parent: FirPointer,
         sfm: bool,
     ) -> FirPointer {
-        if let Some(reason) = storage.nf_reason(stmt) {
-            let reason = reason.to_owned();
-            let nk = storage.make_orphan_child(new_parent, FirSpec::Nk { reason });
-            storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
-            return nk;
-        }
         let body = storage
             .foolish_children(stmt)
             .first()
@@ -2688,11 +2768,12 @@ mod search_fir_dispatch {
             .or_else(|| storage.foolish_children(stmt).first().copied())
     }
 
-    /// A null-characterized statement (FOOP-33 §4) checks ITSELF, once its
-    /// body is constanic, against any EARLIER same-name null-characterized
-    /// statement (IB, then AB) — refusing (`set_nf_reason`) if the two
-    /// values are not `Equal`. Terminal: does nothing if `nf_reason` is
-    /// already set (no re-alarm once refused).
+    /// Route 1 (FOOP-86 §6.2): a null-characterized statement checks ITSELF,
+    /// once its body is constanic, against any EARLIER same-name
+    /// null-characterized statement (IB, then AB). If the two values are not
+    /// `Equal`, the statement is **unsteppable** — its name is already
+    /// defined in this context — and its brane halts (`halt_brane_at`).
+    /// Terminal: does nothing once the brane is already halted.
     pub(super) fn check_null_const_conflict(
         storage: &mut FVMStorage,
         stmt: FirPointer,
@@ -2700,7 +2781,10 @@ mod search_fir_dispatch {
         current_statement: Option<FirPointer>,
         current_brane: Option<FirPointer>,
     ) {
-        if storage.nf_reason(stmt).is_some() {
+        if stmt
+            .home_brane(storage)
+            .is_some_and(|b| storage.unsteppable_cause(b).is_some())
+        {
             return;
         }
         let pattern = match storage.get(stmt) {
@@ -2723,37 +2807,55 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            refuse_statement(storage, stmt, format!("'{name} not-foolish"));
+            halt_brane_at(storage, stmt, format!("'{name} already defined in context"));
         }
     }
 
-    /// Shared write path for both NF-refusal rules below: sets `nf_reason`
-    /// AND materializes the refusal as a fresh, already-`Nk` node pushed to
-    /// `stmt`'s `ubc_children`. This second step is required: `FirPointer::
-    /// settled_constanic_result`'s generic `ubc_children().first()` read (used
-    /// pervasively, including by read-only output serialization, which
-    /// cannot itself allocate a node on demand) must find something there to
-    /// answer `Some(nk)` for a refused statement — setting `nf_reason` alone
-    /// would leave `ubc_children` empty and `settled_constanic_result` would fall
-    /// through to the raw, unrefused written body instead.
-    fn refuse_statement(storage: &mut FVMStorage, stmt: FirPointer, reason: String) {
-        storage.set_nf_reason(stmt, reason.clone());
-        let nk = storage.make_orphan_child(stmt, FirSpec::Nk { reason });
-        storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
-        let me = storage.get_mut(stmt);
-        me.push_ubc_child(nk, Nyes::Nk);
+    /// Shared write path for every route to unsteppability (FOOP-86 §6.2's
+    /// four routes): records `stmt` as its home brane's **unsteppable
+    /// cause** and raises the run-time-error alarm on that brane (§6.2a).
+    ///
+    /// **The statement itself is left alone** — no `Nk`, no marking, no
+    /// `ubc_children` push. That is the whole design (§6.3/§6.4): `3` in
+    /// `'K = 3` is an honest `IndepInt`/`Independent` and reverts to
+    /// Foolish; what failed is the BRANE, which cannot finish stepping in a
+    /// context where a null-characterized name was given a meaning it
+    /// cannot have. The superseded `refuse_statement` marked the statement,
+    /// which put the fault exactly where readers resolve to it and leaked
+    /// NK into every later reader of the name.
+    ///
+    /// The actual halt (stop draining, set the brane `Nk`, leave the
+    /// remainder unstepped) happens in the brane's own `fir_op_step` arm,
+    /// which consults `unsteppable_cause`; this function only records.
+    fn halt_brane_at(storage: &mut FVMStorage, stmt: FirPointer, reason: String) {
+        let Some(brane) = stmt.home_brane(storage) else {
+            return;
+        };
+        if storage.unsteppable_cause(brane).is_some() {
+            return; // already halted -- first cause wins (§6.4).
+        }
+        storage.set_unsteppable_cause(brane, stmt);
+        storage.with_mut(brane, |fir| fir.set_alarm_reason(reason));
     }
 
-    /// A null-characterized statement whose constanic value resolves to a
-    /// creation with a DIFFERENT original name is refused (FOOP-33: named
-    /// creations cannot be renamed). Terminal, same guard as
-    /// `check_null_const_conflict`.
+    /// Route 4 (FOOP-86 §6.2): a null-characterized statement whose constanic
+    /// value resolves to a creation that ALREADY has a DIFFERENT original
+    /// name is **unsteppable** — named creations cannot be renamed
+    /// (FOOP-33) — and its brane halts. Folded onto the same mechanism as
+    /// routes 1–3 by human decision 2026-09-18 (§6.6 Q-C): it is the same
+    /// kind of fault (a null-characterized name given a meaning it cannot
+    /// have), and keeping it on the old per-statement `nf_reason` path would
+    /// have left §6.4's leak fixed for redefinition but not for renaming.
+    /// Terminal, same guard as `check_null_const_conflict`.
     pub(super) fn check_rename_of_named_creation(
         storage: &mut FVMStorage,
         stmt: FirPointer,
         body: FirPointer,
     ) {
-        if storage.nf_reason(stmt).is_some() {
+        if stmt
+            .home_brane(storage)
+            .is_some_and(|b| storage.unsteppable_cause(b).is_some())
+        {
             return;
         }
         let is_nully = match storage.get(stmt) {
@@ -2781,10 +2883,10 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            refuse_statement(
+            halt_brane_at(
                 storage,
                 stmt,
-                format!("'{name} not-foolish (Named creations cannot be renamed)"),
+                format!("'{name} is already a named creation"),
             );
         }
     }
@@ -2803,6 +2905,7 @@ mod search_fir_dispatch {
         storage: &mut FVMStorage,
         new_stmt: FirPointer,
         already_merged: &[FirPointer],
+        merged_brane: FirPointer,
     ) {
         let (is_nully, pattern) = match storage.get(new_stmt) {
             FirSpec::Statement { identifier, .. } => (
@@ -2836,7 +2939,18 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            refuse_statement(storage, new_stmt, format!("'{name} not-foolish"));
+            // Route 2 (FOOP-86 §6.2): the conflict arose during a
+            // concatenation merge rather than being written directly, but it
+            // is the same fault and takes the same halt. `merged_brane` (the
+            // `ConcatHelper` these clones are being added to) is passed
+            // explicitly rather than derived via `home_brane`, because the
+            // clone's parent chain is still being built at this point.
+            if storage.unsteppable_cause(merged_brane).is_none() {
+                storage.set_unsteppable_cause(merged_brane, new_stmt);
+                storage.with_mut(merged_brane, |fir| {
+                    fir.set_alarm_reason(format!("'{name} already defined in context"))
+                });
+            }
         }
     }
 
@@ -2877,7 +2991,7 @@ mod search_fir_dispatch {
                 };
                 let global_idx = cloned_stmts.len();
                 let clone = storage.revive_constanic(stmt, helper, global_idx, false, false);
-                apply_null_const_rule_to_merged_stmt(storage, clone, &cloned_stmts);
+                apply_null_const_rule_to_merged_stmt(storage, clone, &cloned_stmts, helper);
                 cloned_stmts.push(clone);
             }
         }
@@ -6815,13 +6929,25 @@ mod tests {
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
     }
 
-    // ── StatementFir NF-refusal checks (FOOP-33 §4) ─────────────────
+    // ── Unsteppable-statement checks (FOOP-86 §6, superseding FOOP-33 §4's
+    //    per-statement NF refusal) ──────────────────────────────────────
+
+    /// `true` when `stmt` is the statement that made its own brane halt —
+    /// the FOOP-86 §6.4 replacement for the superseded "this statement has
+    /// an `nf_reason`". The fault is recorded on the BRANE, naming the
+    /// statement, not on the statement itself.
+    fn is_unsteppable_cause(storage: &FVMStorage, stmt: FirPointer) -> bool {
+        stmt.home_brane(storage)
+            .and_then(|b| storage.unsteppable_cause(b))
+            == Some(stmt)
+    }
 
     /// A null-characterized statement redefining an existing same-name
-    /// null-characterized constant with a DIFFERENT value is refused: its
-    /// presented value (`nf_reason`, read via `settled_constanic_result` in the real
-    /// code — here checked directly) becomes a fresh NK, not its written
-    /// RHS.
+    /// null-characterized constant with a DIFFERENT value is **unsteppable**
+    /// (FOOP-86 §6.2 route 1): it becomes its brane's recorded cause, and
+    /// the brane halts. The statement itself keeps its honest written value
+    /// — §6.3 — so this asserts the CAUSE record, not a mark on the
+    /// statement.
     #[test]
     fn statement_null_const_conflict_is_refused() {
         let mut storage = FVMStorage::new();
@@ -6847,12 +6973,18 @@ mod tests {
 
         core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
-            storage.nf_reason(second).is_some(),
-            "redefining a null-characterized constant with a DIFFERENT value must be refused"
+            is_unsteppable_cause(&storage, second),
+            "redefining a null-characterized constant with a DIFFERENT value must make that \
+             statement its brane's unsteppable cause"
         );
         assert!(
-            storage.nf_reason(first).is_none(),
-            "the FIRST definition establishes the constant -- it is never itself refused"
+            !is_unsteppable_cause(&storage, first),
+            "the FIRST definition establishes the constant -- it is never itself the cause"
+        );
+        assert_eq!(
+            storage.get_nyes(brane),
+            Nyes::Nk,
+            "the brane halted, so it is NK -- it failed to finish its own work (§6.4c)"
         );
     }
 
@@ -6884,8 +7016,8 @@ mod tests {
 
         core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
-            storage.nf_reason(second).is_none(),
-            "restating the SAME value must be permitted, not refused"
+            !is_unsteppable_cause(&storage, second),
+            "restating the SAME value must be permitted, not unsteppable"
         );
     }
 
@@ -7015,10 +7147,16 @@ mod tests {
             .copied()
             .unwrap();
         let joined_second = FirCursor::new(helper, &storage).stmt_at(1).unwrap();
-        assert!(
-            storage.nf_reason(joined_second).is_some(),
-            "merging a conflicting null-characterized redefinition must be refused, \
-             exactly as StatementFir's own same-brane check refuses one"
+        assert_eq!(
+            storage.unsteppable_cause(helper),
+            Some(joined_second),
+            "merging a conflicting null-characterized redefinition must halt the merged brane \
+             (FOOP-86 §6.2 route 2), exactly as the same-brane check halts one"
+        );
+        assert_eq!(
+            storage.get_nyes(helper),
+            Nyes::Nk,
+            "the merged brane halted, so it is NK"
         );
     }
 
@@ -7139,9 +7277,9 @@ mod tests {
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let true_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
         assert!(
-            storage.nf_reason(true_stmt).is_some(),
+            is_unsteppable_cause(&storage, true_stmt),
             "redefining system.foo's 'True with a conflicting value (3) inside the composed \
-             user program must be refused -- nf_reason is None, meaning the NF check never fired"
+             user program must make that statement its brane's unsteppable cause (FOOP-86 §6)"
         );
     }
 
@@ -7171,8 +7309,8 @@ mod tests {
             Some("'True")
         );
         assert!(
-            storage.nf_reason(second_true_stmt).is_some(),
-            "the FOURTH statement ('True = 3, conflicting) must be refused"
+            is_unsteppable_cause(&storage, second_true_stmt),
+            "the FOURTH statement ('True = 3, conflicting) must be the unsteppable cause"
         );
     }
 
@@ -7201,17 +7339,14 @@ mod tests {
     /// arena-native path (`evaluate_arena` + `Ubca2Sequencer::format`) so it
     /// no longer depends on the deleted bridge.
     ///
-    /// **This assertion is EXPECTED TO FAIL right now, deliberately left
-    /// red rather than `#[ignore]`d** — FOOP-86 Phase 2 found that
-    /// `Ubca2Sequencer`'s Foolish-mode `Renderer::render_statement` never
-    /// consults `storage.nf_reason()` (it reads a statement's raw written
-    /// body directly), so the refusal this test's sibling assertions confirm
-    /// IS correctly recorded in the arena does not reach Foolish-mode
-    /// output. A second, independent regression case for the same
-    /// FOOP-86.plan.md Phase 2 TODO (see there for the full diagnosis and
-    /// fix location) — a red gate is the honest signal here, per this
-    /// project's incidental-bug-deferral discipline (AGENTS.md), not an
-    /// `#[ignore]` to paper over it.
+    /// **FIXED by FOOP-86 §6** (Phase 9). This was red from Phase 4b until
+    /// the Unsteppable statement landed: the refusal was correctly recorded
+    /// in the arena but never reached Foolish-mode output. It now does — the
+    /// conflicting redefinition makes its brane unsteppable (§6.2 route 1),
+    /// the brane halts and goes NK (§6.3), and the finding is announced in
+    /// the rendering (§6.5a). Here the cause is the brane's LAST statement,
+    /// so there is no following statement to carry the annotation and the
+    /// brane's opener carries it instead.
     #[test]
     fn evaluate_refuses_and_renders_conflicting_true_redefinition() {
         use crate::sequencer::{SequenceMode, Ubca2Sequencer};
@@ -7219,8 +7354,8 @@ mod tests {
         let (storage, firs) = crate::UbcaEvaluator.evaluate_arena(source).unwrap();
         let rendered = Ubca2Sequencer::format(&storage, firs[0], SequenceMode::Foolish);
         assert!(
-            rendered.contains("not-foolish"),
-            "the conflicting redefinition must render as a refusal, got: {rendered}"
+            rendered.contains("unsteppable — 'True already defined in context"),
+            "the conflicting redefinition must render as unsteppable, got: {rendered}"
         );
     }
 
@@ -7371,11 +7506,11 @@ mod tests {
         core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
         let stmts = storage.foolish_children(root).to_vec();
         assert!(
-            storage.nf_reason(stmts[0]).is_none(),
+            !is_unsteppable_cause(&storage, stmts[0]),
             "plain k=1 must never be refused by the null-const rule"
         );
         assert!(
-            storage.nf_reason(stmts[1]).is_none(),
+            !is_unsteppable_cause(&storage, stmts[1]),
             "plain k=2 must never be refused by the null-const rule"
         );
     }
@@ -7396,7 +7531,7 @@ mod tests {
         assert_eq!(FirCursor::new(c_value, &storage).stmt_count(), Some(1));
         let merged_a = FirCursor::new(c_value, &storage).stmt_at(0).unwrap();
         assert!(
-            storage.nf_reason(merged_a).is_none(),
+            !is_unsteppable_cause(&storage, merged_a),
             "single 'a merged from a concatenation with an empty operand must not be NF"
         );
     }

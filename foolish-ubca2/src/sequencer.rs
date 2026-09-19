@@ -934,10 +934,53 @@ impl<'a> Renderer<'a> {
             return vec![format!("{chars}{{}}")];
         }
 
-        let statements: Vec<Vec<String>> = (0..count)
-            .filter_map(|index| cursor.stmt_at(index))
+        // FOOP-86 §6.5a — an unsteppable statement halted this brane. The
+        // cause is the statement that gave a null-characterized name a
+        // meaning it cannot have here; everything strictly after it went
+        // unstepped. `unsteppable_at` is the index of the FIRST unsteppable
+        // statement (the one after the cause), which carries the annotation;
+        // the full-line comment marks the remainder below it.
+        let stmt_ptrs: Vec<FirPointer> = (0..count).filter_map(|i| cursor.stmt_at(i)).collect();
+        let unsteppable_at = self.storage.unsteppable_cause(fir).and_then(|cause| {
+            stmt_ptrs
+                .iter()
+                .position(|&s| s == cause)
+                .map(|i| i + 1)
+                .filter(|&i| i < stmt_ptrs.len())
+        });
+
+        let statements: Vec<Vec<String>> = stmt_ptrs
+            .iter()
             .enumerate()
-            .map(|(index, statement)| self.render_statement(statement, width, index + 1 == count))
+            .map(|(index, &statement)| {
+                let mut rendered =
+                    self.render_statement(statement, width, index + 1 == stmt_ptrs.len());
+                if unsteppable_at.is_some_and(|at| index >= at)
+                    && !self.options.suppress_sequencing_comments
+                {
+                    // This statement and everything nested inside it was
+                    // never stepped, so every annotation `annotate` derived
+                    // from a NYES in here is noise — each reports a state
+                    // reached by NOT evaluating, not a finding. Strip them
+                    // all (the whole block, not just its first line, because
+                    // an unstepped nested brane renders its own untouched
+                    // members too). The first unsteppable statement then gets
+                    // the real reason; the rest are covered by the full-line
+                    // comment above them (§6.5a).
+                    for line in rendered.iter_mut() {
+                        if let Some(at) = line.find("  !!") {
+                            line.truncate(at);
+                        }
+                    }
+                    if Some(index) == unsteppable_at
+                        && let Some(reason) = self.storage.alarm_reason(fir)
+                        && let Some(first) = rendered.first_mut()
+                    {
+                        append_before_comment(first, &format!("  !! NK: unsteppable — {reason}"));
+                    }
+                }
+                rendered
+            })
             .collect();
 
         // Foolish Standard Formatting: ONE STATEMENT PER LINE, always (§4.1.1).
@@ -949,7 +992,39 @@ impl<'a> Renderer<'a> {
         // end-of-line, so two statements sharing a line means the first one's
         // comment swallows the second.
         let mut lines = vec![format!("{chars}{{")];
-        for statement in statements {
+        // §6.5a's annotation normally rides on the FIRST UNSTEPPABLE
+        // statement — but when the cause is the brane's LAST statement there
+        // is no statement after it to carry it, and the reader would see a
+        // silently-NK brane. In that case the opener carries it instead, so
+        // the finding is never invisible.
+        if unsteppable_at.is_none()
+            && !self.options.suppress_sequencing_comments
+            && self.storage.unsteppable_cause(fir).is_some()
+            && let Some(reason) = self.storage.alarm_reason(fir)
+            && let Some(opener) = lines.first_mut()
+        {
+            opener.push_str(&format!("  !! NK: unsteppable — {reason}"));
+        }
+        for (index, statement) in statements.into_iter().enumerate() {
+            // FOOP-86 §6.5a: a correctly-indented full-line comment marks
+            // that the rest of the brane went unstepped. It sits immediately
+            // ABOVE the statements it describes, per AGENTS.md's comment
+            // style (a full-line comment marks the code BELOW it), and at the
+            // same indentation as those statements so the rendering stays
+            // valid, re-parseable Foolish.
+            if unsteppable_at.is_some_and(|at| index == at + 1)
+                && !self.options.suppress_sequencing_comments
+            {
+                // A blank line before a full-line comment, none after, per
+                // AGENTS.md §"Comment style in Foolish einmo inputs" rule 3:
+                // the space above separates it from what precedes, and its
+                // tightness below is what marks the lines it describes.
+                lines.push(String::new());
+                lines.push(format!(
+                    "{}!! the rest of this brane was not stepped",
+                    " ".repeat(BODY_INDENT)
+                ));
+            }
             lines.extend(
                 statement
                     .into_iter()

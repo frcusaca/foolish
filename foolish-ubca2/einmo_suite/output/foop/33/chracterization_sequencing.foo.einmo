@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/33/chracterization_sequencing.foo
-suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 5cad954d
-producer-diff: sha256:b31dee6bdcda37d338039f2ba82994ba2bbfeb771131e6c747a733a2f94e68fa
-generated: 2026-09-07T23:26:43.000000000Z
+suite: /yolo/foolish_worktrees/foop-86-retire-ubca/foolish-ubca2/einmo_suite
+producer: 55f86e67
+producer-diff: sha256:9d57b193640dbda100249d66ea1ad2c778249635754426f7e46eddc7f854d589
+generated: 2026-09-19T05:03:23.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -39,7 +39,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   isˍit = 'True;
   'a = ⬤;
   a = ⬤;
-  bs = {
+  bs = {  !! NK: unsteppable — 'bad is already a named creation
     b = ⬤;
     'b = ⬤;
     'bad = 'b
@@ -48,16 +48,16 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   whatˍwasˍtickˍa = 'a;
   whatˍwasˍa = a;
   whatˍwasˍa = ?='a&#1;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! NK: anchored search found no match
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! NK: anchored search found no match
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! NK: anchored search found no match
   whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;  !! NK: anchored search found no match
   whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs^;
   'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
-  howˍbadˍcanˍitˍbˍ2 = bs#1  !! This is Foolish because of out-of-context Creation Postulation application
+  howˍbadˍcanˍitˍbˍ2 = bs#1  !! NK: unsteppable — 'howˍbadˍcanˍitˍbˍ1 is already a named creation
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uJwNhLYkW1DdQVCUigereYiGMg0rPZ5JFM/9m4RefCCuEEtu4LmYgt5op7jsdofqxLbSIxZZcQH2KsXHyL0lCg==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uHCV1KasaO2DnPz5VfnJLEhMKcH+o8C8AVDtWZxdIuSf4oN+v+wXFXVI4FEO7SPpa1WJhkQUqI0d6smsgfbhAA==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
