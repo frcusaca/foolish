@@ -1148,8 +1148,15 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 
 ### ⛔ Phase 9 stop conditions
 
-1. **Do NOT revive "any NK member ⇒ brane NK"** in `decide_nyes_due_to_children` (§6.5). The
-   brane's NK here comes from the HALT. `{x = 1/0; y = 2}` must keep whatever it has today.
+1. **Do NOT touch `decide_nyes_due_to_children`'s NK rollup** (§6.5, §6.6b). The brane's NK here
+   comes from the **HALT**, directly — not from a member's state. `{x = 1/0; y = 2}` must keep
+   whatever it has today (which is `Nk`, and which §6.4c says is arguably WRONG — see §6.6b —
+   but that discrepancy is explicitly NOT this phase's to fix).
+   **Verify the halt is what sets it.** Because the existing rollup already turns any NK member
+   into a brane NK, a naive implementation can appear to work for the wrong reason: the
+   unstepped remainder settles NK, the rollup sees NK children, and the brane goes NK without
+   the halt ever setting it. A later fix to §6.6b's discrepancy would then silently break the
+   unsteppable rule. **Assert the halt sets the brane NK directly.**
 2. **Do NOT mark the poisoning statement's body NK.** `IndepInt(3)` genuinely IS `Independent`;
    that is the stated reason the fact moves to the brane (§6.4).
 3. **If a baseline outside §6.7's expected set moves, STOP** — that is a regression, not a

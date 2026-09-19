@@ -824,11 +824,22 @@ normally; `{'K = ⬤; 'K = 3;}` is not a brane that means anything and does not.
 #### §6.4b Any access into an NK brane settles NK
 
 **Human-directed, 2026-09-18 — "in all cases, NK results."** An **anchored search** whose anchor
-resolves to a brane that is NK (by the §6.3 halt) **settles NK**. So does every other way of
-reaching into it: a **plain reference** (`x = SomeNkBrane`), and the **index/head/tail**
-operators (`#N`, `^`, `$`) — a different operator group in AGENTS.md's taxonomy, but the same
-outcome. There is nothing to find: the brane has no meaning, so nothing inside it can be
-meaningfully addressed, and **no access path yields a meaningful value**.
+resolves to a brane that is NK (by the §6.3 halt) **settles NK**. So does a **plain reference**
+(`x = SomeNkBrane`). There is nothing to find: the brane has no meaning, so nothing inside it
+can be meaningfully addressed, and **no access path yields a meaningful value**.
+
+**Index and head/tail need no separate rule — they ARE searches** (confirmed against the code,
+2026-09-18). `#N` is `SearchPredicate::Index(i32)`, one predicate among `Name`/`Value`/
+`NameValue` in the same one-engine model (AGENTS.md §"The one-engine model (cursor-source ×
+predicate)"); `^` and `$` **compile down to an `Index`** with offset `0` / a tail-relative
+negative offset rather than to distinct `Head`/`Tail` predicates
+(`fvm_storage.rs`'s `SearchPredicate` doc comments say so explicitly, and the `Head`/`Tail`
+variants are `expect(dead_code)` with "no production caller builds this variant"). They share
+`ContextfulSearch`, `CursorSource`, `CandidateNavigator`, and the `anchored`/`contexted` flags,
+and the code already groups them — `matches!(…, FirSpec::Search { .. } | FirSpec::Index { .. })`
+(`fvm_storage.rs:2012`). So the anchored-search sentence above covers them, and AGENTS.md's
+presentation of them as a separate "operator group" is a *documentation* taxonomy, not a
+structural one.
 
 This is consistent with the existing anchored-miss rule (AGENTS.md §"NK vs ECONSTANIC miss
 outcomes": *"Anchored miss → NK — the name is provably not in that brane"*). Here the reason is
@@ -842,14 +853,56 @@ what is being addressed: poisoning made a search that resolved *to a refused sta
 that statement's NK value; this rule makes a search *into a meaningless brane* fail, because
 the anchor itself is unusable. A search that never touches the NK brane is unaffected.
 
+#### §6.4c WHY the brane goes NK — it failed to do its part
+
+**Human correction, 2026-09-18.** An earlier draft of this addendum justified the brane's NK by
+calling the brane "malformed" or "meaningless." **That reasoning is wrong**, and the correct
+reasoning matters because it keeps this rule from colliding with existing behavior:
+
+> **A brane can be constanic — even conclusive — while containing NK elements.** In those cases
+> the brane **did its part**: it stepped its statements, each reached the state it reaches, and
+> one of them happens to be unknowable. It is a perfectly valid brane. `{x = 1/0; y = 2}` is a
+> brane that did its job; `1/0` being NK is a fact about `1/0`, not a defect in the brane.
+
+The brane in §6.3 goes NK for an entirely different reason: **it failed to do its part.** It
+refused to step an unsteppable statement, so it never finished stepping its own contents. The
+NK reports an incomplete job, not a contaminated one.
+
+This is the precise distinction:
+
+| Brane | Did its part? | Brane NK? | Why |
+|---|---|---|---|
+| `{x = 1/0; y = 2}` | yes — stepped everything | **no** | contains an NK VALUE; the brane is valid |
+| `{'K = ⬤; 'K = 3; …}` | **no** — stepping halted | **yes** | the brane did not finish its own work |
+
+**Consequences of getting this right:**
+
+- **An inner NK brane does NOT make its outer brane NK.** In
+  `{a = 1; inner = {'K = ⬤; 'K = 3;}; b = 2;}` the outer brane steps everything it has —
+  including `inner`, which settles NK as a value — so the outer brane did its part and is NOT
+  NK. `b = 2` evaluates normally. (This answers §6.6a(i): the inner brane is an ordinary
+  NK-valued member.)
+- **The "do not revive any-NK-member ⇒ brane NK" rule (§6.5) is not merely a compatibility
+  constraint — it is required by this principle.** A brane containing an NK member is valid.
+- **⚠ This calls current behavior into question.** Measured on this branch,
+  `{x = 1/0; y = 2}` **currently settles the BRANE to `Nk`** via `decide_nyes_due_to_children`
+  (`fvm_storage.rs:1546`: `else if nk_count > 0 { Some(Nyes::Nk) }`). Under this principle that
+  is **wrong** — the brane did its part and should be constanic-with-an-NK-member, not NK. This
+  addendum does **not** change it (out of scope, and it would move many baselines), but it is
+  recorded here as a **discrepancy between this principle and current behavior**, for a human
+  or a later FOOP to resolve. See §6.6b.
+
 #### §6.5 Consequences
 
 - **`{'K = ⬤; 'K = 3;}` becomes NK** — the brane is NK because stepping halted in it. The
   human's earlier framing ("the brane should become NK when it redefines a null-characterized
   name") follows from this rule rather than needing to be stated separately.
 - **The existing NK rollup is untouched.** `{x = 1/0; y = 2}` keeps whatever
-  `decide_nyes_due_to_children` currently gives it. This addendum does NOT revive
-  "any NK member ⇒ brane NK"; the brane's NK here comes from the halt, not from a member.
+  `decide_nyes_due_to_children` currently gives it (today: `Nk` — which §6.4c's principle says
+  is arguably wrong, recorded as a discrepancy in §6.6b but NOT fixed here). The brane's NK in
+  §6.3 comes from the **halt**, not from a member — and that must be verified, not assumed,
+  since the existing rollup could produce the same NK for the wrong reason (§6.6b's closing
+  note).
 - **Poison no longer travels through searches**, because there is no poisoned value to find —
   only statements that were never evaluated.
 
@@ -942,19 +995,56 @@ Illustrative shape (exact wording is the implementer's, constrained by re-parsea
    new rule — NK reverting to written Foolish is FOOP-36 §3's standing behavior for any
    inconclusive constanic.
 
+#### §6.6b DISCREPANCY RAISED, NOT RESOLVED — NK members currently make their brane NK
+
+§6.4c establishes that **a brane containing an NK element is valid** — it did its part. Current
+behavior contradicts that. Measured on this branch, 2026-09-18:
+
+| Program | Brane NYES today | Per §6.4c should be |
+|---|---|---|
+| `{x = 1; y = 2;}` | `Independent` | `Independent` ✓ |
+| `{x = 1/0; y = 2;}` | **`Nk`** | constanic, NOT NK ✗ |
+| `{b = {q = 1/0;}; y = 2;}` | **`Nk`** | constanic, NOT NK ✗ |
+
+The mechanism is `decide_nyes_due_to_children` (`fvm_storage.rs:1508`), whose final arm is
+`else if nk_count > 0 { Some(Nyes::Nk) }`. It propagates: the NK climbs from the member to its
+brane, from that brane to its parent, and so on **to the root** — so today a single `1/0`
+anywhere makes the entire program NK.
+
+**This addendum does NOT change it.** Doing so is out of scope here, would move a large number
+of baselines, and interacts with the rendering rules FOOP-36 §3 builds on `is_conclusive()`. It
+is recorded as a **discrepancy between §6.4c's principle and current behavior**, for a human or
+a later FOOP to resolve. Phase 9's stop condition — "do not revive any-NK-member ⇒ brane NK" —
+means *do not make this worse and do not depend on it*; it does not mean the current state is
+endorsed.
+
+**Note the interaction with §6.3.** Because the rollup already turns any NK member into a brane
+NK, a naive implementation of §6.3 could appear to work for the wrong reason: the unstepped
+remainder settles NK, the rollup sees NK children, and the brane goes NK — without the halt ever
+setting it. §6.3 requires the brane's NK to come from the **halt**, directly. Phase 9b must
+verify that specifically (the plan carries the checkbox), or a later fix to this discrepancy
+would silently break the unsteppable rule.
+
 #### §6.6a Agent-raised points — ALL RESOLVED 2026-09-18 (the human)
 
 - **(i) Subsequent/descendant unsteppability is NOT discoverable.** Resolved in §6.4: stepping
   stops, so nothing after the first unsteppable statement is ever visited and nothing ever asks.
   No lookup is to be built.
+- **(i-bis) A nested conflict does NOT halt the outer brane.** Resolved in §6.4c, and on a
+  better rationale than the one originally proposed: it is not that the outer brane "continues
+  normally," it is that **the outer brane did its part** — it stepped everything it has,
+  including the inner brane, which settles NK as an ordinary value. A brane containing an NK
+  element is valid. The agent's original framing ("the brane is malformed/meaningless") was
+  **wrong** and is corrected there.
 - **(ii) Predicate classification.** An unstepped statement settles NK, which is **constanic**
   and **constantew** but **NOT conclusive**, per AGENTS.md's existing definitions — unchanged by
   this addendum. The consequence stands and is intended: being constantew, it can **never gain
   a value through recoordination**. The brane is permanently ill-defined.
-- **(iii) Non-search access into an NK brane → NK.** Confirmed. §6.4b's rule is not limited to
-  anchored searches: a plain reference (`x = SomeNkBrane`) and the index/head/tail operators
-  (`#N`, `^`, `$`) into an NK brane all settle NK too. **In all cases, NK results.** There is no
-  access path by which a meaningless brane yields a meaningful value.
+- **(iii) All access into an NK brane → NK.** Confirmed: **in all cases, NK results.** Refined
+  in §6.4b — the agent's premise that index and head/tail are a *separate* operator group was
+  **wrong**: `#N` is `SearchPredicate::Index`, and `^`/`$` compile down to `Index`, so they ARE
+  anchored searches and need no separate rule. The only genuinely non-search access is a plain
+  reference (`x = SomeNkBrane`), which also settles NK.
 - **(iv) Step-count direction.** Confirmed: counts must **DROP** (halting does strictly less
   work). A RISE means the halt is not firing — a signal to investigate, never a baseline to
   promote.
