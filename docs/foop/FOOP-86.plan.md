@@ -1113,6 +1113,16 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > baselines. FOOP-86.md's §FIR Impact and §UBC Step Impact have been corrected accordingly —
 > their "None" claims now apply only to the four original deliverables.
 
+### The governing statement (§6.4c)
+
+> **Unsteppable statements break their brane, causing it to be NK. This is distinct from an
+> NK-valued statement, which can reside within a conclusive brane.**
+
+Everything in this phase serves that sentence. The brane's NK reports that it **failed to do
+its part** (stepping halted before it finished), NOT that it contains something unknowable — a
+brane containing an NK value did its part and stays valid. Confusing the two is the single
+easiest way to implement this wrongly; see stop condition 1 and §6.6b.
+
 ### The design in one paragraph (verify against §6, don't re-derive)
 
 A statement whose null-characterized name was **already defined in the context** is

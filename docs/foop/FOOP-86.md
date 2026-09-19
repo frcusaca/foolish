@@ -674,6 +674,13 @@ An **unsteppable statement** (equivalently, an **unsteppable assignment** or **u
 expression**) is a statement that **cannot be stepped at all**, because the names it would
 resolve against are ill-defined in its context.
 
+**Unsteppable statements break their brane, causing it to be NK. This is distinct from an
+NK-valued statement, which can reside within a conclusive brane.** (§6.4c — the governing
+statement of this addendum.) The two are easy to confuse because both involve NK, so the
+difference is worth holding from the outset: an NK *value* is a fact about one statement's
+result and leaves its brane valid; an *unsteppable* statement stops the brane from finishing
+its own work, and the brane's NK reports that incompleteness.
+
 **The condition is: a null-characterized name is defined more than once, conflictingly, in one
 brane's context.** How the second definition got there does not matter — there are **three
 routes**, and all three produce unsteppability and NK (human, 2026-09-18):
@@ -854,6 +861,11 @@ that statement's NK value; this rule makes a search *into a meaningless brane* f
 the anchor itself is unusable. A search that never touches the NK brane is unaffected.
 
 #### §6.4c WHY the brane goes NK — it failed to do its part
+
+> **Unsteppable statements break their brane, causing it to be NK. This is distinct from an
+> NK-valued statement, which can reside within a conclusive brane.**
+>
+> — the human, 2026-09-18. This is the governing statement of §6; everything below elaborates it.
 
 **Human correction, 2026-09-18.** An earlier draft of this addendum justified the brane's NK by
 calling the brane "malformed" or "meaningless." **That reasoning is wrong**, and the correct
