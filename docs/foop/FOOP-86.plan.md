@@ -1161,6 +1161,13 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 
 ### 9a — Resolve the remaining open questions (§6.6) BEFORE coding
 
+> **§6.6a's five points are all RESOLVED** (human, 2026-09-18) and are NOT in this list:
+> subsequent/descendant unsteppability is not discoverable (build no lookup); NK is constanic +
+> constantew but not conclusive, so an unstepped statement can never recoordinate into a value;
+> ALL access into an NK brane settles NK (not just anchored searches); step counts must DROP;
+> and conflicts arising by **concatenation** or **recoordination** are routes 2 and 3 of §6.2,
+> both of which must settle NK and neither of which does today.
+
 - [ ] Put §6.6's open questions 1–4 to the human in ONE message, with a recommendation each:
   - [ ] **Q-A (store boundary or cause?)** — rec: store the **poisoning statement**, since
         §6.5a's rendering needs its name/line for the reason text, and "is this unsteppable"
@@ -1194,10 +1201,23 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       `refuse_statement`. Detection logic itself is correct and must not change — only where
       the finding is written.
 - [ ] Implement the **halt** in the brane's task drain (`step_inner` / the brane's `fir_op_step`
-      arm): on reaching a statement at-or-past the boundary, stop draining, set the brane `Nk`
-      directly. **Do not sweep** the remainder (§6.3: they are *found* unsteppable, not marked).
-- [ ] Make "is this statement unsteppable?" answerable by position against the brane's record —
-      one accessor, used by both the renderer and any value reader.
+      arm): on reaching the unsteppable statement, stop draining, set the brane `Nk` directly.
+      **Do not sweep** the remainder, and **do not mark it** (§6.3/§6.4).
+- [ ] **Do NOT build an "is this statement unsteppable?" lookup.** §6.4 (resolved 2026-09-18):
+      because stepping stops, nothing after the first unsteppable statement is ever visited and
+      nothing ever asks. The remainder's NK is the ordinary consequence of never having been
+      stepped, not a state anything computes. An earlier draft of this plan called for a
+      position-comparison accessor — **that was wrong and is struck.**
+- [ ] **Resolve §6.4's flagged tension: "never stepped" leaves `Prembrionic`, which is NOT NK.**
+      Measured: `decide_nyes_due_to_children` prioritizes `Braning` whenever any child is
+      pre-constanic, so an untouched remainder would spin the brane to the 9999-iteration cap
+      instead of settling NK; and the renderer would annotate `!! PREMBRIONIC`, not NK, so
+      §6.5a's rendering would never appear. The halt must therefore **assign the terminal NK**
+      to the remainder (bookkeeping) while doing **no evaluation work** for it (the actual
+      prohibition). Choose where — one pass over the remaining task queue at the halt is the
+      obvious candidate — and **record the choice in §6.4**.
+- [ ] Verify afterwards that `decide_nyes_due_to_children` never sees a pre-constanic child in a
+      halted brane.
 - [ ] Per Q-E: raise `alarm_reason` on the brane if the human chose that.
 - [ ] **Remove** `nf_reason` from the statement payload (`fvm_storage.rs:100, 204, 211, 433, 440`)
       and `refuse_statement`'s `ubc_children` NK push — §6.4 states these are the leak. **If
@@ -1211,17 +1231,41 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       poisoning statement's body is still `IndepInt(3)` and `Independent`.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-### 9c — Anchored searches into an NK brane settle NK (§6.4b)
+### 9c — Any access into an NK brane settles NK (§6.4b)
 
 - [ ] (read §6.4b — and note it is NOT a reintroduction of §4's search-poisoning, which §6.3
       removes; the difference is anchor-unusable vs. value-poisoned)
-- [ ] An **anchored** search whose anchor resolves to an NK brane settles **NK**. Reuses the
-      existing anchored-miss outcome (AGENTS.md §"NK vs ECONSTANIC miss outcomes"); only the
-      REASON differs.
-- [ ] **Unanchored** searches are unaffected — they keep settling ECONSTANIC on a miss. Do not
-      widen this rule to them.
-- [ ] Unit tests: an anchored search into an NK brane settles NK; the same search into a sound
-      brane is unchanged; an unanchored search is unchanged.
+- [ ] **"In all cases, NK results"** (human). Every access path into an NK brane settles NK:
+  - [ ] **anchored search** — reuses the existing anchored-miss outcome (AGENTS.md §"NK vs
+        ECONSTANIC miss outcomes"); only the REASON differs
+  - [ ] **plain reference** — `x = SomeNkBrane`
+  - [ ] **index / head / tail** — `#N`, `^`, `$` (a different operator group, same outcome)
+- [ ] **Unanchored searches that never touch the NK brane are unaffected** — they keep settling
+      ECONSTANIC on a miss. The rule is about reaching INTO the NK brane, not about the searcher.
+- [ ] Unit tests, one per access path above, plus: the same access into a SOUND brane is
+      unchanged, and an unanchored miss elsewhere is unchanged.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9c2 — Routes 2 and 3: conflicts from concatenation and recoordination (§6.2)
+
+> **Both currently produce NO NK at all** — measured 2026-09-18. These are the same defect as
+> route 1 arriving by different paths, and the human's ruling is that **all three settle NK**.
+
+- [ ] (read §6.2's three-route table)
+- [ ] **Route 2 — concatenation merge.** `{A = {'C = 10}, b = A A}` renders
+      `b = { 'C = 10; 'C = 10 }` today, accepted. FOOP-33 §4 already specifies this case
+      (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`) — determine whether it is
+      not firing, or firing and being swallowed the way route 1's refusal was, then make the
+      merged brane halt per §6.3.
+      **NOTE:** this touches the merge path, which §6.4a's concatenation work is DEFERRED from.
+      Deferred there is *what a concatenation does with an NK-brane operand*; required HERE is
+      *a conflict arising during a merge must halt the merged brane*. Keep the two apart.
+- [ ] **Route 3 — recoordination, no concatenation.** `{A = {'C = 10}, B = {'C = 11; A} }`
+      renders `B = { 'C = 11; { 'C = 10 } }` today, accepted. `B` declares `'C = 11` then
+      recoordinates `A`, bringing a conflicting `'C = 10` into the same context. **This is the
+      route that proves the condition is about the brane's CONTEXT, not a statement's
+      authorship** — neither statement is individually at fault.
+- [ ] Unit tests for both, asserting the containing brane settles NK and renders per §6.5a.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 9c-note — Concatenation is DEFERRED to a later FOOP

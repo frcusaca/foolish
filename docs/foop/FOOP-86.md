@@ -674,11 +674,31 @@ An **unsteppable statement** (equivalently, an **unsteppable assignment** or **u
 expression**) is a statement that **cannot be stepped at all**, because the names it would
 resolve against are ill-defined in its context.
 
-**Currently there is exactly ONE way to become unsteppable**: being a statement whose
-null-characterized name was **already defined in the context** — i.e. the conflicting
-redefinition rule of FOOP-33 §4. The term is defined generally because the condition is
-general ("the context is broken from here on"), but no other producer of unsteppability exists
-today, and none should be added without amending this section.
+**The condition is: a null-characterized name is defined more than once, conflictingly, in one
+brane's context.** How the second definition got there does not matter — there are **three
+routes**, and all three produce unsteppability and NK (human, 2026-09-18):
+
+| # | Route | Example |
+|---|---|---|
+| 1 | **Written directly** in the brane | `{'K = ⬤; 'K = 3;}` |
+| 2 | **Concatenation merge** brings a conflicting duplicate in | `{A = {'C = 10}, b = A A}` |
+| 3 | **Recoordination** brings a conflicting definition in — no concatenation involved | `{A = {'C = 10}, B = {'C = 11; A} }` |
+
+Route 1 is FOOP-33 §4's original statement-level rule. Route 2 is §4's own concatenation clause
+(`apply_null_const_rule_to_merged_stmt`). **Route 3 is new to this addendum** and is the one
+that shows the condition is about the *brane's context*, not about any particular statement's
+authorship: `B` writes `'C = 11` and then recoordinates `A`, whose `'C = 10` lands in the same
+context. Neither statement is individually at fault; the brane is.
+
+**Measured on this branch, 2026-09-18 — routes 2 and 3 currently produce NO NK at all:**
+
+```
+{A={'C=10}, b = A A}          →  b = { 'C = 10; 'C = 10 }      (accepted, no NK)
+{A={'C=10}, B={'C=11; A} }    →  B = { 'C = 11; { 'C = 10 } }  (accepted, no NK)
+```
+
+Both are the same defect as route 1 arriving by a different path, and **all three must settle
+NK** under §6.3's halt.
 
 #### §6.2a Unsteppable statements are RUN-TIME ERRORS of Foolish
 
@@ -736,6 +756,38 @@ meaning. `a = 'K` before the conflict still finds ⬤.
 statement; that single record is the whole data model. Everything after the boundary is
 unsteppable by consequence, needing no record of its own.
 
+**Subsequent and descendant unsteppability is NOT DISCOVERABLE — and does not need to be**
+(human, 2026-09-18). Because stepping stops at the first unsteppable statement, nothing after
+it is ever visited, so nothing ever *asks* whether it is unsteppable. There is no lookup, no
+position comparison, no NK derived on inspection. The later statements simply sit unstepped,
+and that is the entire mechanism.
+
+This is why the single brane record suffices, and it is stronger than a "boundary you compare
+against": there is no querying party. An earlier draft of this section described the remainder
+as "found unsteppable by position when something asks" — **that is wrong**, and implementations
+must not build such a lookup. The remainder's NK is the ordinary consequence of never having
+been stepped (a statement that never steps never leaves its initial state and never acquires a
+value), not a state anything computes for it.
+
+**⚠ Implementation tension to resolve in Phase 9b — "never stepped" vs. "settles NK".** A
+statement that is literally never touched sits at `Nyes::Prembrionic`, which is **pre-constanic,
+not NK**. Two things in the existing machinery react badly to that, both measured on this
+branch:
+
+- `decide_nyes_due_to_children` (`fvm_storage.rs:1508`) gives `Braning` priority over every
+  terminal state when ANY child is pre-constanic, so the brane would never settle — it would
+  spin to the 9999-iteration cap instead of going NK.
+- The renderer annotates a pre-constanic statement `!! PREMBRIONIC` under `warn_braning`
+  (`sequencer.rs:1160`), not as NK — so §6.5a's rendering would not appear.
+
+So the halt must **leave the remainder unvisited in the sense that no evaluation work is done
+for it, while still marking it NK** so the brane can reach a terminal state. That is not a
+contradiction of "do not sweep" — the prohibition is on *evaluating* the remainder or computing
+per-statement findings for it; assigning the terminal NK that its non-evaluation implies is
+bookkeeping, not evaluation. **Phase 9b must choose and record where that NK is assigned** (at
+the halt, in one pass over the remaining task queue, is the obvious candidate) and must not let
+`decide_nyes_due_to_children` see pre-constanic children afterwards.
+
 This replaces the current arrangement, in which `refuse_statement` writes `nf_reason` onto the
 statement and pushes an NK into its `ubc_children`. That arrangement is precisely what leaks:
 putting the refusal where readers resolve to it is what makes searches carry the poison. Moving
@@ -769,11 +821,14 @@ normally; `{'K = ⬤; 'K = 3;}` is not a brane that means anything and does not.
 > it. Until that FOOP lands, concatenation behavior with an NK-brane operand is **whatever it
 > is today**, unchanged and unaudited.
 
-#### §6.4b Anchored searches into an NK brane settle NK
+#### §6.4b Any access into an NK brane settles NK
 
-**Human-directed, 2026-09-18.** An **anchored** search whose anchor resolves to a brane that is
-NK (by the §6.3 halt) **settles NK**. There is nothing to find: the brane has no meaning, so no
-statement inside it can be meaningfully addressed.
+**Human-directed, 2026-09-18 — "in all cases, NK results."** An **anchored search** whose anchor
+resolves to a brane that is NK (by the §6.3 halt) **settles NK**. So does every other way of
+reaching into it: a **plain reference** (`x = SomeNkBrane`), and the **index/head/tail**
+operators (`#N`, `^`, `$`) — a different operator group in AGENTS.md's taxonomy, but the same
+outcome. There is nothing to find: the brane has no meaning, so nothing inside it can be
+meaningfully addressed, and **no access path yields a meaningful value**.
 
 This is consistent with the existing anchored-miss rule (AGENTS.md §"NK vs ECONSTANIC miss
 outcomes": *"Anchored miss → NK — the name is provably not in that brane"*). Here the reason is
@@ -887,31 +942,25 @@ Illustrative shape (exact wording is the implementer's, constrained by re-parsea
    new rule — NK reverting to written Foolish is FOOP-36 §3's standing behavior for any
    inconclusive constanic.
 
-#### §6.6a Still unsettled — raised by the agent, NOT yet answered
+#### §6.6a Agent-raised points — ALL RESOLVED 2026-09-18 (the human)
 
-These were surfaced during the §6 review and have **not** been put to the human or decided.
-They do not block starting Phase 9, but each is a real semantic commitment:
-
-- **(i) Does a conflict inside a NESTED brane halt the OUTER one?** §6.3 covers descendants of
-  the boundary (a nested brane *after* it is unstepped, like any statement). The reverse is not
-  stated. The reading implied by §6.5 — the member-NK rollup is untouched — is that the inner
-  brane goes NK, becomes an ordinary NK-valued member of the outer brane, and the outer brane
-  **continues normally**: in `{a = 1; inner = {'K = ⬤; 'K = 3;}; b = 2;}`, `b = 2` still
-  evaluates to `2`. That seems right (the outer brane is not itself ill-defined) but is
-  unconfirmed.
-- **(ii) Predicate classification of an unstepped statement.** It settles NK, so it is
-  `is_constanic()` and `is_constantew()` but NOT `is_conclusive()`. The `is_constantew()` part
-  is the commitment worth noticing: constantew means "will not change no matter what," so an
-  unstepped statement can **never gain a value through recoordination**. That is almost
-  certainly intended (the brane is permanently ill-defined) but it is a real decision, not a
-  detail.
-- **(iii) Non-search access into an NK brane.** §6.4b covers *anchored searches*. A plain
-  reference (`x = SomeNkBrane`), and the index/head/tail operators (`#N`, `^`, `$`), are a
-  different operator group in AGENTS.md's taxonomy and are not covered. This is the main
-  remaining route by which a meaningless brane could leak into sound code.
-- **(iv) Step-count direction.** Halting means strictly FEWER steps, so affected cases'
-  step counts should DROP. A RISE would mean the halt is not firing and is a signal to
-  investigate, not a baseline to promote.
+- **(i) Subsequent/descendant unsteppability is NOT discoverable.** Resolved in §6.4: stepping
+  stops, so nothing after the first unsteppable statement is ever visited and nothing ever asks.
+  No lookup is to be built.
+- **(ii) Predicate classification.** An unstepped statement settles NK, which is **constanic**
+  and **constantew** but **NOT conclusive**, per AGENTS.md's existing definitions — unchanged by
+  this addendum. The consequence stands and is intended: being constantew, it can **never gain
+  a value through recoordination**. The brane is permanently ill-defined.
+- **(iii) Non-search access into an NK brane → NK.** Confirmed. §6.4b's rule is not limited to
+  anchored searches: a plain reference (`x = SomeNkBrane`) and the index/head/tail operators
+  (`#N`, `^`, `$`) into an NK brane all settle NK too. **In all cases, NK results.** There is no
+  access path by which a meaningless brane yields a meaningful value.
+- **(iv) Step-count direction.** Confirmed: counts must **DROP** (halting does strictly less
+  work). A RISE means the halt is not firing — a signal to investigate, never a baseline to
+  promote.
+- **(v) Conflicts arising by concatenation or recoordination** — raised by the human rather than
+  the agent, and now folded into §6.2 as routes 2 and 3. Both currently produce no NK at all;
+  both must settle NK.
 
 #### §6.7 Baseline impact, when implemented
 
