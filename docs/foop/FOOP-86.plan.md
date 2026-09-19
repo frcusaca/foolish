@@ -1226,23 +1226,38 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 > and conflicts arising by **concatenation** or **recoordination** are routes 2 and 3 of §6.2,
 > both of which must settle NK and neither of which does today.
 
-- [ ] Put §6.6's open questions 1–4 to the human in ONE message, with a recommendation each:
-  - [ ] **Q-A (store boundary or cause?)** — rec: store the **poisoning statement**, since
-        §6.5a's rendering needs its name/line for the reason text, and "is this unsteppable"
-        is answerable from it by position comparison anyway.
-  - [ ] **Q-B (reason wording)** — rec: name the cause, e.g. `unsteppable: 'K redefined above`.
-        Lands in baselines, so it wants deciding once.
-  - [ ] **Q-C (does the creation-rename rule move too?)** — §6.2 says unsteppability currently
-        has exactly ONE producer (the redefinition rule), which implies `check_rename_of_named_creation`
-        does NOT become unsteppable and keeps some other disposition. **Needs an explicit answer**:
-        it currently shares `refuse_statement`, which this phase dismantles.
-  - [ ] **Q-D (`'<name> redefined` vs `'<name> not-foolish`)** — FOOP-33 §4's prose and the code
-        disagree; §6.6(4).
-  - [ ] **Q-E (does the brane raise an `alarm_reason`?)** — §6.2a suggests it, since the other two
-        Foolish run-time errors (DIV-BY-ZERO, iteration cap) use that mechanism, and it makes the
-        error visible without reviving `warn_brane_nk`.
-- [ ] Record each answer in §6.6, striking the question rather than deleting it.
-- [ ] **Do not start 9b until Q-C and Q-E are answered** — both change what code is touched.
+- [x] **Q-A (store boundary or cause?) — ANSWERED: store the POISONING statement** (human,
+      2026-09-18). `'K = 3`, not the boundary. §6.5a's rendering reads its name for the
+      annotation, and the boundary is simply "the next statement", derivable.
+      (2026-09-18 00:00)
+- [x] **Q-B (reason wording) — ANSWERED, wording FIXED** (human, 2026-09-18):
+      `b = 'K;  !! NK: unsteppable — 'K already defined in context`. Not "redefined above" —
+      that describes a position and implies the earlier statement is at fault; "already defined
+      in context" states the condition, in the same words §6.2 defines it with. Recorded in
+      §6.5a.
+      (2026-09-18 00:00)
+- [x] **Q-D (`'<name> redefined` vs `'<name> not-foolish`) — MOOT for this rule.** Q-B fixes the
+      user-visible text to `unsteppable — 'K already defined in context`, so neither legacy
+      string appears in the unsteppable annotation. `not-foolish` survives only wherever the
+      rename rule still uses it (see Q-C).
+      (2026-09-18 00:00)
+- [x] **Q-C (does the creation-rename rule move too?) — ANSWERED: YES, it becomes route 4**
+      (human, 2026-09-18). `check_rename_of_named_creation` (`'other = 'a`) uses the SAME halt,
+      the same brane NK, the same rendering. **One mechanism, not two** — keeping it on the old
+      `nf_reason` path would leave §6.4's leak fixed for redefinition but not for renaming.
+      §6.2's table now lists four routes. Its annotation clause differs (`'a is already a named
+      creation`) because the fault differs, but the shape is identical. Moves
+      `foop/33/chracterization_sequencing.foo`'s baseline — add it to §6.7's expected set.
+      (2026-09-18 00:00)
+- [x] **Q-E (does the brane raise an `alarm_reason`?) — ANSWERED: YES** (human, 2026-09-18).
+      The halt raises `alarm_reason` on the brane, same mechanism as DIV-BY-ZERO and the step
+      cap. The condition is then announced twice, deliberately: an `ALARM:` line from the
+      evaluator, and §6.5a's rendering. Recorded in §6.2a.
+      (2026-09-18 00:00)
+- [x] Record each answer in §6.6/§6.2/§6.2a/§6.5a, striking the question rather than deleting it.
+      (2026-09-18 00:00)
+- [x] **Do not start 9b until Q-C and Q-E are answered** — both are now answered.
+      (2026-09-18 00:00)
 
 ### 9b — The evaluator: halt, brane record, remove `nf_reason`
 
@@ -1277,10 +1292,14 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 - [ ] Verify afterwards that `decide_nyes_due_to_children` never sees a pre-constanic child in a
       halted brane.
 - [ ] Per Q-E: raise `alarm_reason` on the brane if the human chose that.
+- [ ] **Route 4 (Q-C answered YES): `check_rename_of_named_creation` uses the SAME halt.** It
+      stops calling `refuse_statement` and records on the brane exactly as routes 1–3 do. Its
+      annotation clause differs (`'a is already a named creation`) because the fault differs.
+- [ ] **Q-E answered YES: the halt raises `alarm_reason` on the brane**, same mechanism as
+      DIV-BY-ZERO and the step cap, so the CLI reports an `ALARM:` line (§6.2a).
 - [ ] **Remove** `nf_reason` from the statement payload (`fvm_storage.rs:100, 204, 211, 433, 440`)
-      and `refuse_statement`'s `ubc_children` NK push — §6.4 states these are the leak. **If
-      `check_rename_of_named_creation` still needs them (Q-C), keep them for that rule ONLY and
-      say so in a comment**, rather than leaving a general mechanism behind.
+      and delete `refuse_statement` entirely — §6.4 states these are the leak, and with Q-C
+      answered YES **both** callers move to the halt, so nothing needs the old mechanism.
 - [ ] Verify the brane's NK comes from the halt, NOT from `decide_nyes_due_to_children`
       (stop condition 1). A unit test asserting `{x = 1/0; y = 2}` is unchanged pins this.
 - [ ] **UNIT tests** (assert internal state, per the standing requirement): `a = 'K` before the

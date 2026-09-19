@@ -681,15 +681,23 @@ difference is worth holding from the outset: an NK *value* is a fact about one s
 result and leaves its brane valid; an *unsteppable* statement stops the brane from finishing
 its own work, and the brane's NK reports that incompleteness.
 
-**The condition is: a null-characterized name is defined more than once, conflictingly, in one
-brane's context.** How the second definition got there does not matter — there are **three
-routes**, and all three produce unsteppability and NK (human, 2026-09-18):
+**The condition is: a null-characterized name is given a meaning it cannot have in this brane's
+context.** How that happened does not matter — there are **four routes**, and all four produce
+unsteppability and NK (human, 2026-09-18):
 
-| # | Route | Example |
-|---|---|---|
-| 1 | **Written directly** in the brane | `{'K = ⬤; 'K = 3;}` |
-| 2 | **Concatenation merge** brings a conflicting duplicate in | `{A = {'C = 10}, b = A A}` |
-| 3 | **Recoordination** brings a conflicting definition in — no concatenation involved | `{A = {'C = 10}, B = {'C = 11; A} }` |
+| # | Route | Example | Fault |
+|---|---|---|---|
+| 1 | **Written directly** in the brane | `{'K = ⬤; 'K = 3;}` | name already defined in context |
+| 2 | **Concatenation merge** brings a conflicting duplicate in | `{A = {'C = 10}, b = A A}` | name already defined in context |
+| 3 | **Recoordination** brings a conflicting definition in — no concatenation involved | `{A = {'C = 10}, B = {'C = 11; A} }` | name already defined in context |
+| 4 | **Renaming a named creation** (FOOP-33's no-rename rule) | `{'a = ⬤; 'other = 'a;}` | creation already has an original name |
+
+Routes 1–3 are the conflicting-redefinition rule (`check_null_const_conflict` +
+`apply_null_const_rule_to_merged_stmt`). **Route 4 is the no-rename rule**
+(`check_rename_of_named_creation`), folded in by human decision 2026-09-18 (Q-C): it is the
+same kind of fault — a null-characterized name being given a meaning it cannot have — and
+keeping it on the old `nf_reason` mechanism would leave §6.4's leak fixed for redefinition but
+not for renaming. **One mechanism, not two.**
 
 Route 1 is FOOP-33 §4's original statement-level rule. Route 2 is §4's own concatenation clause
 (`apply_null_const_rule_to_merged_stmt`). **Route 3 is new to this addendum** and is the one
@@ -725,12 +733,28 @@ belongs to, and it explains each of its properties:
   and it is why the brane's NK is set directly by the halt rather than derived from a member's
   value.
 
-**Consequence for reporting.** Like other Foolish run-time errors (division by zero's
-`DIV-BY-ZERO` alarm, the step cap's `Iteration exceeded N`), an unsteppable statement is a
-finding the evaluator ANNOUNCES, not merely a value the reader discovers. §6.5a's rendering is
-the announcement; whether it also raises an `alarm_reason` on the brane — the mechanism those
-other two run-time errors use — is implementation's to settle (see the plan's Phase 9a), and
-is the natural way to make it visible without reviving `warn_brane_nk`.
+**Consequence for reporting — the brane RAISES AN ALARM.** Like the other Foolish run-time
+errors (division by zero's `DIV-BY-ZERO`, the step cap's `Iteration exceeded N`), an unsteppable
+statement is a finding the evaluator ANNOUNCES, not merely a value the reader discovers.
+**Decided 2026-09-18 (human, Q-E): the halt raises `alarm_reason` on the brane**, the same
+mechanism those two use. Two reasons: it is consistent with the run-time-error classification,
+and it makes the condition visible without reviving `warn_brane_nk` (which defaults off, §6.5a).
+The CLI then reports it the way it already reports iteration-exceeded:
+
+```
+ALARM: 'K already defined in context
+{
+  'K = ⬤;
+  'K = 3;
+  b = 'K;  !! NK: unsteppable — 'K already defined in context
+  …
+}
+```
+
+So the condition is announced **twice, deliberately**: once as an alarm (the evaluator
+reporting a run-time error) and once in the rendering (§6.5a, so the Foolish itself shows
+where). That is the same pattern the step cap already follows — an `ALARM:` line plus a
+rendered banner.
 
 **Consequence for the terminology list.** "Run-time error" is not currently a defined term in
 AGENTS.md's Foolish Terminology. If this addendum is implemented, **unsteppable** and
@@ -966,14 +990,29 @@ Property 1 (the rendering re-parses) must hold too — the full-line comment and
 are both ordinary `!!` comments, so it should, but
 `einmo_corpus_wide_foolish_rendering_parses` is the gate that proves it.
 
-Illustrative shape (exact wording is the implementer's, constrained by re-parseability):
+**The annotation's wording is FIXED** (human, 2026-09-18):
+
+```foolish
+b = 'K;  !! NK: unsteppable — 'K already defined in context
+```
+
+For route 4 (renaming a named creation) the fault differs, so the clause after the dash does
+too — e.g. `!! NK: unsteppable — 'a is already a named creation`. The shape
+(`NK: unsteppable — <what is wrong>`) is fixed; the clause names the actual fault.
+
+Not "redefined above": that describes a *position* and implies the fault lies with the earlier
+statement. **"already defined in context"** states the actual condition, and is the same phrase
+§6.2 uses to define unsteppability — spec and output say the same thing in the same words.
+
+Illustrative shape (the full-line comment's wording is still the implementer's, constrained by
+re-parseability):
 
 ```foolish
 {
   'K = ⬤;
   a = 'K;
   'K = 3;
-  b = 'K;  !! NK: unsteppable — 'K redefined above
+  b = 'K;  !! NK: unsteppable — 'K already defined in context
 
   !! the rest of this brane was not stepped
   c = {'K};
