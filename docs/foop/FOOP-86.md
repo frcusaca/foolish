@@ -1064,6 +1064,31 @@ would silently break the unsteppable rule.
   the agent, and now folded into §6.2 as routes 2 and 3. Both currently produce no NK at all;
   both must settle NK.
 
+#### §6.6c Testing requirement — unit AND einmo, for every behavior
+
+**Human-directed, 2026-09-18.** Every behavior §6 specifies must be tested **twice**: as a
+**unit test** asserting internal FVM state, and as an **einmo case** demonstrating the rendered
+Foolish. Neither substitutes for the other, and the original defect is the proof:
+
+- The **unit** layer alone would not have caught it — `nf_reason` was correctly set the whole
+  time. The evaluator's state was right.
+- The **einmo** layer alone would not have caught it either — it rendered as accepted, and
+  re-rendered identically, so Property 2 (idempotence) was perfectly satisfied by the wrong
+  answer. FOOP-36 §2 names this the fixed-point loophole.
+
+Each layer was self-consistently wrong. Only checking both **against the specification** —
+rather than against each other — closes the gap.
+
+**Einmo inputs must carry rendered comments pointing out the unsteppables.** Each case's `!!`
+block names the rule, cites FOOP-86 §6, identifies **which statement is unsteppable**, **which
+route** (§6.2) produced it, and that everything below went unstepped. Per AGENTS.md, a suite's
+`.foo` inputs "are read by humans far more often than ordinary source — they are the *statement
+of what is being tested*"; a reader must be able to see what a case demonstrates without
+opening the spec.
+
+Routes 2 and 3 (§6.2) have **no einmo coverage at all today** — both currently render as
+accepted with no NK — so they are new cases, not updated ones.
+
 #### §6.7 Baseline impact, when implemented
 
 At minimum `foop/33/boolean/null_char_constant.foo` (whose `checked/`+`verified/` this FOOP

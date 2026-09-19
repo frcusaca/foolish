@@ -1123,6 +1123,47 @@ its part** (stepping halted before it finished), NOT that it contains something 
 brane containing an NK value did its part and stays valid. Confusing the two is the single
 easiest way to implement this wrongly; see stop condition 1 and §6.6b.
 
+### ⛔ STANDING TESTING REQUIREMENT for all of Phase 9 (human-directed, 2026-09-18)
+
+**Every behavior specified in §6 must be tested TWICE: once as a unit test, and again as an
+einmo case.** This is not "write tests where convenient" — it is a requirement on each
+behavior, and a sub-phase is not complete until both exist for everything it introduced.
+
+**Why both, and what each is for:**
+
+| | Unit test | Einmo case |
+|---|---|---|
+| Sees | internal FVM state — NYES, the brane's record, which node holds what | the rendered Foolish a Foolisher actually reads |
+| Catches | the halt firing for the wrong reason; state on the wrong node | wrong/missing annotations; rendering that doesn't re-parse |
+| Would have caught the original bug? | **no** — `nf_reason` was correctly set the whole time | **no** — it rendered as accepted and was idempotent about it |
+
+That last row is the argument. The `'True = 3` defect survived because the evaluator's state was
+right and the rendering was self-consistently wrong — **each layer alone looked fine**. Only
+checking both, against the spec rather than against each other, closes that gap.
+
+**Unit tests must assert internal state**, not just rendered text: which node is NK, that the
+brane's NK came from the halt (stop condition 1), that the poisoning statement's body is still
+`IndepInt` and `Independent`, that the brane's record holds what §6.4 says it holds.
+
+**Einmo cases must carry rendered comments pointing out the unsteppables** (human-directed).
+Each new/updated input gets a `!!` block at the top in house style
+(see `foop/33/boolean/null_char_constant.foo` for the existing form) that:
+
+- names the rule being demonstrated and cites **FOOP-86 §6**, and
+- **points out the unsteppable statement explicitly** — which statement is unsteppable, which
+  route (§6.2's 1/2/3) put it there, and that everything below it went unstepped.
+
+The point is that a human reading the suite can see *what is being demonstrated* without
+cross-referencing the spec — AGENTS.md: a suite's `.foo` inputs "are read by humans far more
+often than ordinary source — they are the *statement of what is being tested*." Follow
+AGENTS.md §"Comment style in Foolish einmo inputs" (blank line before a full-line comment, none
+after; `!!!` fences surrounded by blank lines).
+
+**Also update the STALE comment in `foop/33/boolean/null_char_constant.foo`.** Its existing `!!`
+block describes the superseded behavior — *"a conflicting redefinition refuses — `get_value()`
+becomes NF … instead of the written RHS"* — which §6 replaces. An input whose comment states
+the wrong rule is worse than one with no comment.
+
 ### The design in one paragraph (verify against §6, don't re-derive)
 
 A statement whose null-characterized name was **already defined in the context** is
@@ -1242,10 +1283,16 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       say so in a comment**, rather than leaving a general mechanism behind.
 - [ ] Verify the brane's NK comes from the halt, NOT from `decide_nyes_due_to_children`
       (stop condition 1). A unit test asserting `{x = 1/0; y = 2}` is unchanged pins this.
-- [ ] Unit tests: `a = 'K` before the conflict keeps ⬤; `b = 'K` after is NK-unsteppable;
-      `d = 1 + 1` after is ALSO NK **though it never mentions `'K`** (this is the test that
-      distinguishes §6.3 from the old search-poisoning behavior); the brane is NK; the
-      poisoning statement's body is still `IndepInt(3)` and `Independent`.
+- [ ] **UNIT tests** (assert internal state, per the standing requirement): `a = 'K` before the
+      conflict keeps ⬤; `b = 'K` after is NK-unsteppable; `d = 1 + 1` after is ALSO NK **though
+      it never mentions `'K`** (this is the test that distinguishes §6.3 from the old
+      search-poisoning behavior); the brane is NK **and the halt is what set it**, not the
+      rollup (stop condition 1); the poisoning statement's body is still `IndepInt(3)` and
+      `Independent`; the brane's record holds what §6.4 says.
+- [ ] **EINMO case** for route 1, with rendered comments naming the unsteppable statement and
+      the unstepped remainder. Either extend `foop/33/boolean/null_char_constant.foo` or add a
+      sibling — and **fix that file's stale `!!` block** either way (it still describes the
+      superseded `get_value()`-becomes-NF behavior).
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 9c — Any access into an NK brane settles NK (§6.4b)
@@ -1259,8 +1306,11 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
   - [ ] **index / head / tail** — `#N`, `^`, `$` (a different operator group, same outcome)
 - [ ] **Unanchored searches that never touch the NK brane are unaffected** — they keep settling
       ECONSTANIC on a miss. The rule is about reaching INTO the NK brane, not about the searcher.
-- [ ] Unit tests, one per access path above, plus: the same access into a SOUND brane is
+- [ ] **UNIT tests**, one per access path above, plus: the same access into a SOUND brane is
       unchanged, and an unanchored miss elsewhere is unchanged.
+- [ ] **EINMO case** demonstrating access into an NK brane — anchored search, `#N`/`^`/`$`, and
+      a plain reference — with rendered comments naming which brane is NK and why every access
+      into it yields NK.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 9c2 — Routes 2 and 3: conflicts from concatenation and recoordination (§6.2)
@@ -1282,7 +1332,14 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       recoordinates `A`, bringing a conflicting `'C = 10` into the same context. **This is the
       route that proves the condition is about the brane's CONTEXT, not a statement's
       authorship** — neither statement is individually at fault.
-- [ ] Unit tests for both, asserting the containing brane settles NK and renders per §6.5a.
+- [ ] **UNIT tests** for both routes, asserting the containing brane settles NK **from the
+      halt**, and that the conflict is detected at the right moment (merge time for route 2,
+      recoordination for route 3).
+- [ ] **EINMO cases** for route 2 (`{A = {'C = 10}, b = A A}`) and route 3
+      (`{A = {'C = 10}, B = {'C = 11; A} }`), each with rendered comments naming the route, the
+      unsteppable statement, and the unstepped remainder. **These two cases do not exist today
+      in any form** — both currently render as accepted with no NK, so they are new coverage,
+      not updated coverage.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 9c-note — Concatenation is DEFERRED to a later FOOP
@@ -1321,7 +1378,12 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 - [ ] Fix `render_statement` to consult `settled_constanic_result()` rather than reading
       `foolish_children[0]` blindly — the original rendering defect (§6.1), independent of the
       rest of this phase.
-- [ ] Unit tests pinning the exact rendered shape, including indentation.
+- [ ] **UNIT tests** pinning the exact rendered shape, including indentation — the suffix
+      annotation on the first unsteppable statement, the full-line comment, and the remainder
+      as written source.
+- [ ] **EINMO** is where the rendering is really proven — the `checked/` baseline IS the
+      rendered output, byte for byte. Confirm each new/updated case's OUTPUT shows §6.5a's shape
+      and that its INPUT's `!!` block points the reader at the unsteppable statement.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 9e — Baselines, docs, and the Promotion Review Gate
@@ -1346,6 +1408,21 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       update FOOP-33's `## Last Updated`.
 - [ ] **Add to AGENTS.md's Foolish Terminology**: **unsteppable** and **run-time error**
       (§6.2a's closing note).
+- [ ] **Completion gate for the standing testing requirement (§6.6c).** Before checking Phase 9
+      complete, enumerate every behavior §6 specifies and confirm **each has BOTH** a unit test
+      and an einmo case. Write the list out — a behavior with only one of the two is not done:
+  - [ ] route 1 (written directly) — unit ✓ einmo ✓
+  - [ ] route 2 (concatenation merge) — unit ✓ einmo ✓ *(new coverage)*
+  - [ ] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)*
+  - [ ] the halt sets the brane NK **directly**, not via the rollup — unit ✓
+  - [ ] poisoning statement reverts to Foolish, body still `IndepInt`/`Independent` — unit ✓ einmo ✓
+  - [ ] remainder unstepped and NK, including a statement that never mentions the name — unit ✓ einmo ✓
+  - [ ] every access into an NK brane settles NK (anchored search, `#N`/`^`/`$`, plain ref) — unit ✓ einmo ✓
+  - [ ] rendering: suffix annotation + full-line comment + remainder as source — unit ✓ einmo ✓
+  - [ ] Property 1 (re-parses) and Property 2 (idempotent) for an NK brane — unit ✓
+  - [ ] a nested conflict does NOT halt the outer brane (§6.4c) — unit ✓ einmo ✓
+- [ ] **Every new/updated einmo input carries its `!!` block** naming the rule, citing §6, and
+      pointing out the unsteppable statement and route (§6.6c).
 - [ ] `cargo fmt`; `cargo clippy` — no new errors beyond Phase 0's 4 pre-existing.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
