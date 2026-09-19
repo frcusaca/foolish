@@ -632,10 +632,301 @@ test file, not the crate's identity, and both proceed as specified.
 *evaluator* path into `foolish_core::FirSequencer`; it does not remove or reorganize
 `foolish-core`. An agent that finds itself editing `foolish-core/src/` stops and reports.
 
+### §6 — SPECIFICATION ADDENDUM: the Unsteppable statement
+
+**Added 2026-09-18, mid-execution, at the human's direction.** This section is NOT part of the
+FOOP's original four deliverables (§Abstract). It was written after Phase 2's evaluator
+comparison surfaced a defect that turned out to be a design problem rather than an
+implementation one, and after the human rejected both the existing specified behavior and the
+two repair options an agent proposed. It **supersedes FOOP-33 §4's refusal mechanism** for the
+null-characterized-name redefinition rule. §6.6 records what is still open.
+
+#### §6.1 What the investigation found
+
+`foop/33/boolean/null_char_constant.foo` (`'True = 3` after `'True = 'True`) exposed three
+distinct wrong behaviors, measured on this branch:
+
+| Observation | Status |
+|---|---|
+| `'K = 3` renders as though accepted | rendering never consults `settled_constanic_result()` |
+| `b = 'K` (after the conflict) settles NK | FOOP-33 §4 specifies this — and it is **wrong** |
+| `c = { 'K }` (nested, after) settles NK | poison crosses brane boundaries through searches |
+| `a = 'K` (before the conflict) settles ⬤ | correct, and stays correct |
+| the malformed brane settles `Independent` | while `{x = 1/0; y = 2}` settles `Nk` — inverted |
+
+The evaluator implements FOOP-33 §4 faithfully: `check_null_const_conflict` detects the
+conflict, `refuse_statement` sets `nf_reason` on the statement AND pushes an `Nk` into its
+`ubc_children` so `settled_constanic_result` answers NK. Verified directly — the refusal
+machinery works exactly as written.
+
+**The specification is what is wrong.** §4's "Poisoning is scoped to searches that discover
+this definition" makes the poison travel through name resolution, so a later reader that
+resolves to the refused statement gets NK. The rule exists so that `'True` KEEPS ITS MEANING;
+the mechanism it specifies destroys that meaning for every subsequent reader in the same brane.
+§4's stated escape ("a sibling in a different brane that resolves the name to a *different*
+definition is not poisoned") only helps when a competing definition exists elsewhere — in the
+ordinary case, where the established `'True` sits directly above the offender, a backward
+search hits the offender first.
+
+#### §6.2 The Unsteppable statement — definition
+
+An **unsteppable statement** (equivalently, an **unsteppable assignment** or **unsteppable
+expression**) is a statement that **cannot be stepped at all**, because the names it would
+resolve against are ill-defined in its context.
+
+**Currently there is exactly ONE way to become unsteppable**: being a statement whose
+null-characterized name was **already defined in the context** — i.e. the conflicting
+redefinition rule of FOOP-33 §4. The term is defined generally because the condition is
+general ("the context is broken from here on"), but no other producer of unsteppability exists
+today, and none should be added without amending this section.
+
+#### §6.2a Unsteppable statements are RUN-TIME ERRORS of Foolish
+
+**Human-directed classification, 2026-09-18.** An unsteppable statement is a **run-time error
+of Foolish** — not a parse error, and not an ordinary NK value. This is the category it
+belongs to, and it explains each of its properties:
+
+- **Not a parse error.** `{'K = ⬤; 'K = 3;}` is syntactically impeccable. Nothing about the
+  text is malformed; the fault only exists relative to an evaluation context in which `'K` was
+  already defined. It cannot be detected before stepping, because "already defined in the
+  context" is a question only stepping can answer (it requires an IB-then-AB search).
+- **Not an ordinary NK.** AGENTS.md rightly says to be skeptical of NK — "a search settling NK
+  is the narrow, exceptional outcome." An ordinary NK is a *value*: a computation ran and its
+  answer is not knowable (`1/0`, an anchored search that found nothing). An unsteppable
+  statement never ran at all. Its NK is the ABSENCE of evaluation, not the result of one.
+- **It halts.** Run-time errors stop execution; values do not. §6.3's halt is this property,
+  and it is why the brane's NK is set directly by the halt rather than derived from a member's
+  value.
+
+**Consequence for reporting.** Like other Foolish run-time errors (division by zero's
+`DIV-BY-ZERO` alarm, the step cap's `Iteration exceeded N`), an unsteppable statement is a
+finding the evaluator ANNOUNCES, not merely a value the reader discovers. §6.5a's rendering is
+the announcement; whether it also raises an `alarm_reason` on the brane — the mechanism those
+other two run-time errors use — is implementation's to settle (see the plan's Phase 9a), and
+is the natural way to make it visible without reviving `warn_brane_nk`.
+
+**Consequence for the terminology list.** "Run-time error" is not currently a defined term in
+AGENTS.md's Foolish Terminology. If this addendum is implemented, **unsteppable** and
+**run-time error** both belong in that list, alongside *nye*, *constanic*, and *no-no*.
+
+#### §6.3 What happens
+
+When a brane's stepping reaches an unsteppable statement:
+
+1. **Stepping of the brane STOPS.** The loop halts at that statement. It does not skip ahead;
+   it does not continue draining tasks.
+2. **The brane gains NK.** Set directly by the halt, not derived through
+   `decide_nyes_due_to_children`'s rollup — the brane is NK *because it stopped*.
+3. **The remaining statements become NK**, by never being stepped. They are not visited,
+   swept, or individually marked; they are **found** unsteppable when something asks about
+   them, by position against the brane's recorded boundary.
+
+**The poisoning statement itself is NOT unsteppable.** `'K = 3` steps normally and **reverts to
+Foolish** — it renders from its written source and its body remains an honest
+`IndepInt { value: 3 }`. It is the cause, not a casualty. (This is also why the error cannot be
+stored as a NYES on the statement's body: `3` genuinely IS `Independent`; marking it NK would
+be a false statement about that node.)
+
+**Statements before it are untouched** — they were evaluated in a sound context and keep their
+meaning. `a = 'K` before the conflict still finds ⬤.
+
+#### §6.4 Where the fact is stored
+
+**On the BRANE, not on the statement FIR.** The brane records the **first** unsteppable
+statement; that single record is the whole data model. Everything after the boundary is
+unsteppable by consequence, needing no record of its own.
+
+This replaces the current arrangement, in which `refuse_statement` writes `nf_reason` onto the
+statement and pushes an NK into its `ubc_children`. That arrangement is precisely what leaks:
+putting the refusal where readers resolve to it is what makes searches carry the poison. Moving
+it to the brane makes it a fact about **evaluation context** rather than about any value, and
+allows `nf_reason` and the `ubc_children` push to be removed.
+
+#### §6.4a An NK brane renders, but cannot be concatenated
+
+**Human-directed, 2026-09-18.** A brane that has gone NK through the halt (§6.3) **keeps
+rendering** — it is not elided, not replaced by `???`, not collapsed. A Foolisher must be able
+to read it and see what went wrong: the statements before the poisoning statement with their
+real values, the poisoning statement reverted to Foolish, the unsteppable statement with its
+annotation, and the unstepped remainder as written source (§6.5a).
+
+**But it may not participate in concatenation.** Concatenation combines branes by merging their
+statements; a brane with no meaning has no statements worth merging, and letting it contribute
+would propagate the broken context into a brane that is otherwise sound. So a concatenation
+whose operand is an NK brane does not merge that operand.
+
+This distinguishes this NK from the ordinary member-level NK the rollup already produces:
+`{x = 1/0; y = 2}` is a meaningful brane containing an unknowable value and concatenates
+normally; `{'K = ⬤; 'K = 3;}` is not a brane that means anything and does not.
+
+> **DEFERRED — concatenation is a LATER FOOP's work (human, 2026-09-18).** The rule above is
+> recorded here as the intended semantics, but **this FOOP does not implement it**. The open
+> details are real and want their own treatment: what the concatenation ITSELF becomes (settle
+> NK, or merge only the sound operands), and how this reconciles with §4's existing merge-time
+> rule (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`), under which an
+> unsteppable statement can arise DURING a merge and should presumably halt the merged brane
+> the same way §6.3 halts an ordinary one — "one rule, two trigger sites", as FOOP-33 §4 puts
+> it. Until that FOOP lands, concatenation behavior with an NK-brane operand is **whatever it
+> is today**, unchanged and unaudited.
+
+#### §6.4b Anchored searches into an NK brane settle NK
+
+**Human-directed, 2026-09-18.** An **anchored** search whose anchor resolves to a brane that is
+NK (by the §6.3 halt) **settles NK**. There is nothing to find: the brane has no meaning, so no
+statement inside it can be meaningfully addressed.
+
+This is consistent with the existing anchored-miss rule (AGENTS.md §"NK vs ECONSTANIC miss
+outcomes": *"Anchored miss → NK — the name is provably not in that brane"*). Here the reason is
+stronger than absence — the brane is not a brane that means anything — but the outcome is the
+same, and it stays on the correct side of AGENTS.md's warning to be skeptical of NK: this is
+the *anchored* case, where NK is the specified outcome, not an unanchored miss (which settles
+ECONSTANIC and may still recoordinate).
+
+Note this does **not** reintroduce §4's search-poisoning, which §6.3 removes. The difference is
+what is being addressed: poisoning made a search that resolved *to a refused statement* return
+that statement's NK value; this rule makes a search *into a meaningless brane* fail, because
+the anchor itself is unusable. A search that never touches the NK brane is unaffected.
+
+#### §6.5 Consequences
+
+- **`{'K = ⬤; 'K = 3;}` becomes NK** — the brane is NK because stepping halted in it. The
+  human's earlier framing ("the brane should become NK when it redefines a null-characterized
+  name") follows from this rule rather than needing to be stated separately.
+- **The existing NK rollup is untouched.** `{x = 1/0; y = 2}` keeps whatever
+  `decide_nyes_due_to_children` currently gives it. This addendum does NOT revive
+  "any NK member ⇒ brane NK"; the brane's NK here comes from the halt, not from a member.
+- **Poison no longer travels through searches**, because there is no poisoned value to find —
+  only statements that were never evaluated.
+
+#### §6.5a Rendering (human-directed, 2026-09-18)
+
+A brane going NK is otherwise INVISIBLE in Foolish-mode output — `annotate` deliberately keeps
+a brane's `{` bare, and `warn_brane_nk` defaults OFF (§6.6's former open question 5). The
+unsteppable condition must therefore announce itself on the statements, not on the brace:
+
+1. **A suffix comment on the unsteppable statement** — the first unsteppable statement carries
+   a trailing `!!` annotation, in the same shape every other NK annotation uses
+   (`  !! NK: …`), naming why it could not be stepped.
+2. **A full-line comment, correctly indented**, marking that the REST of the brane went
+   unstepped because of it. Per AGENTS.md §"Comment style in Foolish einmo inputs" rule 3, a
+   full-line comment marks the code BELOW it — which is exactly right here, since what follows
+   is the unstepped remainder. It must carry the same indentation as the statements it sits
+   among, so the rendering stays valid, re-parseable Foolish (FOOP-36 Property 1).
+
+The unstepped remainder itself renders as written source (it was never evaluated, so there is
+no value to render) beneath that full-line comment. The poisoning statement (`'K = 3`) renders
+normally, reverted to Foolish, with no annotation of its own — it is not the unsteppable one.
+
+**Almost none of this is new rendering machinery — it falls out of FOOP-36 §3** (human,
+2026-09-18). That section's standing rule is: *"a conclusive result renders as its value; an
+inconclusive constanic result renders as the original expression."* NK is constanic but
+**inconclusive** (AGENTS.md §Terminology: NK is constantew yet inconclusive — the two cuts
+differ exactly on NK), so an unstepped statement's NK **already** reverts to written Foolish
+under the existing rule. Line by line:
+
+| Line | State | Renders as | By which rule |
+|---|---|---|---|
+| `'K = ⬤;` | conclusive | its value | FOOP-36 §3 (existing) |
+| `a = 'K;` | conclusive | its value | FOOP-36 §3 (existing) |
+| `'K = 3;` | conclusive (`IndepInt(3)`, `Independent`) | its value | FOOP-36 §3 (existing) |
+| `b = 'K;` | NK (first unsteppable) | written source **+ annotation** | §3 (existing) + §6.5a (**new**) |
+| `c = {'K};` | NK (unstepped) | written source | FOOP-36 §3 (existing) |
+| `d = 1 + 1` | NK (unstepped) | written source | FOOP-36 §3 (existing) |
+
+So the **only** genuinely new rendering is the annotation on the first unsteppable statement and
+the full-line comment beneath it — and even the annotation reuses `annotate`'s existing
+`!! NK: …` shape. The NK brane needs no special rendering path at all; it renders as an
+ordinary brane that happens to be NK.
+
+**Re-reading and re-stepping arrives at the same state.** The rendered text still contains
+`'K = ⬤` followed by `'K = 3`, so a fresh parse hits the same conflict, halts at the same
+statement, and reaches the same NK. That is FOOP-36 Property 2 (idempotence) holding for the
+unsteppable case, and it must be **pinned by a test**, not merely asserted (the plan's 9d).
+Property 1 (the rendering re-parses) must hold too — the full-line comment and the annotation
+are both ordinary `!!` comments, so it should, but
+`einmo_corpus_wide_foolish_rendering_parses` is the gate that proves it.
+
+Illustrative shape (exact wording is the implementer's, constrained by re-parseability):
+
+```foolish
+{
+  'K = ⬤;
+  a = 'K;
+  'K = 3;
+  b = 'K;  !! NK: unsteppable — 'K redefined above
+
+  !! the rest of this brane was not stepped
+  c = {'K};
+  d = 1 + 1
+}
+```
+
+#### §6.6 OPEN — not yet decided, blocking implementation
+
+1. **Stored as the boundary, or as the cause?** The brane can record the first unsteppable
+   statement (direct answer to "is this unsteppable") or the poisoning statement (keeps the
+   reason available for rendering). Not chosen.
+2. **What reason does an unsteppable statement report?** Generic (`"unsteppable"`) or naming
+   the cause (`"unsteppable: 'K redefined above"`). This lands in einmo baselines.
+3. **Does the creation-rename rule move too?** `check_rename_of_named_creation`
+   (`'other = 'True`) shares `refuse_statement` today. §6.2 says unsteppability currently has
+   exactly one producer — the redefinition rule — which implies the rename rule does NOT become
+   unsteppable and needs its own disposition. Unconfirmed.
+4. **Reason-string wording for the conflict itself.** FOOP-33 §4's prose says
+   `NK("'<name> redefined")`; the code emits `"'<name> not-foolish"`. Both appear in FOOP-33.
+5. ~~**Rendering.**~~ **RESOLVED 2026-09-18 (the human)** — see §6.5a: a suffix `!!` comment on
+   the unsteppable statement, plus a correctly-indented full-line comment marking the unstepped
+   remainder below it.
+6. **Scope.** Whether this is implemented inside FOOP-86 (whose own four deliverables are
+   complete and green) or in its own FOOP, with FOOP-86 merging first. **The human directed
+   implementation to proceed as part of this FOOP (2026-09-18)** — see the plan's Phase 9.
+7. ~~**What a reader outside the NK brane sees.**~~ **RESOLVED 2026-09-18 (the human)** — it
+   sees the brane, rendered as a brane, exactly as §6.5a's table shows: constanic statements as
+   their values, the unsteppable statement in Foolish with its added NK comment, the unstepped
+   remainder in Foolish. Re-reading and re-stepping arrives at the same state. This required no
+   new rule — NK reverting to written Foolish is FOOP-36 §3's standing behavior for any
+   inconclusive constanic.
+
+#### §6.6a Still unsettled — raised by the agent, NOT yet answered
+
+These were surfaced during the §6 review and have **not** been put to the human or decided.
+They do not block starting Phase 9, but each is a real semantic commitment:
+
+- **(i) Does a conflict inside a NESTED brane halt the OUTER one?** §6.3 covers descendants of
+  the boundary (a nested brane *after* it is unstepped, like any statement). The reverse is not
+  stated. The reading implied by §6.5 — the member-NK rollup is untouched — is that the inner
+  brane goes NK, becomes an ordinary NK-valued member of the outer brane, and the outer brane
+  **continues normally**: in `{a = 1; inner = {'K = ⬤; 'K = 3;}; b = 2;}`, `b = 2` still
+  evaluates to `2`. That seems right (the outer brane is not itself ill-defined) but is
+  unconfirmed.
+- **(ii) Predicate classification of an unstepped statement.** It settles NK, so it is
+  `is_constanic()` and `is_constantew()` but NOT `is_conclusive()`. The `is_constantew()` part
+  is the commitment worth noticing: constantew means "will not change no matter what," so an
+  unstepped statement can **never gain a value through recoordination**. That is almost
+  certainly intended (the brane is permanently ill-defined) but it is a real decision, not a
+  detail.
+- **(iii) Non-search access into an NK brane.** §6.4b covers *anchored searches*. A plain
+  reference (`x = SomeNkBrane`), and the index/head/tail operators (`#N`, `^`, `$`), are a
+  different operator group in AGENTS.md's taxonomy and are not covered. This is the main
+  remaining route by which a meaningless brane could leak into sound code.
+- **(iv) Step-count direction.** Halting means strictly FEWER steps, so affected cases'
+  step counts should DROP. A RISE would mean the halt is not firing and is a signal to
+  investigate, not a baseline to promote.
+
+#### §6.7 Baseline impact, when implemented
+
+At minimum `foop/33/boolean/null_char_constant.foo` (whose `checked/`+`verified/` this FOOP
+deleted, Phase 2). FOOP-33 §4 also specifies `null_const_refuse.foo` as "`'True=3` settles NK
+**and poisons subsequent `True` use**" — that expectation is exactly what §6.3 overturns, so
+that case moves too. `foop/33/chracterization_sequencing.foo` exercises the rename rule and
+depends on open question 3. **FOOP-33's own §4 text requires amendment**; this section
+supersedes it but does not edit it.
+
 ## FIR Impact
 
-**None.** No new FIR variant, no `FirSpec` arm, no NYES state, no state-machine change, no
-serialization change to the arena.
+**None for the four original deliverables** (§Abstract) — no new FIR variant, no `FirSpec` arm,
+no NYES state, no state-machine change, no serialization change to the arena. Everything below
+about `core_fir::Fir` describes those deliverables and remains accurate.
 
 What changes is not a type but a **purpose**. `core_fir::Fir` is not deleted — it remains
 `foolish-core`'s type, with `foolish-core`'s own tests. But after this FOOP **no evaluation
@@ -644,12 +935,28 @@ representation (§3.1) and `foolish-ubca` was the only other producer. `core_fir
 be an evaluation result and becomes a `foolish-core`-internal FIR type awaiting its own
 disposition FOOP (§3.3).
 
+**§6's addendum changes this, and is NOT yet implemented.** The Unsteppable statement requires
+the brane (`ProtoBrane`) to carry a new per-brane record — the first unsteppable statement —
+and removes `nf_reason` from the statement payload along with `refuse_statement`'s
+`ubc_children` NK push (§6.4). No new `Nyes` variant is proposed (unsteppable statements settle
+`Nk`), but the statement payload and the brane payload both change shape. Scope and open
+questions: §6.6.
+
 ## UBC Step Impact
 
-**None.** No step rule changes, no evaluation order changes, no NYES transition changes. Step
-counts in einmo output are unaffected — and that is a **testable claim**: the surviving suite's
-181 `checked/` baselines record step counts, and they must not move. Any movement is a bug this
-FOOP introduced, never a baseline to promote over.
+**None for the four original deliverables.** No step rule changes, no evaluation order changes,
+no NYES transition changes from the CLI switch, the crate removal, the bridge removal, or the
+suite rename. Step counts in einmo output are unaffected by those — and that is a **testable
+claim**: the surviving suite's `checked/` baselines record step counts, and they must not move.
+Any movement is a bug those deliverables introduced, never a baseline to promote over.
+
+**§6's addendum changes this materially, and is NOT yet implemented.** The Unsteppable
+statement adds a **halt** to brane stepping (§6.3): on reaching an unsteppable statement the
+brane stops stepping, gains NK directly, and leaves every later statement unstepped. That is a
+genuine step-rule change, it changes evaluation order (work that used to happen no longer
+happens), and it WILL move step counts for any case containing a null-characterized-name
+redefinition. §6.7 lists the baselines expected to move. The "step counts must not move" claim
+above applies to the four original deliverables only, and was verified for them.
 
 ## Test Plan
 
@@ -959,9 +1266,39 @@ Non-blocking.
 
 ## Last Updated
 
-**Date**: 2026-09-16
+**Date**: 2026-09-18
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created FOOP-86 — retire UBCa; `foolish-ubca2` becomes the implementation. Four
+**Changes**: **Added §6 — SPECIFICATION ADDENDUM: the Unsteppable statement**, human-directed,
+mid-execution, after Phases 0–7 were complete and green. §6 **supersedes FOOP-33 §4's refusal
+mechanism**. Origin: Phase 2's cross-evaluator comparison found `'True = 3` behaving wrongly;
+investigation showed the evaluator implements FOOP-33 §4 faithfully and that **§4 itself is
+wrong** — its "poisoning is scoped to searches that discover this definition" destroys the very
+meaning the rule exists to preserve (§6.1). The human rejected both the existing behavior and
+the two repair options proposed, and specified a third: an **unsteppable statement** — one whose
+null-characterized name was already defined in the context — is a **run-time error of Foolish**
+(§6.2a: not a parse error, not an ordinary NK value; it HALTS). On reaching one, **brane
+stepping stops, the brane gains NK directly, and every later statement is never stepped** (§6.3).
+The brane stores only the **first** unsteppable statement; the rest are *found* by position
+(§6.4) — replacing `nf_reason`-on-the-statement, which is the leak. The **poisoning statement is
+not itself unsteppable**: it reverts to Foolish and keeps its honest `IndepInt(3)`, which is why
+the fact had to move to the brane (a genuine `Independent` integer cannot also be NK). An NK
+brane **still renders but cannot participate in concatenation** (§6.4a) — though concatenation
+itself is **deferred to a later FOOP** at the human's direction and is NOT implemented here.
+**Anchored searches into an NK brane settle NK** (§6.4b), consistent with the existing
+anchored-miss rule and explicitly not a reintroduction of §4's search-poisoning. Rendering
+(§6.5a) is a suffix `!!` annotation on the unsteppable statement plus a correctly-indented
+full-line comment marking the unstepped remainder — and **almost nothing else is new**, since
+NK reverting to written Foolish is already FOOP-36 §3's standing rule for any inconclusive
+constanic; a per-line table records which rules do the work. §6.6 lists what the human resolved
+(rendering; what an outside reader sees); **§6.6a lists four things the agent raised that are
+NOT yet answered** — whether a nested conflict halts the outer brane, the `is_constantew()`
+commitment (an unstepped statement can never recoordinate), non-search access into an NK brane
+(`x = NkBrane`, `#N`, `^`, `$`), and that step counts should DROP not rise. §FIR Impact and
+§UBC Step Impact were corrected: their "None" claims now apply **only to the four original
+deliverables** — §6 changes step rules, evaluation order, step counts, and baselines (§6.7).
+Implementation is the plan's **Phase 9** and has **not** begun.
+
+Prior entry: Created FOOP-86 — retire UBCa; `foolish-ubca2` becomes the implementation. Four
 bundled deliverables: the CLI onto ubca2 via `evaluate_arena` + `Ubca2Sequencer` (**not** the
 lossy `Evaluator`-trait one-liner, §1.2), removal of `foolish-ubca`, removal of the
 `proto_to_core_fir` bridge, and retirement of `foolish-ubca2/einmo_suite` with `einmo_suite2`

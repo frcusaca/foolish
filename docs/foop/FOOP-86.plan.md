@@ -1101,6 +1101,193 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       Markdown File Update Protocol (replace, don't append).
       (2026-09-18 00:00, see the replaced entry below)
 
+## Phase 9 — Implement the Unsteppable statement (§6 ADDENDUM)
+
+> **Judgment phase — larger model.** This is NOT one of the FOOP's four original deliverables.
+> It implements the specification addendum at [`FOOP-86.md`](FOOP-86.md) §6, added mid-execution
+> at the human's direction after Phase 2's comparison surfaced a DESIGN defect in FOOP-33 §4.
+> **Read §6 in full before any code.** It supersedes FOOP-33 §4's refusal mechanism.
+>
+> **This phase changes evaluation semantics.** Unlike Phases 1–7 (which moved code without
+> changing what programs mean), this changes step rules, evaluation order, step counts, and
+> baselines. FOOP-86.md's §FIR Impact and §UBC Step Impact have been corrected accordingly —
+> their "None" claims now apply only to the four original deliverables.
+
+### The design in one paragraph (verify against §6, don't re-derive)
+
+A statement whose null-characterized name was **already defined in the context** is
+**unsteppable** — a **run-time error** of Foolish (§6.2a), not a parse error and not an
+ordinary NK value. When a brane's stepping reaches one: **stepping halts**, **the brane gains
+NK directly**, and **every later statement is never stepped** (§6.3). The brane stores only the
+**first** unsteppable statement; the rest are *found* unsteppable by position (§6.4). The
+**poisoning statement itself is NOT unsteppable** — it reverts to Foolish and keeps its honest
+`IndepInt(3)`. An NK brane **still renders** but **cannot participate in concatenation**
+(§6.4a).
+
+### Orientation — measured on this branch, 2026-09-18
+
+| Site | File:line | Role |
+|---|---|---|
+| `check_null_const_conflict` | `fvm_storage.rs:2696` | detects the conflict (IB-then-AB search + `default_equal`) |
+| `refuse_statement` | `fvm_storage.rs:2739` | **current** write path: sets `nf_reason` + pushes `Nk` to `ubc_children` |
+| `check_rename_of_named_creation` | `fvm_storage.rs:2751` | the OTHER NF rule — shares `refuse_statement` |
+| `apply_null_const_rule_to_merged_stmt` | `fvm_storage.rs:2802` | the same rule at concatenation-merge time |
+| Statement `Braning` arm (refusal call site) | `fvm_storage.rs:964–997` | where both checks run, as the statement settles |
+| `step_inner` (task drain) | `fvm_storage.rs:871–910` | the loop a halt must stop |
+| `decide_nyes_due_to_children` | `fvm_storage.rs:1508` | existing rollup — **do not revive "any NK member ⇒ NK"** |
+| `nf_reason` storage | `fvm_storage.rs:100, 204, 211, 433, 440` | to be REMOVED from the statement payload (§6.4) |
+| `Renderer::render_statement` | `sequencer.rs:963` | renders from `foolish_children[0]`, never `settled_constanic_result()` |
+| `annotate` | `sequencer.rs:1078` | keeps a brane's `{` bare; `warn_brane_nk` defaults OFF |
+
+**Verified facts** (re-measure only if something disagrees):
+- The evaluator ALREADY detects the conflict correctly. `settled_constanic_result` on the
+  refused statement returns `Some(Nk { reason: "'True not-foolish" })`. The bug is NOT detection.
+- `{x = 1/0; y = 2}` currently settles the BRANE to `Nk` via the rollup; `{'K = ⬤; 'K = 3;}`
+  currently settles the brane to `Independent`. The two are **inverted** relative to §6.
+- A brane going NK is currently INVISIBLE in Foolish-mode output (bare `{`, `warn_brane_nk` off).
+
+### ⛔ Phase 9 stop conditions
+
+1. **Do NOT revive "any NK member ⇒ brane NK"** in `decide_nyes_due_to_children` (§6.5). The
+   brane's NK here comes from the HALT. `{x = 1/0; y = 2}` must keep whatever it has today.
+2. **Do NOT mark the poisoning statement's body NK.** `IndepInt(3)` genuinely IS `Independent`;
+   that is the stated reason the fact moves to the brane (§6.4).
+3. **If a baseline outside §6.7's expected set moves, STOP** — that is a regression, not a
+   consequence. §6.7 expects: `foop/33/boolean/null_char_constant.foo`, `null_const_refuse.foo`,
+   and (pending open question 3) `foop/33/chracterization_sequencing.foo`.
+4. **`einmo promote` still requires the Promotion Review Gate**, case by case, and any case with
+   a `verified/` twin needs the human's key. This phase DOES produce new OUTPUT (unlike the rest
+   of FOOP-86, whose T2 said it promotes nothing) — so T2 no longer covers it.
+
+### 9a — Resolve the remaining open questions (§6.6) BEFORE coding
+
+- [ ] Put §6.6's open questions 1–4 to the human in ONE message, with a recommendation each:
+  - [ ] **Q-A (store boundary or cause?)** — rec: store the **poisoning statement**, since
+        §6.5a's rendering needs its name/line for the reason text, and "is this unsteppable"
+        is answerable from it by position comparison anyway.
+  - [ ] **Q-B (reason wording)** — rec: name the cause, e.g. `unsteppable: 'K redefined above`.
+        Lands in baselines, so it wants deciding once.
+  - [ ] **Q-C (does the creation-rename rule move too?)** — §6.2 says unsteppability currently
+        has exactly ONE producer (the redefinition rule), which implies `check_rename_of_named_creation`
+        does NOT become unsteppable and keeps some other disposition. **Needs an explicit answer**:
+        it currently shares `refuse_statement`, which this phase dismantles.
+  - [ ] **Q-D (`'<name> redefined` vs `'<name> not-foolish`)** — FOOP-33 §4's prose and the code
+        disagree; §6.6(4).
+  - [ ] **Q-E (does the brane raise an `alarm_reason`?)** — §6.2a suggests it, since the other two
+        Foolish run-time errors (DIV-BY-ZERO, iteration cap) use that mechanism, and it makes the
+        error visible without reviving `warn_brane_nk`.
+- [ ] Record each answer in §6.6, striking the question rather than deleting it.
+- [ ] **Do not start 9b until Q-C and Q-E are answered** — both change what code is touched.
+
+### 9b — The evaluator: halt, brane record, remove `nf_reason`
+
+- [ ] Establish relevant tests for this sub-section. Use
+      [these instructions](../../README.md#running-specific-tests): unit tests
+      `foolish-ubca2::null_const`, `foolish-ubca2::check_null_const`,
+      `foolish-ubca2::refuses_conflicting`, `foolish-ubca2::creation_viewed_from`; einmo cases
+      `foop/33/boolean/null_char_constant`, `foop/33/chracterization_sequencing`,
+      `foop/33/creation_concat`, `foop/33/comprehensive`.
+- [ ] Add the brane's record to `ProtoBrane` (per Q-A): the first unsteppable statement, one
+      field. Private, with an accessor — `ProtoBrane`'s every field is private by design
+      (`rust_instructions.md` §"Encapsulation").
+- [ ] Make `check_null_const_conflict` record the fact **on the home brane** instead of calling
+      `refuse_statement`. Detection logic itself is correct and must not change — only where
+      the finding is written.
+- [ ] Implement the **halt** in the brane's task drain (`step_inner` / the brane's `fir_op_step`
+      arm): on reaching a statement at-or-past the boundary, stop draining, set the brane `Nk`
+      directly. **Do not sweep** the remainder (§6.3: they are *found* unsteppable, not marked).
+- [ ] Make "is this statement unsteppable?" answerable by position against the brane's record —
+      one accessor, used by both the renderer and any value reader.
+- [ ] Per Q-E: raise `alarm_reason` on the brane if the human chose that.
+- [ ] **Remove** `nf_reason` from the statement payload (`fvm_storage.rs:100, 204, 211, 433, 440`)
+      and `refuse_statement`'s `ubc_children` NK push — §6.4 states these are the leak. **If
+      `check_rename_of_named_creation` still needs them (Q-C), keep them for that rule ONLY and
+      say so in a comment**, rather than leaving a general mechanism behind.
+- [ ] Verify the brane's NK comes from the halt, NOT from `decide_nyes_due_to_children`
+      (stop condition 1). A unit test asserting `{x = 1/0; y = 2}` is unchanged pins this.
+- [ ] Unit tests: `a = 'K` before the conflict keeps ⬤; `b = 'K` after is NK-unsteppable;
+      `d = 1 + 1` after is ALSO NK **though it never mentions `'K`** (this is the test that
+      distinguishes §6.3 from the old search-poisoning behavior); the brane is NK; the
+      poisoning statement's body is still `IndepInt(3)` and `Independent`.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9c — Anchored searches into an NK brane settle NK (§6.4b)
+
+- [ ] (read §6.4b — and note it is NOT a reintroduction of §4's search-poisoning, which §6.3
+      removes; the difference is anchor-unusable vs. value-poisoned)
+- [ ] An **anchored** search whose anchor resolves to an NK brane settles **NK**. Reuses the
+      existing anchored-miss outcome (AGENTS.md §"NK vs ECONSTANIC miss outcomes"); only the
+      REASON differs.
+- [ ] **Unanchored** searches are unaffected — they keep settling ECONSTANIC on a miss. Do not
+      widen this rule to them.
+- [ ] Unit tests: an anchored search into an NK brane settles NK; the same search into a sound
+      brane is unchanged; an unanchored search is unchanged.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9c-note — Concatenation is DEFERRED to a later FOOP
+
+- [x] **Not this FOOP's work (human, 2026-09-18).** §6.4a records the intended semantics — an
+      NK brane renders but may not participate in concatenation — but implementing it, deciding
+      what the concatenation itself becomes, and reconciling with §4's merge-time rule
+      (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`) all belong to a later
+      FOOP. Until then, concatenation with an NK-brane operand behaves **as it does today**,
+      unchanged and unaudited. **Do not implement it in Phase 9.**
+      (2026-09-18 00:00)
+
+### 9d — Rendering (§6.5a)
+
+- [ ] (read §6.5a — suffix comment on the unsteppable statement, full-line comment for the
+      remainder, correct indentation)
+- [ ] Render the **first unsteppable statement** with a trailing `  !! NK: …` annotation, in
+      the same shape every other NK annotation uses (`annotate`'s existing form).
+- [ ] Render a **correctly-indented full-line comment** marking that the rest of the brane went
+      unstepped. Per AGENTS.md §"Comment style" rule 3, a full-line comment marks the code
+      BELOW it — correct here. Indentation must match the surrounding statements.
+- [ ] Render the unstepped remainder as **written source** (never evaluated ⇒ no value).
+- [ ] **The NK brane still renders** (§6.4a) — not elided, not `???`, not collapsed.
+- [ ] **Expect MOST of this to already work** (§6.5a's table): NK reverting to written Foolish
+      is FOOP-36 §3's standing rule for any inconclusive constanic, and NK IS inconclusive. The
+      genuinely new rendering is only (a) the annotation on the first unsteppable statement and
+      (b) the full-line comment beneath it. **If you find yourself writing a special rendering
+      path for the NK brane itself, stop** — §6.4a says it renders as an ordinary brane.
+- [ ] **Property 1 (FOOP-36): the rendering must re-parse.** The full-line comment and the
+      annotations must not break that — `einmo_corpus_wide_foolish_rendering_parses` is the gate.
+- [ ] **Property 2 (FOOP-36): idempotence — PIN IT WITH A TEST.** Re-parsing and re-stepping an
+      NK brane's rendering must reach the same state: the text still contains the conflicting
+      pair, so it halts at the same statement. Add the unsteppable case to
+      `foolish_rendering_round_trips_constanic_programs` (`sequencer.rs:1695`) rather than
+      writing a parallel test.
+- [ ] Fix `render_statement` to consult `settled_constanic_result()` rather than reading
+      `foolish_children[0]` blindly — the original rendering defect (§6.1), independent of the
+      rest of this phase.
+- [ ] Unit tests pinning the exact rendered shape, including indentation.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9e — Baselines, docs, and the Promotion Review Gate
+
+- [ ] Run the full einmo suite. **Expected to move**: `foop/33/boolean/null_char_constant.foo`
+      (its `checked/`+`verified/` were deleted in Phase 2 — this phase RESTORES them by running
+      the fixed code, never by hand-authoring), `null_const_refuse.foo`, and per Q-C possibly
+      `foop/33/chracterization_sequencing.foo`. **Anything else moving is stop condition 3.**
+- [ ] **Promotion Review Gate** (`foop.md`) — one named sub-task per case, each justified in
+      writing against §6 before any `einmo promote`. Note this REVERSES FOOP-86's T2 ("this FOOP
+      promotes nothing"), which was true of the four original deliverables only.
+  - [ ] `foop/33/boolean/null_char_constant.foo` — justify every OUTPUT line
+  - [ ] `null_const_refuse.foo` — justify; §4 specified it to "poison subsequent `True` use",
+        which §6.3 overturns, so this case's MEANING changes and the review must say why that
+        is now correct
+  - [ ] any further case that moved, named individually
+- [ ] **`verified/` twins**: `null_const_refuse.foo` and others may have them. **STOP and ask
+      the human** — an agent cannot sign the verified tier (AGENTS.md).
+- [ ] **Amend FOOP-33.** §6 supersedes §4's refusal mechanism but does not edit it. Update
+      FOOP-33 §4 (the "the statement's body settles to NK" paragraph and the whole "Poisoning is
+      scoped to searches that discover this definition" paragraph) to point at FOOP-86 §6, and
+      update FOOP-33's `## Last Updated`.
+- [ ] **Add to AGENTS.md's Foolish Terminology**: **unsteppable** and **run-time error**
+      (§6.2a's closing note).
+- [ ] `cargo fmt`; `cargo clippy` — no new errors beyond Phase 0's 4 pre-existing.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Last Updated
 
 **Date**: 2026-09-18
