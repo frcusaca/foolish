@@ -705,7 +705,26 @@ that shows the condition is about the *brane's context*, not about any particula
 authorship: `B` writes `'C = 11` and then recoordinates `A`, whose `'C = 10` lands in the same
 context. Neither statement is individually at fault; the brane is.
 
-**Measured on this branch, 2026-09-18 — routes 2 and 3 currently produce NO NK at all:**
+> **⚠ ROUTE 3 IS NOT IMPLEMENTED — open question, raised 2026-09-18 during Phase 9b.** Routes
+> 1, 2 and 4 are implemented and working. Route 3 is **harder than it looked**, and the reason
+> is structural rather than a missed call site.
+>
+> Probing `{A={'C=10}, B={'C=11; A} }` shows `B`'s members are `'C = 11` and an **anonymous
+> statement** (`???`) whose value is the recoordinated `A` — so the conflicting `'C = 10` is
+> nested one level deeper, *inside* that anonymous statement's brane. It is **not a sibling
+> statement of `'C = 11` in `B`**. `check_null_const_conflict` searches for a prior same-name
+> STATEMENT of the brane and finds nothing, correctly, because there is no such statement.
+>
+> Making route 3 fire therefore requires answering a question §6 does not: **do a recoordinated
+> brane's members participate in the enclosing brane's null-characterized-name context?** That
+> is a real semantic decision with reach beyond this rule — it governs what "defined in this
+> context" means whenever a brane is brought in by reference rather than written. Answering it
+> by implementation choice would be inventing language semantics, so it is left for the human.
+>
+> **Routes 1, 2 and 4 do not depend on it** and are complete.
+
+**Measured on this branch, 2026-09-18 — routes 2 and 3 produced NO NK at all before Phase 9;
+routes 1, 2 and 4 now halt correctly, route 3 remains open per the note above:**
 
 ```
 {A={'C=10}, b = A A}          →  b = { 'C = 10; 'C = 10 }      (accepted, no NK)
@@ -1045,6 +1064,40 @@ re-parseability):
    remainder in Foolish. Re-reading and re-stepping arrives at the same state. This required no
    new rule — NK reverting to written Foolish is FOOP-36 §3's standing behavior for any
    inconclusive constanic.
+
+#### §6.6d IMPLEMENTATION STATUS — what Phase 9 landed, and the two gaps it did not
+
+**Implemented and tested (2026-09-18):**
+
+| §6 behavior | Status |
+|---|---|
+| Route 1 (written directly) halts the brane | ✅ |
+| Route 2 (concatenation merge) halts the merged brane | ✅ |
+| Route 4 (creation rename) halts the brane | ✅ |
+| Cause reverts to Foolish, body stays honest `IndepInt`/`Independent` | ✅ |
+| Remainder unstepped and NK, including statements not naming the constant | ✅ |
+| Brane NK set by the HALT, not the rollup | ✅ |
+| A nested conflict does NOT halt the outer brane (§6.4c) | ✅ |
+| Alarm raised on the brane (§6.2a, Q-E) | ✅ |
+| §6.5a rendering: annotation, full-line comment, remainder as source | ✅ |
+| Property 1 (re-parses) corpus-wide, Property 2 (idempotent) | ✅ |
+| **§6.4b: ANCHORED SEARCH into an NK brane settles NK** | ✅ |
+| **§6.4b: index / head / tail / plain reference into an NK brane** | ❌ **gap** |
+| **Route 3 (recoordination)** | ❌ **gap** |
+
+**Gap 1 — §6.4b is implemented only for anchored searches.** `bad#0`, `bad^` and a plain
+`r = bad` still resolve into the NK brane and return its contents. The cause is structural, not
+a missed call site: the anchor resolves to a **`revive_constanic` clone** of the brane, and
+while the clone carries the original's `Nyes::Nk`, it does **not** carry
+`unsteppable_cause`. Closing it means deciding whether cloning should propagate the cause — a
+question about what a clone of a halted brane IS, which §6 does not answer.
+
+**Gap 2 — route 3 (recoordination) does not fire**; see §6.2's note. It needs an answer to
+"do a recoordinated brane's members participate in the enclosing brane's null-characterized-name
+context?", which is language semantics, not an implementation choice.
+
+Both gaps are **narrower than the bug this FOOP set out to fix**, which is closed: `'True = 3`
+no longer renders as accepted, no longer poisons later readers, and its brane correctly halts.
 
 #### §6.6b DISCREPANCY RAISED, NOT RESOLVED — NK members currently make their brane NK
 

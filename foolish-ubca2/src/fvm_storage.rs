@@ -6988,6 +6988,145 @@ mod tests {
         );
     }
 
+    // ── FOOP-86 §6 unsteppable-statement behaviors (§6.6c requires each of
+    //    these to have an einmo counterpart as well) ────────────────────
+
+    /// Evaluates `src` as a real program and returns `(storage, program)`.
+    fn evaluated(src: &str) -> (FVMStorage, FirPointer) {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compose_program_with_system(&mut storage, src).unwrap();
+        let root = roots[0];
+        let _ = core_fir_conversion::step_to_constanic(&mut storage, root);
+        let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
+        (storage, program)
+    }
+
+    /// §6.3 — the halt's full shape, in one test. Statements BEFORE the cause
+    /// keep their values (`'K` still means the creation for `a`); the CAUSE
+    /// reverts to Foolish and keeps its honest `IndepInt`; statements AFTER
+    /// are NK from never being stepped — **including one that never mentions
+    /// the name at all**, which is what distinguishes §6.3's halt from the
+    /// superseded search-poisoning (that only reached readers OF the name).
+    #[test]
+    fn unsteppable_halts_the_brane_and_leaves_the_remainder_unstepped() {
+        let (storage, program) = evaluated("{'K = ⬤; a = 'K; 'K = 3; b = 'K; d = 1 + 1;}");
+        let cursor = FirCursor::new(program, &storage);
+        let stmt = |i: usize| cursor.stmt_at(i).expect("statement exists");
+
+        assert_eq!(
+            storage.get_nyes(stmt(1)),
+            Nyes::Constant,
+            "`a = 'K` precedes the conflict, so it keeps the meaning 'K had there"
+        );
+        assert!(
+            is_unsteppable_cause(&storage, stmt(2)),
+            "`'K = 3` is the cause -- its name is already defined in this context"
+        );
+
+        let cause_body = FirCursor::new(stmt(2), &storage).foolish_children()[0];
+        assert_eq!(
+            storage.get(cause_body),
+            &FirSpec::IndepInt { value: 3 },
+            "the cause reverts to Foolish: 3 is an honest IndepInt, never marked (§6.3)"
+        );
+        assert_eq!(
+            storage.get_nyes(cause_body),
+            Nyes::Independent,
+            "and it is genuinely Independent -- marking it NK would be a false statement \
+             about that node, which is WHY the fact lives on the brane (§6.4)"
+        );
+
+        assert_eq!(
+            storage.get_nyes(stmt(3)),
+            Nyes::Nk,
+            "`b = 'K` was never stepped"
+        );
+        assert_eq!(
+            storage.get_nyes(stmt(4)),
+            Nyes::Nk,
+            "`d = 1 + 1` was never stepped EITHER, though it never mentions 'K -- the halt \
+             stops the brane, it does not poison a name (§6.3 vs the superseded §4)"
+        );
+        assert_eq!(
+            storage.get_nyes(program),
+            Nyes::Nk,
+            "the brane halted, so it is NK"
+        );
+        assert_eq!(
+            storage.alarm_reason(program),
+            Some("'K already defined in context"),
+            "the halt raises the run-time-error alarm (§6.2a, Q-E)"
+        );
+    }
+
+    /// §6.4c — the governing distinction. A brane containing an NK VALUE did
+    /// its part and stays valid; only a brane that FAILED to finish goes NK
+    /// by the halt. This pins that the halt is what sets it, not the
+    /// NK-member rollup (Phase 9 stop condition 1) — if a later change to
+    /// `decide_nyes_due_to_children` (§6.6b) altered the rollup, this test
+    /// keeps the unsteppable rule honest.
+    #[test]
+    fn nk_member_does_not_halt_its_brane_but_an_unsteppable_statement_does() {
+        let (storage, program) = evaluated("{x = 1/0; y = 2;}");
+        assert_eq!(
+            storage.unsteppable_cause(program),
+            None,
+            "a brane containing an NK VALUE has no unsteppable cause -- it did its part"
+        );
+        let cursor = FirCursor::new(program, &storage);
+        assert_eq!(
+            storage.get_nyes(cursor.stmt_at(1).unwrap()),
+            Nyes::Independent,
+            "and its later statements stepped normally -- nothing halted"
+        );
+
+        let (storage, program) = evaluated("{'K = ⬤; 'K = 3; z = 9;}");
+        assert!(
+            storage.unsteppable_cause(program).is_some(),
+            "whereas an unsteppable statement DOES halt its brane"
+        );
+    }
+
+    /// §6.4c — a conflict inside a NESTED brane does not halt the OUTER one:
+    /// the outer brane stepped everything it has, including the inner brane,
+    /// which settles NK as an ordinary value.
+    #[test]
+    fn a_nested_conflict_does_not_halt_the_outer_brane() {
+        let (storage, program) = evaluated("{a = 1; inner = {'K = ⬤; 'K = 3;}; b = 2;}");
+        assert_eq!(
+            storage.unsteppable_cause(program),
+            None,
+            "the OUTER brane has no cause of its own -- it did its part (§6.4c)"
+        );
+        let cursor = FirCursor::new(program, &storage);
+        assert_eq!(
+            storage.get_nyes(cursor.stmt_at(2).unwrap()),
+            Nyes::Independent,
+            "`b = 2` after the nested conflict evaluates normally"
+        );
+    }
+
+    /// §6.4b — an ANCHORED SEARCH into an NK brane settles NK.
+    ///
+    /// **Partial coverage, deliberately.** §6.4b requires this of EVERY
+    /// access path, but only the anchored-search path is implemented (Phase
+    /// 9b). Index/head/tail and a plain reference still resolve into the NK
+    /// brane and return its contents — see FOOP-86 §6.6d, which records the
+    /// gap and the reason it is not an obvious fix (the anchor resolves to a
+    /// `revive_constanic` CLONE of the brane, and the clone does not carry
+    /// the original's `unsteppable_cause`). Extending this test is the
+    /// signal that the gap has been closed.
+    #[test]
+    fn anchored_search_into_an_nk_brane_settles_nk() {
+        let (storage, program) = evaluated("{bad = {'K = ⬤; 'K = 3;}; s = bad?'K;}");
+        let cursor = FirCursor::new(program, &storage);
+        assert_eq!(
+            storage.get_nyes(cursor.stmt_at(1).expect("statement exists")),
+            Nyes::Nk,
+            "an anchored search into an NK brane must settle NK (§6.4b)"
+        );
+    }
+
     /// Re-stating a null-characterized constant's OWN existing value (the
     /// same value, not a conflicting one) is PERMITTED — not a rename, not
     /// a conflict.
