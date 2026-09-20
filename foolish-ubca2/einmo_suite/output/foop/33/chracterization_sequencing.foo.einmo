@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/33/chracterization_sequencing.foo
 suite: /yolo/foolish_worktrees/foop-86-retire-ubca/foolish-ubca2/einmo_suite
-producer: 55f86e67
-producer-diff: sha256:9d57b193640dbda100249d66ea1ad2c778249635754426f7e46eddc7f854d589
-generated: 2026-09-19T05:03:23.000000000Z
+producer: 34917221
+producer-diff: sha256:6a6f8bc3c79a6c7d5eb45be8de4683b94f8e15f18f3abe06e276c890365d8ad5
+generated: 2026-09-20T00:36:31.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -16,6 +16,16 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   !! called those creations' orignal names.
   'a    = {*};
    a    = {*};
+
+  !! FOOP-86 §6: 'bad='b renames an ALREADY-NAMED creation, which is an
+  !! UNSTEPPABLE statement (§6.2 route 4) -- 'b is already that creation's
+  !! original name. So bs cannot finish stepping: it HALTS and takes NK,
+  !! and its opener carries the annotation (the unsteppable statement is
+  !! bs's last member, so nothing follows it to carry it instead).
+  !! Every access into bs below therefore settles NK (§6.4b) -- a brane
+  !! with no meaning cannot be searched or indexed. Note what does NOT
+  !! happen: 'a, a and the what_was_* readers above are untouched. The
+  !! NK is contained to bs; the enclosing brane did its part (§6.4c).
   bs    = {b={*}; 'b={*}; 'bad='b};
 
   !! Can we see the names now?
@@ -51,13 +61,13 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! NK: anchored search found no match
   whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! NK: anchored search found no match
   whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! NK: anchored search found no match
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! NK: anchored index found no match
   whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;  !! NK: anchored search found no match
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs^;
-  'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
-  howˍbadˍcanˍitˍbˍ2 = bs#1  !! NK: unsteppable — 'howˍbadˍcanˍitˍbˍ1 is already a named creation
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 =^ bs;  !! NK: anchored index found no match
+  'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! NK: anchored index found no match
+  howˍbadˍcanˍitˍbˍ2 = bs#1  !! NK: anchored index found no match
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uHCV1KasaO2DnPz5VfnJLEhMKcH+o8C8AVDtWZxdIuSf4oN+v+wXFXVI4FEO7SPpa1WJhkQUqI0d6smsgfbhAA==","produced_by":"einmo 0.1.0 sha256:57cd36db130b9ebc1618d847bcdbdfaa8438b8377510ced02ebfceed1644825c","timestamp":"2026-09-19T05:03:23.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"3sQA3JKgZ+J49l1hB5QyQeJKr8pZiKv0yFVI/uySayttxwhADATHjV3DRFzWR5fy+RPUdu3cKQfuTudIFyKOBQ==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}

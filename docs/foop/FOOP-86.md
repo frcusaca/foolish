@@ -705,23 +705,19 @@ that shows the condition is about the *brane's context*, not about any particula
 authorship: `B` writes `'C = 11` and then recoordinates `A`, whose `'C = 10` lands in the same
 context. Neither statement is individually at fault; the brane is.
 
-> **⚠ ROUTE 3 IS NOT IMPLEMENTED — open question, raised 2026-09-18 during Phase 9b.** Routes
-> 1, 2 and 4 are implemented and working. Route 3 is **harder than it looked**, and the reason
-> is structural rather than a missed call site.
+> **Route 3 — how it was resolved (human, 2026-09-18).** Probing
+> `{A={'C=10}, B={'C=11; A} }` showed `B`'s members are `'C = 11` and an **anonymous statement**
+> whose value is the recoordinated `A` — so the conflicting `'C = 10` is nested one level
+> deeper, not a sibling of `'C = 11`. An ordinary prior-statement search therefore finds
+> nothing, correctly.
 >
-> Probing `{A={'C=10}, B={'C=11; A} }` shows `B`'s members are `'C = 11` and an **anonymous
-> statement** (`???`) whose value is the recoordinated `A` — so the conflicting `'C = 10` is
-> nested one level deeper, *inside* that anonymous statement's brane. It is **not a sibling
-> statement of `'C = 11` in `B`**. `check_null_const_conflict` searches for a prior same-name
-> STATEMENT of the brane and finds nothing, correctly, because there is no such statement.
->
-> Making route 3 fire therefore requires answering a question §6 does not: **do a recoordinated
-> brane's members participate in the enclosing brane's null-characterized-name context?** That
-> is a real semantic decision with reach beyond this rule — it governs what "defined in this
-> context" means whenever a brane is brought in by reference rather than written. Answering it
-> by implementation choice would be inventing language semantics, so it is left for the human.
->
-> **Routes 1, 2 and 4 do not depend on it** and are complete.
+> The human's reframing makes this tractable: **the unsteppable statement is the one HOLDING
+> the recoordinated brane** ("B#1, the anonymous A, is an NK brane"), not any member inside it.
+> So the check runs on the statement whose value is a brane, comparing that brane's
+> null-characterized members against the receiving brane's earlier statements —
+> `check_recoordinated_null_const_conflict`. No question about whether nested members
+> "participate in the context" needs answering: the statement that would introduce them is
+> what cannot step.
 
 **Measured on this branch, 2026-09-18 — routes 2 and 3 produced NO NK at all before Phase 9;
 routes 1, 2 and 4 now halt correctly, route 3 remains open per the note above:**
@@ -1085,19 +1081,52 @@ re-parseability):
 | **§6.4b: index / head / tail / plain reference into an NK brane** | ❌ **gap** |
 | **Route 3 (recoordination)** | ❌ **gap** |
 
-**Gap 1 — §6.4b is implemented only for anchored searches.** `bad#0`, `bad^` and a plain
-`r = bad` still resolve into the NK brane and return its contents. The cause is structural, not
-a missed call site: the anchor resolves to a **`revive_constanic` clone** of the brane, and
-while the clone carries the original's `Nyes::Nk`, it does **not** carry
-`unsteppable_cause`. Closing it means deciding whether cloning should propagate the cause — a
-question about what a clone of a halted brane IS, which §6 does not answer.
+**Both gaps are now CLOSED** (2026-09-18/19, on the human's answers):
 
-**Gap 2 — route 3 (recoordination) does not fire**; see §6.2's note. It needs an answer to
-"do a recoordinated brane's members participate in the enclosing brane's null-characterized-name
-context?", which is language semantics, not an implementation choice.
+- **§6.4b** — `revive_constanic` now carries `unsteppable_cause` onto clones, so an access whose
+  anchor resolves through a clone still sees a halted brane. Anchored search, index, and
+  head/tail all settle NK; a plain reference no longer hands back the brane's contents.
+- **Route 3** — resolved by the human's reframing: the unsteppable statement is the one
+  **holding** the recoordinated brane ("B#1, the anonymous A, is an NK brane"), not a member
+  inside it. `check_recoordinated_null_const_conflict` compares an incoming brane's
+  null-characterized members against the receiving brane's EARLIER statements and halts the
+  receiver. This sidesteps the question the gap note raised — members nested inside an anonymous
+  statement are never searched for as siblings, because the statement that would introduce them
+  is what fails.
 
-Both gaps are **narrower than the bug this FOOP set out to fix**, which is closed: `'True = 3`
-no longer renders as accepted, no longer poisons later readers, and its brane correctly halts.
+**Residual RESOLVED 2026-09-19 (the human): a plain reference settles NK too.** An earlier
+draft left `r = bad` at ECONSTANIC, reasoning that a plain reference is an *unanchored* search
+and an unanchored miss settles ECONSTANIC (AGENTS.md §"NK vs ECONSTANIC miss outcomes"). **That
+reasoning was wrong**: the unanchored rule protects a search that found NOTHING, but `r = bad`
+**found** `bad` — it found something that is NK. That is not a miss. And ECONSTANIC means "may
+yet gain a value under recoordination", which cannot be true of a brane that is NK, since NK is
+**constantew** — nothing will change it.
+
+The implementation consequence was subtle and worth recording: the access must still push a
+search RESULT (an NK node) rather than returning early. Bailing out left the search with no
+result at all, and a resultless unanchored search is exactly what later settles ECONSTANIC — so
+the early return produced the wrong answer by a path that looked like it was setting NK.
+
+All four access paths now settle NK, and the NYES table is uniform:
+
+| Statement | Access kind | NYES |
+|---|---|---|
+| `bad = {'K = ⬤; 'K = 3;}` | the halted brane | `Nk` |
+| `s = bad?'K` | anchored search | `Nk` |
+| `i = bad#0` | index | `Nk` |
+| `h = bad^` | head | `Nk` |
+| `r = bad` | plain reference | `Nk` |
+| `bad`'s inner `'K = ⬤` / `'K = 3` | — | `Independent` (NOT NK — §6.4) |
+
+#### §6.6e TODO — later cleanup
+
+- [ ] **Remove most multi-line comments** (human, 2026-09-19). The §6 implementation and this
+      addendum both lean heavily on long explanatory comment blocks. They earned their place
+      while the design was being settled — much of §6 exists because earlier reasoning was
+      wrong and the corrections needed recording — but once the behavior is stable and tested,
+      most of that belongs in the FOOP, not inline in the source. A later pass should cut them
+      back to what `rust_instructions.md` §2d asks for: comments that explain *why*, briefly,
+      where the why is not obvious.
 
 #### §6.6b DISCREPANCY RAISED, NOT RESOLVED — NK members currently make their brane NK
 

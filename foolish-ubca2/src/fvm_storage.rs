@@ -1011,6 +1011,18 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             );
                             search_fir_dispatch::check_rename_of_named_creation(storage, ptr, body);
                         }
+                        // Route 3 (FOOP-86 §6.2) — recoordination. A statement
+                        // whose settled VALUE is a brane brings that brane's
+                        // members into this context. If one of them is a
+                        // null-characterized name already defined here, the
+                        // brane cannot be coordinated in: THIS STATEMENT is
+                        // the unsteppable one (human, 2026-09-18 — "B#1, the
+                        // anonymous A, is an NK brane"), so the check runs on
+                        // the statement holding the value, not on the members
+                        // it would have introduced.
+                        search_fir_dispatch::check_recoordinated_null_const_conflict(
+                            storage, ptr, body,
+                        );
                         storage.with_mut(ptr, |fir| fir.set_nyes(body_nyes));
                     }
                 }
@@ -1448,6 +1460,15 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     } else if anchored {
                         let anchor = storage.foolish_children(ptr)[0];
                         let resolved = anchor.value(storage);
+                        // FOOP-86 §6.4b: an anchor that resolves to a HALTED
+                        // brane cannot be indexed into — the brane has no
+                        // meaning, so no position in it can be meaningfully
+                        // addressed. Checked before `is_brane_like`, which a
+                        // halted brane still satisfies.
+                        if storage.unsteppable_cause(resolved).is_some() {
+                            storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
+                            return;
+                        }
                         if !FirCursor::new(resolved, storage).is_brane_like() {
                             // FOOP-75 §7: settling NK is only half the
                             // answer — name the offending anchor when it is
@@ -2234,6 +2255,15 @@ impl FVMStorage {
         let clone_nyes = nyes.transform_for_clone(sfm);
         let new_ptr = new_parent.create_child(self, new_spec);
         self.with_mut(new_ptr, |fir| fir.set_nyes(clone_nyes));
+        // FOOP-86 §6.4b: a clone of a HALTED brane is still a halted brane.
+        // Without carrying the cause, an access whose anchor resolves through
+        // a clone (`A^`, `A#0`, a plain `r = A`) would find an ordinary brane
+        // and read its contents, when §6.4b requires every access into an NK
+        // brane to settle NK. The cause travels with the clone so the clone
+        // answers "I am unsteppable" exactly as the original does.
+        if let Some(cause) = self.unsteppable_cause(root) {
+            self.set_unsteppable_cause(new_ptr, cause);
+        }
 
         if !skip_foolish_children {
             let children: Vec<FirPointer> = self.foolish_children(root).to_vec();
@@ -2750,6 +2780,31 @@ mod search_fir_dispatch {
     /// and moves to `Braning`.
     fn handle_found(storage: &mut FVMStorage, ptr: FirPointer, stmt: FirPointer, sfm: bool) {
         let clone = clone_stmt_result(storage, stmt, ptr, sfm);
+        // FOOP-86 §6.4b: if what was found is a HALTED brane, this access
+        // settles NK. `revive_constanic` carries the cause onto the clone, so
+        // a plain reference (`r = bad`) is caught here the same way an
+        // anchored search or an index is caught at its own anchor check —
+        // no access path yields a meaningful value from a meaningless brane.
+        if let Some(cause) = storage.unsteppable_cause(clone) {
+            // The search RESOLVED -- it found `stmt` -- but what it found is a
+            // halted brane, so the access settles NK (§6.4b). It must still
+            // push a result pair: returning early would leave the search with
+            // no result at all, and a resultless UNANCHORED search later
+            // settles ECONSTANIC ("may yet gain a value"), which is wrong
+            // here. This is not a miss; it found something, and that
+            // something is NK -- and NK is constantew, so no recoordination
+            // can ever change it.
+            let reason = storage
+                .alarm_reason(clone)
+                .map_or_else(|| "unsteppable brane".to_string(), str::to_owned);
+            let _ = cause;
+            let nk = storage.make_orphan_child(ptr, FirSpec::Nk { reason });
+            storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
+            let mut cursor = super::FirCursorMut::new(ptr, storage);
+            cursor.push_search_result_pair(nk, stmt);
+            cursor.set_nyes(Nyes::Nk);
+            return;
+        }
         let mut cursor = super::FirCursorMut::new(ptr, storage);
         cursor.push_search_result_pair(clone, stmt);
         cursor.set_nyes(Nyes::Braning);
@@ -2836,6 +2891,82 @@ mod search_fir_dispatch {
         }
         storage.set_unsteppable_cause(brane, stmt);
         storage.with_mut(brane, |fir| fir.set_alarm_reason(reason));
+    }
+
+    /// Route 3 (FOOP-86 §6.2): **recoordination**. A statement whose settled
+    /// value is a BRANE brings that brane's members into this context. If any
+    /// of those members is a null-characterized name that is ALREADY defined
+    /// here — with a different value — the brane cannot be coordinated in.
+    ///
+    /// **The unsteppable statement is the one HOLDING the value**, not any
+    /// member inside it (human, 2026-09-18: in `{A={'C=10}, B={'C=11; A}}`,
+    /// "B#1, the anonymous A, is an NK brane"). That is what makes route 3
+    /// tractable: the members are nested inside an anonymous statement's
+    /// brane rather than being siblings, so nothing would find them by an
+    /// ordinary prior-statement search — but the statement that would
+    /// introduce them is right here, and it is the thing that cannot step.
+    ///
+    /// Compares against the enclosing brane's EARLIER statements only
+    /// (`already` is truncated at `stmt`'s own index): a brane coordinated in
+    /// before any conflicting definition exists is fine, exactly as routes
+    /// 1–2 permit a first definition and refuse only a later conflicting one.
+    pub(super) fn check_recoordinated_null_const_conflict(
+        storage: &mut FVMStorage,
+        stmt: FirPointer,
+        body: FirPointer,
+    ) {
+        let Some(brane) = stmt.home_brane(storage) else {
+            return;
+        };
+        if storage.unsteppable_cause(brane).is_some() {
+            return;
+        }
+        let value = body.value(storage);
+        if !FirCursor::new(value, storage).is_brane_like() || value == body {
+            return; // not a brane, or not a REFERENCE to one -- nothing coordinated in.
+        }
+        let siblings: Vec<FirPointer> = storage.foolish_children(brane).to_vec();
+        let Some(own_index) = siblings.iter().position(|&s| s == stmt) else {
+            return;
+        };
+        let incoming: Vec<FirPointer> = storage.foolish_children(value).to_vec();
+        for member in incoming {
+            let Some(pattern) = (match storage.get(member) {
+                FirSpec::Statement { identifier, .. } => identifier
+                    .is_nully_characterizing_coordinate_name()
+                    .then(|| identifier.searchable_name().to_string()),
+                _ => None,
+            }) else {
+                continue;
+            };
+            let Some(&prior) = siblings[..own_index].iter().find(|&&s| {
+                matches!(storage.get(s), FirSpec::Statement { identifier, .. }
+                    if identifier.searchable_name() == pattern)
+            }) else {
+                continue; // that name is not defined here yet -- coordinating it in is fine.
+            };
+            let (Some(prior_body), Some(member_body)) = (
+                statement_value_for_comparison(storage, prior),
+                statement_value_for_comparison(storage, member),
+            ) else {
+                continue;
+            };
+            if !storage.get_nyes(prior_body).is_constanic()
+                || !storage.get_nyes(member_body).is_constanic()
+            {
+                continue;
+            }
+            if super::default_equal(storage, member_body, prior_body) != super::Equality::Equal {
+                let name = match storage.get(member) {
+                    FirSpec::Statement { identifier, .. } => {
+                        identifier.identifier_name().to_string()
+                    }
+                    _ => continue,
+                };
+                halt_brane_at(storage, stmt, format!("'{name} already defined in context"));
+                return;
+            }
+        }
     }
 
     /// Route 4 (FOOP-86 §6.2): a null-characterized statement whose constanic
@@ -3238,6 +3369,7 @@ mod search_fir_dispatch {
                     let anchor = storage.foolish_children(ptr)[0];
                     let resolved = anchor.value(storage);
                     if storage.get_nyes(resolved) == Nyes::Nk
+                        || storage.unsteppable_cause(resolved).is_some()
                         || !FirCursor::new(resolved, storage).is_brane_like()
                     {
                         storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
@@ -3435,7 +3567,9 @@ mod search_fir_dispatch {
                 } else if anchored {
                     let anchor = storage.foolish_children(ptr)[0];
                     let resolved = anchor.value(storage);
-                    if storage.get_nyes(resolved) == Nyes::Nk {
+                    if storage.get_nyes(resolved) == Nyes::Nk
+                        || storage.unsteppable_cause(resolved).is_some()
+                    {
                         storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
                         return;
                     }
@@ -7106,24 +7240,55 @@ mod tests {
         );
     }
 
-    /// §6.4b — an ANCHORED SEARCH into an NK brane settles NK.
-    ///
-    /// **Partial coverage, deliberately.** §6.4b requires this of EVERY
-    /// access path, but only the anchored-search path is implemented (Phase
-    /// 9b). Index/head/tail and a plain reference still resolve into the NK
-    /// brane and return its contents — see FOOP-86 §6.6d, which records the
-    /// gap and the reason it is not an obvious fix (the anchor resolves to a
-    /// `revive_constanic` CLONE of the brane, and the clone does not carry
-    /// the original's `unsteppable_cause`). Extending this test is the
-    /// signal that the gap has been closed.
+    /// §6.4b — EVERY access into an NK brane settles NK: anchored search,
+    /// index, head/tail, and a plain reference alike. "In all cases, NK
+    /// results" (human, 2026-09-18). No access path yields a meaningful
+    /// value from a brane that has no meaning.
     #[test]
-    fn anchored_search_into_an_nk_brane_settles_nk() {
-        let (storage, program) = evaluated("{bad = {'K = ⬤; 'K = 3;}; s = bad?'K;}");
+    fn every_access_into_an_nk_brane_settles_nk() {
+        let (storage, program) =
+            evaluated("{bad = {'K = ⬤; 'K = 3;}; s = bad?'K; i = bad#0; h = bad^; r = bad;}");
         let cursor = FirCursor::new(program, &storage);
-        assert_eq!(
-            storage.get_nyes(cursor.stmt_at(1).expect("statement exists")),
-            Nyes::Nk,
-            "an anchored search into an NK brane must settle NK (§6.4b)"
+        for (index, what) in [
+            (1, "anchored search"),
+            (2, "index"),
+            (3, "head"),
+            (4, "plain reference"),
+        ] {
+            let stmt = cursor.stmt_at(index).expect("statement exists");
+            let body = FirCursor::new(stmt, &storage).foolish_children()[0];
+            assert_eq!(
+                storage.get_nyes(body),
+                Nyes::Nk,
+                "{what} into an NK brane must settle NK (§6.4b)"
+            );
+        }
+    }
+
+    /// §6.2 route 3 — RECOORDINATION. `B` defines `'C = 11` then coordinates
+    /// in `A`, whose `'C = 10` would mean something different here. The
+    /// statement HOLDING the recoordinated brane is the unsteppable one
+    /// (human: "B#1, the anonymous A, is an NK brane"), so `B` halts.
+    #[test]
+    fn recoordinating_a_conflicting_null_const_halts_the_receiving_brane() {
+        let (storage, program) = evaluated("{A = {'C = 10}, B = {'C = 11; A} }");
+        let cursor = FirCursor::new(program, &storage);
+        let b_body =
+            FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
+        assert!(
+            storage.unsteppable_cause(b_body).is_some(),
+            "coordinating in a brane whose null-characterized name is already defined here \
+             must halt the receiving brane (§6.2 route 3)"
+        );
+        assert_eq!(storage.get_nyes(b_body), Nyes::Nk, "so B is NK");
+
+        let (storage, program) = evaluated("{A = {'C = 10}, B = {'C = 10; A} }");
+        let cursor = FirCursor::new(program, &storage);
+        let ok_body =
+            FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
+        assert!(
+            storage.unsteppable_cause(ok_body).is_none(),
+            "the SAME value is not a conflict -- coordinating it in is permitted"
         );
     }
 

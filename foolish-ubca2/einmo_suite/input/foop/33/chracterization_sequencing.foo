@@ -7,6 +7,16 @@
   !! called those creations' orignal names.
   'a    = {*};
    a    = {*};
+
+  !! FOOP-86 §6: 'bad='b renames an ALREADY-NAMED creation, which is an
+  !! UNSTEPPABLE statement (§6.2 route 4) -- 'b is already that creation's
+  !! original name. So bs cannot finish stepping: it HALTS and takes NK,
+  !! and its opener carries the annotation (the unsteppable statement is
+  !! bs's last member, so nothing follows it to carry it instead).
+  !! Every access into bs below therefore settles NK (§6.4b) -- a brane
+  !! with no meaning cannot be searched or indexed. Note what does NOT
+  !! happen: 'a, a and the what_was_* readers above are untouched. The
+  !! NK is contained to bs; the enclosing brane did its part (§6.4c).
   bs    = {b={*}; 'b={*}; 'bad='b};
 
   !! Can we see the names now?
