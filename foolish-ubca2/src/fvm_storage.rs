@@ -1023,7 +1023,15 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         search_fir_dispatch::check_recoordinated_null_const_conflict(
                             storage, ptr, body,
                         );
-                        storage.with_mut(ptr, |fir| fir.set_nyes(body_nyes));
+                        // Do NOT clobber a terminal state the route checks above
+                        // already reached. `check_recoordinated_null_const_conflict`
+                        // settles THIS statement NK (FOOP-86 §6.2 route 3) and the
+                        // route 1/4 checks may have halted the brane; writing
+                        // `body_nyes` unconditionally would erase either. Same
+                        // clobbering class as the `name_search_step` Embryonic bug.
+                        if !storage.get_nyes(ptr).is_constanic() {
+                            storage.with_mut(ptr, |fir| fir.set_nyes(body_nyes));
+                        }
                     }
                 }
             }
@@ -2964,7 +2972,52 @@ mod search_fir_dispatch {
                     }
                     _ => continue,
                 };
-                halt_brane_at(storage, stmt, format!("'{name} already defined in context"));
+                // The conflict belongs to THIS statement -- it is the one
+                // that cannot be stepped, because coordinating the brane in
+                // would give `'{name}` a second meaning here. The statement
+                // settles NK; the RECEIVING brane is untouched and keeps
+                // stepping its other statements (human, 2026-09-20:
+                // `{A={'C=1}, B={'C=2, D=A}}` must yield
+                // `{A={'C=1}, B={'C=2, D=NK}}`). The brane segregates the
+                // runtime error: outside this statement only an ordinary NK
+                // value propagates, by the ordinary rules.
+                let reason = format!("'{name} already defined in context");
+                // BOTH the statement and its BODY settle NK. The body must be
+                // settled too: `render_statement` renders the body, and a body
+                // left `Constant` with the coordinated brane at its
+                // `ubc_children[0]` would print that brane — showing a
+                // coordination that never legitimately happened. Same
+                // statement-AND-body discipline as `halt_if_unsteppable`.
+                for target in [body, stmt] {
+                    let nk = storage.make_orphan_child(
+                        target,
+                        FirSpec::Nk {
+                            reason: reason.clone(),
+                        },
+                    );
+                    storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
+                    // REPLACE the value child rather than appending. `body` is
+                    // a resolved search, so it holds the FoolRefFir two-child
+                    // invariant: `[0]` the found value, `[1]` the `FoolRef`
+                    // carrying the found statement's position. Appending a
+                    // third child would both break that invariant and leave
+                    // the coordinated brane at `[0]`, which is the child the
+                    // sequencer reads — so the NK takes slot `[0]` and any
+                    // `FoolRef` is re-pushed behind it.
+                    let keep: Vec<(FirPointer, Nyes)> = FirCursor::new(target, storage)
+                        .ubc_children()
+                        .iter()
+                        .skip(1)
+                        .map(|&c| (c, storage.get_nyes(c)))
+                        .collect();
+                    let me = storage.get_mut(target);
+                    me.clear_ubc_children();
+                    me.push_ubc_child(nk, Nyes::Nk);
+                    for (c, n) in keep {
+                        storage.get_mut(target).push_ubc_child(c, n);
+                    }
+                    storage.with_mut(target, |fir| fir.set_nyes(Nyes::Nk));
+                }
                 return;
             }
         }
@@ -7277,30 +7330,71 @@ mod tests {
         }
     }
 
-    /// §6.2 route 3 — RECOORDINATION. `B` defines `'C = 11` then coordinates
-    /// in `A`, whose `'C = 10` would mean something different here. The
-    /// statement HOLDING the recoordinated brane is the unsteppable one
-    /// (human: "B#1, the anonymous A, is an NK brane"), so `B` halts.
+    /// §6.2 route 3 — RECOORDINATION. A statement whose settled value is a
+    /// brane brings that brane's members into this context. When one of them
+    /// is a null-characterized name already defined here with a DIFFERENT
+    /// value, the brane cannot be coordinated in.
+    ///
+    /// **The brane SEGREGATES the run-time error** (human, 2026-09-20): only
+    /// the statement holding the value settles NK — an ORDINARY NK, since
+    /// "there's no unsteppable versus steppable NK, all NK are same". The
+    /// RECEIVING brane is NOT halted and its other statements step normally.
+    /// This is the one route that does not halt a brane, because the failure
+    /// is contained in the statement that could not coordinate.
     #[test]
-    fn recoordinating_a_conflicting_null_const_halts_the_receiving_brane() {
-        let (storage, program) = evaluated("{A = {'C = 10}, B = {'C = 11; A} }");
+    fn recoordinating_a_conflicting_null_const_settles_that_statement_nk() {
+        let (storage, program) = evaluated("{A={'C=1}, B={'C=2, D=A}}");
         let cursor = FirCursor::new(program, &storage);
         let b_body =
             FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
         assert!(
-            storage.unsteppable_cause(b_body).is_some(),
-            "coordinating in a brane whose null-characterized name is already defined here \
-             must halt the receiving brane (§6.2 route 3)"
+            storage.unsteppable_cause(b_body).is_none(),
+            "the receiving brane is NOT halted -- the brane segregates the run-time error"
         );
-        assert_eq!(storage.get_nyes(b_body), Nyes::Nk, "so B is NK");
 
-        let (storage, program) = evaluated("{A = {'C = 10}, B = {'C = 10; A} }");
+        let b = FirCursor::new(b_body, &storage);
+        let members = b.foolish_children();
+        assert_eq!(
+            storage.get_nyes(members[0]),
+            Nyes::Independent,
+            "`'C = 2` is untouched -- it did its part"
+        );
+        assert_eq!(
+            storage.get_nyes(members[1]),
+            Nyes::Nk,
+            "`D = A` cannot coordinate `A`'s conflicting `'C` in, so D settles NK"
+        );
+        let d_body = FirCursor::new(members[1], &storage).foolish_children()[0];
+        assert_eq!(
+            storage.get_nyes(d_body),
+            Nyes::Nk,
+            "D's BODY settles NK too, so it reverts to Foolish rather than \
+             rendering a coordination that never happened"
+        );
+
+        // `A` itself is entirely unaffected -- it is a perfectly good brane;
+        // only bringing it into THIS context fails.
+        let a_body =
+            FirCursor::new(cursor.stmt_at(0).expect("A exists"), &storage).foolish_children()[0];
+        assert!(
+            storage.get_nyes(a_body).is_conclusive(),
+            "A is untouched -- the conflict is with the RECEIVING context, not with A"
+        );
+
+        // The SAME value is not a conflict: coordinating it in is permitted.
+        let (storage, program) = evaluated("{A={'C=1}, B={'C=1, D=A}}");
         let cursor = FirCursor::new(program, &storage);
         let ok_body =
             FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
         assert!(
             storage.unsteppable_cause(ok_body).is_none(),
             "the SAME value is not a conflict -- coordinating it in is permitted"
+        );
+        let ok_d = FirCursor::new(ok_body, &storage).foolish_children()[1];
+        assert_ne!(
+            storage.get_nyes(ok_d),
+            Nyes::Nk,
+            "an equal-valued recoordination must NOT be refused"
         );
     }
 

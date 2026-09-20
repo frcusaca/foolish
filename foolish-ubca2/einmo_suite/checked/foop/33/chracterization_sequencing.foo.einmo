@@ -2,8 +2,8 @@
 test: foop/33/chracterization_sequencing.foo
 suite: /yolo/foolish_worktrees/foop-86-retire-ubca/foolish-ubca2/einmo_suite
 producer: 34917221
-producer-diff: sha256:dda45118fb252c5ee10a4d98135a62719815fccf5b4de73fc27b35ddbfcf0f00
-generated: 2026-09-19T23:54:22.000000000Z
+producer-diff: sha256:6a6f8bc3c79a6c7d5eb45be8de4683b94f8e15f18f3abe06e276c890365d8ad5
+generated: 2026-09-20T00:36:31.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -68,7 +68,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   howˍbadˍcanˍitˍbˍ2 = bs#1  !! NK: anchored index found no match
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:0d7126cf83dc57b993060a1e6829eb8f8bdeab3ec294fed2c2c5271207a339d3","timestamp":"2026-09-19T23:54:22.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:0d7126cf83dc57b993060a1e6829eb8f8bdeab3ec294fed2c2c5271207a339d3","timestamp":"2026-09-19T23:54:22.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"1OLtqKKvl07pIClAac4VRmPVRb/lfvLU5SRa4gZJ0twTaIUnXA6YA2QuYeodOcnQKIuCFtEgtzRUimWxJdy2AA==","produced_by":"einmo 0.1.0 sha256:0d7126cf83dc57b993060a1e6829eb8f8bdeab3ec294fed2c2c5271207a339d3","timestamp":"2026-09-19T23:54:22.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"GtsRtQDPkksjCCZVyP3/T1vZnXYFDz5F2j5/jKoJUFQ7R5/+m4HENg41sH0JOMLR8w+tahWiLM33khsiE1EQBA==","produced_by":"einmo 0.1.0 sha256:5a6dd490e18051444e3cb0265e275d6de4c4f2fe8ca0406ea0086ae4520486b8","timestamp":"2026-09-19T23:54:47.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"3sQA3JKgZ+J49l1hB5QyQeJKr8pZiKv0yFVI/uySayttxwhADATHjV3DRFzWR5fy+RPUdu3cKQfuTudIFyKOBQ==","produced_by":"einmo 0.1.0 sha256:f0221815636403280702c2c54560c6f36a8a4f3f6c1d99972b2eaec5aed40e10","timestamp":"2026-09-20T00:36:32.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"klWNL/FuMoQkx84Fono3i5/B3adfFLClnrPW1FGs0r6or3ONSvDHOOq3fYBkt++oZxk9hsFcFRILxDKTMdbjCg==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-20T17:16:55.000000000Z"}

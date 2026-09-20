@@ -1337,7 +1337,7 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 > **Both currently produce NO NK at all** — measured 2026-09-18. These are the same defect as
 > route 1 arriving by different paths, and the human's ruling is that **all three settle NK**.
 
-- [ ] (read §6.2's three-route table)
+- [x] (read §6.2's three-route table) — 2026-09-20 10:26:23
 - [ ] **Route 2 — concatenation merge.** `{A = {'C = 10}, b = A A}` renders
       `b = { 'C = 10; 'C = 10 }` today, accepted. FOOP-33 §4 already specifies this case
       (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`) — determine whether it is
@@ -1346,20 +1346,39 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       **NOTE:** this touches the merge path, which §6.4a's concatenation work is DEFERRED from.
       Deferred there is *what a concatenation does with an NK-brane operand*; required HERE is
       *a conflict arising during a merge must halt the merged brane*. Keep the two apart.
-- [ ] **Route 3 — recoordination, no concatenation.** `{A = {'C = 10}, B = {'C = 11; A} }`
-      renders `B = { 'C = 11; { 'C = 10 } }` today, accepted. `B` declares `'C = 11` then
-      recoordinates `A`, bringing a conflicting `'C = 10` into the same context. **This is the
-      route that proves the condition is about the brane's CONTEXT, not a statement's
-      authorship** — neither statement is individually at fault.
-- [ ] **UNIT tests** for both routes, asserting the containing brane settles NK **from the
-      halt**, and that the conflict is detected at the right moment (merge time for route 2,
-      recoordination for route 3).
-- [ ] **EINMO cases** for route 2 (`{A = {'C = 10}, b = A A}`) and route 3
-      (`{A = {'C = 10}, B = {'C = 11; A} }`), each with rendered comments naming the route, the
-      unsteppable statement, and the unstepped remainder. **These two cases do not exist today
-      in any form** — both currently render as accepted with no NK, so they are new coverage,
-      not updated coverage.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] **Route 3 — recoordination, no concatenation.** — 2026-09-20 10:26:23
+      `check_recoordinated_null_const_conflict` compares an incoming brane's
+      null-characterized members against the receiving brane's EARLIER statements.
+      **CORRECTED 2026-09-20 by the human**: route 3 does NOT halt the receiving brane.
+      *"The brane segregates the runtime error … the brane simply is NK, the 2-deep
+      statements are still stepped."* Only the holding statement settles NK, an ORDINARY
+      NK (*"there's no unsteppable versus steppable NK, all NK are same"*).
+      `{A={'C=1}, B={'C=2, D=A}}` → `{A={'C=1}, B={'C=2, D=NK}}`, with `D` reverting to its
+      written `A` plus an NK annotation (§6.5's ordinary rule, NOT §5.2's brane exception —
+      the coordination never happened, so it is not a rollup).
+      Two clobber sites had to be fixed for this to hold: the statement `Braning` arm wrote
+      `body_nyes` unconditionally over the terminal NK, the same latent class as the
+      `name_search_step` Embryonic bug; and the NK node must REPLACE `ubc_children[0]`
+      rather than append, preserving the FoolRefFir two-child invariant.
+- [x] **UNIT tests** for both routes — 2026-09-20 10:26:23
+      Route 2 asserts the merged brane halts. Route 3 asserts the OPPOSITE, per the
+      correction above: `recoordinating_a_conflicting_null_const_settles_that_statement_nk`
+      checks the receiving brane's `unsteppable_cause` is NONE, that `'C = 2` and a following
+      `after = 7` step normally, that the holding statement AND its body settle NK, that `A`
+      itself is untouched, and that an equal-valued recoordination is still permitted.
+- [x] **EINMO cases** — 2026-09-20 10:26:23
+      Route 3: `foop/86/unsteppable_recoordination.foo`, with rendered comments naming the
+      route and the unsteppable statement. It pins all four behaviors in one case: `D = A`
+      reverts with its NK annotation; `'C = 2` and `after = 7` still step (proving no halt);
+      `a_is_fine = A.'C` resolves to `1` (proving `A` is untouched); and `ok`'s equal-valued
+      recoordination coordinates in normally (proving the gate is on CONFLICT, not on
+      recoordination as such). Promoted to `checked/` after a statement-by-statement review —
+      `einmo_gate_checked` reported exactly ONE difference suite-wide, this new case, so no
+      pre-existing baseline moved.
+- [x] Run all tests — old and new — and make sure they all pass correctly. — 2026-09-20 10:26:23
+      `foolish-ubca2`: 177 passed / 1 failed (178 total; the route-3 test was REPLACED, not
+      added, so the total is unchanged). The sole failure is `einmo_gate_verified`, red on
+      the three FOOP-86 cases awaiting the human's signing key (see the Phase 8 STOP).
 
 ### 9c-note — Concatenation is DEFERRED to a later FOOP
 
@@ -1432,7 +1451,7 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       and an einmo case. Write the list out — a behavior with only one of the two is not done:
   - [ ] route 1 (written directly) — unit ✓ einmo ✓
   - [ ] route 2 (concatenation merge) — unit ✓ einmo ✓ *(new coverage)*
-  - [ ] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)*
+  - [x] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)* — 2026-09-20 10:26:23
   - [ ] the halt sets the brane NK **directly**, not via the rollup — unit ✓
   - [ ] poisoning statement reverts to Foolish, body still `IndepInt`/`Independent` — unit ✓ einmo ✓
   - [ ] remainder unstepped and NK, including a statement that never mentions the name — unit ✓ einmo ✓
@@ -1447,41 +1466,23 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 
 ## Last Updated
 
-**Date**: 2026-09-18
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Executed Phases 0–7 of this plan (Phase 8's merge is the human's, not automated).
-Baseline confirmed exactly (791/0/1, 4 pre-existing `foolish-core` clippy errors, suite counts
-178/179/181). Phase 1 repointed `foolish-cli` onto `evaluate_arena` + `Ubca2Sequencer`, not the
-lossy `Evaluator`-trait one-liner; `cmd_compile` retired (Q2, zero README/einmo usage found).
-Phase 2 compared the two evaluators' attested answers on the 178 shared inputs and found ONE
-genuine semantic disagreement (`foop/33/boolean/null_char_constant.foo` — ubca2 silently
-accepts a conflicting redefinition of a named creation that FOOP-33 says must refuse); per
-human direction, its `checked/`/`verified/` artifacts were deleted (not edited) so the case
-fails loudly, and a TODO was added for the fix. **The TODO's root cause was corrected during
-Phase 4b prep**: an existing passing unit test proved the evaluator's refusal logic (`nf_reason`)
-IS set correctly — the actual bug is that `Ubca2Sequencer`'s Foolish-mode `Renderer` never
-consults `nf_reason` when rendering a statement in place. A second, independent regression case
-for the same bug was added (ported off the deleted bridge, deliberately left red). Phase 3 (the
-highest-risk step) confirmed §4.3's rename-is-signature-safe analysis correct — zero new
-failures from the `git mv`, only the known Phase 2 exception — after fixing one gap in §4.4's
-inventory (a hardcoded `include_str!` path). Phase 4a rewrote `SequenceMode::Detailed`
-arena-native and, during its own T4b-i test, found and fixed a real bug: a naive tree-walk
-assumption on what is actually a DAG (shared `FoolRef`/concat-helper nodes) with genuine pointer
-cycles (self-referential, non-settling programs) caused exponential blowup; fixed with global
-visit-memoization (`<SEE #N>` back-references). Phase 4b deleted the bridge, found 5 more
-bridge-dependent tests beyond §3.1's inventory (`cargo build --tests`, not plain `cargo build`,
-surfaces `#[cfg(test)]` compile errors), and ported the ones testing real behavior rather than
-deleting them wholesale. Phase 5 removed `foolish-ubca` entirely (14,162 lines); the full
-791→452 test-count accounting is recorded phase-by-phase with no unaccounted-for loss. Phase 6
-added `foolish-cli`'s first test module (T3a–d) and recorded T4 (Euler-1 fails at PARSE time,
-never reaching evaluation — further corroborating §0.5). Phase 7 updated README.md and
-AGENTS.md, going beyond a mechanical path rename where the old text's specific claims (a
-`*_nyes_transitions`/`assert_progression` convention, specific `foolish-ubca`-only type names)
-were checked against `foolish-ubca2`'s actual source and found not to hold verbatim — corrected
-precisely rather than silently carried forward, and one such gap (NYES-transition test coverage
-under `foolish-ubca2`'s real convention) flagged as unaudited documentation debt rather than
-resolved. Final state: 456 tests total, 453 passing, 3 known-red — all the same tracked bug
-(Q5's finding), none of them the FOOP's own regression. `cargo clippy --workspace -- -D
-warnings` unchanged from Phase 0's
-baseline throughout — zero new errors introduced by this FOOP. No `foolish-core/src/` file
-touched. No `einmo promote` was run at any point (T2: this FOOP promotes nothing).
+**Date**: 2026-09-20
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Phase 9c2's route-3 checkboxes closed, on the CORRECTED model the human ruled
+2026-09-20: route 3 settles the holding statement NK WITHOUT halting the receiving brane, the
+opposite of what the original checkbox and unit test asserted. The unit test was rewritten
+accordingly (`recoordinating_a_conflicting_null_const_settles_that_statement_nk`) and now pins
+the non-halt directly — the receiving brane's `unsteppable_cause` is NONE and a following
+`after = 7` still steps. Two NYES-clobber sites had to be fixed for the NK to survive: the
+statement `Braning` arm wrote `body_nyes` unconditionally over the terminal state (the same
+latent class as the `name_search_step` Embryonic bug the human diagnosed earlier), and the NK
+node must replace `ubc_children[0]` rather than append, since the body is a resolved search
+holding the FoolRefFir two-child invariant. New einmo case
+`foop/86/unsteppable_recoordination.foo` pins all four behaviors in one input and was promoted
+to `checked/` after a statement-by-statement review. **Supersedes the prior entry's "No `einmo
+promote` was run at any point"** — that held for Phases 0–8, whose four deliverables promote
+nothing; Phase 9 promotes its OWN new cases only, which is what the non-regression invariant
+permits. `einmo_gate_checked` reported exactly ONE difference suite-wide (this new case), so no
+pre-existing baseline moved. `foolish-ubca2` now 177 passed / 1 failed (178 total, unchanged —
+the route-3 test was replaced, not added); the sole failure is `einmo_gate_verified`, red on the
+three FOOP-86 cases that await the human's signing key.

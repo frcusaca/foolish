@@ -689,7 +689,7 @@ unsteppability and NK (human, 2026-09-18):
 |---|---|---|---|
 | 1 | **Written directly** in the brane | `{'K = ⬤; 'K = 3;}` | name already defined in context |
 | 2 | **Concatenation merge** brings a conflicting duplicate in | `{A = {'C = 10}, b = A A}` | name already defined in context |
-| 3 | **Recoordination** brings a conflicting definition in — no concatenation involved | `{A = {'C = 10}, B = {'C = 11; A} }` | name already defined in context |
+| 3 | **Recoordination** brings a conflicting definition in — no concatenation involved | `{A = {'C = 10}, B = {'C = 11; A} }` | name already defined in context (**statement settles NK; brane NOT halted** — see §6.2a below) |
 | 4 | **Renaming a named creation** (FOOP-33's no-rename rule) | `{'a = ⬤; 'other = 'a;}` | creation already has an original name |
 
 Routes 1–3 are the conflicting-redefinition rule (`check_null_const_conflict` +
@@ -705,22 +705,56 @@ that shows the condition is about the *brane's context*, not about any particula
 authorship: `B` writes `'C = 11` and then recoordinates `A`, whose `'C = 10` lands in the same
 context. Neither statement is individually at fault; the brane is.
 
-> **Route 3 — how it was resolved (human, 2026-09-18).** Probing
+> **Route 3 — how it was resolved (human, 2026-09-18, corrected 2026-09-20).** Probing
 > `{A={'C=10}, B={'C=11; A} }` showed `B`'s members are `'C = 11` and an **anonymous statement**
 > whose value is the recoordinated `A` — so the conflicting `'C = 10` is nested one level
 > deeper, not a sibling of `'C = 11`. An ordinary prior-statement search therefore finds
 > nothing, correctly.
 >
-> The human's reframing makes this tractable: **the unsteppable statement is the one HOLDING
-> the recoordinated brane** ("B#1, the anonymous A, is an NK brane"), not any member inside it.
-> So the check runs on the statement whose value is a brane, comparing that brane's
+> The check runs on **the statement HOLDING the recoordinated brane**, comparing that brane's
 > null-characterized members against the receiving brane's earlier statements —
 > `check_recoordinated_null_const_conflict`. No question about whether nested members
 > "participate in the context" needs answering: the statement that would introduce them is
 > what cannot step.
+>
+> **Route 3 does NOT halt the receiving brane** (human, 2026-09-20 — *"the brane segregates
+> the runtime error … the brane simply is NK, the 2-deep statements are still stepped"*). Only
+> the holding statement settles NK, and it is an **ordinary NK** — *"there's no unsteppable
+> versus steppable NK, all NK are same"*. This is what distinguishes route 3 from routes 1, 2
+> and 4: those write a conflicting name **into the brane being stepped**, so that brane cannot
+> finish and halts (§6.3). Route 3's conflict is confined to one statement's attempt to
+> coordinate a brane in; the receiving brane did its part, and its other statements step
+> normally (§6.4c).
+>
+> The specified result, in the human's own worked example:
+>
+> ```
+> {A={'C=1}, B={'C=2, D=A}}   -->   {A={'C=1}, B={'C=2, D=NK}}
+> ```
+>
+> **Rendering** follows §6.5's ordinary NK-reverts-to-Foolish rule, NOT §5.2's brane
+> exception. The brane exception exists because an NK brane is normally a *rollup* — NK on
+> account of something inside it — so its resolved members are worth showing. Route 3 is not a
+> rollup: the coordination **never happened**, and printing the would-be-coordinated brane
+> would show a result that does not exist. So the statement reverts to its written Foolish and
+> is annotated (human, 2026-09-20 — *"you'd print `{A={C=1},B={'C=2, D=A} }` and then comment
+> that it is an unsteppable brane"*):
+>
+> ```
+> B = {
+>   'C = 2;
+>   D = A  !! NK: 'C already defined in context
+> }
+> ```
+>
+> Implementation note: the NK node **replaces** `ubc_children[0]` on both the statement and
+> its body rather than being appended. The body is a resolved search and so holds the
+> FoolRefFir two-child invariant (`[0]` value, `[1]` `FoolRef`); appending would break that
+> invariant *and* leave the coordinated brane at `[0]`, which is the child the sequencer reads.
 
-**Measured on this branch, 2026-09-18 — routes 2 and 3 produced NO NK at all before Phase 9;
-routes 1, 2 and 4 now halt correctly, route 3 remains open per the note above:**
+**Measured on this branch, 2026-09-18 — routes 2 and 3 produced NO NK at all before Phase 9.
+As of 2026-09-20 all four routes behave as specified: routes 1, 2 and 4 halt their brane;
+route 3 settles its holding statement NK without halting the receiving brane.**
 
 ```
 {A={'C=10}, b = A A}          →  b = { 'C = 10; 'C = 10 }      (accepted, no NK)
@@ -1087,20 +1121,28 @@ re-parseability):
 | Property 1 (re-parses) corpus-wide, Property 2 (idempotent) | ✅ |
 | **§6.4b: ANCHORED SEARCH into an NK brane settles NK** | ✅ |
 | **§6.4b: index / head / tail / plain reference into an NK brane** | ❌ **gap** |
-| **Route 3 (recoordination)** | ❌ **gap** |
+| **Route 3 (recoordination)** | ✅ statement settles NK; receiving brane untouched |
 
 **Both gaps are now CLOSED** (2026-09-18/19, on the human's answers):
 
 - **§6.4b** — `revive_constanic` now carries `unsteppable_cause` onto clones, so an access whose
   anchor resolves through a clone still sees a halted brane. Anchored search, index, and
   head/tail all settle NK; a plain reference no longer hands back the brane's contents.
-- **Route 3** — resolved by the human's reframing: the unsteppable statement is the one
-  **holding** the recoordinated brane ("B#1, the anonymous A, is an NK brane"), not a member
-  inside it. `check_recoordinated_null_const_conflict` compares an incoming brane's
-  null-characterized members against the receiving brane's EARLIER statements and halts the
-  receiver. This sidesteps the question the gap note raised — members nested inside an anonymous
-  statement are never searched for as siblings, because the statement that would introduce them
-  is what fails.
+- **Route 3** — resolved by the human's reframing: the conflict belongs to the statement
+  **holding** the recoordinated brane, not to a member inside it.
+  `check_recoordinated_null_const_conflict` compares an incoming brane's null-characterized
+  members against the receiving brane's EARLIER statements. This sidesteps the question the gap
+  note raised — members nested inside an anonymous statement are never searched for as
+  siblings, because the statement that would introduce them is what fails.
+
+  **Corrected 2026-09-20 (the human).** An earlier implementation HALTED the receiving brane,
+  treating route 3 like routes 1/2/4. That was wrong: *"the brane segregates the runtime error
+  … the brane simply is NK, the 2-deep statements are still stepped"*. Only the holding
+  statement settles NK — an **ordinary** NK, since *"there's no unsteppable versus steppable
+  NK, all NK are same"* — and the receiving brane keeps its `unsteppable_cause` clear and steps
+  its remaining statements. `{A={'C=1}, B={'C=2, D=A}}` yields `{A={'C=1}, B={'C=2, D=NK}}`,
+  rendered with `D` reverted to its written `A` plus an NK annotation. Pinned by
+  `recoordinating_a_conflicting_null_const_settles_that_statement_nk`.
 
 **Residual RESOLVED 2026-09-19 (the human): a plain reference settles NK too.** An earlier
 draft left `r = bad` at ECONSTANIC, reasoning that a plain reference is an *unanchored* search
@@ -1587,64 +1629,23 @@ Non-blocking.
 
 ## Last Updated
 
-**Date**: 2026-09-18
+**Date**: 2026-09-20
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Added §6 — SPECIFICATION ADDENDUM: the Unsteppable statement**, human-directed,
-mid-execution, after Phases 0–7 were complete and green. §6 **supersedes FOOP-33 §4's refusal
-mechanism**. Origin: Phase 2's cross-evaluator comparison found `'True = 3` behaving wrongly;
-investigation showed the evaluator implements FOOP-33 §4 faithfully and that **§4 itself is
-wrong** — its "poisoning is scoped to searches that discover this definition" destroys the very
-meaning the rule exists to preserve (§6.1). The human rejected both the existing behavior and
-the two repair options proposed, and specified a third: an **unsteppable statement** — one whose
-null-characterized name was already defined in the context — is a **run-time error of Foolish**
-(§6.2a: not a parse error, not an ordinary NK value; it HALTS). On reaching one, **brane
-stepping stops, the brane gains NK directly, and every later statement is never stepped** (§6.3).
-The brane stores only the **first** unsteppable statement; the rest are *found* by position
-(§6.4) — replacing `nf_reason`-on-the-statement, which is the leak. The **poisoning statement is
-not itself unsteppable**: it reverts to Foolish and keeps its honest `IndepInt(3)`, which is why
-the fact had to move to the brane (a genuine `Independent` integer cannot also be NK). An NK
-brane **still renders but cannot participate in concatenation** (§6.4a) — though concatenation
-itself is **deferred to a later FOOP** at the human's direction and is NOT implemented here.
-**Anchored searches into an NK brane settle NK** (§6.4b), consistent with the existing
-anchored-miss rule and explicitly not a reintroduction of §4's search-poisoning. Rendering
-(§6.5a) is a suffix `!!` annotation on the unsteppable statement plus a correctly-indented
-full-line comment marking the unstepped remainder — and **almost nothing else is new**, since
-NK reverting to written Foolish is already FOOP-36 §3's standing rule for any inconclusive
-constanic; a per-line table records which rules do the work. §6.6 lists what the human resolved
-(rendering; what an outside reader sees); **§6.6a lists four things the agent raised that are
-NOT yet answered** — whether a nested conflict halts the outer brane, the `is_constantew()`
-commitment (an unstepped statement can never recoordinate), non-search access into an NK brane
-(`x = NkBrane`, `#N`, `^`, `$`), and that step counts should DROP not rise. §FIR Impact and
-§UBC Step Impact were corrected: their "None" claims now apply **only to the four original
-deliverables** — §6 changes step rules, evaluation order, step counts, and baselines (§6.7).
-Implementation is the plan's **Phase 9** and has **not** begun.
-
-Prior entry: Created FOOP-86 — retire UBCa; `foolish-ubca2` becomes the implementation. Four
-bundled deliverables: the CLI onto ubca2 via `evaluate_arena` + `Ubca2Sequencer` (**not** the
-lossy `Evaluator`-trait one-liner, §1.2), removal of `foolish-ubca`, removal of the
-`proto_to_core_fir` bridge, and retirement of `foolish-ubca2/einmo_suite` with `einmo_suite2`
-renamed onto the canonical name.
-
-**Three human decisions recorded 2026-09-16.** **Q4**: `SequenceMode::Detailed` is **KEPT and
-re-implemented arena-native** — the draft proposed dropping it for having no caller, which was
-circular reasoning (it has none because the CLI does not expose it, and this FOOP rewrites the
-CLI); the rewrite over `FVMStorage`/`FirSpec`/`FirCursor` is what *lets* the bridge die, so the
-two are enabler and consequence rather than a tension, and byte-compatibility with the old
-output is explicitly not required (§3.2, T4b). **Q1**: "discard human attestation for UBCa" —
-the 178 attestations are given up deliberately; §0.4 remains the honest accounting of what that
-costs and now ends in a decision. **Q3**: deleted outright, no archive; git history retains the
-crate regardless, so a tag would be convenience, not protection (§2.3).
-
-**Attestation-vs-coverage corrected throughout.** §4.1 now carries the measured comparison: **0**
-UBCa inputs are absent from the surviving suite (178 + 3 native = 181), so **no test coverage is
-lost** — what is discarded is 357 signed *attestations*, and for the 178 the second opinion of an
-independent implementation. **Q5 reframed** accordingly from "should cases be ported" (nothing
-needs porting) to "do the two evaluators' attested answers agree on the shared 178."
-
-§0.3 records the human's own rationale verbatim — ubca2 and einmo_suite2 are kept for
-**cleanliness, not capability**, and the deprecations exist to make the subsequent refactoring
-easier. §0.5 establishes from the tree that Euler-1 and fibonacci are **not einmo cases on
-either evaluator**, so there is no capability regression. §4.3 determines the einmo rename
-mechanics from source: a `git mv` is signature-safe because `verify_bytes` checks stored bytes
-and correspondence excludes metadata, with the surviving suite's `[signing.checked]` passphrase
-named as a stop condition.
+**Changes**: §6.2 route 3 (recoordination) CORRECTED on the human's ruling — route 3 does NOT
+halt the receiving brane. The prior text treated it like routes 1/2/4, which write a conflicting
+name into the brane being stepped so that brane cannot finish. Route 3's conflict is instead
+confined to one statement's attempt to coordinate a brane in: *"the brane segregates the runtime
+error … the brane simply is NK, the 2-deep statements are still stepped"*. Only the holding
+statement settles NK, and it is an ORDINARY NK — *"there's no unsteppable versus steppable NK,
+all NK are same"* — so the receiving brane keeps `unsteppable_cause` clear and steps its
+remaining statements (§6.4c). The worked example `{A={'C=1}, B={'C=2, D=A}}` →
+`{A={'C=1}, B={'C=2, D=NK}}` is now recorded in the route-3 note along with its RENDERING, which
+the human also specified: `D` reverts to its written `A` with an NK annotation rather than
+printing the would-be-coordinated brane. That follows §6.5's ordinary NK-reverts-to-Foolish rule
+and deliberately NOT §5.2's brane exception — the exception exists for a ROLLUP NK, whose
+resolved members are worth showing, whereas here the coordination never happened and printing it
+would show a result that does not exist. The routes table, the §6.6d status table, and §6.6d's
+gap-closure bullet were all brought onto the corrected model; an implementation note records
+that the NK node must REPLACE `ubc_children[0]` on both statement and body rather than append,
+since the body is a resolved search holding the FoolRefFir two-child invariant and appending
+would both break that invariant and leave the coordinated brane at the slot the sequencer reads.

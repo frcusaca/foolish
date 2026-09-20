@@ -1,0 +1,36 @@
+{
+
+  !!!
+  FOOP-86 §6.2 route 3 -- RECOORDINATION.
+
+  A statement whose settled value is a brane brings that brane's members into
+  this context. When one of them is a null-characterized name ALREADY defined
+  here with a DIFFERENT value, the brane cannot be coordinated in.
+
+  Route 3 is the one route that does NOT halt its brane. The brane SEGREGATES
+  the run-time error: only the statement holding the value settles NK, and it
+  is an ORDINARY NK -- there is no unsteppable-versus-steppable NK. The
+  receiving brane did its part, so its other statements step normally (§6.4c).
+
+  Rendering follows §6.5's ordinary NK-reverts-to-Foolish rule, NOT §5.2's
+  brane exception. That exception exists for a ROLLUP NK -- a brane NK on
+  account of something inside it -- whose resolved members are worth showing.
+  Here the coordination NEVER HAPPENED, so printing the would-be-coordinated
+  brane would show a result that does not exist.
+  !!!
+
+  A = {'C = 1};
+
+  !! 'C is already 2 here, so coordinating A in would give 'C a second
+  !! meaning. THIS statement is the unsteppable one: it reverts to its
+  !! written `A` and carries an NK annotation. Note what does NOT happen --
+  !! B is not halted, 'C = 2 is untouched, and `after` below still steps.
+  B = {'C = 2; D = A; after = 7};
+
+  !! A itself is a perfectly good brane. The conflict is with the RECEIVING
+  !! context, not with A, so every access into A resolves normally.
+  a_is_fine = A.'C;
+
+  !! The SAME value is not a conflict -- coordinating it in is permitted.
+  ok = {'C = 1; E = A};
+}
