@@ -2786,14 +2786,19 @@ mod search_fir_dispatch {
         // anchored search or an index is caught at its own anchor check —
         // no access path yields a meaningful value from a meaningless brane.
         if let Some(cause) = storage.unsteppable_cause(clone) {
-            // The search RESOLVED -- it found `stmt` -- but what it found is a
-            // halted brane, so the access settles NK (§6.4b). It must still
-            // push a result pair: returning early would leave the search with
-            // no result at all, and a resultless UNANCHORED search later
-            // settles ECONSTANIC ("may yet gain a value"), which is wrong
-            // here. This is not a miss; it found something, and that
-            // something is NK -- and NK is constantew, so no recoordination
-            // can ever change it.
+            // The search RESOLVED -- it found `stmt` -- but what it found is
+            // a halted brane, so the access settles NK (§6.4b). This is not a
+            // miss: it found something, and that something is NK, which is
+            // constantew, so no recoordination can ever change it.
+            //
+            // The NK is pushed as the search's RESULT rather than merely set
+            // on the node, so it settles through the ordinary path:
+            // `settle_from_ubc_result` reads `ubc_children[0]`'s NYES and
+            // maps it with `nyes_from_found` (Nk -> Nk). Setting the NYES and
+            // returning early is NOT equivalent -- it leaves `ubc_children`
+            // empty, so the node's next `Braning` step finds nothing there,
+            // re-runs the whole search, and overwrites the NK with whatever
+            // that second scan yields.
             let reason = storage
                 .alarm_reason(clone)
                 .map_or_else(|| "unsteppable brane".to_string(), str::to_owned);

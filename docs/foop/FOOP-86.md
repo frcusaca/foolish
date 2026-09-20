@@ -1102,10 +1102,13 @@ reasoning was wrong**: the unanchored rule protects a search that found NOTHING,
 yet gain a value under recoordination", which cannot be true of a brane that is NK, since NK is
 **constantew** — nothing will change it.
 
-The implementation consequence was subtle and worth recording: the access must still push a
-search RESULT (an NK node) rather than returning early. Bailing out left the search with no
-result at all, and a resultless unanchored search is exactly what later settles ECONSTANIC — so
-the early return produced the wrong answer by a path that looked like it was setting NK.
+The implementation consequence was subtle and worth recording: the access must push the NK as
+the search's **result** (`ubc_children[0]`), not merely set the node's NYES and return. Setting
+the NYES and returning early leaves `ubc_children` empty, so the node's next `Braning` step
+finds nothing there, **re-runs the whole search**, and overwrites the NK with whatever that
+second scan yields. Pushing the result instead settles it through the ordinary path —
+`settle_from_ubc_result` reads `ubc_children[0]`'s NYES and maps it via `nyes_from_found`
+(`Nk → Nk`) — so the search settles NK *because its result is NK*, with no special case.
 
 All four access paths now settle NK, and the NYES table is uniform:
 
