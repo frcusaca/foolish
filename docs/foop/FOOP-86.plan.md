@@ -1356,13 +1356,28 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       `{A={'C=1}, B={'C=2, D=A}}` → `{A={'C=1}, B={'C=2, D=NK}}`, with `D` reverting to its
       written `A` plus an NK annotation (§6.5's ordinary rule, NOT §5.2's brane exception —
       the coordination never happened, so it is not a rollup).
-      Two clobber sites had to be fixed for this to hold: the statement `Braning` arm wrote
+      One clobber site had to be fixed for this to hold: the statement `Braning` arm wrote
       `body_nyes` unconditionally over the terminal NK, the same latent class as the
-      `name_search_step` Embryonic bug; and the NK node must REPLACE `ubc_children[0]`
-      rather than append, preserving the FoolRefFir two-child invariant.
+      `name_search_step` Embryonic bug.
+      **REVISED 2026-09-20 11:01:41 on the human's review**: route 3 sets `Nyes::Nk` plus an
+      `alarm_reason` and leaves `ubc_children` ALONE. An earlier version also overwrote
+      `ubc_children[0]` with a synthetic `Nk` node; the human rejected that — *"the search
+      itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
+      purposes"* — and measurement confirmed it got the right render by the wrong means,
+      destroying the true record of what the search found and disturbing the FoolRefFir
+      two-child invariant. The render distinction now lives at the render site (new §6.2b):
+      a node whose own NYES is NK while its `ubc_children[0]` stayed CONCLUSIVE reverts to
+      its written form, which is exactly what separates route 3 from a rollup NK (whose
+      result is itself NK, and which §5.2 still renders as a brane). Output is
+      byte-identical to the superseded version and no einmo INPUT/OUTPUT changed.
 - [x] **UNIT tests** for both routes — 2026-09-20 10:26:23
       Route 2 asserts the merged brane halts. Route 3 asserts the OPPOSITE, per the
       correction above: `recoordinating_a_conflicting_null_const_settles_that_statement_nk`
+      (plus `foolish_node_nk_with_conclusive_result_reverts_to_written_form`, added
+      2026-09-20 11:01:41, which pins the §6.2b render signal from the route-3 side while the
+      pre-existing `foolish_nk_brane_result_renders_the_brane_not_the_written_search` pins
+      it from the rollup side — verified non-vacuous by removing the render clause and
+      confirming the new test fails)
       checks the receiving brane's `unsteppable_cause` is NONE, that `'C = 2` and a following
       `after = 7` step normally, that the holding statement AND its body settle NK, that `A`
       itself is untouched, and that an equal-valued recoordination is still permitted.
@@ -1468,21 +1483,28 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
 
 **Date**: 2026-09-20
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 9c2's route-3 checkboxes closed, on the CORRECTED model the human ruled
-2026-09-20: route 3 settles the holding statement NK WITHOUT halting the receiving brane, the
-opposite of what the original checkbox and unit test asserted. The unit test was rewritten
-accordingly (`recoordinating_a_conflicting_null_const_settles_that_statement_nk`) and now pins
-the non-halt directly — the receiving brane's `unsteppable_cause` is NONE and a following
-`after = 7` still steps. Two NYES-clobber sites had to be fixed for the NK to survive: the
-statement `Braning` arm wrote `body_nyes` unconditionally over the terminal state (the same
-latent class as the `name_search_step` Embryonic bug the human diagnosed earlier), and the NK
-node must replace `ubc_children[0]` rather than append, since the body is a resolved search
-holding the FoolRefFir two-child invariant. New einmo case
-`foop/86/unsteppable_recoordination.foo` pins all four behaviors in one input and was promoted
-to `checked/` after a statement-by-statement review. **Supersedes the prior entry's "No `einmo
-promote` was run at any point"** — that held for Phases 0–8, whose four deliverables promote
-nothing; Phase 9 promotes its OWN new cases only, which is what the non-regression invariant
-permits. `einmo_gate_checked` reported exactly ONE difference suite-wide (this new case), so no
-pre-existing baseline moved. `foolish-ubca2` now 177 passed / 1 failed (178 total, unchanged —
-the route-3 test was replaced, not added); the sole failure is `einmo_gate_verified`, red on the
-three FOOP-86 cases that await the human's signing key.
+**Changes**: Phase 9c2's route-3 entries REVISED on the human's review of the committed
+implementation. Route 3 still settles the holding statement NK without halting the receiving
+brane, but it no longer touches `ubc_children`. The committed version overwrote
+`ubc_children[0]` with a synthetic `Nk` node on both the statement and its body; the human
+challenged that — *"If a search has to turn NK due to resulting brane being NK, the search
+itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
+purposes"* — and investigation confirmed they were right. It produced the correct rendering by
+the wrong means: it destroyed the true record that the search DID find `A`, disturbed the
+FoolRefFir two-child invariant that `&`-searches and result chains read, and would have handed
+every other consumer of `[0]` a fabricated node.
+
+Route 3 now sets `Nyes::Nk` plus an `alarm_reason` and stops there. The rendering consequence
+moved to where it belongs, the render site, recorded as new §6.2b: `render_process_or_result`
+reads `ubc_children[0]`'s state rather than the node's, so a node that is itself NK while its
+result stayed CONCLUSIVE now reverts to its written form. That single condition is what
+separates route 3 (search succeeded, coordination failed, result conclusive) from a ROLLUP NK
+(`f = #-1`, whose result is itself NK and which §5.2 deliberately renders as a brane) — no new
+stored flag and no lookup into the referenced brane needed, since both states are already on
+hand. New test `foolish_node_nk_with_conclusive_result_reverts_to_written_form` pins the
+route-3 side and was verified non-vacuous by removing the render clause and watching it fail;
+the pre-existing `foolish_nk_brane_result_renders_the_brane_not_the_written_search` pins the
+rollup side. Rendered output is byte-identical to the superseded implementation, so no einmo
+INPUT or OUTPUT changed and nothing needed promoting. `foolish-ubca2` serial run: 177 passed /
+1 failed, the sole failure `einmo_gate_verified`, red on the three FOOP-86 cases that await the
+human's signing key.

@@ -2982,41 +2982,26 @@ mod search_fir_dispatch {
                 // runtime error: outside this statement only an ordinary NK
                 // value propagates, by the ordinary rules.
                 let reason = format!("'{name} already defined in context");
-                // BOTH the statement and its BODY settle NK. The body must be
-                // settled too: `render_statement` renders the body, and a body
-                // left `Constant` with the coordinated brane at its
-                // `ubc_children[0]` would print that brane — showing a
-                // coordination that never legitimately happened. Same
-                // statement-AND-body discipline as `halt_if_unsteppable`.
+                // The statement and its body settle NK, and the reason is
+                // recorded as an alarm on each. `ubc_children` is deliberately
+                // LEFT ALONE: the search genuinely FOUND its target, and `[0]`
+                // is the true record of what it found. What failed is
+                // COORDINATING that brane into this context, which is a fact
+                // about this statement, not about the search's result.
+                //
+                // This also preserves the FoolRefFir two-child invariant
+                // (`[0]` value, `[1]` FoolRef) that `&`-searches and result
+                // chains depend on. The render-side consequence is handled
+                // where it belongs, in `render_process_or_result`: a node that
+                // itself settled NK while its result stayed conclusive reverts
+                // to its written form (human, 2026-09-20 — "the search itself
+                // (the search fir) has NK, it shouldn't need to change the
+                // ubc_children for most purposes").
                 for target in [body, stmt] {
-                    let nk = storage.make_orphan_child(
-                        target,
-                        FirSpec::Nk {
-                            reason: reason.clone(),
-                        },
-                    );
-                    storage.with_mut(nk, |fir| fir.set_nyes(Nyes::Nk));
-                    // REPLACE the value child rather than appending. `body` is
-                    // a resolved search, so it holds the FoolRefFir two-child
-                    // invariant: `[0]` the found value, `[1]` the `FoolRef`
-                    // carrying the found statement's position. Appending a
-                    // third child would both break that invariant and leave
-                    // the coordinated brane at `[0]`, which is the child the
-                    // sequencer reads — so the NK takes slot `[0]` and any
-                    // `FoolRef` is re-pushed behind it.
-                    let keep: Vec<(FirPointer, Nyes)> = FirCursor::new(target, storage)
-                        .ubc_children()
-                        .iter()
-                        .skip(1)
-                        .map(|&c| (c, storage.get_nyes(c)))
-                        .collect();
-                    let me = storage.get_mut(target);
-                    me.clear_ubc_children();
-                    me.push_ubc_child(nk, Nyes::Nk);
-                    for (c, n) in keep {
-                        storage.get_mut(target).push_ubc_child(c, n);
-                    }
-                    storage.with_mut(target, |fir| fir.set_nyes(Nyes::Nk));
+                    storage.with_mut(target, |fir| {
+                        fir.set_nyes(Nyes::Nk);
+                        fir.set_alarm_reason(reason.clone());
+                    });
                 }
                 return;
             }

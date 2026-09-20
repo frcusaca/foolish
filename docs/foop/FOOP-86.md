@@ -747,10 +747,44 @@ context. Neither statement is individually at fault; the brane is.
 > }
 > ```
 >
-> Implementation note: the NK node **replaces** `ubc_children[0]` on both the statement and
-> its body rather than being appended. The body is a resolved search and so holds the
-> FoolRefFir two-child invariant (`[0]` value, `[1]` `FoolRef`); appending would break that
-> invariant *and* leave the coordinated brane at `[0]`, which is the child the sequencer reads.
+> **Implementation note — the NYES carries the failure; `ubc_children` is NOT touched**
+> (human, 2026-09-20: *"If a search has to turn NK due to resulting brane being NK, the search
+> itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
+> purposes."*).
+>
+> The statement and its body each take `Nyes::Nk` plus an `alarm_reason` carrying the conflict.
+> `ubc_children` is left exactly as the search built it: `[0]` is the found brane — the search
+> genuinely FOUND `A`, and that is a true fact worth keeping — and `[1]` is the `FoolRef`
+> carrying the found statement's position. The FoolRefFir two-child invariant that
+> `&`-searches and result chains depend on is therefore preserved untouched.
+>
+> An earlier implementation instead OVERWROTE `ubc_children[0]` with a synthetic
+> `FirSpec::Nk` node. That produced the right rendering by the wrong means: it destroyed the
+> record of what the search found, disturbed the two-child invariant, and made every other
+> consumer of `[0]` see a fabricated node instead of the real value. The rendering consequence
+> belongs at the render site, and that is where it now lives — see §6.5's route-3 clause.
+
+##### §6.2b The render-site signal: node NK with a CONCLUSIVE result
+
+`render_process_or_result` decides between value and written form by reading the state of
+`ubc_children[0]` — the RESULT — never the node's own. That is correct for every ordinary
+case, including §5.2's brane exception: a **rollup** NK such as `f = #-1` (where the search
+finds a brane that is itself NK) has an NK *result*, and the exception deliberately renders
+its members.
+
+Route 3 is the one shape where the two DISAGREE, and the disagreement is precisely the signal:
+
+| Case | Node's own NYES | `ubc_children[0]`'s NYES | Render |
+|---|---|---|---|
+| Rollup NK (`f = #-1`) | NK | **NK** (the found brane is NK) | the brane (§5.2 exception) |
+| Route 3 (`D = A`) | NK | **conclusive** (the found brane is fine) | **written form + annotation** |
+
+A conclusive result under an NK node means the node failed for a reason **of its own** — the
+coordination, not the search — so its result is not the thing to print. This is robust because
+it needs no new stored flag and no lookup into the referenced brane: both states are already
+on hand at the render site. Pinned from both directions by
+`foolish_nk_brane_result_renders_the_brane_not_the_written_search` (rollup still renders its
+brane) and `foolish_node_nk_with_conclusive_result_reverts_to_written_form` (route 3 reverts).
 
 **Measured on this branch, 2026-09-18 — routes 2 and 3 produced NO NK at all before Phase 9.
 As of 2026-09-20 all four routes behave as specified: routes 1, 2 and 4 halt their brane;
@@ -1631,21 +1665,27 @@ Non-blocking.
 
 **Date**: 2026-09-20
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: §6.2 route 3 (recoordination) CORRECTED on the human's ruling — route 3 does NOT
-halt the receiving brane. The prior text treated it like routes 1/2/4, which write a conflicting
-name into the brane being stepped so that brane cannot finish. Route 3's conflict is instead
-confined to one statement's attempt to coordinate a brane in: *"the brane segregates the runtime
-error … the brane simply is NK, the 2-deep statements are still stepped"*. Only the holding
-statement settles NK, and it is an ORDINARY NK — *"there's no unsteppable versus steppable NK,
-all NK are same"* — so the receiving brane keeps `unsteppable_cause` clear and steps its
-remaining statements (§6.4c). The worked example `{A={'C=1}, B={'C=2, D=A}}` →
-`{A={'C=1}, B={'C=2, D=NK}}` is now recorded in the route-3 note along with its RENDERING, which
-the human also specified: `D` reverts to its written `A` with an NK annotation rather than
-printing the would-be-coordinated brane. That follows §6.5's ordinary NK-reverts-to-Foolish rule
-and deliberately NOT §5.2's brane exception — the exception exists for a ROLLUP NK, whose
-resolved members are worth showing, whereas here the coordination never happened and printing it
-would show a result that does not exist. The routes table, the §6.6d status table, and §6.6d's
-gap-closure bullet were all brought onto the corrected model; an implementation note records
-that the NK node must REPLACE `ubc_children[0]` on both statement and body rather than append,
-since the body is a resolved search holding the FoolRefFir two-child invariant and appending
-would both break that invariant and leave the coordinated brane at the slot the sequencer reads.
+**Changes**: §6.2's route-3 implementation note REVERSED on the human's review, and a new
+§6.2b added recording the render-site signal it turns on. The prior note had the NK node
+**replace** `ubc_children[0]` on the statement and its body. The human challenged this — *"If a
+search has to turn NK due to resulting brane being NK, the search itself (the search fir) has
+NK, it shouldn't need to change the ubc_children for most purposes"* — and they were right.
+Route 3 now sets `Nyes::Nk` plus an `alarm_reason` and leaves `ubc_children` untouched, so `[0]`
+still records that the search genuinely FOUND `A` (a true fact) and the FoolRefFir two-child
+invariant is preserved intact for `&`-searches and result chains. Measurement showed the old
+approach produced the correct rendering by the wrong means: overwriting `[0]` hid the found
+value from a render test that reads the RESULT's state rather than the node's.
+
+New §6.2b states the signal that replaces it. `render_process_or_result` reads
+`ubc_children[0]`'s NYES, never the node's, which is right for every ordinary case — a ROLLUP
+NK (`f = #-1`, finding a brane that is itself NK) has an NK result and §5.2's brane exception
+deliberately renders its members. Route 3 is the one shape where node and result DISAGREE: the
+node is NK while its result stays conclusive, because the search succeeded and only the
+COORDINATION failed. A conclusive result under an NK node therefore means the node failed for a
+reason of its own, so its result is not the thing to print. The clause needs no new stored flag
+and no lookup into the referenced brane — both states are already on hand at the render site —
+and it is pinned from both directions, by the pre-existing
+`foolish_nk_brane_result_renders_the_brane_not_the_written_search` (rollup still renders its
+brane) and the new `foolish_node_nk_with_conclusive_result_reverts_to_written_form` (route 3
+reverts, and does NOT print the brane it failed to coordinate in). The rendered output is
+byte-identical to the superseded implementation's, and no einmo INPUT or OUTPUT changed.

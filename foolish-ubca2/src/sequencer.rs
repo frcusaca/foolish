@@ -437,6 +437,34 @@ impl<'a> Renderer<'a> {
         F: FnOnce(&Self) -> Vec<String>,
     {
         let cursor = FirCursor::new(fir, self.storage);
+        // A node that ITSELF settled NK while its RESULT stayed CONCLUSIVE
+        // reverts to its written form. This is the FOOP-86 §6.2 route-3 shape:
+        // the search FOUND its target (so `[0]` is a perfectly good value),
+        // but coordinating that brane into this context failed, so the SEARCH
+        // is NK while its result is not.
+        //
+        // The test below reads the RESULT's state, never the node's, which is
+        // right for every ordinary case — a rollup NK (`f = #-1` finding a
+        // brane that is itself NK) has an NK result, and §5.2's brane
+        // exception deliberately renders it. Route 3 is the one case where the
+        // two disagree, and that disagreement is exactly the signal: a
+        // conclusive result under an NK node means the node failed for a
+        // reason of its own, so its value is not the thing to print.
+        //
+        // Checked HERE rather than by mutating `ubc_children` to hide the
+        // found value from the test below (human, 2026-09-20 — "the search
+        // itself (the search fir) has NK, it shouldn't need to change the
+        // ubc_children for most purposes"). `[0]` is the true record of what
+        // the search found, and `[0]`/`[1]` is the FoolRefFir two-child
+        // invariant that `&`-searches and result chains read.
+        if self.storage.get_nyes(fir) == Nyes::Nk
+            && cursor
+                .ubc_children()
+                .first()
+                .is_some_and(|&r| self.storage.get_nyes(r).is_conclusive())
+        {
+            return written(self);
+        }
         if let Some(&result) = cursor.ubc_children().first() {
             let result_nyes = self.storage.get_nyes(result);
             // The ordinary rule (§3): a CONCLUSIVE result renders as its
@@ -2109,6 +2137,47 @@ mod tests {
         );
         // A SCALAR NK still reverts — the written form is the information.
         assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
+    }
+
+    /// The COMPANION to the test above, pinning the one case where a node's
+    /// own NK and its result's state DISAGREE — and therefore the one case
+    /// where §5.2's brane exception must NOT fire.
+    ///
+    /// FOOP-86 §6.2 route 3: `D = A` recoordinates `A` into a brane that
+    /// already defines `'C` differently. The search FOUND `A` — its
+    /// `ubc_children[0]` is a perfectly good `Independent` brane — but
+    /// COORDINATING it in failed, so the SEARCH settles NK while its result
+    /// stays conclusive.
+    ///
+    /// Rendering the result here would print a coordination that never
+    /// happened, so the statement reverts to its written `A` and is
+    /// annotated. Contrast the rollup above (`f = #-1`), whose result is
+    /// ITSELF NK and which therefore DOES render its brane.
+    ///
+    /// This test exists because the first implementation got the render right
+    /// by the wrong means: it overwrote `ubc_children[0]` with a synthetic
+    /// `Nk` node, destroying the true record of what the search found and
+    /// disturbing the FoolRefFir two-child invariant. The human rejected that
+    /// (2026-09-20) — the NYES alone should carry the failure — so the
+    /// distinction now lives at the render site and needs a test that would
+    /// catch either half regressing.
+    #[test]
+    fn foolish_node_nk_with_conclusive_result_reverts_to_written_form() {
+        let (storage, program) = evaluated_program("{A={'C=1}, B={'C=2, D=A}}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("D = A  !! NK: 'C already defined in context"),
+            "route 3 reverts to the written search and says why: {rendered}"
+        );
+        assert!(
+            !rendered.contains("D = {"),
+            "it must NOT print the brane it failed to coordinate in: {rendered}"
+        );
+        // The receiving brane is untouched, and `A` itself is still good.
+        assert!(
+            rendered.contains("'C = 2"),
+            "the receiving brane keeps stepping: {rendered}"
+        );
     }
 
     /// A combined NAME-AND-VALUE search (`a~tmp_.*=10`) is an atomic
