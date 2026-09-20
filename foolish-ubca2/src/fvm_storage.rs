@@ -2791,14 +2791,10 @@ mod search_fir_dispatch {
             // miss: it found something, and that something is NK, which is
             // constantew, so no recoordination can ever change it.
             //
-            // The NK is pushed as the search's RESULT rather than merely set
-            // on the node, so it settles through the ordinary path:
+            // The NK is pushed as the search's RESULT, not merely set on this
+            // node, so it settles through the ordinary path:
             // `settle_from_ubc_result` reads `ubc_children[0]`'s NYES and
-            // maps it with `nyes_from_found` (Nk -> Nk). Setting the NYES and
-            // returning early is NOT equivalent -- it leaves `ubc_children`
-            // empty, so the node's next `Braning` step finds nothing there,
-            // re-runs the whole search, and overwrites the NK with whatever
-            // that second scan yields.
+            // maps it with `nyes_from_found` (Nk -> Nk).
             let reason = storage
                 .alarm_reason(clone)
                 .map_or_else(|| "unsteppable brane".to_string(), str::to_owned);
@@ -3353,7 +3349,18 @@ mod search_fir_dispatch {
                     match ib_search_with_engine(storage, ptr, current_statement) {
                         Some((stmt, _nyes)) => {
                             handle_found(storage, ptr, stmt, has_ancestral_sfm);
-                            storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                            // Do NOT clobber a terminal state `handle_found`
+                            // already reached. It settles NK when what it
+                            // found is a halted brane (FOOP-86 §6.4b);
+                            // unconditionally writing `Braning` here would
+                            // regress that constanic node to pre-constanic
+                            // and send it on to the AB stage, where an
+                            // unanchored miss settles ECONSTANIC -- which is
+                            // how `r = bad` used to end up ECONSTANIC rather
+                            // than NK.
+                            if !storage.get_nyes(ptr).is_constanic() {
+                                storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
+                            }
                         }
                         None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning)),
                     }

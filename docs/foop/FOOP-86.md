@@ -733,20 +733,28 @@ NK** under §6.3's halt.
 #### §6.2a Unsteppable statements are RUN-TIME ERRORS of Foolish
 
 **Human-directed classification, 2026-09-18.** An unsteppable statement is a **run-time error
-of Foolish** — not a parse error, and not an ordinary NK value. This is the category it
-belongs to, and it explains each of its properties:
+of Foolish** — not a parse error. This is the category it belongs to, and it explains each of
+its properties:
 
 - **Not a parse error.** `{'K = ⬤; 'K = 3;}` is syntactically impeccable. Nothing about the
   text is malformed; the fault only exists relative to an evaluation context in which `'K` was
   already defined. It cannot be detected before stepping, because "already defined in the
   context" is a question only stepping can answer (it requires an IB-then-AB search).
-- **Not an ordinary NK.** AGENTS.md rightly says to be skeptical of NK — "a search settling NK
-  is the narrow, exceptional outcome." An ordinary NK is a *value*: a computation ran and its
-  answer is not knowable (`1/0`, an anchored search that found nothing). An unsteppable
-  statement never ran at all. Its NK is the ABSENCE of evaluation, not the result of one.
 - **It halts.** Run-time errors stop execution; values do not. §6.3's halt is this property,
   and it is why the brane's NK is set directly by the halt rather than derived from a member's
   value.
+
+**"Unsteppable" is NOT a NYES, and there is only ONE kind of NK** (human, 2026-09-20). This
+must not be misread, and an earlier draft of this section did misread it:
+
+- **Unsteppable is a property of a STATEMENT**, recorded as the brane's `unsteppable_cause`.
+  It is not a NYES state, it is not a variety of NK, and the unsteppable statement itself is
+  **not labelled NK at all** (§6.4 — in `{'K = ⬤; 'K = 3;}` both `'K` statements stay
+  `Independent`).
+- **The brane containing an unsteppable statement is NK — ordinary NK, the same NK as any
+  other.** There is no "unsteppable NK" as against a "steppable NK". Every NK is the same NK.
+  What distinguishes this case is not the NK; it is the `unsteppable_cause` stored alongside
+  it in the brane's FIR, which is how the reason is recovered for reporting.
 
 **Consequence for reporting — the brane RAISES AN ALARM.** Like the other Foolish run-time
 errors (division by zero's `DIV-BY-ZERO`, the step cap's `Iteration exceeded N`), an unsteppable
@@ -1102,13 +1110,26 @@ reasoning was wrong**: the unanchored rule protects a search that found NOTHING,
 yet gain a value under recoordination", which cannot be true of a brane that is NK, since NK is
 **constantew** — nothing will change it.
 
-The implementation consequence was subtle and worth recording: the access must push the NK as
-the search's **result** (`ubc_children[0]`), not merely set the node's NYES and return. Setting
-the NYES and returning early leaves `ubc_children` empty, so the node's next `Braning` step
-finds nothing there, **re-runs the whole search**, and overwrites the NK with whatever that
-second scan yields. Pushing the result instead settles it through the ordinary path —
-`settle_from_ubc_result` reads `ubc_children[0]`'s NYES and maps it via `nyes_from_found`
-(`Nk → Nk`) — so the search settles NK *because its result is NK*, with no special case.
+**The implementation cause, finally diagnosed correctly** (human, 2026-09-20 — after two wrong
+explanations from the agent). `handle_found` DID set NK. What discarded it was the very next
+line in the `Embryonic` IB-search stage:
+
+```rust
+Some((stmt, _nyes)) => {
+    handle_found(storage, ptr, stmt, has_ancestral_sfm);
+    storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));   // clobbers NK
+}
+```
+
+The IB search FOUND `bad`, `handle_found` settled the node NK, and then `Braning` was written
+over it unconditionally — regressing a constanic node to pre-constanic and sending it on to the
+AB stage, where an unanchored miss settles ECONSTANIC by the ordinary rule. Nothing about
+"resultless searches" was involved; the earlier drafts of this paragraph claiming a re-scan, or
+a special ECONSTANIC rule, were both **wrong**.
+
+The fix is to not clobber a terminal state: that write is now guarded by
+`if !storage.get_nyes(ptr).is_constanic()`. This was a **general latent bug** — the line
+overwrote *any* terminal NYES `handle_found` reached, not just this one.
 
 All four access paths now settle NK, and the NYES table is uniform:
 
