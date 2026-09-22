@@ -7315,6 +7315,121 @@ mod tests {
         }
     }
 
+    /// The brane a concatenation MERGED INTO, given the statement body holding
+    /// the concat expression. The merge result is the concat's
+    /// `ubc_children[0]`, so a route-2 halt is recorded there rather than on
+    /// the body; falls back to the body when there is no result child.
+    fn merged_brane_of(storage: &FVMStorage, body: FirPointer) -> FirPointer {
+        FirCursor::new(body, storage)
+            .ubc_children()
+            .first()
+            .copied()
+            .unwrap_or(body)
+    }
+
+    /// §6.2 route 2 — CONCATENATION MERGE. A merge brings statements from
+    /// several operands into one brane; if two of them null-characterize the
+    /// SAME name with DIFFERENT values, the merged brane cannot be built and
+    /// halts (`apply_null_const_rule_to_merged_stmt`).
+    ///
+    /// **This test covers BOTH paths deliberately, and the permitted path is
+    /// the more important half.** A refusal-only test passes while leaving a
+    /// specific misreading undetected: `{A = {'C = 10}; b = A A;}` concatenates
+    /// `A` with ITSELF, so both copies carry `'C = 10` — the SAME value — and
+    /// the merge is PERMITTED. Reviewing that output, "no NK" looks
+    /// indistinguishable from "the check never ran", and it was in fact
+    /// misread that way during FOOP-86's completion gate (corrected by the
+    /// human, 2026-09-22: *"is that actually wrong? what happens when we do
+    /// `{'a=10; 'a='a}` — that shouldn't fail, it is idempotent"*). Pinning
+    /// equal-merge-permitted next to conflict-merge-halts is what makes the
+    /// distinction testable rather than a matter of reading.
+    #[test]
+    fn concatenation_merge_halts_only_on_a_conflicting_null_const() {
+        // PERMITTED: same value from both operands.
+        for (label, src) in [
+            ("self-concatenation", "{A = {'C = 10}; b = A A;}"),
+            (
+                "two equal operands",
+                "{A = {'C = 10}; B = {'C = 10}; b = A B;}",
+            ),
+            ("equal inline operands", "{b = {'C = 10} {'C = 10};}"),
+        ] {
+            let (storage, program) = eval_program(src);
+            let index = FirCursor::new(program, &storage).stmt_count().unwrap_or(0) - 1;
+            let (body, nyes) = stmt_body_and_nyes(&storage, program, index);
+            // The merged brane is the concatenation's RESULT -- `ubc_children[0]`
+            // of the concat expression -- not the statement body itself, so the
+            // halt is recorded there.
+            let merged = merged_brane_of(&storage, body);
+            assert!(
+                storage.unsteppable_cause(merged).is_none(),
+                "{label}: merging EQUAL null-const values is permitted -- the \
+                 merged brane must NOT halt ({src})"
+            );
+            assert_ne!(
+                nyes,
+                Nyes::Nk,
+                "{label}: an equal merge produces a real brane, not NK ({src})"
+            );
+        }
+
+        // REFUSED: the same name with different values.
+        for (label, src) in [
+            (
+                "two named operands",
+                "{A = {'C = 10}; B = {'C = 11}; b = A B;}",
+            ),
+            ("inline operands", "{b = {'C = 10} {'C = 11};}"),
+        ] {
+            let (storage, program) = eval_program(src);
+            let index = FirCursor::new(program, &storage).stmt_count().unwrap_or(0) - 1;
+            let (body, nyes) = stmt_body_and_nyes(&storage, program, index);
+            let merged = merged_brane_of(&storage, body);
+            assert!(
+                storage.unsteppable_cause(merged).is_some(),
+                "{label}: merging a CONFLICTING null-const halts the merged \
+                 brane and records the cause on it (§6.2 route 2) ({src})"
+            );
+            assert_eq!(
+                nyes,
+                Nyes::Nk,
+                "{label}: the halted merged brane takes NK (§6.3) ({src})"
+            );
+        }
+    }
+
+    /// The statement-level counterpart of the merge rule, and the case that
+    /// makes "equal is permitted" unmistakable: re-stating a null-characterized
+    /// constant's own value is IDEMPOTENT, whether written as the literal or as
+    /// a search that resolves to it (human, 2026-09-22: `{'a=10; 'a='a}`
+    /// "shouldn't fail, it is idempotent"). Only a DIFFERENT value is
+    /// unsteppable.
+    #[test]
+    fn restating_a_null_const_with_its_own_value_is_idempotent() {
+        for (label, src) in [
+            ("literal restatement", "{'a = 10; 'a = 10;}"),
+            ("restated via search", "{'a = 10; 'a = 'a;}"),
+        ] {
+            let (storage, program) = eval_program(src);
+            assert!(
+                storage.unsteppable_cause(program).is_none(),
+                "{label}: an equal restatement is permitted -- the brane must \
+                 not halt ({src})"
+            );
+            assert_ne!(
+                storage.get_nyes(program),
+                Nyes::Nk,
+                "{label}: the brane keeps a real value ({src})"
+            );
+        }
+
+        let (storage, program) = eval_program("{'a = 10; 'a = 11;}");
+        assert!(
+            storage.unsteppable_cause(program).is_some(),
+            "a CONFLICTING restatement is unsteppable and halts the brane"
+        );
+    }
+
     /// §6.2 route 3 — RECOORDINATION. A statement whose settled value is a
     /// brane brings that brane's members into this context. When one of them
     /// is a null-characterized name already defined here with a DIFFERENT

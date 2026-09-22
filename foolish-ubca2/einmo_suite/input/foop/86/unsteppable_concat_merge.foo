@@ -1,0 +1,29 @@
+{
+
+  !! FOOP-86 §6.2 route 2 -- CONCATENATION MERGE. A merge brings statements
+  !! from several operands into one brane. Two operands null-characterizing
+  !! the SAME name with DIFFERENT values cannot be merged: the merged brane
+  !! halts and takes NK.
+
+  A = {'C = 10};
+  B = {'C = 11};
+  E = {'C = 10};
+
+  !! PERMITTED -- equal values. A merged with ITSELF carries 'C = 10 twice,
+  !! the same value, so the merge is fine. This is the half a refusal-only
+  !! test would miss: "no NK" here is the CORRECT answer, not a check that
+  !! failed to run.
+  same_twice  = A A;
+  equal_pair  = A E;
+  equal_inline = {'C = 10} {'C = 10};
+
+  !! REFUSED -- different values for 'C. The merged brane is unsteppable.
+  conflict_pair   = A B;
+  conflict_inline = {'C = 10} {'C = 11};
+
+  !! the statement-level counterpart: restating a null-const's OWN value is
+  !! idempotent, written either as the literal or as a search resolving to it
+  'a = 10;
+  'a = 10;
+  'a = 'a;
+}
