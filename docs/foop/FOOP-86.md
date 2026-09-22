@@ -2,7 +2,7 @@
 foop: D68
 title: Retire UBCa — foolish-ubca2 becomes the implementation
 author: Claude Code / claude-opus-5 (directed by the human)
-status: Draft
+status: Complete
 type: Standards
 created: 2026-09-16
 phase: phase-4
@@ -1663,29 +1663,16 @@ Non-blocking.
 
 ## Last Updated
 
-**Date**: 2026-09-20
+**Date**: 2026-09-21
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: §6.2's route-3 implementation note REVERSED on the human's review, and a new
-§6.2b added recording the render-site signal it turns on. The prior note had the NK node
-**replace** `ubc_children[0]` on the statement and its body. The human challenged this — *"If a
-search has to turn NK due to resulting brane being NK, the search itself (the search fir) has
-NK, it shouldn't need to change the ubc_children for most purposes"* — and they were right.
-Route 3 now sets `Nyes::Nk` plus an `alarm_reason` and leaves `ubc_children` untouched, so `[0]`
-still records that the search genuinely FOUND `A` (a true fact) and the FoolRefFir two-child
-invariant is preserved intact for `&`-searches and result chains. Measurement showed the old
-approach produced the correct rendering by the wrong means: overwriting `[0]` hid the found
-value from a render test that reads the RESULT's state rather than the node's.
-
-New §6.2b states the signal that replaces it. `render_process_or_result` reads
-`ubc_children[0]`'s NYES, never the node's, which is right for every ordinary case — a ROLLUP
-NK (`f = #-1`, finding a brane that is itself NK) has an NK result and §5.2's brane exception
-deliberately renders its members. Route 3 is the one shape where node and result DISAGREE: the
-node is NK while its result stays conclusive, because the search succeeded and only the
-COORDINATION failed. A conclusive result under an NK node therefore means the node failed for a
-reason of its own, so its result is not the thing to print. The clause needs no new stored flag
-and no lookup into the referenced brane — both states are already on hand at the render site —
-and it is pinned from both directions, by the pre-existing
-`foolish_nk_brane_result_renders_the_brane_not_the_written_search` (rollup still renders its
-brane) and the new `foolish_node_nk_with_conclusive_result_reverts_to_written_form` (route 3
-reverts, and does NOT print the brane it failed to coordinate in). The rendered output is
-byte-identical to the superseded implementation's, and no einmo INPUT or OUTPUT changed.
+**Changes**: Status **Draft → Complete**; merged to `jia` as `35d18b69`. Final state: the four
+original deliverables plus the §6 Unsteppable-statement addendum, all four §6.2 routes
+specified, three of the four implemented and tested in BOTH a unit test and an einmo case.
+Route 2 (concatenation merge) remains uncovered and non-halting — out of scope by the human's
+2026-09-18 direction (§9c-note) and recorded in the plan's completion gate as a known,
+deliberate gap for the concatenation FOOP rather than reported complete. All three FOOP-86
+einmo cases are human-signed in `verified/` (pubkey `cbdd8bb43cb9f496`). FOOP-33 §4's poisoning
+mechanism has been marked superseded in six passages, each preserving what it originally said.
+AGENTS.md §Foolish Terminology gained **Unsteppable** and **Run-time error**. Gates at
+completion: workspace 465 tests / 0 failures, `einmo_gate_verified` green, fmt clean, clippy
+unchanged from `jia`'s pre-existing `foolish-core` debt.
