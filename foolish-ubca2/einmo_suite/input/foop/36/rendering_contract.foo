@@ -58,8 +58,8 @@
   Indexes: ordinary results collapse; head and tail statements attach canonically.
   !!!
 
-  !! A SETTLED head/tail renders its VALUE, not the attached form -- FOOP-75
-  !! §4.1's "transparency when settled". All three of these resolve.
+  !! A SETTLED head/tail renders its VALUE, not the attached form -- FOOP-75 §4.1's "transparency when
+  !! settled". All three of these resolve.
   indexes_written = {
     base = {a = 1; b = 2};
     indexed = base#0;                    !! indexed = 1; #0 and ^ share one arena shape
@@ -67,10 +67,8 @@
     from_attached =$ base;               !! fromˍattached = 2
   };
 
-  !! An UNSETTLED head/tail keeps the attached spelling (§4.3.1) -- an empty
-  !! brane has neither a head nor a tail, so these cannot resolve. Both halves
-  !! of the rule are pinned: settled above renders values, unsettled here
-  !! renders `=^`/`=$`.
+  !! An UNSETTLED head/tail keeps the attached spelling (§4.3.1) -- an empty brane has neither a head
+  !! nor a tail, so these cannot resolve. Settled above renders values; unsettled here renders `=^`/`=$`.
   indexes_unsettled = {
     empty = {};
     empty_head = empty#0;                !! emptyˍhead =^ empty, with NK reason
@@ -102,8 +100,8 @@
     sff;                                 !! trailing result = 10
   };
 
-  !! A simpler substitution: a resolved search used at a later position
-  !! renders its captured value, not the search that produced it.
+  !! A simpler substitution: a resolved search used at a later position renders its captured value, not
+  !! the search that produced it.
   simple_substitution = {
     base = {y = 5;};
     found = base?y;

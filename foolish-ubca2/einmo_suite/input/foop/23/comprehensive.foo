@@ -1,8 +1,7 @@
 {
 	!! === FOOP-23 Comprehensive Test ===
-	!! Exercises value search, expression patterns, and contexted (&) search
-	!! interacting with existing features: dot access, name search, nested
-	!! branes, head/tail, index, and arithmetic.
+	!! Exercises value search, expression patterns, and contexted (&) search against existing
+	!! features: dot access, name search, nested branes, head/tail, index, and arithmetic.
 
 	!! --- Data: integer-valued branes for value search ---
 	nums = {

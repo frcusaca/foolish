@@ -1,7 +1,6 @@
 {
-	!! FOOP-33 comprehensive: creation, equality, characterizations,
-	!! null-constants, nested branes. (Comparisons dropped pending new infix design;
-	!! see FOOP-33.md §5.0.)
+	!! FOOP-33 comprehensive: creation, equality, characterizations, null-constants, nested
+	!! branes. Comparisons are covered under boolean/ -- see FOOP-33.md §5.0.
 
     test_number = 1;
 	a = ⬤;

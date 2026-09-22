@@ -1,23 +1,18 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/36/comprehensive.foo
-suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 4fe6341d
-producer-diff: sha256:cae3279ed4efa502b8b01489d53bfcc97ee9027cbb000b1e59e9a417dd5b8cc2
-generated: 2026-09-07T21:44:04.000000000Z
+suite: /yolo/foolish/foolish-ubca2/einmo_suite
+producer: 29075917
+producer-diff: sha256:296775a77f6468170aa2b4d1718ddb28421b89458b9bf3eb9901b2081c1e054f
+generated: 2026-09-22T11:14:22.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 {
 
   !!!
-  FOOP-36 comprehensive: at least one path through every §3 row, §4's states,
-  §5's NK forms, and §4's comment-placement rule under pressure.
-
-  Unicode operator note: AGENTS.md asks for `<̲`/`=̲=̲`, but the current lexer
-  rejects U+0332 and implements no such operator (recorded in the plan at
-  Phase 3b). Comparison is therefore written through the supported
-  `{a, b, 'lt}$` system-brane idiom, as `rendering_contract.foo` does. `⬤` IS
-  used, since that one is supported.
+  FOOP-36 comprehensive: at least one path through every §3 row, §4's states, §5's NK forms, and §4's
+  comment-placement rule under pressure. Comparison is written through the `{a, b, 'lt}$` system-brane
+  idiom, since the lexer implements no `<̲`/`=̲=̲` operator; `⬤` is supported and used.
   !!!
 
   !! §3 rows — leaves. Each is already its own value.
@@ -28,16 +23,16 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   empty_brane = {};
   no_no = ???;
 
-  !! §3 Statement/Brane rows, plus the identifier round-trip hazard: `_`
-  !! lexes to U+02CD and must come back as a valid identifier char.
+  !! §3 Statement/Brane rows, plus the identifier round-trip hazard: `_` lexes to U+02CD and must come
+  !! back as a valid identifier char.
   my_var = 2;
   λ = 3;
   characterized = a'b'{v = 1};
   'k = 1;
 
   !!!
-  Operators: ONE predicate on the RESULT. Conclusive collapses to the value,
-  inconclusive constanic reverts to the op on its parameters.
+  Operators: ONE predicate on the RESULT. Conclusive collapses to the value, inconclusive constanic
+  reverts to the op on its parameters.
   !!!
 
   op_conclusive = 3 + 4;
@@ -48,8 +43,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   op_comparison = {1, 2, 'lt}$;
 
   !!!
-  Searches: the same predicate, on the search's RESULT rather than its own
-  NYES. Both anchoring shapes, and every miss flavour.
+  Searches: the same predicate, on the search's RESULT rather than its own NYES. Both anchoring
+  shapes, and every miss flavour.
   !!!
 
   s_base = {a = 1; b = 5};
@@ -61,8 +56,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   s_value_miss = s_base?=8;
   s_name_and_value = s_base?(a.*)=1;
 
-  !! Indexes: settled ones render their VALUE (FOOP-75 §4.1); an unsettled
-  !! one keeps the attached `=^`/`=$` spelling.
+  !! Indexes: settled ones render their VALUE (FOOP-75 §4.1); an unsettled one keeps the attached
+  !! `=^`/`=$` spelling.
   i_base = {10; 20; 30};
   i_head = i_base#0;
   i_tail = i_base$;
@@ -83,8 +78,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   sff_named;
 
   !!!
-  Concatenation: merged renders the brane, unmerged the juxtaposition with
-  each element's SOURCE-WRITTEN marker restored (ConcatRenderingAid).
+  Concatenation: merged renders the brane, unmerged the juxtaposition with each element's
+  SOURCE-WRITTEN marker restored (ConcatRenderingAid).
   !!!
 
   c_merged = {a = 1}{b = 2}{c = 3};
@@ -94,8 +89,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   c_unmerged = c_m1 <c_m2> <<c_missing>>;
 
   !!!
-  §4 comment placement under pressure: adjacent annotated statements, and a
-  trailing one with no `;`. §5: NK reverts to the written Foolish, never `???`.
+  §4 comment placement under pressure: adjacent annotated statements, and a trailing one with no `;`.
+  §5: NK reverts to the written Foolish, never `???`.
   !!!
 
   cmt_first = nowhere_a;
@@ -168,7 +163,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   cmtˍtrailing = 1 / 0  !! NK: DIV-BY-ZERO: division by zero
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"LRE0NlciWliRH1odLv6wdqqGBBdP8kcrFkmOM08x4VK6QLsw9mSGavqxEsbTKG8XDrSZ1zp6itHckYyS1INdAA==","produced_by":"einmo 0.1.0 sha256:ea7ad9677c3f7dd1d152114ecf9ff171b8f5a7e98247f4761a718c6b11f8bad7","timestamp":"2026-09-07T21:44:04.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"k+WhSoKRndXP96uQYsH7/stxhpE2HB9tIvy55pQ+USPgZyE2abYL3a76LJm7RNLgrLIvDps6RQ/yiEHCFQo/DA==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-22T11:05:58.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:22.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:22.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"0zUJoQq5lZq4nogZ3Qlw4Aw9GzvdsnyAz0hzZWsDLsvSbvi+RuTS4i8D8QpWS8YatBv+MJkwMaSZf7yvVoiTDA==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:22.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"cBdHUmvxyXjVicNrVGMe+2w5+lME/B55pj01vg+ZXKD+ylqxC2Fta+toRiA1jHfklEq3sjsyk51kQarle1ICAg==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-22T11:15:00.000000000Z"}

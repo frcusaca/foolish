@@ -1,22 +1,15 @@
 {
-	!! FOOP-33 §5.0: the five comparison operators, defined in system.foo as
-	!! null-characterized creations ('lt/'gt/'le/'ge/'eq) and reached by the
-	!! SAME ordinary ancestral search that finds 'True/'False. There is no
-	!! parse-time or name-based special-casing of 'lt.
+	!! FOOP-33 §5.0: the five comparison operators are null-characterized creations in
+	!! system.foo ('lt/'gt/'le/'ge/'eq), reached by the SAME ordinary ancestral search that
+	!! finds 'True/'False -- no parse-time or name-based special-casing.
 	!! --
-	!! Placement is POSTFIX: both operands come BEFORE the operator, which
-	!! reads them as <<#-2>> op <<#-1>>. The brane literal alone is not the
-	!! whole expression -- the computed boolean becomes the brane's TAIL, and
-	!! $ reads it out.
+	!! Placement is POSTFIX: both operands precede the operator, which reads them as
+	!! <<#-2>> op <<#-1>>. The computed boolean becomes the brane's TAIL, and $ reads it out.
+	!! The mechanism is ordinary detachment and recoordination: the operand lookups sit
+	!! ECONSTANIC inside system.foo and resolve once recoordinated into the brane below.
 	!! --
-	!! The mechanism is detachment and recoordination, not new machinery: the
-	!! operand lookups sit ECONSTANIC inside system.foo (no neighbours there),
-	!! and resolve against 1 and 2 once the reference is recoordinated into
-	!! the brane below.
-	!! --
-	!! FOOP-33 Phase 9: the sequencer now renders each result by the name of
-	!! the 'True/'False creation it settled to, instead of the bare ⬤ glyph.
-	!! Each line's comment states which boolean it IS.
+	!! The sequencer renders each result by the name of the creation it settled to, so each
+	!! line's comment states which boolean it IS.
 
 	lt_true  = {1, 2, 'lt}$;    !! 1 < 2  -> 'True
 	lt_false = {2, 1, 'lt}$;    !! 2 < 1  -> 'False

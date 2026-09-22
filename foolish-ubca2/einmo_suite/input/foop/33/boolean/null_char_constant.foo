@@ -1,18 +1,11 @@
 {
-	!! FOOP-86 §6: 'True is a null-characterized name constant in system.foo.
-	!! A user brane may re-state it to an EQUAL value (permitted -- same
-	!! creation, resolved via ordinary ancestral search). A CONFLICTING
-	!! redefinition is an UNSTEPPABLE statement (§6.2 route 1, written
-	!! directly): its name is already defined in this context, so the brane
-	!! cannot finish stepping and HALTS, taking NK (§6.3).
-	!! The unsteppable statement here is the last one, 'True = 3. Because
-	!! nothing follows it there is no unstepped remainder, so the brane's
-	!! opener carries the annotation rather than a following statement.
-	!! Note what does NOT happen: 'True = 3 is the CAUSE, not a casualty --
-	!! it reverts to Foolish and keeps its written 3 (§6.3), and the earlier
-	!! readers restate/conflict keep finding the established 'True. The
-	!! superseded FOOP-33 §4 mechanism poisoned those readers instead,
-	!! destroying the very meaning the rule exists to preserve (§6.1).
+	!! FOOP-86 §6: 'True is a null-characterized name constant in system.foo. Re-stating it
+	!! to an EQUAL value is permitted; a CONFLICTING redefinition is unsteppable (§6.2 route
+	!! 1), so the brane cannot finish stepping and HALTS, taking NK (§6.3). Here the
+	!! unsteppable statement is the last one, 'True = 3, and nothing follows it, so the
+	!! brane's opener carries the annotation. It is the CAUSE, not a casualty: it reverts to
+	!! Foolish keeping its written 3, and the earlier readers still find the established
+	!! 'True (§6.1).
 	restate = 'True;
 	'True = 'True;
 	conflict = 'True;

@@ -1,27 +1,22 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/86/unsteppable_concat_merge.foo
 suite: /yolo/foolish/foolish-ubca2/einmo_suite
-producer: 964778e4
-producer-diff: sha256:237de93ec36e8f97aeccc33b840436b89520b997788599eb7d8b406914f4f058
-generated: 2026-09-22T11:05:30.000000000Z
+producer: 29075917
+producer-diff: sha256:cd31768ea0bbf55fcdcdbbac125cdaeb528fab1993332ca9da92bcc58e6d1d74
+generated: 2026-09-22T11:14:25.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 {
 
-  !! FOOP-86 §6.2 route 2 -- CONCATENATION MERGE. A merge brings statements
-  !! from several operands into one brane. Two operands null-characterizing
-  !! the SAME name with DIFFERENT values cannot be merged: the merged brane
-  !! halts and takes NK.
+  !! FOOP-86 §6.2 route 2 -- CONCATENATION MERGE. Two operands null-characterizing the SAME name with
+  !! DIFFERENT values cannot be merged: the merged brane halts and takes NK.
 
   A = {'C = 10};
   B = {'C = 11};
   E = {'C = 10};
 
-  !! PERMITTED -- equal values. A merged with ITSELF carries 'C = 10 twice,
-  !! the same value, so the merge is fine. This is the half a refusal-only
-  !! test would miss: "no NK" here is the CORRECT answer, not a check that
-  !! failed to run.
+  !! PERMITTED -- equal values. "No NK" here is the CORRECT answer, not a check that failed to run.
   same_twice  = A A;
   equal_pair  = A E;
   equal_inline = {'C = 10} {'C = 10};
@@ -30,8 +25,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   conflict_pair   = A B;
   conflict_inline = {'C = 10} {'C = 11};
 
-  !! the statement-level counterpart: restating a null-const's OWN value is
-  !! idempotent, written either as the literal or as a search resolving to it
+  !! The statement-level counterpart: restating a null-const's OWN value is idempotent, written either
+  !! as the literal or as a search resolving to it.
   'a = 10;
   'a = 10;
   'a = 'a;
@@ -72,7 +67,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   'a = 10
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:d4bde4ded93d9bf72d030424f28316328e5d602538fdb41c60dfd2674b35926b","timestamp":"2026-09-22T11:05:30.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:d4bde4ded93d9bf72d030424f28316328e5d602538fdb41c60dfd2674b35926b","timestamp":"2026-09-22T11:05:30.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"mxPzXrylTkNVhxsKKnJO8FN6ingoJe7YN6iJtWeeFAS6t2wDV6bzbtrns3vy1NzA0zjsM0hLZ4D4c9D9wijGDw==","produced_by":"einmo 0.1.0 sha256:d4bde4ded93d9bf72d030424f28316328e5d602538fdb41c60dfd2674b35926b","timestamp":"2026-09-22T11:05:30.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"6nmb9NFwB2+dtkpWohE87SZamFxrBzVimKYYx9T4HN6tnLTcBdQIIDDrasBVlROc+5MlWbaadJ3bu3Mm2SeICg==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-22T11:05:59.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:25.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:25.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"MTAKx8+jQ/r2vZqdUpOkxl+UjmT7LNGtOUuLrzmCArQVKgjC06X+cCV4GCA2GPOP72QKoOXya0rwuLQstNyyDg==","produced_by":"einmo 0.1.0 sha256:5609527d4c1a37a226daa924726acebc59e7f971b4e70beb2736a6f7ee7033b0","timestamp":"2026-09-22T11:14:25.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"PosDs7eAwa3aWUyP9/0KcGI94ai7MrYqwfI9Z+0Mg/doy40D+6jPsdUU6NTFySAqD5YnLu+DuAaDDqnfPZk+Bw==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-22T11:15:00.000000000Z"}

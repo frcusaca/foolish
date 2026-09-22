@@ -1,14 +1,9 @@
 {
 
   !!!
-  FOOP-36 comprehensive: at least one path through every §3 row, §4's states,
-  §5's NK forms, and §4's comment-placement rule under pressure.
-
-  Unicode operator note: AGENTS.md asks for `<̲`/`=̲=̲`, but the current lexer
-  rejects U+0332 and implements no such operator (recorded in the plan at
-  Phase 3b). Comparison is therefore written through the supported
-  `{a, b, 'lt}$` system-brane idiom, as `rendering_contract.foo` does. `⬤` IS
-  used, since that one is supported.
+  FOOP-36 comprehensive: at least one path through every §3 row, §4's states, §5's NK forms, and §4's
+  comment-placement rule under pressure. Comparison is written through the `{a, b, 'lt}$` system-brane
+  idiom, since the lexer implements no `<̲`/`=̲=̲` operator; `⬤` is supported and used.
   !!!
 
   !! §3 rows — leaves. Each is already its own value.
@@ -19,16 +14,16 @@
   empty_brane = {};
   no_no = ???;
 
-  !! §3 Statement/Brane rows, plus the identifier round-trip hazard: `_`
-  !! lexes to U+02CD and must come back as a valid identifier char.
+  !! §3 Statement/Brane rows, plus the identifier round-trip hazard: `_` lexes to U+02CD and must come
+  !! back as a valid identifier char.
   my_var = 2;
   λ = 3;
   characterized = a'b'{v = 1};
   'k = 1;
 
   !!!
-  Operators: ONE predicate on the RESULT. Conclusive collapses to the value,
-  inconclusive constanic reverts to the op on its parameters.
+  Operators: ONE predicate on the RESULT. Conclusive collapses to the value, inconclusive constanic
+  reverts to the op on its parameters.
   !!!
 
   op_conclusive = 3 + 4;
@@ -39,8 +34,8 @@
   op_comparison = {1, 2, 'lt}$;
 
   !!!
-  Searches: the same predicate, on the search's RESULT rather than its own
-  NYES. Both anchoring shapes, and every miss flavour.
+  Searches: the same predicate, on the search's RESULT rather than its own NYES. Both anchoring
+  shapes, and every miss flavour.
   !!!
 
   s_base = {a = 1; b = 5};
@@ -52,8 +47,8 @@
   s_value_miss = s_base?=8;
   s_name_and_value = s_base?(a.*)=1;
 
-  !! Indexes: settled ones render their VALUE (FOOP-75 §4.1); an unsettled
-  !! one keeps the attached `=^`/`=$` spelling.
+  !! Indexes: settled ones render their VALUE (FOOP-75 §4.1); an unsettled one keeps the attached
+  !! `=^`/`=$` spelling.
   i_base = {10; 20; 30};
   i_head = i_base#0;
   i_tail = i_base$;
@@ -74,8 +69,8 @@
   sff_named;
 
   !!!
-  Concatenation: merged renders the brane, unmerged the juxtaposition with
-  each element's SOURCE-WRITTEN marker restored (ConcatRenderingAid).
+  Concatenation: merged renders the brane, unmerged the juxtaposition with each element's
+  SOURCE-WRITTEN marker restored (ConcatRenderingAid).
   !!!
 
   c_merged = {a = 1}{b = 2}{c = 3};
@@ -85,8 +80,8 @@
   c_unmerged = c_m1 <c_m2> <<c_missing>>;
 
   !!!
-  §4 comment placement under pressure: adjacent annotated statements, and a
-  trailing one with no `;`. §5: NK reverts to the written Foolish, never `???`.
+  §4 comment placement under pressure: adjacent annotated statements, and a trailing one with no `;`.
+  §5: NK reverts to the written Foolish, never `???`.
   !!!
 
   cmt_first = nowhere_a;

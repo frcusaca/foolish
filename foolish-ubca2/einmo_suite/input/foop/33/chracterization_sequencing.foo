@@ -2,13 +2,12 @@
 
   is_it = 'True; !! system creation renders as 'True
 
-  !! a creation renders as ⬤ at its creation site; these LHS names are
-  !! those creations' original names
+  !! a creation renders as ⬤ at its creation site; these LHS names are those creations' original names
   'a    = {*};
    a    = {*};
 
-  !! 'bad='b renames an already-named creation -- unsteppable (§6.2 route 4),
-  !! so bs halts and takes NK; its opener carries the annotation
+  !! 'bad='b renames an already-named creation -- unsteppable (§6.2 route 4), so bs halts and takes
+  !! NK; its opener carries the annotation
   bs    = {b={*}; 'b={*}; 'bad='b};
 
   !! Can we see the names now?
@@ -19,17 +18,16 @@
   what_was_a = a;
   what_was_a = ?='a&#1;  !! defined on the line after 'a
 
-  !! control: gs is the SAME shape as bs but WITHOUT the unsteppable
-  !! statement, so anchored searches into it RESOLVE -- no NK below.
-  !! They still revert to Foolish: the creation found is named inside gs,
-  !! and that name is not in scope out here (§N4.b)
+  !! control: gs is the SAME shape as bs but WITHOUT the unsteppable statement, so anchored searches
+  !! into it RESOLVE -- no NK below. They still revert to Foolish: the creation found is named inside
+  !! gs, and that name is not in scope out here (§N4.b)
   gs    = {b={*}; 'b={*}};
   good_tick_b = gs?'b;
   good_b      = gs?b;
   good_index  = gs#1;
 
-  !! all of the following fail to NK because bs is an NK brane, due to its
-  !! unsteppable statement -- the names ARE in bs; the brane is refused (§6.4b)
+  !! all of the following fail to NK because bs is an NK brane, due to its unsteppable statement --
+  !! the names ARE in bs; the brane is refused (§6.4b)
   what_is_tick_b_called_from_another_brane_1 = bs.'b;
   what_is_tick_b_called_from_another_brane_2 = bs~'b;
   what_is_tick_b_called_from_another_brane_3 = bs?'b;

@@ -10,8 +10,7 @@
 	e_brn = {5};
 	f_brn = {6};
 
-	!! Backtick form: a_brn`b_brn`c_brn`d_brn e_brn f_brn
-	!! This is: (d_brn e_brn f_brn) c_brn b_brn a_brn
+	!! Backtick form a_brn`b_brn`c_brn`d_brn e_brn f_brn is (d_brn e_brn f_brn) c_brn b_brn a_brn
 	chain_backtick = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
 
 	!! Juxtaposition form (reversed source order = same concatenation)

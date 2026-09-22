@@ -1,8 +1,7 @@
 {
-	!! FOOP-65 — comprehensive test.
-	!! Exercises backtick (tail concatenator) interacting with existing features:
-	!! searches (? ~ # ^ $ .), $ extraction, SF/SFF markers, nested branes,
-	!! system operators, user-defined functions, and the §3.1 worked example.
+	!! FOOP-65 comprehensive: the backtick (tail concatenator) against existing features --
+	!! searches (? ~ # ^ $ .), $ extraction, SF/SFF markers, nested branes, system operators,
+	!! user-defined functions, and the §3.1 worked example.
 
 	!! === §3.1 worked example: chain of backticks with trailing juxtaposition ===
 	a_brn = {1};
@@ -11,6 +10,7 @@
 	d_brn = {4};
 	e_brn = {5};
 	f_brn = {6};
+
 	!! a`b`c`d e f ≡ (d e f) c b a — flat chain reverses source order
 	chain_bt = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
 	chain_jx = d_brn e_brn f_brn c_brn b_brn a_brn;
@@ -20,13 +20,11 @@
 	bt_fn = myfn`{a=10, b=20};
 	jx_fn = {a=10, b=20} myfn;
 
-	!! === $ extraction from backtick result (spec §2: parenthesized) ===
-	!! (myfn`{a=5, b=15}) ≡ {a=5, b=15} myfn → {a=5; b=15; result=20}
-	!! $ extracts tail → 20
+	!! === $ extraction from a backtick result (§2: parenthesized). (myfn`{a=5, b=15}) ≡
+	!!     {a=5, b=15} myfn → {a=5; b=15; result=20}, and $ extracts the tail → 20 ===
 	extract_bt = (myfn`{a=5, b=15})$;
 
-	!! === Dot access on backtick result ===
-	!! bt_fn = {a=10; b=20; result=30} → .result → 30
+	!! === Dot access on a backtick result: bt_fn = {a=10; b=20; result=30} → .result → 30 ===
 	dot_val = bt_fn.result;
 
 	!! === Head (^) and tail ($) search on backtick result ===
