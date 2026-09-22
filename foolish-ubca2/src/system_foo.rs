@@ -32,9 +32,8 @@ pub enum ComparisonOp {
 }
 
 impl ComparisonOp {
-    /// Every comparison operator, paired with the `system.foo` name that
-    /// declares it. The single source of truth for which names are comparison
-    /// operators — both the installer and its tests read this list.
+    /// Every comparison operator, paired with the `system.foo` name that declares it. The single source of
+    /// truth for which names are comparison operators — both the installer and its tests read this list.
     const ALL: [(&'static str, ComparisonOp); 5] = [
         ("'lt", ComparisonOp::Lt),
         ("'gt", ComparisonOp::Gt),
@@ -55,9 +54,8 @@ impl ComparisonOp {
         }
     }
 
-    /// Recover an operator from the name [`ComparisonOp::searchable_name`]
-    /// produced. Used when constanic-cloning, where only the constanic node's
-    /// own `op` field string is reachable.
+    /// Recover an operator from the name [`ComparisonOp::searchable_name`] produced. Used when
+    /// constanic-cloning, where only the constanic node's own `op` field string is reachable.
     #[must_use]
     pub(crate) fn from_searchable_name(name: &str) -> Option<ComparisonOp> {
         ComparisonOp::ALL
@@ -66,9 +64,8 @@ impl ComparisonOp {
             .map(|(_, op)| *op)
     }
 
-    /// Run this operator's Rust comparison. The ONLY thing that differs
-    /// between the five operators. `pub(crate)`, not private: called
-    /// directly by `fvm_storage`'s `FirSpec::Comparison` dispatch arm, a
+    /// Run this operator's Rust comparison. The ONLY thing that differs between the five operators.
+    /// `pub(crate)`, not private: called directly by `fvm_storage`'s `FirSpec::Comparison` dispatch arm, a
     /// sibling module.
     #[must_use]
     pub(crate) fn compare(self, left: i64, right: i64) -> bool {

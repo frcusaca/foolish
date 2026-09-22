@@ -53,13 +53,11 @@ pub struct SequenceWarnings {
     /// Annotate ECONSTANIC. Off by default — an unanchored miss is routine,
     /// and FOOP-23 says it may still gain a value by recoordination.
     pub warn_econstanic: bool,
-    /// Annotate a pre-constanic node (BRANING, and likewise PREMBRYONIC /
-    /// EMBRYONIC). On by default: reaching the sequencer unsettled is
-    /// abnormal and the reader would want to know (§5.3).
+    /// Annotate a pre-constanic node (BRANING, and likewise PREMBRYONIC / EMBRYONIC). On by default:
+    /// reaching the sequencer unsettled is abnormal and the reader would want to know (§5.3).
     pub warn_braning: bool,
-    /// Annotate a direct alarm on a node — chiefly the step cap's
-    /// `Iteration exceeded N`, which is set only on the composed root and
-    /// which no member line carries. On by default.
+    /// Annotate a direct alarm on a node — chiefly the step cap's `Iteration exceeded N`, which is set only
+    /// on the composed root and which no member line carries. On by default.
     pub warn_iteration_excess: bool,
 }
 
@@ -90,8 +88,7 @@ impl SequenceWarnings {
         }
     }
 
-    /// Every warning on — the debugging setting, which shows the ordinary
-    /// states the default hides.
+    /// Every warning on — the debugging setting, which shows the ordinary states the default hides.
     #[must_use]
     pub fn verbose() -> Self {
         Self {
@@ -113,11 +110,9 @@ pub struct SequenceOptions {
     pub width: usize,
     /// Which evaluator findings are announced in `!!` comments.
     pub warnings: SequenceWarnings,
-    /// Overrides every warning in [`Self::warnings`]: when true, the
-    /// sequencer emits no `!!` comment of its own at all. Named "sequencing
-    /// comments" to distinguish this renderer's own annotations from any
-    /// comment the sequencer may in future echo through from source rather
-    /// than generate itself.
+    /// Overrides every warning in [`Self::warnings`]: when true, the sequencer emits no `!!` comment of its
+    /// own at all. Named "sequencing comments" to distinguish this renderer's own annotations from any
+    /// comment the sequencer may in future echo through from source rather than generate itself.
     pub suppress_sequencing_comments: bool,
 }
 
@@ -169,20 +164,18 @@ impl Ubca2Sequencer {
     }
 }
 
-/// The arena-native `Detailed` renderer (§3.2 of FOOP-86) — a FIR-internal
-/// dump read directly from `FVMStorage`/`FirSpec`/`FirCursor`, replacing the
-/// old delegation through `proto_to_core_fir` + `foolish_core::FirSequencer`.
-/// Unlike `Foolish` mode, this is not meant to re-parse: it exists to show a
-/// Foolisher (or another agent) exactly what the evaluator currently holds
-/// for one FIR node, including fields `proto_to_core_fir` never carried
-/// across — a search's direction and contexting chief among them (§1.2).
+/// The arena-native `Detailed` renderer (§3.2 of FOOP-86) — a FIR-internal dump read directly from
+/// `FVMStorage`/`FirSpec`/`FirCursor`, replacing the old delegation through `proto_to_core_fir` +
+/// `foolish_core::FirSequencer`. Unlike `Foolish` mode, this is not meant to re-parse: it exists to show a
+/// Foolisher (or another agent) exactly what the evaluator currently holds for one FIR node, including
+/// fields `proto_to_core_fir` never carried across — a search's direction and contexting chief among them
+/// (§1.2).
 struct DetailedRenderer<'a> {
     storage: &'a FVMStorage,
 }
 
-/// A `FirPointer` reached more than once during one dump is labelled with
-/// the first `#N` it was assigned; a later reach prints a short back-
-/// reference instead of re-expanding the subtree.
+/// A `FirPointer` reached more than once during one dump is labelled with the first `#N` it was assigned; a
+/// later reach prints a short back- reference instead of re-expanding the subtree.
 type VisitLabels = std::collections::HashMap<FirPointer, usize>;
 
 impl<'a> DetailedRenderer<'a> {
@@ -190,18 +183,14 @@ impl<'a> DetailedRenderer<'a> {
         Self { storage }
     }
 
-    /// A settled arena is a DAG, not always a tree: a search's `FoolRef`
-    /// (referent) and a `Concatenation`'s `ubc_children` helper can each be
-    /// reached from more than one parent, and a pre-constanic, still-
-    /// stepping program may hold a genuine pointer CYCLE (a self-
-    /// referential brane like `f1 = { f1 }` is exactly what exceeding the
-    /// 9999-iteration cap looks like in the arena). Walking either shape as
-    /// if it were a tree re-expands a shared subtree once per path to it —
-    /// exponential blowup on a DAG, infinite on a true cycle. `render_node`
-    /// therefore labels every pointer the first time it is reached (`#N`)
-    /// and, on any later reach — sibling-shared OR a genuine ancestor
-    /// cycle, the distinction does not matter for finiteness — prints a
-    /// short back-reference instead of recursing again.
+    /// A settled arena is a DAG, not always a tree: a search's `FoolRef` (referent) and a `Concatenation`'s
+    /// `ubc_children` helper can each be reached from more than one parent, and a pre-constanic, still-
+    /// stepping program may hold a genuine pointer CYCLE (a self- referential brane like `f1 = { f1 }` is
+    /// exactly what exceeding the 9999-iteration cap looks like in the arena). Walking either shape as if
+    /// it were a tree re-expands a shared subtree once per path to it — exponential blowup on a DAG,
+    /// infinite on a true cycle. `render_node` therefore labels every pointer the first time it is reached
+    /// (`#N`) and, on any later reach — sibling-shared OR a genuine ancestor cycle, the distinction does
+    /// not matter for finiteness — prints a short back-reference instead of recursing again.
     fn render_node(
         &self,
         cursor: FirCursor<'_>,
@@ -245,11 +234,9 @@ impl<'a> DetailedRenderer<'a> {
         }
     }
 
-    /// One line describing a node's `FirSpec` variant and its own
-    /// kind-specific fields (§3.2's required floor: pattern/anchored/
-    /// forward/is_value_search/contexted for searches; op and operand
-    /// order — via child order, already shown by the tree walk — for
-    /// operators; name and line number for statements).
+    /// One line describing a node's `FirSpec` variant and its own kind-specific fields (§3.2's required
+    /// floor: pattern/anchored/ forward/is_value_search/contexted for searches; op and operand order — via
+    /// child order, already shown by the tree walk — for operators; name and line number for statements).
     fn spec_summary(&self, spec: &FirSpec) -> String {
         match spec {
             FirSpec::IndepInt { value } => format!("IndepInt(value={value})"),
@@ -367,9 +354,8 @@ impl<'a> Renderer<'a> {
         lines
     }
 
-    /// Puts a DIRECT alarm (the step cap's `Iteration exceeded N`) on its own
-    /// line ABOVE the construct it belongs to, rather than trailing its
-    /// opening brace (human, 2026-09-03).
+    /// Puts a DIRECT alarm (the step cap's `Iteration exceeded N`) on its own line ABOVE the
+    /// construct it belongs to, rather than trailing its opening brace.
     ///
     /// It is a whole-program finding — evaluation did not finish — not a
     /// remark about the `{` it would otherwise share a line with, and §4.2's
@@ -386,15 +372,12 @@ impl<'a> Renderer<'a> {
         let Some(reason) = self.storage.alarm_reason(fir) else {
             return;
         };
-        // ONLY the step-cap alarm gets the banner treatment, and only on a
-        // BRANE. Other alarms (e.g. a value search's
-        // `VALUE-SEARCH-UNSUPPORTED-PATTERN`) sit on ordinary expression
-        // nodes mid-statement, where injecting a full-line comment above the
-        // node splits the statement in two and does not re-parse — caught by
-        // the corpus-wide Property 1 check on
-        // `foop/23/value_search_pattern_error`, which rendered
-        // `bad = !! … !!` with the expression stranded on the next line.
-        // Those keep the ordinary trailing-comment form via `annotate`.
+        // ONLY the step-cap alarm gets the banner treatment, and only on a BRANE. Other alarms (e.g. a
+        // value search's `VALUE-SEARCH-UNSUPPORTED-PATTERN`) sit on ordinary expression nodes
+        // mid-statement, where injecting a full-line comment above the node splits the statement in two and
+        // does not re-parse — caught by the corpus-wide Property 1 check on
+        // `foop/23/value_search_pattern_error`, which rendered `bad = !! … !!` with the expression stranded
+        // on the next line. Those keep the ordinary trailing-comment form via `annotate`.
         if step_limit_of(reason).is_none()
             || !matches!(
                 FirCursor::new(fir, self.storage).node(),
@@ -412,11 +395,9 @@ impl<'a> Renderer<'a> {
                     .collect::<String>()
             })
             .unwrap_or_default();
-        // Spelled for a human reader rather than as the raw alarm string
-        // (human, 2026-09-03). The step cap's reason is `Iteration exceeded
-        // N`; what that MEANS to someone reading the output is that this
-        // brane never finished. Bracketed `!!` on both ends so it reads as a
-        // banner over the program rather than as a remark trailing off.
+        // Spelled for a human reader rather than as the raw alarm string. The step cap's reason is
+        // `Iteration exceeded N`; what that MEANS to a reader is that this brane never finished.
+        // Bracketed `!!` on both ends so it reads as a banner over the program, not a trailing remark.
         let message = match step_limit_of(reason) {
             Some(limit) => format!(
                 "!! This Foolish program did not complete stepping within the limit of {limit} steps !!"
@@ -451,12 +432,9 @@ impl<'a> Renderer<'a> {
         // conclusive result under an NK node means the node failed for a
         // reason of its own, so its value is not the thing to print.
         //
-        // Checked HERE rather than by mutating `ubc_children` to hide the
-        // found value from the test below (human, 2026-09-20 — "the search
-        // itself (the search fir) has NK, it shouldn't need to change the
-        // ubc_children for most purposes"). `[0]` is the true record of what
-        // the search found, and `[0]`/`[1]` is the FoolRefFir two-child
-        // invariant that `&`-searches and result chains read.
+        // Checked HERE rather than by mutating `ubc_children` to hide the found value from the test
+        // below: `[0]` is the true record of what the search found, and `[0]`/`[1]` is the FoolRefFir
+        // two-child invariant that `&`-searches and result chains read.
         if self.storage.get_nyes(fir) == Nyes::Nk
             && cursor
                 .ubc_children()
@@ -470,8 +448,8 @@ impl<'a> Renderer<'a> {
             // The ordinary rule (§3): a CONCLUSIVE result renders as its
             // value; anything else reverts to the written expression.
             //
-            // The brane exception (§5.2, human 2026-09-03): when the result
-            // is a BRANE, render the brane even though it is NK or BRANING.
+            // The brane exception (§5.2): when the result is a BRANE, render the brane even though
+            // it is NK or BRANING.
             // Such a state on a brane is a ROLLUP — the brane is NK because
             // something INSIDE it is (e.g. `{c = #-1; d = 2; e = 2}`, NK only
             // on account of `c`) — so reverting the whole statement to `#-1`
@@ -490,15 +468,12 @@ impl<'a> Renderer<'a> {
                 FirCursor::new(result.value(self.storage), self.storage).node(),
                 FirSpec::Brane { .. }
             );
-            // NK only — deliberately NOT extended to BRANING. Tried and
-            // reverted (2026-09-03): a BRANING brane is still mid-evaluation
-            // and may be SELF-REFERENTIAL, so rendering it unrolls the
-            // recursion. `{f1 = { f1 }; stuck = f1;}` expanded ~32 levels of
-            // nested braces before the step cap stopped it. An NK brane is
-            // safe precisely because it has settled — its contents are fixed
-            // and finite. A BRANING result therefore still REVERTS to its
-            // written form; the reader is alarmed to it by the `!! BRANING`
-            // annotation instead (see `annotate`).
+            // NK only — deliberately NOT extended to BRANING. A BRANING brane is still
+            // mid-evaluation and may be SELF-REFERENTIAL, so rendering it unrolls the recursion:
+            // `{f1 = { f1 }; stuck = f1;}` expands ~32 levels of nested braces before the step cap
+            // stops it. An NK brane is safe precisely because it has settled — its contents are fixed
+            // and finite. A BRANING result therefore still REVERTS to its written form; the reader is
+            // alarmed to it by the `!! BRANING` annotation instead (see `annotate`).
             // §N4.a: a creation value with NO null-characterized name must
             // NOT collapse to `⬤`. `⬤` is a creation EXPRESSION — re-parsing
             // it makes a BRAND-NEW creation, so a reference would become a
@@ -513,9 +488,8 @@ impl<'a> Renderer<'a> {
             // the expression. Reverted lines are annotated (see `annotate`)
             // so a reader is told WHY a value did not collapse.
             //
-            // §N4.b (human 2026-09-07): having a name is not enough — that
-            // name must also be IN CONTEXT at THIS site and mean THIS
-            // creation. An original name is not unique across branes. In
+            // §N4.b: having a name is not enough — that name must also be IN CONTEXT at THIS site
+            // and mean THIS creation. An original name is not unique across branes. In
             // `{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}` the
             // search reaches A's `'a`, but B has an `'a` of its own, so a
             // bare `'a` here re-resolves to B's — a DIFFERENT creation node.
@@ -561,12 +535,10 @@ impl<'a> Renderer<'a> {
             {
                 return self.render_expr(result.value(self.storage), width, current_stmt, false);
             }
-            // A reverted line is owed the REASON it kept its written form
-            // while its neighbours collapsed to values (human, 2026-09-07);
-            // without it the reversion reads as the sequencer simply failing
-            // to resolve the expression. Only the out-of-context case gets
-            // the comment — an unnamed creation has no name to be out of
-            // context, and every one of them would otherwise be annotated.
+            // A reverted line is owed the REASON it kept its written form while its neighbours
+            // collapsed to values; without it the reversion reads as the sequencer simply failing to
+            // resolve the expression. Only the out-of-context case gets the comment — an unnamed
+            // creation has no name to be out of context, and every one would otherwise be annotated.
             if unusable_creation_name == Some(true) {
                 let mut lines = written(self);
                 if !self.options.suppress_sequencing_comments {
@@ -633,17 +605,13 @@ impl<'a> Renderer<'a> {
                 .get(value_index)
                 .map(|&child| self.render_inline(child, width, current_stmt))
                 .unwrap_or_else(|| "???".to_string());
-            // A combined name-and-value search (`a~tmp_.*=10`) is an ATOMIC
-            // CONJUNCTIVE operator — AGENTS.md §Searches: the name gate and
-            // value gate are tested TOGETHER on each candidate — so dropping
-            // the name half does not merely lose detail, it renders a
-            // DIFFERENT search. `canonical_name_pattern` returns None for a
-            // pattern with regexp metacharacters, and this used to
-            // `.unwrap_or_default()` that None into an empty string, silently
-            // turning `a~tmp_.*=10` into `a~=10`. Fall back to the stored
-            // pattern instead; only a genuinely absent name (a pure value
-            // search, whose pattern is the empty-matching default) renders
-            // with no name at all.
+            // A combined name-and-value search (`a~tmp_.*=10`) is an ATOMIC CONJUNCTIVE operator —
+            // AGENTS.md §Searches: the name gate and value gate are tested TOGETHER on each candidate — so
+            // dropping the name half does not merely lose detail, it renders a DIFFERENT search.
+            // `canonical_name_pattern` returns None for a pattern with regexp metacharacters, and this used
+            // to `.unwrap_or_default()` that None into an empty string, silently turning `a~tmp_.*=10` into
+            // `a~=10`. Fall back to the stored pattern instead; only a genuinely absent name (a pure value
+            // search, whose pattern is the empty-matching default) renders with no name at all.
             let name = canonical_name_pattern(pattern)
                 .map(str::to_string)
                 .unwrap_or_else(|| {
@@ -651,9 +619,8 @@ impl<'a> Renderer<'a> {
                         .strip_prefix('^')
                         .and_then(|inner| inner.strip_suffix('$'))
                         .unwrap_or(pattern);
-                    // `.*` (or an empty pattern) is the "no name gate" form a
-                    // pure value search stores; anything else is a real name
-                    // pattern the reader needs to see.
+                    // `.*` (or an empty pattern) is the "no name gate" form a pure value search stores;
+                    // anything else is a real name pattern the reader needs to see.
                     if unwrapped.is_empty() || unwrapped == ".*" {
                         String::new()
                     } else {
@@ -663,31 +630,22 @@ impl<'a> Renderer<'a> {
             format!("{context}{marker}{name}={value}")
         } else if let Some(name) = canonical_name_pattern(pattern) {
             if *anchored {
-                // FUTURE (deferred, see FOOP-36.md §4.3.4): an anchored
-                // BACKWARD name search with a regexp-free pattern could render
-                // in the DOT form (`b.x`, chaining as `a = b.c.d.e.f.g`)
-                // instead of `b?x`. It is safe — `Astn::DotSearch` lowers to
-                // byte-identical FIR — and was implemented and green before
-                // being deliberately deferred out of this FOOP (human,
-                // 2026-09-03) to keep the Movement III baseline review to one
-                // pass. Not this FOOP's change; see §4.3.4 for the full note.
+                // FUTURE (deferred — FOOP-36 §4.3.4): an anchored BACKWARD name search with a regexp-free
+                // pattern could render in the DOT form (`b.x`, chaining as `a = b.c.d.e.f.g`) instead of
+                // `b?x`. It is safe — `Astn::DotSearch` lowers to byte-identical FIR.
                 format!("{context}{marker}{name}")
             } else {
                 name.to_string()
             }
         } else {
-            // FOOP-75 §6.1 (current, unimplemented §6.2): the parser's
-            // `parse_regexp_pattern` absorbs a parenthesized run VERBATIM,
-            // parens included, into `pattern` itself — `B~(x)` stores
-            // pattern `"(x)"`, not `"x"`. So a pattern that already reads as
-            // parenthesized must be written back exactly as stored; wrapping
-            // it in another layer (`?((ho))`) is not disambiguation, it is a
-            // literal extra `(`/`)` pair the parser then reads as PART OF
-            // the pattern text, which is never what was evaluated (verified:
-            // `hw?(ho)` renders back as `hw?((ho))`, which fails to parse —
-            // "expected primary expression, found RParen" — because the
-            // outer `?(` opens a paren run whose matching `)` is consumed
-            // mid-pattern, leaving a stray `)` behind).
+            // FOOP-75 §6.1 (current, unimplemented §6.2): the parser's `parse_regexp_pattern` absorbs a
+            // parenthesized run VERBATIM, parens included, into `pattern` itself — `B~(x)` stores pattern
+            // `"(x)"`, not `"x"`. So a pattern that already reads as parenthesized must be written back
+            // exactly as stored; wrapping it in another layer (`?((ho))`) is not disambiguation, it is a
+            // literal extra `(`/`)` pair the parser then reads as PART OF the pattern text, which is never
+            // what was evaluated (verified: `hw?(ho)` renders back as `hw?((ho))`, which fails to parse —
+            // "expected primary expression, found RParen" — because the outer `?(` opens a paren run whose
+            // matching `)` is consumed mid-pattern, leaving a stray `)` behind).
             let wrapped = pattern.starts_with('(') && pattern.ends_with(')');
             if wrapped {
                 format!("{context}{marker}{pattern}")
@@ -825,10 +783,9 @@ impl<'a> Renderer<'a> {
                 .enumerate()
                 .map(|(i, child)| {
                     let element = self.render_concat_element(child, width, current_stmt);
-                    // Put back only the markers the source actually wrote
-                    // (FOOP-36 N1): `build_concat_element` synthesizes a
-                    // StayFoolish around a BARE element, so the FIR alone
-                    // cannot tell `f2` from `<f2>`.
+                    // Put back only the markers the source actually wrote (FOOP-36 N1):
+                    // `build_concat_element` synthesizes a StayFoolish around a BARE element, so the FIR
+                    // alone cannot tell `f2` from `<f2>`.
                     match rendering_aid.marker_at(i) {
                         Some(StayMarker::Sf) => format!("<{element}>"),
                         Some(StayMarker::Sff) => format!("<<{element}>>"),
@@ -846,10 +803,9 @@ impl<'a> Renderer<'a> {
         width: usize,
         current_stmt: Option<FirPointer>,
     ) -> String {
-        // Render the element WITHOUT any SF/SFF wrapper: the caller puts the
-        // marker back from `ConcatRenderingAid`, which is the only thing that
-        // knows whether the source actually wrote one. Unwrapping just SF and
-        // letting SFF render its own marker would double-wrap the SFF case.
+        // Render the element WITHOUT any SF/SFF wrapper: the caller puts the marker back from
+        // `ConcatRenderingAid`, which is the only thing that knows whether the source actually wrote one.
+        // Unwrapping just SF and letting SFF render its own marker would double-wrap the SFF case.
         let cursor = FirCursor::new(child, self.storage);
         if matches!(
             cursor.node(),
@@ -906,9 +862,8 @@ impl<'a> Renderer<'a> {
         )
     }
 
-    /// [`Self::render_inline`], routed through [`Self::render_written_operand`]
-    /// so a Search/Index anchor keeps its written form rather than collapsing
-    /// early to a conclusive result (the same distinction
+    /// [`Self::render_inline`], routed through [`Self::render_written_operand`] so a Search/Index anchor
+    /// keeps its written form rather than collapsing early to a conclusive result (the same distinction
     /// `render_written_operand` already draws for multi-line callers).
     fn render_written_operand_inline(
         &self,
@@ -962,12 +917,10 @@ impl<'a> Renderer<'a> {
             return vec![format!("{chars}{{}}")];
         }
 
-        // FOOP-86 §6.5a — an unsteppable statement halted this brane. The
-        // cause is the statement that gave a null-characterized name a
-        // meaning it cannot have here; everything strictly after it went
-        // unstepped. `unsteppable_at` is the index of the FIRST unsteppable
-        // statement (the one after the cause), which carries the annotation;
-        // the full-line comment marks the remainder below it.
+        // FOOP-86 §6.5a — an unsteppable statement halted this brane. The cause is the statement that gave
+        // a null-characterized name a meaning it cannot have here; everything strictly after it went
+        // unstepped. `unsteppable_at` is the index of the FIRST unsteppable statement (the one after the
+        // cause), which carries the annotation; the full-line comment marks the remainder below it.
         let stmt_ptrs: Vec<FirPointer> = (0..count).filter_map(|i| cursor.stmt_at(i)).collect();
         let unsteppable_at = self.storage.unsteppable_cause(fir).and_then(|cause| {
             stmt_ptrs
@@ -986,15 +939,12 @@ impl<'a> Renderer<'a> {
                 if unsteppable_at.is_some_and(|at| index >= at)
                     && !self.options.suppress_sequencing_comments
                 {
-                    // This statement and everything nested inside it was
-                    // never stepped, so every annotation `annotate` derived
-                    // from a NYES in here is noise — each reports a state
-                    // reached by NOT evaluating, not a finding. Strip them
-                    // all (the whole block, not just its first line, because
-                    // an unstepped nested brane renders its own untouched
-                    // members too). The first unsteppable statement then gets
-                    // the real reason; the rest are covered by the full-line
-                    // comment above them (§6.5a).
+                    // This statement and everything nested inside it was never stepped, so every annotation
+                    // `annotate` derived from a NYES in here is noise — each reports a state reached by NOT
+                    // evaluating, not a finding. Strip them all (the whole block, not just its first line,
+                    // because an unstepped nested brane renders its own untouched members too). The first
+                    // unsteppable statement then gets the real reason; the rest are covered by the
+                    // full-line comment above them (§6.5a).
                     for line in rendered.iter_mut() {
                         if let Some(at) = line.find("  !!") {
                             line.truncate(at);
@@ -1011,20 +961,14 @@ impl<'a> Renderer<'a> {
             })
             .collect();
 
-        // Foolish Standard Formatting: ONE STATEMENT PER LINE, always (§4.1.1).
-        // A non-empty brane never collapses onto a single line, however short
-        // it is, and `width` is not consulted — the single-vs-multi-line
-        // threshold this used to compute no longer exists, because only the
-        // multi-line form remains. Beyond being simpler, it is what makes the
-        // `!!` annotation scheme (§4) sound: an annotation reads to
-        // end-of-line, so two statements sharing a line means the first one's
-        // comment swallows the second.
+        // Foolish Standard Formatting: ONE STATEMENT PER LINE, always (§4.1.1). A non-empty brane never
+        // collapses onto a single line, however short, and `width` is not consulted — only the multi-line
+        // form exists. That is what makes the `!!` annotation scheme (§4) sound: an annotation reads to
+        // end-of-line, so two statements sharing a line means the first one's comment swallows the second.
         let mut lines = vec![format!("{chars}{{")];
-        // §6.5a's annotation normally rides on the FIRST UNSTEPPABLE
-        // statement — but when the cause is the brane's LAST statement there
-        // is no statement after it to carry it, and the reader would see a
-        // silently-NK brane. In that case the opener carries it instead, so
-        // the finding is never invisible.
+        // §6.5a's annotation normally rides on the FIRST UNSTEPPABLE statement — but when the cause is the
+        // brane's LAST statement there is no statement after it to carry it, and the reader would see a
+        // silently-NK brane. In that case the opener carries it instead, so the finding is never invisible.
         if unsteppable_at.is_none()
             && !self.options.suppress_sequencing_comments
             && self.storage.unsteppable_cause(fir).is_some()
@@ -1034,18 +978,15 @@ impl<'a> Renderer<'a> {
             opener.push_str(&format!("  !! NK: unsteppable — {reason}"));
         }
         for (index, statement) in statements.into_iter().enumerate() {
-            // FOOP-86 §6.5a: a correctly-indented full-line comment marks
-            // that the rest of the brane went unstepped. It sits immediately
-            // ABOVE the statements it describes, per AGENTS.md's comment
-            // style (a full-line comment marks the code BELOW it), and at the
-            // same indentation as those statements so the rendering stays
-            // valid, re-parseable Foolish.
+            // FOOP-86 §6.5a: a correctly-indented full-line comment marks that the rest of the brane went
+            // unstepped. It sits immediately ABOVE the statements it describes, per AGENTS.md's comment
+            // style (a full-line comment marks the code BELOW it), and at the same indentation as those
+            // statements so the rendering stays valid, re-parseable Foolish.
             if unsteppable_at.is_some_and(|at| index == at + 1)
                 && !self.options.suppress_sequencing_comments
             {
-                // A blank line before a full-line comment, none after, per
-                // AGENTS.md §"Comment style in Foolish einmo inputs" rule 3:
-                // the space above separates it from what precedes, and its
+                // A blank line before a full-line comment, none after, per AGENTS.md §"Comment style in
+                // Foolish einmo inputs" rule 3: the space above separates it from what precedes, and its
                 // tightness below is what marks the lines it describes.
                 lines.push(String::new());
                 lines.push(format!(
@@ -1074,16 +1015,13 @@ impl<'a> Renderer<'a> {
         };
 
         let body_cursor = FirCursor::new(body, self.storage);
-        // FOOP-75 §4.1, "transparency when settled": the attached form
-        // applies ONLY to statements that still SHOW their search structure —
-        // unsettled, or settled NK. A head/tail index that already resolved
-        // renders as the value it found, exactly as `z = b$` renders `z=3`.
-        // Without this guard the attached branch fires on the body's SHAPE
-        // (an anchored index at offset 0/-1) before `render_process_or_result`
-        // can collapse a conclusive result, so `first = data#0` rendered
-        // `first =^ data` while the adjacent `second = data#1` rendered `20` —
-        // two identical, both-resolved statements rendering in different
-        // shapes, and the `10` lost entirely. Caught reviewing
+        // FOOP-75 §4.1, "transparency when settled": the attached form applies ONLY to statements that
+        // still SHOW their search structure — unsettled, or settled NK. A head/tail index that already
+        // resolved renders as the value it found, exactly as `z = b$` renders `z=3`. Without this guard the
+        // attached branch fires on the body's SHAPE (an anchored index at offset 0/-1) before
+        // `render_process_or_result` can collapse a conclusive result, so `first = data#0` rendered `first
+        // =^ data` while the adjacent `second = data#1` rendered `20` — two identical, both-resolved
+        // statements rendering in different shapes, and the `10` lost entirely. Caught reviewing
         // `foop/41/offset_access_forward` against its old-suite baseline.
         let body_is_conclusive = body_cursor
             .ubc_children()
@@ -1224,19 +1162,15 @@ impl<'a> Renderer<'a> {
         let warnings = &self.options.warnings;
         let state = self.storage.get_nyes(fir);
         if renders_as_brane {
-            // A DIRECT alarm on the brane (the step cap's `Iteration exceeded
-            // N`, set only on the composed root) is the one finding no member
-            // line carries, so it is governed by its own switch rather than
-            // by `warn_brane_nk`.
+            // A DIRECT alarm on the brane (the step cap's `Iteration exceeded N`, set only on the composed
+            // root) is the one finding no member line carries, so it is governed by its own switch rather
+            // than by `warn_brane_nk`.
             if warnings.warn_iteration_excess && self.storage.alarm_reason(fir).is_some() {
-                // Emitted on its OWN LINE, BEFORE the brane's opener (human,
-                // 2026-09-03) rather than trailing the `{`. This is a
-                // whole-program finding — evaluation did not finish — not a
-                // remark about the brace it would otherwise sit on, and a
-                // full-line comment above the construct is how §4.2 says such
-                // a comment marks what follows it. `render_expr`'s caller
-                // prepends it (see `prepend_alarm_line`), because `annotate`
-                // only has the right to touch existing lines.
+                // Emitted on its OWN LINE, BEFORE the brane's opener, rather than trailing the `{`. This is
+                // a whole-program finding — evaluation did not finish — not a remark about the brace it
+                // would otherwise sit on, and §4.2 makes a full-line comment above the construct the way
+                // such a comment marks what follows it. `render_expr`'s caller prepends it (see
+                // `prepend_alarm_line`), because `annotate` may only touch existing lines.
             } else if state == Nyes::Nk && warnings.warn_brane_nk {
                 let annotation = format!("NK: {}", self.nk_reason(fir));
                 if let Some(first) = lines.first_mut() {
@@ -1244,13 +1178,10 @@ impl<'a> Renderer<'a> {
                     first.push_str(&annotation);
                 }
             } else if state == Nyes::Braning && warnings.warn_braning {
-                // BRANING is the one rollup state a brane advertises by
-                // default (human, 2026-09-03). Reaching the sequencer still
-                // BRANING is abnormal — sequencing normally runs on settled
-                // FIR — so unlike an NK rollup (which the member lines already
-                // explain, hence `warn_brane_nk` defaulting off) this one is
-                // worth alarming the reader about, precisely BECAUSE it is
-                // not normal.
+                // BRANING is the one rollup state a brane advertises by default. Reaching the sequencer
+                // still BRANING is abnormal — sequencing normally runs on settled FIR — so unlike an NK
+                // rollup (which the member lines already explain, hence `warn_brane_nk` defaulting off)
+                // this one is worth alarming the reader about, precisely BECAUSE it is not normal.
                 if let Some(first) = lines.first_mut() {
                     first.push_str("  !! BRANING");
                 }
@@ -1263,10 +1194,9 @@ impl<'a> Renderer<'a> {
             Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning if warnings.warn_braning => {
                 Some(state.to_string())
             }
-            // ECONSTANIC and WOCONSTANIC are ORDINARY outcomes — an unanchored
-            // miss that may still recoordinate (FOOP-23), and dependencies
-            // that settled without a value. Off by default: annotating every
-            // one buries the findings that matter.
+            // ECONSTANIC and WOCONSTANIC are ORDINARY outcomes — an unanchored miss that may still
+            // recoordinate (FOOP-23), and dependencies that settled without a value. Off by default:
+            // annotating every one buries the findings that matter.
             Nyes::Econstanic if warnings.warn_econstanic => Some(state.to_string()),
             Nyes::Woconstanic if warnings.warn_woconstanic => Some(state.to_string()),
             Nyes::Nk if warnings.warn_nk => Some(format!("NK: {}", self.nk_reason(fir))),
@@ -1419,15 +1349,12 @@ mod tests {
         Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
     }
 
-    // T4b-i…iv (FOOP-86 §3.2, §Test Plan): the arena-native `Detailed`
-    // renderer has no byte-compatibility target — the old delegation tests
-    // it replaced (`detailed_delegates_for_*`) asserted equality with the
-    // very bridge this FOOP deletes, so they are superseded here rather than
-    // kept.
+    // T4b-i…iv (FOOP-86 §3.2, §Test Plan): the arena-native `Detailed` renderer has no byte-compatibility
+    // target — the old delegation tests it replaced (`detailed_delegates_for_*`) asserted equality with the
+    // very bridge this FOOP deletes, so they are superseded here rather than kept.
 
-    /// T4b-i — `Detailed` renders every FIR kind in the surviving corpus
-    /// without panicking. The cheapest thorough check: walk every input,
-    /// evaluate, render in `Detailed`, and require non-empty output.
+    /// T4b-i — `Detailed` renders every FIR kind in the surviving corpus without panicking. The cheapest
+    /// thorough check: walk every input, evaluate, render in `Detailed`, and require non-empty output.
     #[test]
     fn detailed_renders_every_fir_kind() {
         fn foo_inputs_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
@@ -1489,15 +1416,13 @@ mod tests {
         );
     }
 
-    /// T4b-ii — `Detailed` shows what the old bridge dropped: a resolved
-    /// search's direction and contexting. This is the test that proves the
-    /// rewrite was worth doing (§1.2, §3.2), not merely a port of the old
+    /// T4b-ii — `Detailed` shows what the old bridge dropped: a resolved search's direction and contexting.
+    /// This is the test that proves the rewrite was worth doing (§1.2, §3.2), not merely a port of the old
     /// view.
     #[test]
     fn detailed_shows_search_direction_and_contexting() {
-        // `steps~bake` is an ANCHORED FORWARD name search; `&?prep` is a
-        // CONTEXTED backward search chained off `bake`'s found position.
-        // Both fields must be visible in the dump.
+        // `steps~bake` is an ANCHORED FORWARD name search; `&?prep` is a CONTEXTED backward search chained
+        // off `bake`'s found position. Both fields must be visible in the dump.
         let (storage, program) =
             evaluated_program("{steps={prep=7;bake=40;cool=9;};back_step=steps~bake&?prep;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Detailed);
@@ -1511,9 +1436,8 @@ mod tests {
         );
     }
 
-    /// T4b-iii — `Detailed` and `Foolish` are genuinely different renderings
-    /// of the same FIR (guards against the mode silently collapsing to one
-    /// implementation).
+    /// T4b-iii — `Detailed` and `Foolish` are genuinely different renderings of the same FIR (guards
+    /// against the mode silently collapsing to one implementation).
     #[test]
     fn detailed_differs_from_foolish() {
         let (storage, program) = evaluated_program("{x=3+4;}");
@@ -1557,10 +1481,9 @@ mod tests {
 
     #[test]
     fn foolish_standardizes_attached_indexes() {
-        // An UNSETTLED head/tail keeps the attached spelling — a settled one
-        // renders its value instead (FOOP-75 §4.1; see
-        // `foolish_settled_head_tail_renders_its_value_not_the_attached_form`).
-        // `{}` has no head, so this index cannot settle.
+        // An UNSETTLED head/tail keeps the attached spelling — a settled one renders its value instead
+        // (FOOP-75 §4.1; see `foolish_settled_head_tail_renders_its_value_not_the_attached_form`). `{}` has
+        // no head, so this index cannot settle.
         let (storage, program) = evaluated_program("{b={};A=b$;}");
         assert_eq!(
             Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
@@ -1594,11 +1517,9 @@ mod tests {
         );
     }
 
-    /// §3's Creation and Characterized-brane rows: a bare creation renders
-    /// `⬤`; a NAMED creation (FOOP-33's null-characterized statement)
-    /// renders its original name; a characterized brane keeps its `a'b'`
-    /// prefix. Previously exercised only end-to-end via the einmo contract,
-    /// not by a direct unit test.
+    /// §3's Creation and Characterized-brane rows: a bare creation renders `⬤`; a NAMED creation
+    /// (FOOP-33's null-characterized statement) renders its original name; a characterized brane
+    /// keeps its `a'b'` prefix.
     #[test]
     fn foolish_renders_creations_and_characterized_branes() {
         // A bare creation renders `⬤`, whether anonymous or the RHS of the
@@ -1739,12 +1660,10 @@ mod tests {
         );
     }
 
-    /// T7's remaining two width exceptions (§4.1): an annotation pushing a
-    /// line over budget must not be split or otherwise mangled — it is
-    /// appended AFTER the width-aware line-breaking decision, never
-    /// influencing it (`render_statement` calls `annotate` on the already-
-    /// rendered lines) — and a genuinely over-width echoed source statement
-    /// must render exactly as written, since Foolish has no
+    /// T7's remaining two width exceptions (§4.1): an annotation pushing a line over budget must not be
+    /// split or otherwise mangled — it is appended AFTER the width-aware line-breaking decision, never
+    /// influencing it (`render_statement` calls `annotate` on the already- rendered lines) — and a
+    /// genuinely over-width echoed source statement must render exactly as written, since Foolish has no
     /// line-continuation syntax to break it with.
     #[test]
     fn foolish_width_exceptions_render_intact_not_mangled() {
@@ -1766,9 +1685,8 @@ mod tests {
              cap applies, and this reason is under that): {annotated}"
         );
 
-        // An identifier long enough to exceed even the default 108-column
-        // budget on its own, echoed as written source (an operand, not a
-        // statement name) rather than broken.
+        // An identifier long enough to exceed even the default 108-column budget on its own, echoed as
+        // written source (an operand, not a statement name) rather than broken.
         let long_ident = "an_identifier_that_is_deliberately_constructed_to_exceed_even_the_default_one_hundred_and_eight_column_budget_all_by_itself";
         assert!(long_ident.len() > 108);
         let source = format!("{{sum={long_ident}+1;}}");
@@ -1899,12 +1817,10 @@ mod tests {
         );
     }
 
-    /// T2b's fourth case: a program halted MID-STEP, short of the iteration
-    /// cap that settles it NK (that settled case is covered separately by
-    /// `foolish_iteration_alarm_is_a_parseable_nk_annotation`). A bounded,
-    /// small number of steps on the same self-referential program leaves the
-    /// root pre-constanic — the renderer must still produce parseable
-    /// output with no state token as syntax, and must NOT assert
+    /// T2b's fourth case: a program halted MID-STEP, short of the iteration cap that settles it NK (that
+    /// settled case is covered separately by `foolish_iteration_alarm_is_a_parseable_nk_annotation`). A
+    /// bounded, small number of steps on the same self-referential program leaves the root pre-constanic —
+    /// the renderer must still produce parseable output with no state token as syntax, and must NOT assert
     /// idempotence (§2.1 does not require it of pre-constanic FIR).
     #[test]
     fn foolish_mid_step_snapshot_renders_without_settling() {
@@ -1963,14 +1879,12 @@ mod tests {
             .expect("alarm rendering remains Foolish source");
     }
 
-    /// Corpus bug (`foop/33/boolean/comparison_non_integer.foo`): an attached
-    /// (`=$`/`=^`) anchor, or any inline operand, that renders MULTI-LINE
-    /// (a brane too wide to inline, each member on its own `!!`-annotated
-    /// line) must not be collapsed with a naive `.join(" ")` — the first
-    /// line's trailing `!!` comment reads to end-of-line and swallows every
-    /// line joined after it, including the anchor's own closing `}` and the
-    /// statement's `;`. `render_inline`/`render_written_operand_inline`
-    /// strip each line's own annotation before joining instead.
+    /// Corpus bug (`foop/33/boolean/comparison_non_integer.foo`): an attached (`=$`/`=^`) anchor, or any
+    /// inline operand, that renders MULTI-LINE (a brane too wide to inline, each member on its own
+    /// `!!`-annotated line) must not be collapsed with a naive `.join(" ")` — the first line's trailing
+    /// `!!` comment reads to end-of-line and swallows every line joined after it, including the anchor's
+    /// own closing `}` and the statement's `;`. `render_inline`/`render_written_operand_inline` strip each
+    /// line's own annotation before joining instead.
     #[test]
     fn foolish_multiline_inline_operands_drop_line_comments_before_joining() {
         let source = "{brane_operand = {1, {x = 5;}, 'lt}$;}";
@@ -1986,14 +1900,12 @@ mod tests {
         });
     }
 
-    /// Corpus bugs (`foop/33/comprehensive.foo`,
-    /// `misc/unanchored_seek_with_head_tail.foo`): the attached spelling
-    /// (`name =$ anchor`) is only safe when the anchor renders WITHOUT a
-    /// leading bare search-operator marker. An unanchored value search
-    /// (`?=1`) or an unanchored seek (`#-1`) both render with a leading
-    /// marker and no grounding identifier — `is_safe_attached_anchor` must
-    /// refuse the attached spelling for those and fall back to the ordinary
-    /// postfix form, which parses unambiguously either way.
+    /// Corpus bugs (`foop/33/comprehensive.foo`, `misc/unanchored_seek_with_head_tail.foo`): the attached
+    /// spelling (`name =$ anchor`) is only safe when the anchor renders WITHOUT a leading bare
+    /// search-operator marker. An unanchored value search (`?=1`) or an unanchored seek (`#-1`) both render
+    /// with a leading marker and no grounding identifier — `is_safe_attached_anchor` must refuse the
+    /// attached spelling for those and fall back to the ordinary postfix form, which parses unambiguously
+    /// either way.
     #[test]
     fn foolish_attached_form_falls_back_to_postfix_for_unanchored_anchors() {
         for source in ["{a=1;same = ?=a&#-1;}", "{a=1;same = ?=1;}"] {
@@ -2019,16 +1931,14 @@ mod tests {
         });
     }
 
-    /// FOOP-75's own canonical case must still use the attached spelling: a
-    /// bare identifier reference (an unanchored NAME search with a canonical
-    /// pattern) is safe and is exactly what `foolish_standardizes_attached_indexes`
-    /// pins. This test guards the OTHER direction of the same fix — that
-    /// tightening the safety check didn't overreach into refusing the safe case.
+    /// FOOP-75's own canonical case must still use the attached spelling: a bare identifier reference (an
+    /// unanchored NAME search with a canonical pattern) is safe and is exactly what
+    /// `foolish_standardizes_attached_indexes` pins. This test guards the OTHER direction of the same fix —
+    /// that tightening the safety check didn't overreach into refusing the safe case.
     #[test]
     fn foolish_attached_form_still_used_for_simple_identifier_anchor() {
-        // Unsettled (an empty brane has no tail), so the search structure is
-        // still shown and the attached spelling applies — with a plain
-        // identifier anchor, which `is_safe_attached_anchor` must keep
+        // Unsettled (an empty brane has no tail), so the search structure is still shown and the attached
+        // spelling applies — with a plain identifier anchor, which `is_safe_attached_anchor` must keep
         // accepting.
         let (storage, program) = evaluated_program("{b={};A=b$;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
@@ -2038,14 +1948,11 @@ mod tests {
         );
     }
 
-    /// Corpus bug (`misc/concat_sf_f_more.foo`): an SF (`<...>`) whose
-    /// interior itself starts or ends with `<`/`>` (from a directly nested
-    /// `<<...>>` or `<...>`) must not let its own delimiter fuse with the
-    /// interior's — the lexer greedily reads two adjacent `>` characters as
-    /// one `GtGt` token (and two adjacent `<` as one `LtLt`), which breaks
-    /// whichever wrapper expected a single-character close. A single space
-    /// at the boundary prevents the fusion without changing what either
-    /// wrapper reads as.
+    /// Corpus bug (`misc/concat_sf_f_more.foo`): an SF (`<...>`) whose interior itself starts or ends with
+    /// `<`/`>` (from a directly nested `<<...>>` or `<...>`) must not let its own delimiter fuse with the
+    /// interior's — the lexer greedily reads two adjacent `>` characters as one `GtGt` token (and two
+    /// adjacent `<` as one `LtLt`), which breaks whichever wrapper expected a single-character close. A
+    /// single space at the boundary prevents the fusion without changing what either wrapper reads as.
     #[test]
     fn foolish_stay_wrappers_insert_a_space_to_avoid_delimiter_fusion() {
         let source = "{a=1;b=2;c=3; f2={b= <a + <<b>> + <c> >;}; }";
@@ -2060,13 +1967,11 @@ mod tests {
         });
     }
 
-    /// Corpus bugs (`foop/42/…hfs.foo`, `foop/62/anchored_search_suite.foo`):
-    /// per FOOP-75 §6.1 (current, unimplemented §6.2), a parenthesized
-    /// regexp pattern like `~(x)` is stored by the PARSER with its parens
-    /// included (`pattern == "(x)"`), not stripped. Rendering must write
-    /// that pattern back exactly as stored — wrapping it in a SECOND layer
-    /// of parens (`?((x))`) is not disambiguation, it produces a stray
-    /// unmatched `)` the parser cannot place.
+    /// Corpus bugs (`foop/42/…hfs.foo`, `foop/62/anchored_search_suite.foo`): per FOOP-75 §6.1 (current,
+    /// unimplemented §6.2), a parenthesized regexp pattern like `~(x)` is stored by the PARSER with its
+    /// parens included (`pattern == "(x)"`), not stripped. Rendering must write that pattern back exactly
+    /// as stored — wrapping it in a SECOND layer of parens (`?((x))`) is not disambiguation, it produces a
+    /// stray unmatched `)` the parser cannot place.
     #[test]
     fn foolish_search_does_not_double_wrap_an_already_parenthesized_pattern() {
         let source = "{hw = {hello=1;world=2;};how_is_not = hw?(ho);}";
@@ -2081,14 +1986,10 @@ mod tests {
         });
     }
 
-    /// FOOP-75 §4.1 "transparency when settled", enforced for the ATTACHED
-    /// form too. `first = data#0` and `second = data#1` are the same shape of
-    /// statement and both resolve, so both must render their VALUE. The
-    /// attached branch used to fire on the body's shape alone, rendering
-    /// `first =^ data` — an unresolved-looking search for a statement that
-    /// had in fact settled Constant, losing the `10`, while its neighbour
-    /// rendered `20`. Caught reviewing `foop/41/offset_access_forward`
-    /// against its old-suite baseline, which had `first=10`.
+    /// FOOP-75 §4.1 "transparency when settled", enforced for the ATTACHED form too. `first = data#0` and
+    /// `second = data#1` are the same shape of statement and both resolve, so both must render their VALUE
+    /// — not the attached form `first =^ data`, which would read as an unresolved search for a statement
+    /// that had in fact settled Constant, losing the `10` while its neighbour rendered `20`.
     #[test]
     fn foolish_settled_head_tail_renders_its_value_not_the_attached_form() {
         let (storage, program) =
@@ -2112,12 +2013,10 @@ mod tests {
         );
     }
 
-    /// §5.2: NK reverts to the written expression EXCEPT when the NK result
-    /// is a BRANE, which renders its contents instead. A brane's NK is a
-    /// rollup — here only `c` is unresolvable, while `d`/`e` resolved — so
-    /// reverting `f` to `#-1` would hide both the structure the search found
-    /// and the members that did resolve. Per §4.0 the rendered brane's own
-    /// opening line stays bare.
+    /// §5.2: NK reverts to the written expression EXCEPT when the NK result is a BRANE, which renders its
+    /// contents instead. A brane's NK is a rollup — here only `c` is unresolvable, while `d`/`e` resolved —
+    /// so reverting `f` to `#-1` would hide both the structure the search found and the members that did
+    /// resolve. Per §4.0 the rendered brane's own opening line stays bare.
     #[test]
     fn foolish_nk_brane_result_renders_the_brane_not_the_written_search() {
         let (storage, program) =
@@ -2154,13 +2053,10 @@ mod tests {
     /// annotated. Contrast the rollup above (`f = #-1`), whose result is
     /// ITSELF NK and which therefore DOES render its brane.
     ///
-    /// This test exists because the first implementation got the render right
-    /// by the wrong means: it overwrote `ubc_children[0]` with a synthetic
-    /// `Nk` node, destroying the true record of what the search found and
-    /// disturbing the FoolRefFir two-child invariant. The human rejected that
-    /// (2026-09-20) — the NYES alone should carry the failure — so the
-    /// distinction now lives at the render site and needs a test that would
-    /// catch either half regressing.
+    /// The NYES alone carries the failure: `ubc_children[0]` must NOT be overwritten with a
+    /// synthetic `Nk` node, which would destroy the true record of what the search found and disturb
+    /// the FoolRefFir two-child invariant. The distinction lives at the render site, and this test
+    /// catches either half regressing.
     #[test]
     fn foolish_node_nk_with_conclusive_result_reverts_to_written_form() {
         let (storage, program) = evaluated_program("{A={'C=1}, B={'C=2, D=A}}");
@@ -2180,14 +2076,12 @@ mod tests {
         );
     }
 
-    /// A combined NAME-AND-VALUE search (`a~tmp_.*=10`) is an atomic
-    /// conjunctive operator (AGENTS.md §Searches: both gates tested together
-    /// on each candidate), so the name half must survive rendering. It did
-    /// not: `canonical_name_pattern` returns None for a pattern containing
-    /// regexp metacharacters, and the value-search branch turned that None
-    /// into an empty string, silently rendering `a~tmp_.*=10` as `a~=10` — a
-    /// DIFFERENT search. Caught reviewing foop/23/value_search_name_and_value
-    /// against its old-suite baseline.
+    /// A combined NAME-AND-VALUE search (`a~tmp_.*=10`) is an atomic conjunctive operator (AGENTS.md
+    /// §Searches: both gates tested together on each candidate), so the name half must survive rendering.
+    /// It did not: `canonical_name_pattern` returns None for a pattern containing regexp metacharacters,
+    /// and the value-search branch turned that None into an empty string, silently rendering `a~tmp_.*=10`
+    /// as `a~=10` — a DIFFERENT search. Caught reviewing foop/23/value_search_name_and_value against its
+    /// old-suite baseline.
     #[test]
     fn foolish_name_and_value_search_keeps_its_regexp_name_pattern() {
         let (storage, program) =
@@ -2213,10 +2107,9 @@ mod tests {
         );
     }
 
-    /// The warning configuration (§4.1.1) and its conventional default:
-    /// warn about what is ABNORMAL or UNKNOWABLE, stay quiet about what is
-    /// ORDINARY. A non-brane NK is announced; WOCONSTANIC, ECONSTANIC and a
-    /// brane's own rollup NK are not, unless asked for.
+    /// The warning configuration (§4.1.1) and its conventional default: warn about what is ABNORMAL or
+    /// UNKNOWABLE, stay quiet about what is ORDINARY. A non-brane NK is announced; WOCONSTANIC, ECONSTANIC
+    /// and a brane's own rollup NK are not, unless asked for.
     #[test]
     fn foolish_warning_switches_govern_each_annotation_kind() {
         let verbose = SequenceOptions {
@@ -2266,10 +2159,9 @@ mod tests {
         );
     }
 
-    /// The step-cap alarm is a WHOLE-PROGRAM finding, so it goes on its own
-    /// line ABOVE the program (human, 2026-09-03) rather than trailing the
-    /// root brane's `{`, and is phrased for a human reader rather than as the
-    /// raw `Iteration exceeded N` alarm string.
+    /// The step-cap alarm is a WHOLE-PROGRAM finding, so it goes on its own line ABOVE the program
+    /// rather than trailing the root brane's `{`, and is phrased for a human reader rather than as
+    /// the raw `Iteration exceeded N` alarm string.
     #[test]
     fn foolish_iteration_excess_is_a_banner_line_above_the_program() {
         let (storage, roots) = crate::UbcaEvaluator
@@ -2321,8 +2213,7 @@ mod tests {
             "adjacent bare identifiers must not fuse into one: {rendered}"
         );
 
-        // The element COUNT must survive the round trip — this is the check
-        // that actually pins the meaning.
+        // The element COUNT must survive the round trip — this is the check that actually pins the meaning.
         let (storage2, program2) = evaluated_program(&rendered);
         let cursor2 = FirCursor::new(program2, &storage2);
         let last = cursor2
@@ -2340,16 +2231,14 @@ mod tests {
         );
     }
 
-    /// `ConcatRenderingAid` (FOOP-36 N1, concatenation-only): the compiler
-    /// SYNTHESIZES a StayFoolish around a bare concatenation element, so the
-    /// FIR alone cannot tell `f2` from `<f2>`. The aid records which elements
-    /// wrote their marker, and the renderer puts back exactly those — no
-    /// more (it must not mark elements written bare) and no fewer.
+    /// `ConcatRenderingAid` (FOOP-36 N1, concatenation-only): the compiler SYNTHESIZES a StayFoolish around
+    /// a bare concatenation element, so the FIR alone cannot tell `f2` from `<f2>`. The aid records which
+    /// elements wrote their marker, and the renderer puts back exactly those — no more (it must not mark
+    /// elements written bare) and no fewer.
     #[test]
     fn foolish_concat_rendering_aid_restores_only_source_written_markers() {
-        // Bare elements stay bare — the aid is empty, so nothing is added.
-        // Note this must be an UNMERGED concatenation: a merged one is
-        // conclusive and renders its VALUE, so no element is written at all.
+        // Bare elements stay bare — the aid is empty, so nothing is added. Note this must be an UNMERGED
+        // concatenation: a merged one is conclusive and renders its VALUE, so no element is written at all.
         let (storage, program) = evaluated_program("{o = missing_a missing_b;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
         assert!(
@@ -2425,11 +2314,10 @@ mod tests {
     /// ONLY IF that name is IN CONTEXT at the rendering site — i.e. searching
     /// for it from there lands on THIS creation.
     ///
-    /// An original name is NOT unique across branes. The human's
-    /// counterexample: the search resolves to A's `'a`, but B has an `'a` of
-    /// its own, so rendering the bare name re-resolves to B's — a DIFFERENT
-    /// creation node. It parses and round-trips stably while pointing at the
-    /// wrong object, which is exactly what Properties 1 and 2 cannot catch.
+    /// An original name is NOT unique across branes. Counterexample: the search resolves to A's
+    /// `'a`, but B has an `'a` of its own, so rendering the bare name re-resolves to B's — a
+    /// DIFFERENT creation node. It parses and round-trips stably while pointing at the wrong object,
+    /// which is exactly what Properties 1 and 2 cannot catch.
     #[test]
     fn foolish_creation_name_renders_only_when_that_name_is_in_context() {
         // Which creation does the LAST statement of B resolve to?
@@ -2474,9 +2362,8 @@ mod tests {
         );
     }
 
-    /// A line reverted because its name is out of context carries the reason
-    /// (human, 2026-09-07) — otherwise the reversion is indistinguishable
-    /// from the sequencer failing to resolve the expression.
+    /// A line reverted because its name is out of context carries the reason — otherwise the
+    /// reversion is indistinguishable from the sequencer failing to resolve the expression.
     ///
     /// The annotation is scoped to the postulation case ONLY: a creation with
     /// no null-characterized name at all has no name to BE out of context,
@@ -2524,12 +2411,10 @@ mod tests {
         );
     }
 
-    /// §5.3: BRANING always reverts to its written form — the §5.2 brane
-    /// exception does NOT extend to it, because a BRANING brane is still
-    /// mid-evaluation and may be self-referential (rendering
-    /// `{f1 = { f1 }; stuck = f1;}` unrolled ~32 levels before the step cap).
-    /// It carries `!! BRANING` instead, because reaching the sequencer still
-    /// BRANING is abnormal and worth telling the reader.
+    /// §5.3: BRANING always reverts to its written form — the §5.2 brane exception does NOT extend to it,
+    /// because a BRANING brane is still mid-evaluation and may be self-referential (rendering `{f1 = { f1
+    /// }; stuck = f1;}` unrolled ~32 levels before the step cap). It carries `!! BRANING` instead, because
+    /// reaching the sequencer still BRANING is abnormal and worth telling the reader.
     #[test]
     fn foolish_braning_reverts_and_is_annotated() {
         let (storage, roots) = crate::UbcaEvaluator

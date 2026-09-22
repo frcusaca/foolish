@@ -129,12 +129,10 @@ pub struct TestConfig {
     duration_limit: Option<Duration>,
     /// Per-suite duration limit (`EINMO_SUITE_DURATION_LIMIT`, Feature B).
     suite_duration_limit: Option<Duration>,
-    /// Whether to overwrite and re-run tests that have a stale catastrophe
-    /// crumb on disk (Feature G).
+    /// Whether to overwrite and re-run tests that have a stale catastrophe crumb on disk (Feature G).
     rerun_catastrophes: bool,
-    /// Mirror-relative (or input-relative) paths whose catastrophe crumbs are
-    /// acknowledged as expected and skipped rather than failing the suite
-    /// (Feature G).
+    /// Mirror-relative (or input-relative) paths whose catastrophe crumbs are acknowledged as expected and
+    /// skipped rather than failing the suite (Feature G).
     ignore_catastrophe_crumbs: Vec<PathBuf>,
 }
 
@@ -241,8 +239,7 @@ impl TestConfig {
         self
     }
 
-    /// Add a required stage correspondence (e.g. `(Output, Checked)` for the
-    /// commit gate).
+    /// Add a required stage correspondence (e.g. `(Output, Checked)` for the commit gate).
     #[must_use]
     pub fn require_correspondence(mut self, a: Stage, b: Stage) -> Self {
         self.require_correspondence.push((a, b));
@@ -298,16 +295,14 @@ impl TestConfig {
         self
     }
 
-    /// Set whether stale catastrophe crumbs are overwritten and re-run
-    /// (Feature G).
+    /// Set whether stale catastrophe crumbs are overwritten and re-run (Feature G).
     #[must_use]
     pub fn with_rerun_catastrophes(mut self, v: bool) -> Self {
         self.rerun_catastrophes = v;
         self
     }
 
-    /// Set the list of paths whose catastrophe crumbs are acknowledged as
-    /// expected (Feature G).
+    /// Set the list of paths whose catastrophe crumbs are acknowledged as expected (Feature G).
     #[must_use]
     pub fn with_ignore_catastrophe_crumbs(mut self, paths: Vec<PathBuf>) -> Self {
         self.ignore_catastrophe_crumbs = paths;

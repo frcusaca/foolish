@@ -156,12 +156,11 @@ mod einmo_tests {
             .collect()
     }
 
-    /// T3 (FOOP-36 §2, §Test Plan) — corpus-wide Property 1. Walks every
-    /// `einmo_suite` input directly (not through einmo's signed-output
-    /// machinery — this must run BEFORE any output is generated, per the
-    /// plan, as the cheapest possible check that the renderer survives the
-    /// whole corpus) and asserts the Foolish-mode rendering re-parses.
-    /// Property 1 only, not idempotence (§2.1) — some inputs may not settle.
+    /// T3 (FOOP-36 §2, §Test Plan) — corpus-wide Property 1. Walks every `einmo_suite` input directly (not
+    /// through einmo's signed-output machinery — this must run BEFORE any output is generated, per the
+    /// plan, as the cheapest possible check that the renderer survives the whole corpus) and asserts the
+    /// Foolish-mode rendering re-parses. Property 1 only, not idempotence (§2.1) — some inputs may not
+    /// settle.
     #[test]
     fn einmo_corpus_wide_foolish_rendering_parses() {
         let suite_dir = einmo_suite_dir();

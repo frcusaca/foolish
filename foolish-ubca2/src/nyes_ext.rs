@@ -36,9 +36,8 @@ pub trait NyesExt {
         self.is_preconstanic()
     }
 
-    /// Conclusive: the FIR reached a value — CONSTANT or INDEPENDENT.
-    /// Distinct from `is_constantew()`, which also admits NK: NK is constant
-    /// everywhere yet never produced a value.
+    /// Conclusive: the FIR reached a value — CONSTANT or INDEPENDENT. Distinct from `is_constantew()`,
+    /// which also admits NK: NK is constant everywhere yet never produced a value.
     fn is_conclusive(&self) -> bool;
 }
 

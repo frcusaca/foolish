@@ -357,8 +357,7 @@ impl Stamp {
     }
 }
 
-/// Validate a stamp's `key` field: `"compiled"`, `"configured"`, or
-/// `stage:[A-Za-z0-9_-]+`.
+/// Validate a stamp's `key` field: `"compiled"`, `"configured"`, or `stage:[A-Za-z0-9_-]+`.
 fn validate_stamp_key(key: &str) -> Result<()> {
     if key == "compiled" || key == "configured" {
         return Ok(());
@@ -676,9 +675,8 @@ impl Stamps {
         checks
     }
 
-    /// Verify a certification stamp: its signature must cover the certified
-    /// role's pubkey, and that pubkey must equal the pubkey of the stamp that
-    /// actually carries the certified role.
+    /// Verify a certification stamp: its signature must cover the certified role's pubkey, and that pubkey
+    /// must equal the pubkey of the stamp that actually carries the certified role.
     fn verify_certification(&self, stamp: &Stamp, certified_role: &str) -> bool {
         let Some(certified) = self.entries.iter().find(|s| s.key == certified_role) else {
             return false;
@@ -720,11 +718,10 @@ mod tests {
         assert!(is_computer_key(&hex::encode(vk1.to_bytes())));
     }
 
-    /// The pubkey `StageKeypair::pubkey_hex()` reports for a passphrase is
-    /// exactly the pubkey a `stage:verified` stamp made with that passphrase
-    /// carries. This is what `confirm-signatures --from-passphrase` relies on:
-    /// derive-from-my-passphrase and sign-with-my-passphrase must agree, or the
-    /// "was this signed by me?" check would be wrong.
+    /// The pubkey `StageKeypair::pubkey_hex()` reports for a passphrase is exactly the pubkey a
+    /// `stage:verified` stamp made with that passphrase carries. This is what `confirm-signatures
+    /// --from-passphrase` relies on: derive-from-my-passphrase and sign-with-my-passphrase must agree, or
+    /// the "was this signed by me?" check would be wrong.
     #[test]
     fn pubkey_hex_matches_the_signing_key_for_the_same_passphrase() {
         let pass = "my-review-pass";
@@ -794,8 +791,7 @@ mod tests {
         assert_eq!(stamps, reparsed);
     }
 
-    // Reconstruct "all bytes before the next stamp line" = body + every current
-    // stamp line + LF.
+    // Reconstruct "all bytes before the next stamp line" = body + every current stamp line + LF.
     fn build_prefix(body: &[u8], stamps: &Stamps) -> Vec<u8> {
         let mut prefix = Vec::from(body);
         for s in stamps.entries() {

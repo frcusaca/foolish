@@ -323,9 +323,8 @@ impl EinmoFile {
         self.sections.iter().find(|s| s.name() == name)
     }
 
-    /// Whether this file has identical INPUT, OUTPUT, and stamp public keys
-    /// as `other`. Ignores metadata (timestamps, producer, git sha) and
-    /// signatures — only compares content and signing key identity.
+    /// Whether this file has identical INPUT, OUTPUT, and stamp public keys as `other`. Ignores metadata
+    /// (timestamps, producer, git sha) and signatures — only compares content and signing key identity.
     #[must_use]
     pub fn content_matches(&self, other: &EinmoFile) -> bool {
         let sections_same = self.sections().len() == other.sections().len()

@@ -24,10 +24,9 @@ pub struct Characterizations {
     /// (whitespace stripped per component). Empty means "no characterizations at all"
     /// — not to be confused with a single empty (null) component.
     components: Vec<String>,
-    /// True iff the characterization slot immediately touching the name is null
-    /// (empty) — i.e. this is a null-characterized coordinate name. Only meaningful
-    /// when `Characterizations` fronts a *named* `Identifier`; a brane's
-    /// `Characterizations` (no name) leaves this `false`.
+    /// True iff the characterization slot immediately touching the name is null (empty) — i.e. this is a
+    /// null-characterized coordinate name. Only meaningful when `Characterizations` fronts a *named*
+    /// `Identifier`; a brane's `Characterizations` (no name) leaves this `false`.
     is_nully: bool,
 }
 
@@ -63,11 +62,10 @@ impl Characterizations {
         }
     }
 
-    /// Build a brane's (unnamed) characterization stack from the parser's raw
-    /// component list. A brane has no coordinate name, so
-    /// `is_nully_characterizing_coordinate_name()` is always `false` here — the
-    /// null-constant rule (FOOP-33 §4) applies to named statements, not to a
-    /// brane literal's own leading characterization.
+    /// Build a brane's (unnamed) characterization stack from the parser's raw component list. A brane has
+    /// no coordinate name, so `is_nully_characterizing_coordinate_name()` is always `false` here — the
+    /// null-constant rule (FOOP-33 §4) applies to named statements, not to a brane literal's own leading
+    /// characterization.
     pub fn from_brane_parts(chars: Vec<String>) -> Self {
         Characterizations {
             components: chars,
@@ -126,8 +124,7 @@ impl Identifier {
 
         let name = id.to_owned();
 
-        // Build the canonicalized characterization string.
-        // Each component gets a ' suffix: a'b'c''
+        // Build the canonicalized characterization string. Each component gets a ' suffix: a'b'c''
         let characterization_string: String =
             canonical_chars.iter().map(|c| format!("{c}'")).collect();
 
@@ -150,12 +147,11 @@ impl Identifier {
         &self.name
     }
 
-    /// The characterized identifier name as a single, whitespace-stripped string —
-    /// e.g. `"a'b'c'd'e''x"`. This is what every name-search matches against: a plain
-    /// pattern (`?x`) simply won't match a characterized `searchable_name` like
-    /// `"tag'x"` under the matcher's `^pattern$` anchoring, and a `'`-bearing pattern
-    /// (`?tag'x`) matches only the identically-characterized name. One projection,
-    /// one comparison — the pattern's own content does the discriminating.
+    /// The characterized identifier name as a single, whitespace-stripped string — e.g. `"a'b'c'd'e''x"`.
+    /// This is what every name-search matches against: a plain pattern (`?x`) simply won't match a
+    /// characterized `searchable_name` like `"tag'x"` under the matcher's `^pattern$` anchoring, and a
+    /// `'`-bearing pattern (`?tag'x`) matches only the identically-characterized name. One projection, one
+    /// comparison — the pattern's own content does the discriminating.
     pub fn searchable_name(&self) -> &str {
         &self.fully_characterized_name
     }

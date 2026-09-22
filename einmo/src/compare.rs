@@ -137,11 +137,9 @@ pub fn compare(
     Ok(result)
 }
 
-/// Return the names of required sections that differ (or are missing) between
-/// the two files.
+/// Return the names of required sections that differ (or are missing) between the two files.
 fn compare_sections(a: &EinmoFile, b: &EinmoFile, policy: MatchSections) -> Vec<String> {
-    // Required-section names are taken from A; a missing section in B counts as
-    // a difference too.
+    // Required-section names are taken from A; a missing section in B counts as a difference too.
     let required = required_sections(a, policy);
     let mut diverged = Vec::new();
     for name in required {

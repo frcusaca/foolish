@@ -123,10 +123,9 @@ pub fn promote(
     let to_dir = config.stage_dir(to);
     let mut report = PromotionReport::default();
 
-    // Derive the stage key ONCE: every file in this promotion is signed with
-    // the same key, and Argon2id derivation is ~1.8s by design. Deriving per
-    // file made a 161-file promotion take ~5 minutes of pure CPU for ~0.2ms of
-    // Ed25519 signing.
+    // Derive the stage key ONCE: every file in this promotion is signed with the same key, and Argon2id
+    // derivation is ~1.8s by design. Deriving per file made a 161-file promotion take ~5 minutes of pure
+    // CPU for ~0.2ms of Ed25519 signing.
     let keypair = StageKeypair::derive(key.passphrase());
 
     for rel in matching_mirror_paths(config, from, filter, files)? {
@@ -487,9 +486,8 @@ mod tests {
         fs::write(&path, file.serialize().unwrap()).unwrap();
     }
 
-    /// Retracting `checked` removes the checked artifact AND cascades to its
-    /// `verified/` counterpart — a verified stamp attests to a checked baseline
-    /// that would otherwise be dangling.
+    /// Retracting `checked` removes the checked artifact AND cascades to its `verified/` counterpart — a
+    /// verified stamp attests to a checked baseline that would otherwise be dangling.
     #[test]
     fn retract_checked_cascades_to_verified() {
         let (_tmp, config) = suite();
@@ -541,8 +539,7 @@ mod tests {
         );
     }
 
-    /// Retraction from `output`/`flagged` is refused — neither is a baseline
-    /// that can be un-promoted.
+    /// Retraction from `output`/`flagged` is refused — neither is a baseline that can be un-promoted.
     #[test]
     fn retract_refuses_output_and_flagged() {
         let (_tmp, config) = suite();
@@ -649,9 +646,8 @@ mod tests {
 
     #[test]
     fn reflag_replaces_the_existing_flagged_file() {
-        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3):
-        // re-flagging the same test REPLACES the flagged file, it does not
-        // accumulate suffixed files.
+        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3): re-flagging the same test
+        // REPLACES the flagged file, it does not accumulate suffixed files.
         let (_tmp, config) = suite();
         write_output(&config, "a.foo", "5");
         flag(&config, Stage::Output, None, "first", None).unwrap();

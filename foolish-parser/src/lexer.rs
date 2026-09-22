@@ -23,11 +23,10 @@ impl Lexer {
     pub fn tokenize(&mut self) -> Vec<TokenAndLocation> {
         let mut tokens = Vec::new();
         loop {
-            // FOOP-75 §5.3: whether whitespace was consumed here is the ONLY
-            // record that it existed — `column` does not count it. Stamp the
-            // answer onto the token that follows, since this is the one place
-            // that knows. Every `make_token` construction site defaults the
-            // flag to false; it is corrected here.
+            // FOOP-75 §5.3: whether whitespace was consumed here is the ONLY record that it existed —
+            // `column` does not count it. Stamp the answer onto the token that follows, since this is the
+            // one place that knows. Every `make_token` construction site defaults the flag to false; it is
+            // corrected here.
             let had_space = self.skip_whitespace();
             if self.pos >= self.chars.len() {
                 tokens.push(TokenAndLocation::new(

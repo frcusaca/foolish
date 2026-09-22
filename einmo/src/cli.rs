@@ -163,9 +163,8 @@ struct CompareArgs {
 struct VerifyArgs {
     /// The suite work directory.
     work_dir: PathBuf,
-    /// The escalating validation level to judge the suite at
-    /// (`output` | `checked` | `verified`). The CLI defaults to `checked`; the
-    /// library API has no default.
+    /// The escalating validation level to judge the suite at (`output` | `checked` | `verified`). The CLI
+    /// defaults to `checked`; the library API has no default.
     #[arg(long, default_value = "checked")]
     level: String,
     /// Stop at the first failure instead of gathering every problem.
@@ -196,13 +195,11 @@ struct VerifyArgs {
 struct ConfirmArgs {
     /// A directory (or file) of `.einmo` files.
     path: PathBuf,
-    /// The pubkey hex prefix to match. Supply this OR `--from-passphrase`,
-    /// never both, never neither.
+    /// The pubkey hex prefix to match. Supply this OR `--from-passphrase`, never both, never neither.
     pubkey_prefix: Option<String>,
-    /// Derive the pubkey prefix from a passphrase instead of typing the hex:
-    /// prompts for the passphrase (twice, confirmed) and matches its public
-    /// key. Answers "was this signed by MY passphrase?" without exposing the
-    /// key. Mutually exclusive with an explicit `<pubkey-prefix>`.
+    /// Derive the pubkey prefix from a passphrase instead of typing the hex: prompts for the passphrase
+    /// (twice, confirmed) and matches its public key. Answers "was this signed by MY passphrase?" without
+    /// exposing the key. Mutually exclusive with an explicit `<pubkey-prefix>`.
     #[arg(long)]
     from_passphrase: bool,
     /// Exit non-zero if any file lacks a matching signer.
@@ -325,11 +322,10 @@ fn dispatch(command: Command) -> Result<ExitCode> {
 
 /// Parse an `<from>-><to>` transition into a stage pair.
 fn parse_transition(s: &str) -> Result<(Stage, Stage)> {
-    // Accept `->` and the redirect-safe `:` / `..`. The canonical `->` collides
-    // with shell redirection: an unquoted `checked->verified` has its `>` eaten
-    // by the shell, so users who forget to quote get a baffling error. `:` and
-    // `..` mean the same and need no quoting. `->` is tried first so a stage
-    // name can never contain the separator.
+    // Accept `->` and the redirect-safe `:` / `..`. The canonical `->` collides with shell redirection: an
+    // unquoted `checked->verified` has its `>` eaten by the shell, so users who forget to quote get a
+    // baffling error. `:` and `..` mean the same and need no quoting. `->` is tried first so a stage name
+    // can never contain the separator.
     let split = ["->", "..", ":"].iter().find_map(|sep| s.split_once(sep));
     let (from, to) = split.ok_or_else(|| {
         EinmoError::Config(format!(
@@ -340,9 +336,8 @@ fn parse_transition(s: &str) -> Result<(Stage, Stage)> {
     Ok((Stage::parse(from.trim())?, Stage::parse(to.trim())?))
 }
 
-/// Expand any `-` entries in `files` by pulling paths from `stdin_lines` (one
-/// per line, blanks skipped). Non-`-` entries are kept verbatim. An empty
-/// `files` yields an empty result.
+/// Expand any `-` entries in `files` by pulling paths from `stdin_lines` (one per line, blanks skipped).
+/// Non-`-` entries are kept verbatim. An empty `files` yields an empty result.
 fn resolve_files_from_iter(
     files: Vec<PathBuf>,
     stdin_lines: impl Iterator<Item = String>,
@@ -649,10 +644,9 @@ fn cmd_confirm(args: ConfirmArgs) -> Result<ExitCode> {
     let prefix = match (&args.pubkey_prefix, args.from_passphrase) {
         (Some(p), false) => p.clone(),
         (None, true) => {
-            // Derive the reviewer's key from the passphrase, confirmed twice,
-            // and print it so you can see (and reuse) the key you're checking
-            // against. This is the only place the passphrase→pubkey mapping is
-            // surfaced; the public key is not secret.
+            // Derive the reviewer's key from the passphrase, confirmed twice, and print it so you can see
+            // (and reuse) the key you're checking against. This is the only place the passphrase→pubkey
+            // mapping is surfaced; the public key is not secret.
             let passphrase = prompt_tty()?;
             let hex = crate::signature::StageKeypair::derive(&passphrase).pubkey_hex();
             if !args.json {
@@ -1159,9 +1153,8 @@ mod tests {
         );
     }
 
-    /// The body view is what a reviewer reads, so it must exclude the stamp
-    /// chain (and therefore the timestamp/key churn that made the legacy insta
-    /// corpus structurally red).
+    /// The body view is what a reviewer reads, so it must exclude the stamp chain (and therefore the
+    /// timestamp/key churn that made the legacy insta corpus structurally red).
     #[test]
     fn body_sections_excludes_stamps() {
         use crate::format::{DEFAULT_SEPARATOR, EinmoFile, Metadata, Section, Status};

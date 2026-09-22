@@ -208,14 +208,12 @@ pub fn verify(
         };
         for rel in rels {
             let path = stage_dir.join(&rel);
-            // Absence is not a verification failure. A stage that has not been
-            // promoted to yet simply has no artifact — reporting "FAILED: no
-            // such file" for every unpopulated `verified/` entry drowns real
-            // tampering in noise and makes `verify --all` red by default.
-            // Whether an artifact *ought* to exist is a correspondence question
-            // (`compare`); whether a file that exists is sound is this
-            // function's question. Missing inputs for existing artifacts are
-            // caught by `check_suite_integrity`.
+            // Absence is not a verification failure. A stage that has not been promoted to yet simply has
+            // no artifact — reporting "FAILED: no such file" for every unpopulated `verified/` entry drowns
+            // real tampering in noise and makes `verify --all` red by default. Whether an artifact *ought*
+            // to exist is a correspondence question (`compare`); whether a file that exists is sound is
+            // this function's question. Missing inputs for existing artifacts are caught by
+            // `check_suite_integrity`.
             if !path.exists() {
                 continue;
             }
@@ -307,10 +305,9 @@ mod tests {
 
     #[test]
     fn metadata_whitespace_tamper_detected() {
-        // parse() trims values, so a whitespace change in metadata on disk is
-        // invisible to the recomputed signed_prefix(). verify_bytes must check
-        // the ACTUAL raw bytes, not the canonical recomputation — otherwise this
-        // tamper silently passes.
+        // parse() trims values, so a whitespace change in metadata on disk is invisible to the recomputed
+        // signed_prefix(). verify_bytes must check the ACTUAL raw bytes, not the canonical recomputation —
+        // otherwise this tamper silently passes.
         let file = build_valid_file();
         let bytes = file.serialize().unwrap();
         // Extra space after "producer:" — parse() trims it, so only raw-bytes

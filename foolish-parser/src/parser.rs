@@ -460,9 +460,8 @@ impl Parser {
                 {
                     let suffix_start = self.pos;
 
-                    // Parse the RHS first, then rewind and replay the recorded
-                    // suffix against it using the SAME routine the postfix
-                    // spelling uses — this is what guarantees §2 tree identity.
+                    // Parse the RHS first, then rewind and replay the recorded suffix against it using the
+                    // SAME routine the postfix spelling uses — this is what guarantees §2 tree identity.
                     self.pos = rhs_start;
                     let rhs = self.parse_expr()?;
                     let after_rhs = self.pos;
@@ -470,11 +469,10 @@ impl Parser {
                     self.pos = suffix_start;
                     let expr = self.apply_search_suffixes(rhs)?;
                     if self.pos != rhs_start {
-                        // The suffix parser and the run scanner disagree on
-                        // where the specification ends. This happens for the
-                        // greedy scanners (`.`, and `?`/`~` patterns), which
-                        // run past a space into the RHS — the FOOP-75 §6
-                        // limitation. Refuse rather than mis-parse silently.
+                        // The suffix parser and the run scanner disagree on where the specification ends.
+                        // This happens for the greedy scanners (`.`, and `?`/`~` patterns), which run past
+                        // a space into the RHS — the FOOP-75 §6 limitation. Refuse rather than mis-parse
+                        // silently.
                         let (line, col) = self.loc();
                         return Err(ParseError::Syntax {
                             message: "attached search specification is ambiguous: \
@@ -1066,12 +1064,11 @@ impl Parser {
     fn parse_identifier_or_regexp(&mut self) -> Result<String> {
         let chars = self.parse_characterizations();
         let id = self.parse_identifier()?;
-        // Each characterization component gets a trailing `'`, not a `'`
-        // BETWEEN components (`join` loses a leading null characterization:
-        // `'b` parses to chars=[""], and `[""].join("'")` is `""`, silently
-        // dropping the null-characterization marker entirely). Matches
-        // `Identifier::from_parts`'s `characterization_string` construction
-        // (`foolish-ubca/src/identifier.rs`), the authoritative algorithm.
+        // Each characterization component gets a trailing `'`, not a `'` BETWEEN components (`join` loses a
+        // leading null characterization: `'b` parses to chars=[""], and `[""].join("'")` is `""`, silently
+        // dropping the null-characterization marker entirely). Matches `Identifier::from_parts`'s
+        // `characterization_string` construction (`foolish-ubca/src/identifier.rs`), the authoritative
+        // algorithm.
         let mut coord: String = chars.iter().map(|c| format!("{c}'")).collect();
         coord.push_str(&id);
         Ok(coord)
@@ -1372,22 +1369,19 @@ mod tests {
         }
     }
 
-    /// FOOP-75 §3: a CHAIN of attached searches builds the same left-nested
-    /// spine as the equivalent postfix chain. The leftmost search in the
-    /// attached sequence is the INNERMOST node of the spine.
+    /// FOOP-75 §3: a CHAIN of attached searches builds the same left-nested spine as the equivalent postfix
+    /// chain. The leftmost search in the attached sequence is the INNERMOST node of the spine.
     #[test]
     fn foop75_attached_search_chains_match_postfix_chains() {
-        // Note every chain here OPENS with a suffix operator (`$`/`^`), never
-        // with `#`. A run starting with `#` is not an attached search at all
-        // -- see `at_attached_search` -- but `#` is perfectly usable *inside*
-        // a chain, which is what these pin.
+        // Note every chain here OPENS with a suffix operator (`$`/`^`), never with `#`. A run starting with
+        // `#` is not an attached search at all -- see `at_attached_search` -- but `#` is perfectly usable
+        // *inside* a chain, which is what these pin.
         let pairs = [
             ("{B={1,2,3}; A =$#1 B;}", "{B={1,2,3}; A = B$#1;}"),
             ("{B={1,2,3}; A =^#1 B;}", "{B={1,2,3}; A = B^#1;}"),
             ("{B={1,2,3}; A =$#-2 B;}", "{B={1,2,3}; A = B$#-2;}"),
-            // From the corpus: test-resources/.../test_syntax.foo:4 already
-            // contains `c =$#-1;` -- an attached chain written before this
-            // FOOP existed. Found by FOOP-75's Phase 1 survey.
+            // From the corpus: test-resources/.../test_syntax.foo:4 already contains `c =$#-1;` -- an
+            // attached chain written before this FOOP existed. Found by FOOP-75's Phase 1 survey.
             ("{a=1; b=2; c =$#-1 b;}", "{a=1; b=2; c = b$#-1;}"),
         ];
         for (attached, postfix) in pairs {
@@ -1577,10 +1571,9 @@ mod tests {
         );
     }
 
-    /// FOOP-75 §5.4: `&` is NOT in the trigger set. `&` is a cursor-source
-    /// modifier, not a search operator in its own right (AGENTS.md §Searches
-    /// group 2), and what position a contexted search would read from when
-    /// anchored on a whole RHS has no obviously correct answer.
+    /// FOOP-75 §5.4: `&` is NOT in the trigger set. `&` is a cursor-source modifier, not a search operator
+    /// in its own right (AGENTS.md §Searches group 2), and what position a contexted search would read from
+    /// when anchored on a whole RHS has no obviously correct answer.
     #[test]
     fn foop75_ampersand_is_not_an_attached_search_trigger() {
         let attached_like = parse_single("{B={1,2,3}; A =&?x B;}");
@@ -1593,9 +1586,8 @@ mod tests {
         }
     }
 
-    /// FOOP-75 §2: an ordinary assignment is untouched. The attached-search
-    /// path must be a strict addition -- everything that parsed before parses
-    /// identically.
+    /// FOOP-75 §2: an ordinary assignment is untouched. The attached-search path must be a strict addition
+    /// -- everything that parsed before parses identically.
     #[test]
     fn foop75_ordinary_assignment_unaffected() {
         let t = parse_single("{a = 1; b = a + 2;}").expect("ordinary assignment parses");
@@ -1610,13 +1602,11 @@ mod tests {
 
     #[test]
     fn brane_literal_dollar_reads_the_whole_literals_tail() {
-        // FOOP-33 Phase 6 research task ("$ vs concatenation precedence"):
-        // the SETTLED syntax (§5.0's evening revision) is a brane LITERAL
-        // with 'lt as a comma-separated member -- NOT postfix-concatenation
-        // (`{1,3}'lt$`, from the superseded historical prose, does NOT even
-        // parse as intended -- see git history for that investigation).
-        // {1, 2, 'lt}$ must parse as ({1, 2, 'lt})$ -- $ (tail) applied to
-        // the WHOLE brane literal -- not to 'lt alone.
+        // FOOP-33 Phase 6 research task ("$ vs concatenation precedence"): the SETTLED syntax (§5.0's
+        // evening revision) is a brane LITERAL with 'lt as a comma-separated member -- NOT
+        // postfix-concatenation (`{1,3}'lt$`, from the superseded historical prose, does NOT even parse as
+        // intended -- see git history for that investigation). {1, 2, 'lt}$ must parse as ({1, 2, 'lt})$ --
+        // $ (tail) applied to the WHOLE brane literal -- not to 'lt alone.
         let ast = parse_single("{r = {1, 2, 'lt}$;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => match &statements[0] {
@@ -1737,14 +1727,12 @@ mod tests {
 
     #[test]
     fn parses_dot_search_coordinate_preserves_null_characterization() {
-        // `x.'y` must produce coordinate `"'y"`, not `"y"` -- the leading
-        // apostrophe (null characterization) was previously lost because
-        // `parse_identifier_or_regexp` used `chars.join("'")`, which puts `'`
-        // BETWEEN elements. For chars=[""] (what a leading apostrophe parses
-        // to), `[""].join("'")` is `""`, silently dropping the marker. Fixed
-        // to match `Identifier::from_parts`'s per-component-suffix algorithm
-        // (`foolish-ubca/src/identifier.rs`): each component gets a trailing
-        // `'`, so `[""]` becomes `"'"`, giving coordinate `"'y"`.
+        // `x.'y` must produce coordinate `"'y"`, not `"y"` -- the leading apostrophe (null
+        // characterization) was previously lost because `parse_identifier_or_regexp` used
+        // `chars.join("'")`, which puts `'` BETWEEN elements. For chars=[""] (what a leading apostrophe
+        // parses to), `[""].join("'")` is `""`, silently dropping the marker. Fixed to match
+        // `Identifier::from_parts`'s per-component-suffix algorithm (`foolish-ubca/src/identifier.rs`):
+        // each component gets a trailing `'`, so `[""]` becomes `"'"`, giving coordinate `"'y"`.
         let ast = parse_single("{x.'y;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => {
@@ -1762,9 +1750,8 @@ mod tests {
 
     #[test]
     fn parses_dot_search_coordinate_with_named_characterization() {
-        // `x.a'y` (a NON-null characterization) must produce `"a'y"` --
-        // exercises the multi-component join path, not just the empty-string
-        // edge case.
+        // `x.a'y` (a NON-null characterization) must produce `"a'y"` -- exercises the multi-component join
+        // path, not just the empty-string edge case.
         let ast = parse_single("{x.a'y;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => match &statements[0] {
@@ -1903,10 +1890,9 @@ mod tests {
 
     #[test]
     fn parses_regexp_search_bare_unanchored() {
-        // Bare `?pattern` (nothing before the `?`) must carry `anchor: None` — a
-        // real "no anchor" AST shape, not a hardcoded empty Brane{} literal (the
-        // FOOP-33 regression this test pins). See `parses_regexp_search` above
-        // for the anchored form (`brn?pattern`), which is unaffected.
+        // Bare `?pattern` (nothing before the `?`) must carry `anchor: None` — a real "no anchor" AST
+        // shape, not a hardcoded empty Brane{} literal (the FOOP-33 regression this test pins). See
+        // `parses_regexp_search` above for the anchored form (`brn?pattern`), which is unaffected.
         let ast = parse_single("{found = ?pattern;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => match &statements[0] {
@@ -2073,8 +2059,7 @@ mod tests {
         }
     }
 
-    /// Precedence pin: `fn`{a}$` → `[fn, HeadTail($, Brane[a])]`
-    /// `$` belongs INSIDE the right operand.
+    /// Precedence pin: `fn`{a}$` → `[fn, HeadTail($, Brane[a])]` `$` belongs INSIDE the right operand.
     #[test]
     fn tail_concat_precedence_dollar_inside_operand() {
         let ast = parse_single("{r = fn`{a}$;}").unwrap();

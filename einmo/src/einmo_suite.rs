@@ -73,16 +73,14 @@ pub struct TestResults {
 /// this API, may default — the library may not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ValidationLevel {
-    /// The suite is well-formed and evaluates: no extraneous files, non-empty,
-    /// every input evaluates to a self-verifying `output/` artifact, no
-    /// orphans there.
+    /// The suite is well-formed and evaluates: no extraneous files, non-empty, every input evaluates to a
+    /// self-verifying `output/` artifact, no orphans there.
     Output,
     /// …plus a reviewed baseline: `output` ↔ `checked` match up exactly, their
     /// content is identical, and `checked/`'s signatures verify.
     Checked,
-    /// …plus human attestation: `checked` ↔ `verified` match up exactly, their
-    /// content is identical, `verified/`'s signatures verify under the
-    /// reviewer's key, and no stamp carries the computer key.
+    /// …plus human attestation: `checked` ↔ `verified` match up exactly, their content is identical,
+    /// `verified/`'s signatures verify under the reviewer's key, and no stamp carries the computer key.
     Verified,
 }
 
@@ -452,9 +450,8 @@ impl SuiteIntegrity {
 }
 
 impl TestResults {
-    /// `true` if the suite's shape is sound, every file was written and
-    /// re-verified (or acknowledged as an ignored catastrophe crumb), and every
-    /// required correspondence held.
+    /// `true` if the suite's shape is sound, every file was written and re-verified (or acknowledged as an
+    /// ignored catastrophe crumb), and every required correspondence held.
     #[must_use]
     pub fn all_output_written_and_verified(&self) -> bool {
         self.integrity.is_clean()
@@ -811,13 +808,11 @@ impl EinmoSuite {
         let ordered = topological_order(&inputs, self.config.dependent_separator());
         let suite_start = std::time::Instant::now();
 
-        // KNOWN GAP (FOOP-64, 2026-07-15): `suite_duration_limit` is enforced
-        // only on the serial path below -- it is checked before starting each
-        // test, so parallel workers all launch before a short budget expires
-        // and nothing aborts. Parallel is now the default, so an operator
-        // setting EINMO_SUITE_DURATION_LIMIT gets no throttling unless they
-        // also force serial. Fixing it properly means a shared deadline the
-        // workers poll between tests; deferred, not silently ignored.
+        // KNOWN GAP (FOOP-64, 2026-07-15): `suite_duration_limit` is enforced only on the serial path below
+        // -- it is checked before starting each test, so parallel workers all launch before a short budget
+        // expires and nothing aborts. Parallel is now the default, so an operator setting
+        // EINMO_SUITE_DURATION_LIMIT gets no throttling unless they also force serial. Fixing it properly
+        // means a shared deadline the workers poll between tests; deferred, not silently ignored.
         let (raw, suite_skipped, crumb_gated) = if let Some(threads) = self.config.parallel() {
             self.evaluate_raw_parallel(&ordered, evaluator, threads, suite_start)
         } else {
@@ -906,9 +901,8 @@ impl EinmoSuite {
             ));
         }
 
-        // Enforce configured correspondences via `compare`. Ignored catastrophe
-        // crumbs in output are excluded so an acknowledged crumb does not cause
-        // a spurious correspondence failure.
+        // Enforce configured correspondences via `compare`. Ignored catastrophe crumbs in output are
+        // excluded so an acknowledged crumb does not cause a spurious correspondence failure.
         let ignored_paths = self.config.ignore_catastrophe_crumbs();
         let ignored_match = |p: &Path| {
             ignored_paths
@@ -933,9 +927,8 @@ impl EinmoSuite {
             }
         }
 
-        // Validate the suite's shape LAST: the escalating levels judge output/
-        // (and, above the base level, checked/ and verified/), none of which
-        // exist until this run has written them.
+        // Validate the suite's shape LAST: the escalating levels judge output/ (and, above the base level,
+        // checked/ and verified/), none of which exist until this run has written them.
         results.integrity = self.check_integrity(
             &inputs,
             extraneous,
@@ -972,12 +965,11 @@ impl EinmoSuite {
         std::fs::read_to_string(&path).map_err(|e| EinmoError::io(&path, e))
     }
 
-    /// Write a signed crash-crumb `.einmo` to the output path BEFORE running
-    /// the evaluator. If the process crashes during evaluation (panic that
-    /// escapes `catch_unwind`, stack overflow, OOM, abort, kill signal), this
-    /// signed file remains as the test's output — a forensic signal that can be
-    /// verified, compared, and promoted. When the evaluator succeeds,
-    /// [`Self::write_output`] overwrites it with the real output.
+    /// Write a signed crash-crumb `.einmo` to the output path BEFORE running the evaluator. If the process
+    /// crashes during evaluation (panic that escapes `catch_unwind`, stack overflow, OOM, abort, kill
+    /// signal), this signed file remains as the test's output — a forensic signal that can be verified,
+    /// compared, and promoted. When the evaluator succeeds, [`Self::write_output`] overwrites it with the
+    /// real output.
     fn write_crash_crumb(&self, input_rel: &Path, source: &str, out_path: &Path) -> Result<()> {
         let section_names = vec![
             "INPUT".into(),
@@ -1061,9 +1053,8 @@ impl EinmoSuite {
                             }
                             continue;
                         }
-                        // Wrap the worker body so ANY panic (read, evaluate,
-                        // lock) becomes a failed `EvalOutcome` instead of
-                        // poisoning the shared `Mutex`.
+                        // Wrap the worker body so ANY panic (read, evaluate, lock) becomes a failed
+                        // `EvalOutcome` instead of poisoning the shared `Mutex`.
                         let entry: RawEvaluation =
                             match std::panic::catch_unwind(AssertUnwindSafe(|| {
                                 let source = match self.read_input(rel) {
@@ -1158,8 +1149,7 @@ impl EinmoSuite {
             section_names.push(name.clone());
             sections.push(Section::new(name, chunk.clone()));
         }
-        // When there is no output at all, still emit a single empty OUTPUT so
-        // the envelope always has one.
+        // When there is no output at all, still emit a single empty OUTPUT so the envelope always has one.
         if outcome.outputs.is_empty() {
             section_names.push("OUTPUT".into());
             sections.push(Section::new("OUTPUT", String::new()));
@@ -1328,9 +1318,8 @@ struct EvalOutcome {
 }
 
 impl EvalOutcome {
-    /// Build an outcome for a failed input read. The harness records this as
-    /// `status: output-error` (a harness-level failure, not a successful empty
-    /// eval) with no output chunks.
+    /// Build an outcome for a failed input read. The harness records this as `status: output-error` (a
+    /// harness-level failure, not a successful empty eval) with no output chunks.
     fn read_error(e: &EinmoError) -> Self {
         EvalOutcome {
             outputs: vec![],
@@ -1451,10 +1440,9 @@ fn reference_of(rel: &Path, sep: &str) -> Option<PathBuf> {
     let last = name.rfind(sep)?;
     let parent = rel.parent();
     let reference_name = &name[..last];
-    // Preserve the file extension carried after the last `++segment`? No — the
-    // reference input keeps the base name; the extension travels with it since
-    // the separator sits before the extension in `base++case.foo`. Strip the
-    // trailing `++case` including any extension on the case, then re-attach the
+    // Preserve the file extension carried after the last `++segment`? No — the reference input keeps the
+    // base name; the extension travels with it since the separator sits before the extension in
+    // `base++case.foo`. Strip the trailing `++case` including any extension on the case, then re-attach the
     // original extension.
     let reference_name = reattach_extension(reference_name, &name);
     Some(match parent {
@@ -1484,9 +1472,8 @@ fn reattach_extension(stripped: &str, full_name: &str) -> String {
 /// Order inputs so every reference precedes its dependents (topological within
 /// each directory). Non-dependents keep their sorted order.
 fn topological_order(inputs: &[PathBuf], sep: &str) -> Vec<PathBuf> {
-    // Depth = number of `sep` occurrences in the file name; shallower first,
-    // then lexicographic. A reference always has fewer separators than its
-    // dependents, so this yields a valid topological order.
+    // Depth = number of `sep` occurrences in the file name; shallower first, then lexicographic. A
+    // reference always has fewer separators than its dependents, so this yields a valid topological order.
     let mut ordered = inputs.to_vec();
     ordered.sort_by(|a, b| {
         let da = separator_depth(a, sep);
@@ -1745,10 +1732,9 @@ mod tests {
         let missing = suite.evaluate(Path::new("nonexistent.foo"), &Echo);
         assert!(missing.is_err(), "evaluate propagates read errors as Err");
 
-        // `evaluate_all` must NOT abort on an unreadable input. A file with
-        // invalid-UTF-8 content is discovered by the walk (it is a regular
-        // file) but `read_to_string` fails, exercising the read-error →
-        // failed `FileResult` path deterministically with no filesystem race.
+        // `evaluate_all` must NOT abort on an unreadable input. A file with invalid-UTF-8 content is
+        // discovered by the walk (it is a regular file) but `read_to_string` fails, exercising the
+        // read-error → failed `FileResult` path deterministically with no filesystem race.
         std::fs::write(
             suite.config().input_path().join("bad.foo"),
             [0xFF, 0xFE, 0x00, 0xADu8],
@@ -1766,9 +1752,8 @@ mod tests {
             Status::OutputError,
             "read failure recorded as output-error"
         );
-        // The read error is recorded in the signed envelope's `status_detail`
-        // (not in `FileResult.detail`, which is reserved for write/verify
-        // failures). The envelope itself is still valid and re-verifies.
+        // The read error is recorded in the signed envelope's `status_detail` (not in `FileResult.detail`,
+        // which is reserved for write/verify failures). The envelope itself is still valid and re-verifies.
         assert!(
             failed.written_and_verified,
             "a read-failed input still writes a valid signed envelope"
@@ -1848,9 +1833,8 @@ mod tests {
         assert_eq!(FailurePolicy::default(), FailurePolicy::FailAtEnd);
     }
 
-    /// The two "where does it live" faults are distinct: cruft in `input/`
-    /// that nothing generated, versus a generated artifact in a *stage* whose
-    /// input has since disappeared.
+    /// The two "where does it live" faults are distinct: cruft in `input/` that nothing generated, versus a
+    /// generated artifact in a *stage* whose input has since disappeared.
     #[test]
     fn extraneous_input_and_orphaned_artifact_are_distinct() {
         let (_tmp, suite0) = suite();
@@ -1912,10 +1896,9 @@ mod tests {
         assert!(ValidationLevel::Checked > ValidationLevel::Output);
     }
 
-    /// The Output level makes no claim about checked/ or verified/: an
-    /// unpopulated higher stage is "not promoted yet", not a failure. This is
-    /// the bug the escalating levels fix — a dev suite must not go red because
-    /// nobody has signed a verified/ corpus.
+    /// The Output level makes no claim about checked/ or verified/: an unpopulated higher stage is "not
+    /// promoted yet", not a failure. This is the bug the escalating levels fix — a dev suite must not go
+    /// red because nobody has signed a verified/ corpus.
     #[test]
     fn output_level_ignores_unpopulated_higher_stages() {
         let (_tmp, suite0) = suite();
@@ -1964,8 +1947,7 @@ mod tests {
         );
     }
 
-    /// Every problem knows which level owns it, so a report can be read
-    /// foundation-first.
+    /// Every problem knows which level owns it, so a report can be read foundation-first.
     #[test]
     fn problems_report_their_level() {
         assert_eq!(
@@ -2283,10 +2265,9 @@ mod tests {
     #[test]
     fn suite_duration_limit_aborts_early() {
         let tmp = tempfile::tempdir().unwrap();
-        // Serial: the suite-duration check runs *before starting* each test,
-        // which only throttles when tests start one at a time. Under parallel
-        // evaluation all workers launch before the budget expires, so nothing
-        // aborts -- see the parallel-branch note in `evaluate_all`.
+        // Serial: the suite-duration check runs *before starting* each test, which only throttles when
+        // tests start one at a time. Under parallel evaluation all workers launch before the budget
+        // expires, so nothing aborts -- see the parallel-branch note in `evaluate_all`.
         let config = TestConfig::new(tmp.path(), ValidationLevel::Output)
             .with_parallel(Some(1))
             .with_suite_duration_limit(std::time::Duration::from_millis(80));
