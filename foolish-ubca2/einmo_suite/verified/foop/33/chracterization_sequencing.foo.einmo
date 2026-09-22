@@ -1,30 +1,44 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/33/chracterization_sequencing.foo
-suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
-producer: 5cad954d
-producer-diff: sha256:b31dee6bdcda37d338039f2ba82994ba2bbfeb771131e6c747a733a2f94e68fa
-generated: 2026-09-07T23:26:43.000000000Z
+suite: /yolo/foolish_worktrees/foop-86-retire-ubca/foolish-ubca2/einmo_suite
+producer: 2168e4aa
+producer-diff: sha256:18313a1366d3160ab04b2b524212b6cb51381a489ccb6c59efbb924658fb958d
+generated: 2026-09-20T19:24:12.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 {
 
-  is_it = 'True; !! Null-characterized system creation should be rendered as 'True
+  is_it = 'True; !! system creation renders as 'True
 
-  !! Render the creation symbol at the site of the creation.
-  !! The names on the LHS of these statements with a singular creation on RHS are
-  !! called those creations' orignal names.
+  !! a creation renders as ⬤ at its creation site; these LHS names are
+  !! those creations' original names
   'a    = {*};
    a    = {*};
+
+  !! 'bad='b renames an already-named creation -- unsteppable (§6.2 route 4),
+  !! so bs halts and takes NK; its opener carries the annotation
   bs    = {b={*}; 'b={*}; 'bad='b};
 
   !! Can we see the names now?
   what_was_tick_a = 'a;
   what_was_tick_a = #-4;
 
-  what_was_a = a;      !! Rule is characterizations who's name is not null-characterized are not rendered by their original name
-  what_was_a = ?='a&#1; !! defined on the line after 'a
+  !! a non-null-characterized name is not rendered, so these revert to Foolish
+  what_was_a = a;
+  what_was_a = ?='a&#1;  !! defined on the line after 'a
 
+  !! control: gs is the SAME shape as bs but WITHOUT the unsteppable
+  !! statement, so anchored searches into it RESOLVE -- no NK below.
+  !! They still revert to Foolish: the creation found is named inside gs,
+  !! and that name is not in scope out here (§N4.b)
+  gs    = {b={*}; 'b={*}};
+  good_tick_b = gs?'b;
+  good_b      = gs?b;
+  good_index  = gs#1;
+
+  !! all of the following fail to NK because bs is an NK brane, due to its
+  !! unsteppable statement -- the names ARE in bs; the brane is refused (§6.4b)
   what_is_tick_b_called_from_another_brane_1 = bs.'b;
   what_is_tick_b_called_from_another_brane_2 = bs~'b;
   what_is_tick_b_called_from_another_brane_3 = bs?'b;
@@ -39,7 +53,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   isˍit = 'True;
   'a = ⬤;
   a = ⬤;
-  bs = {
+  bs = {  !! NK: unsteppable — 'bad is already a named creation
     b = ⬤;
     'b = ⬤;
     'bad = 'b
@@ -48,18 +62,25 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
   whatˍwasˍtickˍa = 'a;
   whatˍwasˍa = a;
   whatˍwasˍa = ?='a&#1;
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;
-  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs^;
-  'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! This is Foolish because of out-of-context Creation Postulation application
-  howˍbadˍcanˍitˍbˍ2 = bs#1  !! This is Foolish because of out-of-context Creation Postulation application
+  gs = {
+    b = ⬤;
+    'b = ⬤
+  };
+  goodˍtickˍb = gs?'b;  !! This is Foolish because of out-of-context Creation Postulation application
+  goodˍb = gs?b;
+  goodˍindex = gs#1;  !! This is Foolish because of out-of-context Creation Postulation application
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?'b;  !! NK: anchored search found no match
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ2 = bs~'b;  !! NK: anchored search found no match
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ3 = bs?'b;  !! NK: anchored search found no match
+  whatˍisˍtickˍbˍcalledˍfromˍanotherˍbraneˍ4 = bs#1;  !! NK: anchored index found no match
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ1 = bs?b;  !! NK: anchored search found no match
+  whatˍisˍbˍcalledˍfromˍanotherˍbraneˍ2 =^ bs;  !! NK: anchored index found no match
+  'howˍbadˍcanˍitˍbˍ1 = bs#1;  !! NK: anchored index found no match
+  howˍbadˍcanˍitˍbˍ2 = bs#1  !! NK: anchored index found no match
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uJwNhLYkW1DdQVCUigereYiGMg0rPZ5JFM/9m4RefCCuEEtu4LmYgt5op7jsdofqxLbSIxZZcQH2KsXHyL0lCg==","produced_by":"einmo 0.1.0 sha256:10cb3ea53cc0479333e85a5f0a0fdeadf54ab4236a3c6b2ba10fcdd43565b74a","timestamp":"2026-09-07T23:26:43.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"z7wr/3y+JkIJuyhb8IPeK7rj3U7ugFeFxj/DlhO8X1GmWiqnkwBq/rUFcXpibCzr9Y6+8qa+tghXNxyc9xVsDw==","produced_by":"einmo 0.1.0 sha256:d86a04bede04d2b43382d6c0e75f019f7a45913551ceca2631543ff24225a42f","timestamp":"2026-09-07T23:30:13.000000000Z"}
-{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"DOiwhHTqv7waBFcnVWqHe92pKsGWTnTK0df4r+S1OK7OB3OfedJ76iopkl0IqDArmDhxyJMCwjIycKkoWugHBQ==","produced_by":"einmo 0.1.0 sha256:d86a04bede04d2b43382d6c0e75f019f7a45913551ceca2631543ff24225a42f","timestamp":"2026-09-08T00:34:27.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:840dd88f6225da1843c1b872ae63c1bea7325de5c8bd7e65e4bc867e1ca170d4","timestamp":"2026-09-20T19:24:12.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:840dd88f6225da1843c1b872ae63c1bea7325de5c8bd7e65e4bc867e1ca170d4","timestamp":"2026-09-20T19:24:12.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"MsSEW9B62MsLfbJHAGldk3oCUS4rBeO0DMQpv0dz/SiwHdYsB4ITEkglwEQcCh602BqtjPiM76ZZQDtpCdewDw==","produced_by":"einmo 0.1.0 sha256:840dd88f6225da1843c1b872ae63c1bea7325de5c8bd7e65e4bc867e1ca170d4","timestamp":"2026-09-20T19:24:12.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"35gOfhRe52dzFlECkjst1TMs0HVykgXaz8lCvbyTSEGGJZoNsktn/sOa3pgQoWj0lkMsaH1OH5vr7KBkSDjfDQ==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-20T19:24:38.000000000Z"}
+{"key":"stage:verified","pubkey":"cbdd8bb43cb9f4965838674d658f813b1424ad3ca9a30d9d83e73b0ab4dd8613","signs":"prior-bytes","signature":"bbSFkBqPVfLTq0dpMCDRsE8GMiHjjGI7OeEIO8lZKwFxN2QCNnHaaJoTdxoh/MYUzuUDDWJmnHzf7j2x0FZLCg==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-22T00:46:49.000000000Z"}
