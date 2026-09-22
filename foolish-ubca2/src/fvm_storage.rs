@@ -8007,4 +8007,151 @@ mod tests {
              name ('a), got: {rendered}"
         );
     }
+
+    /// Evaluates `src` and returns the storage plus the program brane.
+    fn eval_program(src: &str) -> (FVMStorage, FirPointer) {
+        let mut storage = FVMStorage::new();
+        let roots = arena_compiler::compose_program_with_system(&mut storage, src)
+            .expect("program compiles");
+        let root = roots[0];
+        let _ = core_fir_conversion::step_to_constanic(&mut storage, root);
+        let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
+        (storage, program)
+    }
+
+    /// The body FIR of statement `index` in `program`, with its settled Nyes.
+    fn stmt_body_and_nyes(
+        storage: &FVMStorage,
+        program: FirPointer,
+        index: usize,
+    ) -> (FirPointer, Nyes) {
+        let stmt = FirCursor::new(program, storage)
+            .stmt_at(index)
+            .expect("statement exists");
+        let body = FirCursor::new(stmt, storage).foolish_children()[0];
+        (body, storage.get_nyes(body))
+    }
+
+    /// A search that FINDS a creation settles CONSTANT and holds the creation
+    /// itself at `ubc_children[0]` — whether or not that creation has a
+    /// renderable name.
+    ///
+    /// **Why this needs a unit test** (human, 2026-09-21): all three of these
+    /// cases REVERT TO FOOLISH when rendered, so the sequencer's output shows
+    /// only the written expression and "does not exhibit clearly what NYES and
+    /// internal states are". Reading the rendered text, a nameless creation
+    /// (`a = b`), a named one (`b = 'a`) and an out-of-context one
+    /// (`r = gs?'b`) are indistinguishable from each other AND from a genuine
+    /// failure — which is exactly how a reader misread `?='a&#1` as "could not
+    /// find" during review. The internal state says otherwise: the search
+    /// SUCCEEDED in every case.
+    #[test]
+    fn search_finding_a_creation_settles_constant_regardless_of_nameability() {
+        for (label, src) in [
+            // Nameless: `b` is not null-characterized, so there is no name to
+            // render and the statement reverts to the written `?b`.
+            ("nameless creation", "{b = ⬤; a = ?b;}"),
+            // Named and in context: renders `'a`, the creation's original name.
+            ("named creation", "{'a = ⬤; b = ?'a;}"),
+            // Named but OUT OF CONTEXT: `'b` names a creation inside `gs`, and
+            // that name is not in scope at the outer brane (FOOP-36 §N4.b), so
+            // this reverts too — despite the search having found it.
+            ("out-of-context name", "{gs = {b=⬤; 'b=⬤}; r = gs?'b;}"),
+        ] {
+            let (storage, program) = eval_program(src);
+            let (body, nyes) = stmt_body_and_nyes(&storage, program, 1);
+            assert_eq!(
+                nyes,
+                Nyes::Constant,
+                "{label}: a search that FINDS its target settles CONSTANT, \
+                 not NK -- reverting to Foolish when rendered is a NAMING \
+                 outcome, not a search failure ({src})"
+            );
+            let results = FirCursor::new(body, &storage).ubc_children().to_vec();
+            assert_eq!(
+                results.len(),
+                2,
+                "{label}: a resolved search holds the FoolRefFir two-child \
+                 invariant -- [0] the found value, [1] the position ({src})"
+            );
+            assert!(
+                matches!(storage.get(results[0]), FirSpec::Creation),
+                "{label}: ubc_children[0] is the CREATION the search found, \
+                 intact -- not an Nk substitute ({src})"
+            );
+            assert_eq!(
+                storage.get_nyes(results[0]),
+                Nyes::Independent,
+                "{label}: the found creation is INDEPENDENT -- a creation is \
+                 born independent and never steps ({src})"
+            );
+            assert!(
+                matches!(storage.get(results[1]), FirSpec::FoolRef { .. }),
+                "{label}: ubc_children[1] is the FoolRef carrying the found \
+                 statement's position ({src})"
+            );
+        }
+    }
+
+    /// The CONTRAST case: a search into a brane halted by an unsteppable
+    /// statement settles NK (FOOP-86 §6.4b), and the whole statement goes with
+    /// it. Rendered, this is a reverted line just like the three above — which
+    /// is precisely why the distinction must be asserted on the NYES.
+    #[test]
+    fn search_into_an_unsteppable_brane_settles_nk_not_constant() {
+        let (storage, program) = eval_program("{bs = {b=⬤; 'b=⬤; 'bad='b}; r = bs?'b;}");
+
+        // The brane itself halted, and the cause is recorded on it.
+        let (bs_body, bs_nyes) = stmt_body_and_nyes(&storage, program, 0);
+        assert_eq!(
+            bs_nyes,
+            Nyes::Nk,
+            "an unsteppable statement halts its brane (§6.3)"
+        );
+        assert!(
+            storage.unsteppable_cause(bs_body).is_some(),
+            "the halt records WHICH statement was unsteppable, on the brane (§6.2a)"
+        );
+
+        // `'b` genuinely IS in `bs` -- the search is refused because the
+        // container is ill-defined, not because the name is absent.
+        let (_, r_nyes) = stmt_body_and_nyes(&storage, program, 1);
+        assert_eq!(
+            r_nyes,
+            Nyes::Nk,
+            "every access into an NK brane settles NK -- a brane with no \
+             meaning cannot be searched (§6.4b)"
+        );
+    }
+
+    /// `get_display_name` is the ONLY source of a creation's rendered name, and
+    /// it yields a name ONLY for a null-characterized one. This pins the
+    /// mechanism behind the reversion the two tests above describe: the
+    /// nameless case has no name to return, so rendering has nothing to print
+    /// and must fall back to the written form.
+    #[test]
+    fn only_a_null_characterized_creation_has_a_display_name() {
+        let (storage, program) = eval_program("{'named = ⬤; plain = ⬤; reader = 1;}");
+        let cursor = FirCursor::new(program, &storage);
+        let reader = cursor.stmt_at(2).expect("reader exists");
+
+        for (index, expected, what) in [
+            (
+                0usize,
+                Some("'named"),
+                "a null-characterized creation reports its name",
+            ),
+            (1, None, "a plain-named creation has NO display name"),
+        ] {
+            let stmt = cursor.stmt_at(index).expect("statement exists");
+            let body = FirCursor::new(stmt, &storage).foolish_children()[0];
+            assert_eq!(
+                FirCursor::new(body, &storage)
+                    .as_creation_display_name(Some(reader))
+                    .as_deref(),
+                expected,
+                "{what}"
+            );
+        }
+    }
 }

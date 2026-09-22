@@ -49,11 +49,17 @@ UBCa. It adds four dependent features and stops, deliberately, short of boolean 
    the *producers* of those values await the new spec.
 
 The crux is the **null-characterized name constant** rule: once a null-characterized name
-is defined, it may only be re-defined to an equal value; any other re-definition refuses and
-turns **NK**, poisoning further use of that name. This rule is enforced in two places — the
-brane step (a brane checks its ancestors) and concatenation (a merge checks the statements
+is defined, it may only be re-defined to an equal value. This rule is enforced in two places —
+the brane step (a brane checks its ancestors) and concatenation (a merge checks the statements
 merged before it) — so that `'True` in `system.foo` cannot be silently overwritten by a
 Foolisher writing `'True=3`.
+
+> **SUPERSEDED — see FOOP-86 §6, which changed this behavior.** This section originally said a
+> conflicting re-definition "refuses and turns **NK**, poisoning further use of that name."
+> That mechanism is no longer in force. A conflicting re-definition is now an **unsteppable
+> statement**: its brane halts and takes NK, while the offending statement itself reverts to
+> Foolish and keeps its written value. Poisoning was removed because it destroyed the very
+> meaning this rule exists to preserve — readers of the established `'True` lost it.
 
 Boolean *operators* (`⊦`, `not`, `and`, `or`) and their assertion tests are explicitly out
 of scope and are deferred to a follow-on FOOP.
@@ -405,16 +411,17 @@ coordinate name is null-characterized:
 3. If one exists: compare values with `default_equal` (§2).
    - **`Equal`** (e.g. `'True='True`, the same creation): permitted; the statement keeps its
      value.
-   - **Anything else** (`NotEqual` *or* `Unknowable`, e.g. `'True=3`): the statement's body
-     settles to **`NK("'<name> redefined")`**, so `get_value()` yields that NK rather than the
-     written RHS. No special "refusal" state is needed — the NK *is* the refusal.
+   - **Anything else** (`NotEqual` *or* `Unknowable`, e.g. `'True=3`): **see FOOP-86 §6, which
+     changed this behavior.** This originally read: "the statement's body settles to
+     `NK("'<name> redefined")`, so `get_value()` yields that NK rather than the written RHS."
+     The statement's body no longer settles NK. The statement is **unsteppable**; its BRANE
+     halts and takes NK, and the statement reverts to Foolish keeping its written RHS.
 
-**Poisoning is scoped to searches that discover this definition.** The NK lives on **this
-statement's body**, not on the name globally. Therefore it poisons exactly the searches that
-resolve *to this definition* (they read `get_value()` → NK). Code elsewhere that never reaches
-this statement — for instance a **sibling in a different brane** that resolves the name to a
-*different* definition, or does not use the name at all — is **not** poisoned. The poison
-travels with the offending statement, not with the identifier string.
+**Poisoning — REMOVED. See FOOP-86 §6, which changed this behavior.** This paragraph
+originally specified that the NK lived on the offending statement's body and poisoned exactly
+the searches resolving to that definition. There is no poisoning now: the offending statement
+keeps its written value, earlier readers keep finding the established definition, and the
+failure is confined to the brane, which halts and takes NK (FOOP-86 §6.3, §6.4c).
 
 **Descendant query.** A brane that owns a null-characterized name responds to descendant
 branes' question *"is this name a null-characterized coordinate name (a constant) here?"* This
@@ -785,11 +792,12 @@ current code.
    keep the "body must be constanic before comparison" contract intact when refactoring — don't
    call `default_equal` on an un-settled candidate.
 
-5. **NK poisoning is scoped and must not loop.** The `NK("'<name> redefined")` lives on the
-   offending **statement's body**, so only searches that resolve *to that statement* read the
-   NK; a sibling in another brane that resolves the name elsewhere (or not at all) is untouched
-   (§4). Two care points: (a) the check runs while settling in `PREMBRYONIC`/`EMBRYONIC` and
-   must set the NK **once**, then be terminal — don't re-alarm every step; (b) reading the value
+5. **NK poisoning — REMOVED; see FOOP-86 §6, which changed this behavior.** This item
+   originally described scoping the `NK("'<name> redefined")` to the offending statement's body
+   so only searches resolving to that statement read it. There is no poisoning now. The one care
+   point that still applies: the check runs while settling and must fire **once**, then be
+   terminal — don't re-alarm every step. What follows below was written for the removed
+   mechanism and is retained only as a record of it; reading the value
    is via `get_value()`, so the NK substitutes naturally with no separate "poison" flag to
    propagate.
 
@@ -866,10 +874,13 @@ approval tests pin observable behavior byte-for-byte; the comprehensive weaves i
 **Null-constant rule** (build FIR via the parser + `.search()` per the unit-test infra):
 - Ancestor defines `'k=⬤`; descendant `'k=<the same creation via reference>` ⇒ permitted
   (statement keeps its value).
-- Ancestor `'k=1`; descendant `'k=2` ⇒ descendant `get_value()` returns `NK("'k redefined")`;
-  a search that resolves to that descendant statement reads the NK.
-- **Poison scope**: a sibling brane that resolves `k` to a *different* (non-conflicting)
-  definition, or does not reference `k`, is **unaffected** (its value is not NK).
+- Ancestor `'k=1`; descendant `'k=2` ⇒ **see FOOP-86 §6, which changed this behavior.**
+  Originally: the descendant's `get_value()` returns `NK("'k redefined")` and a search
+  resolving to it reads the NK. Now the descendant statement is unsteppable: its BRANE takes
+  NK, and the statement keeps its written `2`.
+- ~~**Poison scope**~~ — removed with poisoning itself (FOOP-86 §6). The containment it
+  described still holds, by a different mechanism: the NK is confined to the offending
+  statement's own brane, so an unrelated sibling brane is unaffected (§6.4c).
 - Descendant query returns true for a name an ancestor null-characterized, false otherwise.
 - **Non-null names are unaffected**: `k=1` then `k=2` (no leading `'`) is *not* refused —
   regression guard that the rule only fires on null-characterized coordinate names.
@@ -911,7 +922,10 @@ One focused input per behavior (small, legible, full-width-space indentation), p
 - `system_prelude.foo` — a program that simply references `True`/`False`, resolving ancestrally
   into `system.foo` with no local definition.
 - `null_const_permit.foo` — `'True='True` (or the same creation) is permitted (no NK).
-- `null_const_refuse.foo` — `'True=3` settles NK and poisons subsequent `True` use.
+- `null_const_refuse.foo` — **superseded; see FOOP-86 §6.** Originally: "`'True=3` settles NK
+  and poisons subsequent `True` use." This case was never created under that name; the behavior
+  is covered by `foop/33/boolean/null_char_constant.foo`, where `'True=3` is an unsteppable
+  statement that halts its brane without poisoning the earlier readers.
 - `concat_null_collision.foo` — the `{A={'a=1}, B=A A A}` case, so the NK-of-later-duplicates
   is visible in a signed snapshot.
 - `comparison_basic.foo` — `a=3; b=5; lt = a < b; gt = a > b; le = a <= b; ge = a >= b;`
@@ -1433,35 +1447,21 @@ work that touches this one, or during ordinary use.)*
 
 ## Last Updated
 
-**Date**: 2026-08-05
+**Date**: 2026-09-21
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Named creations cannot be renamed** — new rule, human-directed, closing the gap
-the two-condition rendering fix (prior entry) left open: rendering correctly showed a creation's
-original name, but nothing stopped a SECOND null-characterized statement from pointing at the
-same creation (`'other = 'True`), letting one creation answer to two "unique" names.
-`StatementFir::check_rename_of_named_creation` (`foolish-ubca/src/fir_kinds.rs`) now refuses
-(NF, "Named creations cannot be renamed") a null-characterized statement whose body resolves to
-a creation with an ALREADY-DIFFERENT original name; same-name reassertion (`'a='a`) stays
-permitted (mirrors the pre-existing `'True='True` guarantee), and a creation with no original
-name may be named for the first time freely. Documented "named creation"/"original name" as
-formal terminology in AGENTS.md §Foolish Terminology and a new README.md "### Named creations
-cannot be renamed" subsection under "## Renaming". 4 new unit tests; promoted
-`foop/33/chracterization_sequencing.foo.einmo` to `checked/` for the first time — its `'bad='b`
-statement (and `how_bad_can_it_b`, which indexes to it) now correctly settle NF. `cargo test
---workspace`: 311 unit tests pass; einmo green except the known frozen `foop/62/infinite_loop`.
-Added a second "Concerns Standing Past Completion" resolution entry recording this as closing
-the gap the prior entry's fix left open.
-
-Earlier entry (2026-08-04): **Revised `get_display_name` to a two-condition rule** — a creation
-reports its name only when (1) viewed from a statement OTHER than its own defining statement,
-AND (2) that defining statement's name is null-characterized. Fixed self-referential rendering
-(`{a=⬤;}` → `{a=a}`) and a worse ambiguity (two different plain creations sharing a name
-rendering indistinguishably). `viewed_from`/`current_stmt` threaded through the whole
-`evaluator.rs` conversion family. 5 einmo baselines re-promoted.
-
-Earlier entry (2026-08-04): **Phase 9 IMPLEMENTED — the creation-name sequencer bridge**,
-closing the "Creation value render form in hssnap" Open Question. `foolish-core::Fir::Creation`
-changed from a unit variant to `{ name: Option<String> }`; `evaluator.rs::proto_to_core_fir_inner`
-resolved the name at the conversion boundary; the sequencer rendered `Some(name)` as the name
-and `None` as the `⬤` glyph. 16 new tests. Merged to `jia`. This log keeps only the single
-newest entry per the Markdown File Update Protocol; full history in `git log` on this file.
+**Changes**: Marked §4's NK-POISONING mechanism SUPERSEDED throughout, pointing at FOOP-86 §6,
+which changed the behavior. FOOP-86's §6 addendum replaced the poisoning rule with the
+**unsteppable statement**: a conflicting re-definition of a null-characterized name no longer
+settles its own body NK and no longer poisons searches that resolve to it. Instead the
+statement is unsteppable, its BRANE halts and takes NK, and the statement itself reverts to
+Foolish keeping its written RHS. Poisoning was removed because it destroyed the very meaning
+the rule exists to preserve — a conflicting `'True = 3` took `'True` away from the readers
+ABOVE it, which is the opposite of protecting the constant. Six passages amended: the §Overview
+crux paragraph, §4's step-3 outcome, the whole "Poisoning is scoped to searches that discover
+this definition" paragraph, the implementation-note item 5, the `null_const_refuse.foo` test
+entry (that case was never created under that name — the behavior is covered by
+`foop/33/boolean/null_char_constant.foo`), and the two "Poison scope" test-list entries. Each
+amendment records what the text ORIGINALLY said before pointing at FOOP-86, so the superseded
+design remains legible as history rather than being silently deleted. The containment that
+"poison scope" described still holds, by a different mechanism — the NK is confined to the
+offending statement's own brane (FOOP-86 §6.4c).

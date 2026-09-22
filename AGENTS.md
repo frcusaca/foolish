@@ -859,6 +859,23 @@ a following `&`-search can read.
   being read as language behavior. Example:
   `ProtoBrane::sift_for_first_non_econstanic_descendent_search` walks the foolish store to
   validate an SFF construction invariant — it is not a Foolish search.
+- **Unsteppable** (FOOP-86 §6) - a statement that cannot be stepped, because stepping it would
+  give a null-characterized name a second, conflicting meaning in its context. Four routes reach
+  it (§6.2): written directly in the brane, brought in by a concatenation merge, brought in by
+  recoordination, or renaming an already-named creation. An unsteppable statement **halts its
+  brane**: the brane takes NK, the remaining statements go unstepped, and the unsteppable
+  statement itself **reverts to Foolish keeping its written value** — it is the CAUSE, not a
+  casualty, and is never itself labelled NK. The cause is stored on the brane
+  (`unsteppable_cause`), not on the statement, since the statement's body keeps its own honest
+  value. **A brane that is NK because of an unsteppable statement is distinct from an NK-VALUED
+  statement, which can reside within a conclusive brane** (§6.4c). There are no classes of NK —
+  unsteppable is not a NYES and does not correspond to NK; the brane containing an unsteppable
+  simply has NK, the same NK as any other. Route 3 (recoordination) is the exception that does
+  NOT halt: the brane segregates the run-time error, so only the holding statement settles NK.
+  Supersedes FOOP-33 §4's poisoning mechanism.
+- **Run-time error** (FOOP-86 §6.2a) - a Foolish fault discovered while STEPPING, as opposed to
+  at parse time. Unsteppable statements are the first named run-time error. A run-time error is
+  not a NYES and not a value; it is a fact recorded about the brane in which it occurred.
 - **Named creation** (FOOP-33) - a `⬤`/`{*}` creation that is the ENTIRE right-hand side of a
   null-characterized statement (e.g. `'True = ⬤`). The statement's null-characterized name is
   that creation's **original name** — a name that uniquely and durably identifies the one
@@ -1000,136 +1017,28 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-09-18
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added §Development Rules "Deferring an incidental bug found mid-refactor",
-placed directly after "The agent is responsible for correctness" (before "How To Write Rust
-Code"), documenting the two-checkbox pattern for handling a serious bug discovered incidentally
-during a complex feature or refactor, then revised the pattern twice over for two gaps found on
-re-review. First, the checked-immediately checkbox must now state, in the checkbox text itself
-(not merely implied by surrounding prose), that every OTHER existing test/gate/quality
-requirement stays in force unchanged and that ONLY the explicitly named case(s) are the accepted
-exception — closing the risk of the entry being misread as general permission to relax
-discipline once one bug is deferred. Second, the same first checkbox now requires that a real
-einmo case or unit test actually pin the discovered bug, and mandates creating that case AT THE
-MOMENT OF DISCOVERY (as part of checking the box) if none already exists — not inventing test
-coverage retroactively when the later fix checkbox is reached. The worked example is now: `[x]
-Found a bug during this work: <describe>. It impacts einmo cases A, B and D (created case D now,
-since no existing case covered this). Removed checked/verified for A, B, D after consulting the
-human. All OTHER test/gate requirements remain in force unchanged — only A, B, D are the
-accepted exceptions. Continuing with the current task now; see the later checkbox for the fix.`
-paired with `[ ] Fix the bug found above affecting cases A, B, D (deferred earlier in this
-plan) — here's what I know: <notes>. Confirm the fix makes A, B, D pass (they already have
-failing coverage) before this box is checked.` A new trailing bullet ties the test-creation
-requirement back to the existing "write the tests first" rule in `## Development process`:
-deferring the fix is sanctioned, deferring the test that proves the bug exists is not. The rest
-of the section is unchanged: this remains the mechanism for satisfying the existing rules mid-
-task, not a new exception to them — touching `checked/`/`verified/` einmo artifacts still
-requires the same human involvement the "Agents must never mark a Verified-tier test
-`#[ignore]`" rule already demands, and deleting a baseline to fail loudly is a different,
-still-human-gated act from editing one to agree with wrong behavior. Motivated by a live case in
-this session: while executing FOOP-86, a Phase 2 comparison found `foolish-ubca2` silently
-accepting a conflicting redefinition of a named creation that FOOP-33 says must refuse: the
-`checked/`/`verified/` einmo artifacts for that one case were deleted (after asking the human)
-so the gate fails loudly, and a `[ ] TODO` checkbox naming the fix was added to
-`FOOP-86.plan.md` for a follow-on session. Prior entry: amended §MISC "Concluding Paragraphs Are
-an Index, Not a Summary" with a
-WHETHER-to-write-one rule, placed near the top of the subsection (after the "what serves the
-reader is an INDEX" paragraph, before the labelling how-to) so a reader learns whether the
-section applies before reading how to apply it. A concluding section is NOT automatic — use best
-judgement, against two triggers, either of which makes one a MUST: at least TWO separate logical
-issues under discussion (precisely when the reader needs an index to navigate between them), or
-an output longer than roughly 1500 tokens / 3500 characters (length alone makes scrolling back
-hard enough to warrant it, even for one issue). A short single-issue response wants none: the
-human's own worked anti-example is "Division by zero is not handled." followed by "---- summary,
-division by zero is not handled." — pure restatement that spends the reader's attention for
-nothing. The triggers govern WHETHER, not HOW: once either is met, the rest of the subsection
-applies in full (index form, logical labels, positional markers, bolded separator). Prior entry:
-added §MISC "A Checkbox Marks What Needs Human Action", placed after "Bold Marks a
-Short Span…" and before "When in Doubt", ending the run of presentation guidance with the
-actionable-signal rule. Even with the orienting introduction, the logical labels and the concluding
-index, it is still often not plainly obvious whether a section needs the human to DO something or
-is simply news to celebrate — the reader should not have to infer it. So whenever the agent clearly
-knows an item depends on or demands human action or input, it marks it with an unchecked todo
-checkbox (`[ ] Bug D remains in code`), placed either on the logical section header itself or in
-that section's concluding sentence/paragraph — both sanctioned, pick whichever reads better. When
-the checkbox's association with a section is not clear, it gets its own letter so it can still be
-referred to (``[ ]G: please `cargo build` and verify``), reusing the same logical-label alphabet the
-neighbouring subsections establish. The stated benefit is structural: the checkbox carries the
-open/closed signal INLINE, so sections can be ordered by SUBJECT MATTER without segregating
-"outstanding issues" from "closed issues" — the structure follows the material, not the status.
-Prior entry: added §MISC "Bold Marks a Short Span — Use a Bolded Separator, Not a Bolded
-Paragraph", placed after "Concluding Paragraphs Are an Index…" and before "When in Doubt", since
-it governs the VISUAL FORMATTING of the same reports those two subsections describe. Bold marks a
-SHORT span the eye should land on — a header, a label, a key phrase — and is not a way to raise
-the volume of a paragraph. A multi-line bolded paragraph is difficult to read: bold loses its
-emphasis applied to a whole block, and the block becomes heavier and harder to scan than plain
-text. This applies squarely to the **orienting introduction** of the "Lead With the Most Important
-Information" subsection — write it in PLAIN prose, and set it off with a short bolded separator
-line (`----`) instead, which marks the boundary without a wall of bold. Section headers, by
-contrast, SHOULD be bolded, one line, sentence-capitalized (not Title Case, not ALL CAPS), per the
-human's own worked example: **A — The sequencer is built and green**. Prior entry: extended §MISC
-"Concluding Paragraphs Are an Index, Not a Summary" with a SECOND
-kind of marker and renamed the heading to "… — Logical Labels and Positional Markers". A brief
-lead-in now distinguishes the two: **logical labels** (A, B, C, D) mark sections the agent
-DELIBERATELY structured, knowing in advance what it needed to discuss; **positional markers**
-(`(s1)`, `(s2)`, `(s3)`…) mark WHERE IN THE TURN something happened and are emitted at regular
-intervals AS THE AGENT WORKS, independent of any logical structure. Why they exist: agents do
-long exploration — debuggers, printf tracing, dozens of tool calls — and equally produce
-mundane output (an `ls`, a `grep` result, a test summary) that is absurd to narrate yet is
-often exactly what the human wants to scroll back to; a positional marker lets the agent point
-at that raw output later ("the file list is at (s4)") without having explained it at the time.
-The closing index uses BOTH, per the human's verbatim worked example ("…Bugs A,B,C and D are
-identified and analyzed in their sections above. You may find interesting to see output at
-marker (s123) and (s356)."), and a logical section may itself refer back to a positional marker
-("the trace for this is at (s217)"). Because the markers are sequential they also support
-RANGES, in two forms: a plain span, "(Ranges S33-S132)", pointing at a long stretch of
-repetitive output without listing every marker in it; and a COMPARATIVE reference, "(notice t5
-result seems drastically different from others in t1-t10)", singling out an outlier by position
-without reproducing the ten results it stands out from — the case where narration is worst.
-Hence the cadence rule: emit markers regularly enough that a range MEANS something. Label choice
-is otherwise pragmatic: on a session restart, or when a
-sequence number cannot be established, switch to another rare sequential form (`t1, t2, t3` or
-`ss1, ss2, ss3`) — labels must be sensible and scoped to the CURRENT SESSION, not globally
-consistent or resumable, and must remain rare and distinctive for the same searchability reason
-the subsection already gives. Prior entry: added that subsection, directly after
-"Lead With the Most Important Information — Especially Bug Counts" as its companion — the first
-covers how to OPEN a report, this one how to CLOSE it. English composition's concluding
-sentence/paragraph convention is relaxed in a conversation turn: a conclusion need not restate
-anything. What serves the reader is an INDEX — a short closing paragraph saying WHERE above to
-find each item, so the human can scroll BACK on a terminal. That requires the items be LABELLED
-with markers easy to eyeball and to search: bolded **A**/**B**/**C**, **S1**/**S2**/**S3**, and
-rare distinctive sequential strings rather than markers that also occur in prose or code. Quotes
-the human's own worked example ("…please find them under headings A, B, C and D…") and notes the
-pairing: the orienting introduction names the items up front, the concluding index points back
-to the SAME labels. Prior entry: added §MISC "Lead With the Most Important Information —
-Especially Bug Counts",
-directly after "Uncertainty and Other Utterances in Conversing with Human": the most important
-information leads the paragraph and the first sentence, and for bug reports that means leading
-with the **action or state** — repaired, or still broken — never with the quantity found.
-"Repaired all 4 new bugs found this session." when all are fixed; "There are 2 UNCORRECTED bugs
-out of 8 discovered, 6 fixed." when they are not, with uncorrected bugs always leading. Both
-open on what the reader must act on, with the tally behind it. Names the anti-pattern the human
-has now read five times: opening with "Bugs found: 10 ......" and burying "All fixed" at the end
-of the section. Adds the delicate-or-complex case — several findings, or issues that resisted
-diagnosis — where an orienting introduction that states the shape of what follows and NAMES the
-items ("Four important findings are:"; "…The issues are A, B, C, and D….") IS the lede, the same
-rule rather than an exception, with a warning that it is no licence for a vague throat-clear.
-Prior entry: FOOP-56 (§4a): added the two missing predicate entries — **Pre-constanic**
-(`is_preconstanic()`, alias `is_nye()`) and folded predicate names into the existing
-**Constanic** (`is_constanic()`), **Constantew** (`is_constantew()`), and **Conclusive**
-(`is_conclusive()`) entries in the Foolish Terminology list, so a reader moves from concept to
-call. Noted that all four predicates live on `foolish-ubca2/src/nyes_ext.rs`'s `NyesExt`, and
-that **no `is_settled()` exists** — FOOP-62 §Terminology lists one, but it was never
-implemented; `foolish-ubca2` qualifies "settled" with its specific group everywhere instead of
-naming it as its own predicate. Prior entry: added **Constantew** and **Conclusive** to the
-Foolish Terminology list. Constantew (CONSTANT/INDEPENDENT/NK — won't change no matter what) is
-existing vocabulary from FOOP-62 §Terminology that the list was missing; **conclusive**
-(CONSTANT/INDEPENDENT — reached a value) is introduced by FOOP-36 §0. The two are different cuts
-and differ exactly on NK, which is constantew yet inconclusive. Retains the prior entry's rule:
-agents must never mark a Verified-tier test `#[ignore]` on their own judgment — that decision
-belongs to the human, explicitly, every time, and applies retroactively (see FOOP-16 for
-`foolish-ubca2`'s case).
+**Date**: 2026-09-21
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **Unsteppable** and **Run-time error** to §Foolish Terminology (before
+**Named creation**), per FOOP-86 §6.2a's closing note, on merging FOOP-86 to `jia`
+(`35d18b69`). A statement is **unsteppable** when stepping it would give a null-characterized
+name a second, conflicting meaning in its context; four routes reach it (written directly,
+concatenation merge, recoordination, renaming a named creation). An unsteppable statement HALTS
+ITS BRANE: the brane takes NK, the remaining statements go unstepped, and the unsteppable
+statement itself REVERTS TO FOOLISH keeping its written value — it is the CAUSE, not a
+casualty, and is never itself labelled NK. The cause is stored on the brane
+(`unsteppable_cause`), not the statement, since the statement's body keeps its own honest
+value. The entry states the distinction the human was emphatic about: a brane that is NK
+because of an unsteppable statement is DIFFERENT from an NK-VALUED statement, which can reside
+within a conclusive brane (§6.4c). It also records that there are NO CLASSES of NK —
+unsteppable is not a NYES and does not correspond to NK; the brane containing one simply has
+NK, the same NK as any other — and that route 3 (recoordination) is the exception that does NOT
+halt, because the brane segregates the run-time error. This mechanism SUPERSEDES FOOP-33 §4's
+poisoning rule, which was removed because it destroyed the very meaning the no-redefinition
+rule exists to preserve: a conflicting `'True = 3` took `'True` away from the readers ABOVE it.
+**Run-time error** is defined as a Foolish fault discovered while STEPPING rather than at parse
+time — not a NYES and not a value, but a fact recorded about the brane in which it occurred;
+unsteppable statements are the first named example.
 
 ### MISC
 

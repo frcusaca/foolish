@@ -438,9 +438,15 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       (producing this finding) is done. Continuing with FOOP-86 now; see the TODO checkbox below
       for the fix.
       (2026-09-18 00:00)
-- [ ] **Fix the bug found above affecting `foop/33/boolean/null_char_constant.foo` (deferred
-      earlier in this plan) — not this FOOP's scope (see §3.3-style guard), flagged here for
-      whichever FOOP or session picks it up next.**
+- [x] **Fix the bug found above affecting `foop/33/boolean/null_char_constant.foo` (deferred
+      earlier in this plan)** — 2026-09-21 18:00:55. **FIXED IN THIS FOOP after all**: the human redirected
+      (2026-09-18, "let's fix the 'True = {*} bug before we merge"), and the fix became the §6
+      Unsteppable-statement addendum. The case now renders
+      `'True = 3;  !! NK: unsteppable — 'True already defined in context`, its brane halts and
+      takes NK, and the earlier readers keep finding the established `'True` — the poisoning
+      that destroyed that meaning is gone. `einmo_gate_checked` green, and the human promoted
+      the case to `verified/` interactively. The deferral pair is therefore CLOSED, not carried
+      forward.
 
       **ROOT CAUSE CORRECTED (2026-09-18, discovered during Phase 4b prep) — the original
       diagnosis above was WRONG and is superseded by this entry.** The original diagnosis
@@ -1453,58 +1459,95 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
         which §6.3 overturns, so this case's MEANING changes and the review must say why that
         is now correct
   - [ ] any further case that moved, named individually
-- [ ] **`verified/` twins**: `null_const_refuse.foo` and others may have them. **STOP and ask
-      the human** — an agent cannot sign the verified tier (AGENTS.md).
-- [ ] **Amend FOOP-33.** §6 supersedes §4's refusal mechanism but does not edit it. Update
-      FOOP-33 §4 (the "the statement's body settles to NK" paragraph and the whole "Poisoning is
-      scoped to searches that discover this definition" paragraph) to point at FOOP-86 §6, and
-      update FOOP-33's `## Last Updated`.
-- [ ] **Add to AGENTS.md's Foolish Terminology**: **unsteppable** and **run-time error**
-      (§6.2a's closing note).
-- [ ] **Completion gate for the standing testing requirement (§6.6c).** Before checking Phase 9
-      complete, enumerate every behavior §6 specifies and confirm **each has BOTH** a unit test
-      and an einmo case. Write the list out — a behavior with only one of the two is not done:
-  - [ ] route 1 (written directly) — unit ✓ einmo ✓
-  - [ ] route 2 (concatenation merge) — unit ✓ einmo ✓ *(new coverage)*
+- [x] **`verified/` twins** — 2026-09-21 18:00:02. STOPPED and asked, as required; the human promoted all
+      three interactively. `null_const_refuse.foo` DOES NOT EXIST in this suite — it was a
+      UBCa-era name that never became a case here (the behavior lives in
+      `foop/33/boolean/null_char_constant.foo`); the stale reference has been removed from
+      FOOP-33 on the human's instruction. Signatures checked before committing: all three
+      carry `stage:verified` pubkey `cbdd8bb43cb9f496`, matching pre-existing verified
+      baselines, confirming a human key rather than the well-known computer key.
+- [x] **Amend FOOP-33.** — 2026-09-21 18:00:02. Six passages marked superseded, each recording what the text
+      originally said before pointing at FOOP-86 §6 (the human: "adjust the FOOP to follow our
+      implementation, or remove the discussion if it is irrelevant"): the §Overview crux
+      paragraph, §4's step-3 outcome, the whole "Poisoning is scoped..." paragraph,
+      implementation-note item 5, the `null_const_refuse.foo` test entry, and the two "Poison
+      scope" test-list entries. `## Last Updated` replaced. Headings verified 36/36 against
+      HEAD.
+- [x] **Add to AGENTS.md's Foolish Terminology** — 2026-09-21 18:00:02. Both terms added before **Named
+      creation**. **Unsteppable** covers the four routes, the halt, the cause being stored on
+      the BRANE, the cause reverting to Foolish rather than being labelled NK, the distinction
+      from an NK-VALUED statement in a conclusive brane (§6.4c), that there are no classes of
+      NK, and route 3's non-halting exception. **Run-time error** notes it is a fault found
+      while STEPPING, not a NYES and not a value.
+- [x] **Completion gate for the standing testing requirement (§6.6c).** — 2026-09-21 17:59:40
+      Enumerated and VERIFIED against the source, not assumed. One genuine gap found and
+      reported rather than ticked (route 2, below).
+  - [x] route 1 (written directly) — unit ✓ (`unsteppable_halts_the_brane_and_leaves_the_remainder_unstepped`) einmo ✓ (`foop/33/boolean/null_char_constant`)
+  - [ ] **route 2 (concatenation merge) — NEITHER unit NOR einmo. NOT COVERED.**
+        Measured 2026-09-21 17:59:40: `{A = {'C = 10}; b = A A;}` renders `b = { 'C = 10; 'C = 10 }` —
+        no halt, no NK, no annotation. `apply_null_const_rule_to_merged_stmt` exists
+        (`fvm_storage.rs:3074`) but does not fire. **This is OUT OF SCOPE by the human's
+        2026-09-18 direction** — see §9c-note, "Do not implement it in Phase 9": concatenation
+        with an NK-brane operand stays "unchanged and unaudited" until a later FOOP. Recorded
+        here as a KNOWN, DELIBERATE gap so the gate is not falsely reported complete. It is the
+        one §6.2 route with no coverage; carry it into the concatenation FOOP.
   - [x] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)* — 2026-09-20 10:26:23
-  - [ ] the halt sets the brane NK **directly**, not via the rollup — unit ✓
-  - [ ] poisoning statement reverts to Foolish, body still `IndepInt`/`Independent` — unit ✓ einmo ✓
-  - [ ] remainder unstepped and NK, including a statement that never mentions the name — unit ✓ einmo ✓
-  - [ ] every access into an NK brane settles NK (anchored search, `#N`/`^`/`$`, plain ref) — unit ✓ einmo ✓
-  - [ ] rendering: suffix annotation + full-line comment + remainder as source — unit ✓ einmo ✓
-  - [ ] Property 1 (re-parses) and Property 2 (idempotent) for an NK brane — unit ✓
-  - [ ] a nested conflict does NOT halt the outer brane (§6.4c) — unit ✓ einmo ✓
-- [ ] **Every new/updated einmo input carries its `!!` block** naming the rule, citing §6, and
-      pointing out the unsteppable statement and route (§6.6c).
-- [ ] `cargo fmt`; `cargo clippy` — no new errors beyond Phase 0's 4 pre-existing.
+  - [x] route 4 (creation rename) — unit ✓ einmo ✓ (`foop/33/chracterization_sequencing`) — 2026-09-21 17:59:40
+  - [x] the halt sets the brane NK **directly**, not via the rollup — unit ✓
+        (`nk_member_does_not_halt_its_brane_but_an_unsteppable_statement_does`) — 2026-09-21 17:59:40
+  - [x] cause reverts to Foolish, body still `IndepInt`/`Independent` — unit ✓ einmo ✓ — 2026-09-21 17:59:40
+  - [x] remainder unstepped and NK, including a statement that never mentions the name — unit ✓ einmo ✓ — 2026-09-21 17:59:40
+  - [x] every access into an NK brane settles NK (anchored search, `#N`/`^`/`$`, plain ref) — unit ✓ (`every_access_into_an_nk_brane_settles_nk`) einmo ✓ — 2026-09-21 17:59:40
+  - [x] rendering: suffix annotation + full-line comment + remainder as source — unit ✓ einmo ✓ — 2026-09-21 17:59:40
+  - [x] Property 1 (re-parses) and Property 2 (idempotent) for an NK brane — unit ✓ — 2026-09-21 17:59:40
+  - [x] a nested conflict does NOT halt the outer brane (§6.4c) — unit ✓ (`a_nested_conflict_does_not_halt_the_outer_brane`) einmo ✓ — 2026-09-21 17:59:40
+  - [x] **CREATION internal state** — unit ✓ *(added 2026-09-21 17:59:40 at the human's direction: "make sure
+        the Creation related tests are unit tested since the revert-to-foolish does not exhibit
+        clearly what NYES and internal states are"). Three tests in `fvm_storage.rs`:
+        `search_finding_a_creation_settles_constant_regardless_of_nameability` (a search that
+        FINDS a creation settles CONSTANT and keeps the creation at `ubc_children[0]` —
+        nameless, named, and out-of-context alike, all three of which REVERT when rendered and
+        are therefore indistinguishable in einmo output),
+        `search_into_an_unsteppable_brane_settles_nk_not_constant` (the contrast: NK, and the
+        brane carries `unsteppable_cause`), and
+        `only_a_null_characterized_creation_has_a_display_name` (the mechanism behind the
+        reversion). Both behavioral tests verified NON-VACUOUS by mutation.
+- [x] **Every new/updated einmo input carries its `!!` block** — 2026-09-21 18:00:02
+      `null_char_constant.foo`, `chracterization_sequencing.foo` and
+      `foop/86/unsteppable_recoordination.foo` each name the rule, cite §6, and point out the
+      unsteppable statement and its route. Comments were SHORTENED on the human's request
+      during review (2026-09-20) — §6.6e's "remove most multi-line comments" TODO, applied to
+      `chracterization_sequencing` (19 comment lines to 9).
+- [x] `cargo fmt`; `cargo clippy` — 2026-09-21 18:00:02. fmt clean. clippy `--workspace -- -D warnings`
+      reports 5 errors (4 lints + 1 "could not compile"), IDENTICAL to `jia`'s count for
+      `foolish-core`; verified by running the same command on `jia` itself. FOOP-86 touched no
+      `foolish-core/src/` file (`git diff --stat jia...HEAD -- foolish-core/src/` is empty), so
+      zero new clippy errors were introduced.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Last Updated
 
-**Date**: 2026-09-20
+**Date**: 2026-09-21
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 9c2's route-3 entries REVISED on the human's review of the committed
-implementation. Route 3 still settles the holding statement NK without halting the receiving
-brane, but it no longer touches `ubc_children`. The committed version overwrote
-`ubc_children[0]` with a synthetic `Nk` node on both the statement and its body; the human
-challenged that — *"If a search has to turn NK due to resulting brane being NK, the search
-itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
-purposes"* — and investigation confirmed they were right. It produced the correct rendering by
-the wrong means: it destroyed the true record that the search DID find `A`, disturbed the
-FoolRefFir two-child invariant that `&`-searches and result chains read, and would have handed
-every other consumer of `[0]` a fabricated node.
-
-Route 3 now sets `Nyes::Nk` plus an `alarm_reason` and stops there. The rendering consequence
-moved to where it belongs, the render site, recorded as new §6.2b: `render_process_or_result`
-reads `ubc_children[0]`'s state rather than the node's, so a node that is itself NK while its
-result stayed CONCLUSIVE now reverts to its written form. That single condition is what
-separates route 3 (search succeeded, coordination failed, result conclusive) from a ROLLUP NK
-(`f = #-1`, whose result is itself NK and which §5.2 deliberately renders as a brane) — no new
-stored flag and no lookup into the referenced brane needed, since both states are already on
-hand. New test `foolish_node_nk_with_conclusive_result_reverts_to_written_form` pins the
-route-3 side and was verified non-vacuous by removing the render clause and watching it fail;
-the pre-existing `foolish_nk_brane_result_renders_the_brane_not_the_written_search` pins the
-rollup side. Rendered output is byte-identical to the superseded implementation, so no einmo
-INPUT or OUTPUT changed and nothing needed promoting. `foolish-ubca2` serial run: 177 passed /
-1 failed, the sole failure `einmo_gate_verified`, red on the three FOOP-86 cases that await the
-human's signing key.
+**Changes**: Phase 9e closed and the FOOP MERGED to `jia` (`35d18b69`). Three post-merge items
+on the human's direction. (1) **FOOP-33 amended** — six passages marked superseded, each
+recording what the text originally said before pointing at FOOP-86 §6, so the poisoning design
+stays legible as history rather than being silently deleted. (2) **CREATION unit tests added**,
+because the human observed that "the revert-to-foolish does not exhibit clearly what NYES and
+internal states are" — three tests pinning that a search which FINDS a creation settles
+CONSTANT and keeps the creation at `ubc_children[0]` whether it is nameless, named, or
+out-of-context (all three REVERT when rendered and so are indistinguishable in einmo output,
+which is exactly how a reader misread `?='a&#1` as "could not find" during review), against the
+contrast case of a search into an unsteppable brane settling NK. Both behavioral tests verified
+NON-VACUOUS by mutation. (3) **The stale `null_const_refuse.foo` reference removed** — that
+case never existed in this suite. **The completion gate was worked by VERIFYING each behavior
+against the source rather than ticking boxes, and it found one genuine gap: route 2
+(concatenation merge) has NEITHER a unit test NOR an einmo case, and does not halt** —
+`{A = {'C = 10}; b = A A;}` still renders `b = { 'C = 10; 'C = 10 }`. That is OUT OF SCOPE by
+the human's 2026-09-18 direction (§9c-note, "Do not implement it in Phase 9"), so it is
+recorded as a known, deliberate gap rather than reported complete, to carry into the
+concatenation FOOP. The deferred-bug checkbox pair from Phase 2 is CLOSED, not carried forward:
+the human redirected mid-FOOP to fix it, and that fix became the §6 addendum. Final gates:
+workspace 465 tests / 0 failures (`foolish-ubca2` 182, up from 179), `einmo_gate_verified`
+green with all three cases human-signed (`stage:verified` pubkey `cbdd8bb43cb9f496`), fmt
+clean, clippy unchanged from `jia`'s pre-existing 5 `foolish-core` errors.
