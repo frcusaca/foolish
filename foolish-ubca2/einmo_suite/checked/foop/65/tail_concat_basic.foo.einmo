@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/65/tail_concat_basic.foo
-suite: /yolo/foolish/foolish-ubca2/einmo_suite
-producer: 5c65a84c
-producer-diff: sha256:a18a831baaf24bcad23cc6cedb63ed2e364bf92b86d842c37e0e4597ea7d7c1d
-generated: 2026-09-01T17:03:27.000000000Z
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 60ce6639
+producer-diff: sha256:3ca34acfa029c1e2123eadb58085fc18e07f3f163a4e976871d0adad0a39c000
+generated: 2026-09-03T19:34:37.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -25,31 +25,31 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 }
 ①
 {
-  lhs={
-      x=1
+  lhs = {
+    x = 1
   };
-  rhs={
-      y=2
+  rhs = {
+    y = 2
   };
-  p1ˍbacktick={
-      y=2;
-      x=1
+  p1ˍbacktick = {
+    y = 2;
+    x = 1
   };
-  p1ˍjuxta={
-      y=2;
-      x=1
+  p1ˍjuxta = {
+    y = 2;
+    x = 1
   };
-  p2ˍbacktick={
-      b=20;
-      a=10
+  p2ˍbacktick = {
+    b = 20;
+    a = 10
   };
-  p2ˍjuxta={
-      b=20;
-      a=10
+  p2ˍjuxta = {
+    b = 20;
+    a = 10
   }
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"AiZgeaE1AZElgPXfKQj/cuL2XcX7/xuMOfMKsk+qoCCfUc/h/JYpEXmXjcya3C0jcahsav4bl+tzDjj6qE8+Bw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:27.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"lSfLDoeDeENXsgrD6EYwogQPGECMwfxP6+coFtQ/8hywaZzj+OWOoLmLY6o5xZDCtTar9Pn+cphE9Hb/6hCcBw==","produced_by":"einmo 0.1.0 sha256:4f3fcd3fe40aad6beeeabbbeb668f143e7a21334447d7cd4fcd6bbec5d6c68e3","timestamp":"2026-09-01T17:05:12.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:68add2cf3b2b0d69a89bede568a9702f04e0bfd3a271bb56780037892e016bc1","timestamp":"2026-09-03T19:34:38.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:68add2cf3b2b0d69a89bede568a9702f04e0bfd3a271bb56780037892e016bc1","timestamp":"2026-09-03T19:34:38.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"2GRNRi1sLDKGyrOVP0F+j5Ziz4mRGV6Tj0BW7FWTUxqT/NC7p8yMRNLN3BgZlH7jela+Smtfzr8G9zp3aRHfDg==","produced_by":"einmo 0.1.0 sha256:68add2cf3b2b0d69a89bede568a9702f04e0bfd3a271bb56780037892e016bc1","timestamp":"2026-09-03T19:34:38.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"NcZGRCFKe4dg+ZZ/xwCEP+gSgC8Y3wVW4TW8VW3qd4dBCXEOjbZu17MWqEG6Fec7tuRv7UlY7sKge7ztisUtAw==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-20T19:24:39.000000000Z"}

@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=①\n
 test: foop/33/boolean/comparison_non_integer.foo
-suite: /yolo/foolish/foolish-ubca2/einmo_suite
-producer: 5c65a84c
-producer-diff: sha256:784e968cdeec9b57b74add7a413756bb3c8c9c2e8ccd23295441e9587e5bf6a1
-generated: 2026-09-01T17:03:24.000000000Z
+suite: /yolo/foolish_worktrees/foop-36-foolish-rendering-sequencer/foolish-ubca2/einmo_suite2
+producer: 60ce6639
+producer-diff: sha256:878f5c4e08c76c794c7b0e555c1d245fef2c8a8267b5bd366504e0b270609e16
+generated: 2026-09-03T19:38:34.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS①
@@ -30,30 +30,13 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS①
 	only_one = {7, 'lt}$;
 }
 ①
-{NK
-  braneˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-      1;
-      {
-        x=5
-      };
-      ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-  };
-  creationˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-      1;
-      ⬤;
-      ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-  };
-  unknownˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-      1;
-      ??? (??? literal);
-      ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-  };
-  onlyˍone =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-      7;
-      ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
-  }
+{
+  braneˍoperand =$ {1; {x = 5}; 'lt};  !! NK: comparison: non-integer operand
+  creationˍoperand =$ {1; ⬤; 'lt};  !! NK: comparison: non-integer operand
+  unknownˍoperand =$ {1; ???; 'lt};  !! NK: comparison: non-integer operand
+  onlyˍone =$ {7; 'lt}  !! NK: comparison: non-integer operand
 }①
 ①
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"KaZ82LZ1J7A8o/P4QgKqoIhJrICQcl/o7nkaLbLCHTFZyCKPZPLJ+lOXznQnoNTqNogJ/xeVm3Xi6fDZcU5DDQ==","produced_by":"einmo 0.1.0 sha256:538b3e828db046ee242f49bd02dd4569178c0adba27e86ff07cd422b6ed0dbba","timestamp":"2026-09-01T17:03:24.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:34.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:34.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"JMQaSEVMONzMXMmZgLSJfEBXJFcDuRsEMVFAPenHvP/eTvF/qG2TUtDehvbJZNcCO8cbTLGCPZ0ww25UE0YCDg==","produced_by":"einmo 0.1.0 sha256:4a510d0504da01f69d6cb5f6378b1e14b7b9cd6174a870d262c332fecbc11173","timestamp":"2026-09-03T19:38:34.000000000Z"}

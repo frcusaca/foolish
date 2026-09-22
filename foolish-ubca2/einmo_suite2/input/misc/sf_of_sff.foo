@@ -1,1 +1,0 @@
-{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}

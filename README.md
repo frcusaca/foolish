@@ -86,20 +86,20 @@ Type `{` to start a brane — the REPL accumulates lines until braces balance, t
 
 ```bash
 cargo test --workspace                                   # all unit tests, all crates
-cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo approval gate (output == checked)
+cargo test -p foolish-ubca2 --lib -- einmo_gate_checked   # einmo approval gate (output == checked)
 ```
 
 **Approval tests (einmo) — the three gates:**
 
 ```bash
-cargo test -p foolish-ubca --lib -- einmo_gate_output    # every input evaluates + self-verifies in output/
-cargo test -p foolish-ubca --lib -- einmo_gate_checked   # output matches the signed checked/ baseline
-cargo test -p foolish-ubca --lib -- einmo_gate_verified  # checked matches the human-signed verified/
+cargo test -p foolish-ubca2 --lib -- einmo_gate_output    # every input evaluates + self-verifies in output/
+cargo test -p foolish-ubca2 --lib -- einmo_gate_checked   # output matches the signed checked/ baseline
+cargo test -p foolish-ubca2 --lib -- einmo_gate_verified  # checked matches the human-signed verified/
 
 # Review and promote:
-einmo compare output checked foolish-ubca/einmo_suite    # see what changed
-einmo promote output to checked foolish-ubca/einmo_suite # promote (ONLY after the Promotion Review Gate — see foop.md)
-poor_einmo.sh foolish-ubca/einmo_suite                   # interactive review
+einmo compare output checked foolish-ubca2/einmo_suite    # see what changed
+einmo promote output to checked foolish-ubca2/einmo_suite # promote (ONLY after the Promotion Review Gate — see foop.md)
+poor_einmo.sh foolish-ubca2/einmo_suite                   # interactive review
 ```
 
 **Snapshot workflow**: Run a test → if output differs, einmo reports the divergent sections →
@@ -123,7 +123,7 @@ sub-section and phase boundary, the canonical judgment is:
 
 ```bash
 cargo test --workspace                                   # all unit tests
-cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo approval gate
+cargo test -p foolish-ubca2 --lib -- einmo_gate_checked   # einmo approval gate
 ```
 
 ### Unit tests — select by name filter
@@ -132,17 +132,17 @@ cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo approval gate
 
 ```bash
 # One test group (every test whose full path contains "step_until"):
-cargo test -p foolish-ubca --lib -- step_until
+cargo test -p foolish-ubca2 --lib -- step_until
 
 # Batch — several filters in ONE invocation; a test matching ANY filter runs:
-cargo test -p foolish-ubca --lib -- step_until creation_display value_search
+cargo test -p foolish-ubca2 --lib -- step_until creation_viewed_from value_search
 
 # Exactly one test, by full path (no substring matching):
-cargo test -p foolish-ubca --lib -- --exact \
-    evaluator::step_until_tests::step_until_line_number_finds_line
+cargo test -p foolish-ubca2 --lib -- --exact \
+    fvm_storage::tests::step_until_line_number_finds_line
 
 # Discover test names to filter on:
-cargo test -p foolish-ubca --lib -- --list value_search
+cargo test -p foolish-ubca2 --lib -- --list value_search
 ```
 
 ### Einmo cases — select with `--filter` and file arguments
@@ -158,33 +158,33 @@ use `einmo` from your PATH, or `./target/debug/einmo`).
 
 ```bash
 # Re-evaluate ONE case, then compare it against the signed checked/ baseline:
-einmo evaluate foolish-ubca/einmo_suite \
+einmo evaluate foolish-ubca2/einmo_suite \
     --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
     --filter "foop/23/name_value_atomic"
-einmo compare output checked foolish-ubca/einmo_suite \
+einmo compare output checked foolish-ubca2/einmo_suite \
     foop/23/name_value_atomic.foo.einmo
 
 # Batch — the filter is a substring of the case path, so a shared prefix selects
 # many cases at once (here: every foop/23 case). Cases sharing no substring need
 # one invocation per group:
-einmo evaluate foolish-ubca/einmo_suite \
+einmo evaluate foolish-ubca2/einmo_suite \
     --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
     --filter "foop/23"
 
 # Compare several SPECIFIC cases in one invocation (mirror-relative paths):
-einmo compare output checked foolish-ubca/einmo_suite \
+einmo compare output checked foolish-ubca2/einmo_suite \
     foop/23/name_value_atomic.foo.einmo \
     foop/23/comprehensive.foo.einmo \
     misc/simple_addition.foo.einmo
 
 # Which cases exist / currently differ:
-einmo list foolish-ubca/einmo_suite --filter "foop/23" --differing
+einmo list foolish-ubca2/einmo_suite --filter "foop/23" --differing
 ```
 
 Note: einmo skips re-writing an output file whose evaluated body is unchanged; a file it DOES
 rewrite gets einmo's default `①` envelope separator rather than the suite's `!!` Foolish
 separator. That is framing only — the gate compares section bodies — but do not commit the
-churn: `git checkout -- foolish-ubca/einmo_suite/output/` restores the gate-written framing.
+churn: `git checkout -- foolish-ubca2/einmo_suite/output/` restores the gate-written framing.
 
 If a subset run reveals a divergence, that is broken code, not a stale baseline — fix the code;
 never `einmo promote` to make the diff go away (see `rust_instructions.md` §"Phase-by-phase
@@ -585,16 +585,26 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 
 ## Last Updated
 
-**Date**: 2026-08-12
-**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
-**Changes**: Added **§"Running specific tests"** — the CENTRAL reference for running one test
-case or a subset of cases (what FOOP plan checkboxes link to): unit-test selection by name
-filter (single filter, multi-filter batch with OR semantics, `--exact`, `--list`), and einmo
-case selection via the einmo CLI (`evaluate --filter` with the verified
-`foolish-cli run /dev/stdin | head -c -1` evaluator command — byte-identical to the gate's
-output; `compare` with specific case files; `list --filter --differing`). Repaired the stale
-test block above it: `run_einmo_tests` no longer exists (the three `einmo_gate_*` tests
-replaced it) and `einmo evaluate --command "cat"` was broken (it echoed INPUT as OUTPUT; the
-CLI also has no stdin mode — the `/dev/stdin` form is the working command).
+**Date**: 2026-09-18
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: FOOP-86 (retiring `foolish-ubca`) repointed every `-p foolish-ubca` and
+`foolish-ubca/einmo_suite` reference in this file to `-p foolish-ubca2` and
+`foolish-ubca2/einmo_suite` — the crate is gone; `foolish-ubca2` is now the sole
+implementation. Every command in §"Running specific tests" was re-run against the surviving
+suite to confirm it still works, not just search-and-replaced: the unit-test filter examples
+named tests specific to the OLD crate's module layout (`evaluator::step_until_tests::...`,
+`creation_display`) that don't exist in `foolish-ubca2`, so those were replaced with real,
+verified equivalents (`fvm_storage::tests::step_until_line_number_finds_line`,
+`creation_viewed_from` in place of the zero-hit `creation_display`). The einmo `evaluate`/
+`compare`/`list` examples were re-run against `foolish-ubca2/einmo_suite` and confirmed
+correct as documented. One separate, pre-existing, environment-specific issue was found and
+left unfixed (out of scope for this repoint): the evaluator command's `./target/debug/
+foolish-cli` relative path silently fails when `$CARGO_TARGET_DIR` is set to something other
+than the default `./target` (as it is in at least one working environment) — `sh -c` reports
+`not found` and the pipeline still "succeeds" with empty output, which `einmo evaluate`
+accepts as a normal (if vacuous) result. Not a FOOP-86 regression — the command was written
+this way before this FOOP and works correctly wherever `CARGO_TARGET_DIR` is unset — but worth
+a human's attention as a possible follow-on hardening (e.g. `cargo run -p foolish-cli --` in
+place of the literal binary path).
 
 This log keeps only the single newest entry — see `git log README.md` for full history.

@@ -4,7 +4,7 @@ use foolish_core::fir::Nyes;
 
 use crate::fvm_storage::{
     ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirPointer,
-    FirSpec, StayMarker, proto_to_core_fir,
+    FirSpec, StayMarker,
 };
 use crate::nyes_ext::NyesExt;
 
@@ -157,8 +157,135 @@ impl Ubca2Sequencer {
     }
 
     fn format_detailed(storage: &FVMStorage, fir: FirPointer) -> String {
-        let core_fir = proto_to_core_fir(storage, fir);
-        foolish_core::FirSequencer::format(&core_fir)
+        let mut out = String::new();
+        let mut visited = std::collections::HashMap::new();
+        DetailedRenderer::new(storage).render_node(
+            FirCursor::new(fir, storage),
+            0,
+            &mut visited,
+            &mut out,
+        );
+        out
+    }
+}
+
+/// The arena-native `Detailed` renderer (§3.2 of FOOP-86) — a FIR-internal
+/// dump read directly from `FVMStorage`/`FirSpec`/`FirCursor`, replacing the
+/// old delegation through `proto_to_core_fir` + `foolish_core::FirSequencer`.
+/// Unlike `Foolish` mode, this is not meant to re-parse: it exists to show a
+/// Foolisher (or another agent) exactly what the evaluator currently holds
+/// for one FIR node, including fields `proto_to_core_fir` never carried
+/// across — a search's direction and contexting chief among them (§1.2).
+struct DetailedRenderer<'a> {
+    storage: &'a FVMStorage,
+}
+
+/// A `FirPointer` reached more than once during one dump is labelled with
+/// the first `#N` it was assigned; a later reach prints a short back-
+/// reference instead of re-expanding the subtree.
+type VisitLabels = std::collections::HashMap<FirPointer, usize>;
+
+impl<'a> DetailedRenderer<'a> {
+    fn new(storage: &'a FVMStorage) -> Self {
+        Self { storage }
+    }
+
+    /// A settled arena is a DAG, not always a tree: a search's `FoolRef`
+    /// (referent) and a `Concatenation`'s `ubc_children` helper can each be
+    /// reached from more than one parent, and a pre-constanic, still-
+    /// stepping program may hold a genuine pointer CYCLE (a self-
+    /// referential brane like `f1 = { f1 }` is exactly what exceeding the
+    /// 9999-iteration cap looks like in the arena). Walking either shape as
+    /// if it were a tree re-expands a shared subtree once per path to it —
+    /// exponential blowup on a DAG, infinite on a true cycle. `render_node`
+    /// therefore labels every pointer the first time it is reached (`#N`)
+    /// and, on any later reach — sibling-shared OR a genuine ancestor
+    /// cycle, the distinction does not matter for finiteness — prints a
+    /// short back-reference instead of recursing again.
+    fn render_node(
+        &self,
+        cursor: FirCursor<'_>,
+        depth: usize,
+        visited: &mut VisitLabels,
+        out: &mut String,
+    ) {
+        let indent = "  ".repeat(depth);
+        let ptr = cursor.ptr();
+
+        if let Some(&label) = visited.get(&ptr) {
+            out.push_str(&indent);
+            out.push_str(&self.spec_summary(cursor.node()));
+            out.push_str(&format!(" <SEE #{label}>\n"));
+            return;
+        }
+        let label = visited.len();
+        visited.insert(ptr, label);
+
+        let nyes = cursor.get_nyes();
+        out.push_str(&indent);
+        out.push_str(&format!("#{label} "));
+        out.push_str(&self.spec_summary(cursor.node()));
+        out.push_str(&format!(" [{nyes}]\n"));
+
+        let ubc = cursor.ubc_children();
+        let foolish = cursor.foolish_children();
+        if !ubc.is_empty() {
+            out.push_str(&indent);
+            out.push_str("  ubc_children:\n");
+            for &child in ubc {
+                self.render_node(FirCursor::new(child, self.storage), depth + 2, visited, out);
+            }
+        }
+        if !foolish.is_empty() {
+            out.push_str(&indent);
+            out.push_str("  foolish_children:\n");
+            for &child in foolish {
+                self.render_node(FirCursor::new(child, self.storage), depth + 2, visited, out);
+            }
+        }
+    }
+
+    /// One line describing a node's `FirSpec` variant and its own
+    /// kind-specific fields (§3.2's required floor: pattern/anchored/
+    /// forward/is_value_search/contexted for searches; op and operand
+    /// order — via child order, already shown by the tree walk — for
+    /// operators; name and line number for statements).
+    fn spec_summary(&self, spec: &FirSpec) -> String {
+        match spec {
+            FirSpec::IndepInt { value } => format!("IndepInt(value={value})"),
+            FirSpec::Nk { reason } => format!("Nk(reason={reason:?})"),
+            FirSpec::Operator { op } => format!("Operator(op={op:?})"),
+            FirSpec::Statement {
+                identifier,
+                line_number,
+            } => format!(
+                "Statement(name={:?}, line={line_number})",
+                identifier.searchable_name()
+            ),
+            FirSpec::Brane { .. } => "Brane".to_string(),
+            FirSpec::Search {
+                pattern,
+                anchored,
+                forward,
+                is_value_search,
+                contexted,
+            } => format!(
+                "Search(pattern={pattern:?}, anchored={anchored}, forward={forward}, \
+                 is_value_search={is_value_search}, contexted={contexted})"
+            ),
+            FirSpec::Index {
+                offset,
+                anchored,
+                contexted,
+            } => format!("Index(offset={offset}, anchored={anchored}, contexted={contexted})"),
+            FirSpec::FoolRef { .. } => "FoolRef".to_string(),
+            FirSpec::StayFoolish => "StayFoolish".to_string(),
+            FirSpec::StayFullyFoolish => "StayFullyFoolish".to_string(),
+            FirSpec::ConcatHelper => "ConcatHelper".to_string(),
+            FirSpec::Concatenation { provenance, .. } => format!("Concatenation({provenance:?})"),
+            FirSpec::Creation => "Creation".to_string(),
+            FirSpec::Comparison { op } => format!("Comparison(op={op:?})"),
+        }
     }
 }
 
@@ -310,6 +437,34 @@ impl<'a> Renderer<'a> {
         F: FnOnce(&Self) -> Vec<String>,
     {
         let cursor = FirCursor::new(fir, self.storage);
+        // A node that ITSELF settled NK while its RESULT stayed CONCLUSIVE
+        // reverts to its written form. This is the FOOP-86 §6.2 route-3 shape:
+        // the search FOUND its target (so `[0]` is a perfectly good value),
+        // but coordinating that brane into this context failed, so the SEARCH
+        // is NK while its result is not.
+        //
+        // The test below reads the RESULT's state, never the node's, which is
+        // right for every ordinary case — a rollup NK (`f = #-1` finding a
+        // brane that is itself NK) has an NK result, and §5.2's brane
+        // exception deliberately renders it. Route 3 is the one case where the
+        // two disagree, and that disagreement is exactly the signal: a
+        // conclusive result under an NK node means the node failed for a
+        // reason of its own, so its value is not the thing to print.
+        //
+        // Checked HERE rather than by mutating `ubc_children` to hide the
+        // found value from the test below (human, 2026-09-20 — "the search
+        // itself (the search fir) has NK, it shouldn't need to change the
+        // ubc_children for most purposes"). `[0]` is the true record of what
+        // the search found, and `[0]`/`[1]` is the FoolRefFir two-child
+        // invariant that `&`-searches and result chains read.
+        if self.storage.get_nyes(fir) == Nyes::Nk
+            && cursor
+                .ubc_children()
+                .first()
+                .is_some_and(|&r| self.storage.get_nyes(r).is_conclusive())
+        {
+            return written(self);
+        }
         if let Some(&result) = cursor.ubc_children().first() {
             let result_nyes = self.storage.get_nyes(result);
             // The ordinary rule (§3): a CONCLUSIVE result renders as its
@@ -807,10 +962,53 @@ impl<'a> Renderer<'a> {
             return vec![format!("{chars}{{}}")];
         }
 
-        let statements: Vec<Vec<String>> = (0..count)
-            .filter_map(|index| cursor.stmt_at(index))
+        // FOOP-86 §6.5a — an unsteppable statement halted this brane. The
+        // cause is the statement that gave a null-characterized name a
+        // meaning it cannot have here; everything strictly after it went
+        // unstepped. `unsteppable_at` is the index of the FIRST unsteppable
+        // statement (the one after the cause), which carries the annotation;
+        // the full-line comment marks the remainder below it.
+        let stmt_ptrs: Vec<FirPointer> = (0..count).filter_map(|i| cursor.stmt_at(i)).collect();
+        let unsteppable_at = self.storage.unsteppable_cause(fir).and_then(|cause| {
+            stmt_ptrs
+                .iter()
+                .position(|&s| s == cause)
+                .map(|i| i + 1)
+                .filter(|&i| i < stmt_ptrs.len())
+        });
+
+        let statements: Vec<Vec<String>> = stmt_ptrs
+            .iter()
             .enumerate()
-            .map(|(index, statement)| self.render_statement(statement, width, index + 1 == count))
+            .map(|(index, &statement)| {
+                let mut rendered =
+                    self.render_statement(statement, width, index + 1 == stmt_ptrs.len());
+                if unsteppable_at.is_some_and(|at| index >= at)
+                    && !self.options.suppress_sequencing_comments
+                {
+                    // This statement and everything nested inside it was
+                    // never stepped, so every annotation `annotate` derived
+                    // from a NYES in here is noise — each reports a state
+                    // reached by NOT evaluating, not a finding. Strip them
+                    // all (the whole block, not just its first line, because
+                    // an unstepped nested brane renders its own untouched
+                    // members too). The first unsteppable statement then gets
+                    // the real reason; the rest are covered by the full-line
+                    // comment above them (§6.5a).
+                    for line in rendered.iter_mut() {
+                        if let Some(at) = line.find("  !!") {
+                            line.truncate(at);
+                        }
+                    }
+                    if Some(index) == unsteppable_at
+                        && let Some(reason) = self.storage.alarm_reason(fir)
+                        && let Some(first) = rendered.first_mut()
+                    {
+                        append_before_comment(first, &format!("  !! NK: unsteppable — {reason}"));
+                    }
+                }
+                rendered
+            })
             .collect();
 
         // Foolish Standard Formatting: ONE STATEMENT PER LINE, always (§4.1.1).
@@ -822,7 +1020,39 @@ impl<'a> Renderer<'a> {
         // end-of-line, so two statements sharing a line means the first one's
         // comment swallows the second.
         let mut lines = vec![format!("{chars}{{")];
-        for statement in statements {
+        // §6.5a's annotation normally rides on the FIRST UNSTEPPABLE
+        // statement — but when the cause is the brane's LAST statement there
+        // is no statement after it to carry it, and the reader would see a
+        // silently-NK brane. In that case the opener carries it instead, so
+        // the finding is never invisible.
+        if unsteppable_at.is_none()
+            && !self.options.suppress_sequencing_comments
+            && self.storage.unsteppable_cause(fir).is_some()
+            && let Some(reason) = self.storage.alarm_reason(fir)
+            && let Some(opener) = lines.first_mut()
+        {
+            opener.push_str(&format!("  !! NK: unsteppable — {reason}"));
+        }
+        for (index, statement) in statements.into_iter().enumerate() {
+            // FOOP-86 §6.5a: a correctly-indented full-line comment marks
+            // that the rest of the brane went unstepped. It sits immediately
+            // ABOVE the statements it describes, per AGENTS.md's comment
+            // style (a full-line comment marks the code BELOW it), and at the
+            // same indentation as those statements so the rendering stays
+            // valid, re-parseable Foolish.
+            if unsteppable_at.is_some_and(|at| index == at + 1)
+                && !self.options.suppress_sequencing_comments
+            {
+                // A blank line before a full-line comment, none after, per
+                // AGENTS.md §"Comment style in Foolish einmo inputs" rule 3:
+                // the space above separates it from what precedes, and its
+                // tightness below is what marks the lines it describes.
+                lines.push(String::new());
+                lines.push(format!(
+                    "{}!! the rest of this brane was not stepped",
+                    " ".repeat(BODY_INDENT)
+                ));
+            }
             lines.extend(
                 statement
                     .into_iter()
@@ -1150,7 +1380,7 @@ mod tests {
     use super::{SequenceMode, SequenceOptions, SequenceWarnings, Ubca2Sequencer, sanitize_reason};
     use crate::fvm_storage::{
         FVMStorage, FirCursor, FirPointer, FirSpec, compose_program_with_system, program_result,
-        proto_to_core_fir, step_to_constanic,
+        step_to_constanic,
     };
     use foolish_core::fir::Nyes;
 
@@ -1189,40 +1419,117 @@ mod tests {
         Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
     }
 
-    fn assert_detailed_delegates(source: &str, statement_index: usize) {
-        let (storage, fir) = evaluated_body(source, statement_index);
-        let core_fir = proto_to_core_fir(&storage, fir);
-        let expected = foolish_core::FirSequencer::format(&core_fir);
+    // T4b-i…iv (FOOP-86 §3.2, §Test Plan): the arena-native `Detailed`
+    // renderer has no byte-compatibility target — the old delegation tests
+    // it replaced (`detailed_delegates_for_*`) asserted equality with the
+    // very bridge this FOOP deletes, so they are superseded here rather than
+    // kept.
 
-        assert_eq!(
-            Ubca2Sequencer::format(&storage, fir, SequenceMode::Detailed),
-            expected
+    /// T4b-i — `Detailed` renders every FIR kind in the surviving corpus
+    /// without panicking. The cheapest thorough check: walk every input,
+    /// evaluate, render in `Detailed`, and require non-empty output.
+    #[test]
+    fn detailed_renders_every_fir_kind() {
+        fn foo_inputs_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+            fn walk(
+                dir: &std::path::Path,
+                root: &std::path::Path,
+                out: &mut Vec<std::path::PathBuf>,
+            ) {
+                let Ok(entries) = std::fs::read_dir(dir) else {
+                    return;
+                };
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        walk(&path, root, out);
+                    } else if path.extension().is_some_and(|ext| ext == "foo") {
+                        out.push(path.strip_prefix(root).unwrap().to_path_buf());
+                    }
+                }
+            }
+            let mut paths = Vec::new();
+            walk(dir, dir, &mut paths);
+            paths
+        }
+
+        let suite_dir =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite/input");
+        let inputs = foo_inputs_under(&suite_dir);
+        assert!(!inputs.is_empty(), "no einmo_suite inputs found to check");
+
+        let mut failures = Vec::new();
+        for rel in &inputs {
+            let source = match std::fs::read_to_string(suite_dir.join(rel)) {
+                Ok(s) => s,
+                Err(err) => {
+                    failures.push(format!("{}: could not read input: {err}", rel.display()));
+                    continue;
+                }
+            };
+            let mut storage = FVMStorage::new();
+            let Ok(roots) = compose_program_with_system(&mut storage, &source) else {
+                failures.push(format!("{}: compilation failed", rel.display()));
+                continue;
+            };
+            for root in roots {
+                let _ = step_to_constanic(&mut storage, root);
+                let target = program_result(&storage, root).unwrap_or(root);
+                let rendered = Ubca2Sequencer::format(&storage, target, SequenceMode::Detailed);
+                if rendered.is_empty() {
+                    failures.push(format!("{}: Detailed rendering was empty", rel.display()));
+                }
+            }
+        }
+        assert!(
+            failures.is_empty(),
+            "{} case(s) produced no Detailed output:\n{}",
+            failures.len(),
+            failures.join("\n")
         );
     }
 
+    /// T4b-ii — `Detailed` shows what the old bridge dropped: a resolved
+    /// search's direction and contexting. This is the test that proves the
+    /// rewrite was worth doing (§1.2, §3.2), not merely a port of the old
+    /// view.
     #[test]
-    fn detailed_delegates_for_integer() {
-        assert_detailed_delegates("{x=7;}", 0);
+    fn detailed_shows_search_direction_and_contexting() {
+        // `steps~bake` is an ANCHORED FORWARD name search; `&?prep` is a
+        // CONTEXTED backward search chained off `bake`'s found position.
+        // Both fields must be visible in the dump.
+        let (storage, program) =
+            evaluated_program("{steps={prep=7;bake=40;cool=9;};back_step=steps~bake&?prep;}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Detailed);
+        assert!(
+            rendered.contains("forward=true"),
+            "forward search direction missing from Detailed output:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("contexted=true"),
+            "contexted flag missing from Detailed output:\n{rendered}"
+        );
     }
 
+    /// T4b-iii — `Detailed` and `Foolish` are genuinely different renderings
+    /// of the same FIR (guards against the mode silently collapsing to one
+    /// implementation).
     #[test]
-    fn detailed_delegates_for_brane() {
-        assert_detailed_delegates("{x={a=1;};}", 0);
+    fn detailed_differs_from_foolish() {
+        let (storage, program) = evaluated_program("{x=3+4;}");
+        let foolish = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        let detailed = Ubca2Sequencer::format(&storage, program, SequenceMode::Detailed);
+        assert_ne!(foolish, detailed);
     }
 
+    /// T4b-iv — `Detailed` is deterministic: rendering the same settled FIR
+    /// twice produces identical output.
     #[test]
-    fn detailed_delegates_for_operator() {
-        assert_detailed_delegates("{x=1+2;}", 0);
-    }
-
-    #[test]
-    fn detailed_delegates_for_resolved_search() {
-        assert_detailed_delegates("{b={x=3;};r=b?x;}", 1);
-    }
-
-    #[test]
-    fn detailed_delegates_for_nk() {
-        assert_detailed_delegates("{x=1/0;}", 0);
+    fn detailed_is_deterministic() {
+        let (storage, program) = evaluated_program("{b={x=3;};r=b?x;}");
+        let first = Ubca2Sequencer::format(&storage, program, SequenceMode::Detailed);
+        let second = Ubca2Sequencer::format(&storage, program, SequenceMode::Detailed);
+        assert_eq!(first, second);
     }
 
     #[test]
@@ -1481,7 +1788,7 @@ mod tests {
             sanitize_reason("first①\nsecond\rthird"),
             "first second third"
         );
-        let contract = include_str!("../einmo_suite2/input/foop/36/rendering_contract.foo");
+        let contract = include_str!("../einmo_suite/input/foop/36/rendering_contract.foo");
         assert!(!contract.contains('①'));
         assert!(contract.contains("\n  !!!\n"));
         assert!(contract.contains("!!!\n\n  leaves"));
@@ -1830,6 +2137,47 @@ mod tests {
         );
         // A SCALAR NK still reverts — the written form is the information.
         assert_foolish_body("{x=1/0;}", 0, "1 / 0  !! NK: DIV-BY-ZERO: division by zero");
+    }
+
+    /// The COMPANION to the test above, pinning the one case where a node's
+    /// own NK and its result's state DISAGREE — and therefore the one case
+    /// where §5.2's brane exception must NOT fire.
+    ///
+    /// FOOP-86 §6.2 route 3: `D = A` recoordinates `A` into a brane that
+    /// already defines `'C` differently. The search FOUND `A` — its
+    /// `ubc_children[0]` is a perfectly good `Independent` brane — but
+    /// COORDINATING it in failed, so the SEARCH settles NK while its result
+    /// stays conclusive.
+    ///
+    /// Rendering the result here would print a coordination that never
+    /// happened, so the statement reverts to its written `A` and is
+    /// annotated. Contrast the rollup above (`f = #-1`), whose result is
+    /// ITSELF NK and which therefore DOES render its brane.
+    ///
+    /// This test exists because the first implementation got the render right
+    /// by the wrong means: it overwrote `ubc_children[0]` with a synthetic
+    /// `Nk` node, destroying the true record of what the search found and
+    /// disturbing the FoolRefFir two-child invariant. The human rejected that
+    /// (2026-09-20) — the NYES alone should carry the failure — so the
+    /// distinction now lives at the render site and needs a test that would
+    /// catch either half regressing.
+    #[test]
+    fn foolish_node_nk_with_conclusive_result_reverts_to_written_form() {
+        let (storage, program) = evaluated_program("{A={'C=1}, B={'C=2, D=A}}");
+        let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
+        assert!(
+            rendered.contains("D = A  !! NK: 'C already defined in context"),
+            "route 3 reverts to the written search and says why: {rendered}"
+        );
+        assert!(
+            !rendered.contains("D = {"),
+            "it must NOT print the brane it failed to coordinate in: {rendered}"
+        );
+        // The receiving brane is untouched, and `A` itself is still good.
+        assert!(
+            rendered.contains("'C = 2"),
+            "the receiving brane keeps stepping: {rendered}"
+        );
     }
 
     /// A combined NAME-AND-VALUE search (`a~tmp_.*=10`) is an atomic

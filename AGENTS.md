@@ -117,14 +117,26 @@ Here is a maintained list of current top level crates:
 
   - `foolish-core`: Core definitions that all crates share and depends on.
   - `foolish-parser`: Lexer, token, AST, and parser turning Foolish source text into an AST.
-  - `foolish-ubca`: The UBC — the reference implementation of Foolish evaluation (FIR kinds, NYES stepping, searches).
-  - `foolish-cli`: The `foolish` command-line binary (run/step/repl) wiring the parser and UBCa together.
+  - `foolish-ubca2`: The UBC — the reference implementation of Foolish evaluation (arena-backed
+    `FVMStorage`/`FirPointer`/`FirSpec` with enum dispatch, NYES stepping, searches). The `2`
+    suffix is vestigial (FOOP-86 §5): `foolish-ubca`, an earlier, independent
+    `Rc<RefCell<dyn Fir>>`-based implementation this crate was once kept honest against, has
+    been retired — `foolish-ubca2` is now the sole implementation, and the name is being kept
+    as a deliberate human decision, not renamed.
+  - `foolish-cli`: The `foolish` command-line binary (run/step/repl) wiring the parser and
+    `foolish-ubca2` together via `UbcaEvaluator::evaluate_arena` + `Ubca2Sequencer`.
   - `einmo`: Directory-based, cryptographically signed snapshot testing with a staged promotion pipeline.
-  - `zweimomo`: Einmo's companion test crate — pure-Rust Evaluator impls (Foolish/Python/JS) exercising einmo's signed-snapshot pipeline.
+  - `zweimomo`: Einmo's companion test crate — pure-Rust Evaluator impls (Foolish/Python/JS)
+    exercising einmo's signed-snapshot pipeline. **Stale entry, flagged not fixed**: as of
+    FOOP-86 (2026-09-18), no `zweimomo` directory exists anywhere in this tree and it is not a
+    workspace member — it appears to have left with einmo's extraction to its own repository
+    (cf. FOOP-25). A documentation finding for a human or a future FOOP to resolve, not
+    something to unilaterally remove from this list.
 
 Two more paths that should be fully read, bundled if possible are:
   - `docs`: For the purpose of bulk importing information, please also read this directory.
-  - `foolish-ubca/einmo_suite/`: These contain examples of how the Foolish language work. There's no need to read these if foolish-ubca was already ingested.
+  - `foolish-ubca2/einmo_suite/`: These contain examples of how the Foolish language work.
+    There's no need to read these if `foolish-ubca2` was already ingested.
 
 ## Skills
 
@@ -136,7 +148,7 @@ domain; do not improvise around it.
 
 | Skill | Scope | Load when… |
 |-------|-------|------------|
-| `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection: `step_until*` breakpoints, step-and-monitor of the `_children` stores + NYES, `ib_search`/`ab_search`, and the promote-to-regression-or-delete discipline. | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
+| `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection: `step_until*` breakpoints, step-and-monitor of the `_children` stores + NYES, `ib_search`/`ab_search`, and the promote-to-regression-or-delete discipline. | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca2`. |
 | `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
 | `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-`jia`, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
 | `rust-debugging` | Debugging Rust programs with GDB — building with debug symbols, breakpoints (function, file:line, conditional), step-into/over/out, value inspection, running test binaries, Rust-specific GDB techniques. Best used via sub-agent to keep main context clean. | Debugging Rust code, stepping through execution, inspecting state, diagnosing panics or wrong values. |
@@ -424,8 +436,8 @@ SUBSET (unit-test name filters, `--exact`, einmo case selection).
 
 ### Approval Tests (einmo)
 
-**foolish-ubca** approval tests use `einmo` for cryptographically signed snapshot testing. Test
-inputs live in `foolish-ubca/einmo_suite/input/`, outputs in `output/`, reviewed baselines in
+**foolish-ubca2** approval tests use `einmo` for cryptographically signed snapshot testing. Test
+inputs live in `foolish-ubca2/einmo_suite/input/`, outputs in `output/`, reviewed baselines in
 `checked/`, and human-signed artifacts in `verified/`.
 
 Each `.einmo` file is a signed envelope containing INPUT, OUTPUT, and STAMPS sections. Signatures
@@ -434,22 +446,31 @@ are Ed25519, derived from a passphrase via Argon2id.
 #### READ THE SUITE'S `einmo.toml` FIRST
 
 **Before generating, editing, or reviewing any einmo suite, read that suite's own
-`einmo_suite*/einmo.toml`.** Formatting and signing are configured **per suite**, and the
-suites genuinely differ — assuming one suite's conventions apply to another produces files
-that fail to serialize, or baselines signed with the wrong key.
+`einmo_suite/einmo.toml`.** Formatting and signing are configured per suite. FOOP-86
+(2026-09-18) retired the two other einmo suites this repository once carried
+(`foolish-ubca/einmo_suite`, which separated on `!!` + LF, a Foolish line comment; the old
+`foolish-ubca2/einmo_suite` — since renamed `einmo_suite2` then retired in turn) — there is now
+**one** suite, `foolish-ubca2/einmo_suite`, using einmo's default `①` (U+2460) + LF separator.
+Do not assume this is permanent: if a second suite is ever introduced, its conventions may
+differ, and the discipline below (read the toml, don't assume) is exactly what protects
+against that — do not delete this section when there is only one suite, since it states what
+must be RE-CHECKED the day there are two again.
 
 The toml (plus its header comments) is the authority on:
 
 - **The section separator**, and therefore what content is FORBIDDEN. Einmo splits sections on
   a configured separator string and does a plain substring check on every section body;
   a match is a **hard error at write time** (`EinmoError::SeparatorCollision` —
-  `einmo/src/format.rs::serialize`), so the file simply does not serialize. The suites are not
-  alike: `foolish-ubca/einmo_suite` separates on `!!` + LF (a Foolish line comment), while
-  `foolish-ubca2/einmo_suite` uses einmo's default `①` (U+2460) + LF. A case copied from one
-  suite into the other must be re-checked against the destination's separator.
+  `einmo/src/format.rs::serialize`), so the file simply does not serialize. The surviving suite
+  uses `①`; a case copied in from elsewhere (an old FOOP branch, a different project) must be
+  re-checked against this suite's separator before it will serialize.
 - **Which signing passphrase each stage uses**, and that `verified` is deliberately left
   unconfigured so a human must type a passphrase (an agent piping `--passphrase ""` gets the
-  well-known computer key, which the merge gate detects).
+  well-known computer key, which the merge gate detects). **`[signing.checked] passphrase =
+  "foolish-ubca2-suite2"` in the surviving suite's `einmo.toml` is not stale naming** — it
+  predates FOOP-86's directory rename (from when the suite was itself named `einmo_suite2`) and
+  the 181 `checked/` stamps were made under that exact string; changing it invalidates every one
+  of them. Do not "tidy" it.
 - Suite-wide settings such as `walk_depth_limit`.
 
 Confirm the separator against a real artifact too — the `#einmo 1 encoding=… separator=…`
@@ -473,12 +494,15 @@ A suite's `.foo` inputs are read by humans far more often than ordinary source �
    is the signal.
 
 Whether a bare `!!` line is *legal* depends on the suite's separator (above): harmless where
-the separator is `①`, a serialization error where it is `!!`.
+the separator is `①` — which is the surviving suite's separator, so a bare `!!` line is
+currently always fine — but it would be a serialization error in any FUTURE suite configured
+with `!!` itself as the separator (as the now-retired `foolish-ubca/einmo_suite` once was).
+Re-check this the day a second suite exists again.
 
 #### Key commands
 
 ```bash
-cargo test -p foolish-ubca --lib -- einmo_gate_checked    # run the full einmo suite
+cargo test -p foolish-ubca2 --lib -- einmo_gate_checked    # run the full einmo suite
 cargo test -p foolish-core --lib -- approval_all       # foolish-core approval suite
 
 # Evaluate specific inputs (subset runs): see README.md §"Running specific tests"
@@ -486,16 +510,16 @@ cargo test -p foolish-core --lib -- approval_all       # foolish-core approval s
 # (The command forms live ONLY in that README section — one central place.)
 
 # Review and promote:
-einmo compare output checked foolish-ubca/einmo_suite   # see what changed
-einmo promote output to checked foolish-ubca/einmo_suite # promote all
+einmo compare output checked foolish-ubca2/einmo_suite   # see what changed
+einmo promote output to checked foolish-ubca2/einmo_suite # promote all
 ```
 
 #### The einmo review workflow
 
-1. Run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — evaluates all inputs, writes
+1. Run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — evaluates all inputs, writes
    signed `.einmo` to `output/`, and checks `output == checked`.
 2. If the test fails (output diverged from checked), review with `einmo compare`.
-3. Use `poor_einmo.sh foolish-ubca/einmo_suite` for the interactive review loop (vim-based).
+3. Use `poor_einmo.sh foolish-ubca2/einmo_suite` for the interactive review loop (vim-based).
 4. **Before promoting, justify every OUTPUT line.** For each line of the diverged (or new)
    OUTPUT, the agent must be able to state, in its own words, *why that specific value is
    correct* — not merely that it matches what the evaluator produced. "The evaluator emitted
@@ -535,9 +559,9 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
    spec-correct. If you cannot write it, you have not reviewed it. When a FOOP plan is in
    play, this whole step is the **Promotion Review Gate** checkbox block (`foop.md`), with one
    sub-task per named case.
-5. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
-   Then re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — it must exit 0.
-6. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
+5. Promote reviewed outputs: `einmo promote output to checked foolish-ubca2/einmo_suite`.
+   Then re-run `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — it must exit 0.
+6. For release attestation: `einmo promote checked to verified foolish-ubca2/einmo_suite --interactive`.
 
 #### Non-regression invariant (hard rule)
 
@@ -578,17 +602,29 @@ situation. It is free to use the parser, the FoolishIndex and the root Brane's '
 the test itself easier to read to human reviewers of the test.
 
 #### NYES transition tests (`*_nyes_transitions`)
-Every FIR kind has a unit test named `<kind>_nyes_transitions` in
-`foolish-ubca/src/fir_kinds.rs` (tests module). Each steps the FIR to settled, records
-the per-step NYES sequence, and asserts the progression via the shared `assert_progression`
-helper: it must start `PREMBRIONIC`, end constanic, be monotone (no constanic → pre-constanic
-regression), and reach the kind's expected terminal state. There are also context tests that
-compile real Foolish and check the right thing is found in the right stage (e.g. IB search in
-EMBRYONIC vs AB search in BRANING).
+**This subsection describes `foolish-ubca`'s (retired, FOOP-86) convention — verify it before
+relying on it in `foolish-ubca2`.** `foolish-ubca` had a unit test named `<kind>_nyes_transitions`
+per FIR kind in `fir_kinds.rs` (tests module), asserted via a shared `assert_progression` helper
+that checked the progression started `PREMBRIONIC`, ended constanic, was monotone (no
+constanic → pre-constanic regression), and reached the kind's expected terminal state.
 
-**REQUIREMENT:** when you add a NEW FIR kind, or add/change a NYES state or transition, you
-MUST add or extend the corresponding `*_nyes_transitions` test(s) so the new progression is
-documented and pinned. These are unit tests (NYES is internal FVM state), not approval cases.
+`foolish-ubca2/src/fvm_storage.rs` has individually-named NYES-progression tests for several FIR
+kinds (`operator_division_by_zero_settles_nk` and others — several carry a doc comment noting
+they "mirror `fir_kinds.rs::tests::<kind>_nyes_transitions` exactly" as historical
+provenance), but **does not use the `*_nyes_transitions` naming suffix or an
+`assert_progression` helper** — checked directly (`grep -rn "fn assert_progression"
+foolish-ubca2/src/` returns nothing). Whether `foolish-ubca2` has a NYES-progression test for
+every one of its `FirSpec` variants, under whatever naming convention it actually uses, has not
+been audited as part of this correction — that audit, and either restating this REQUIREMENT
+against `foolish-ubca2`'s real convention or reintroducing the old one, is a documentation-debt
+item for a human or a follow-on FOOP, not something FOOP-86 resolved.
+
+**REQUIREMENT (principle unchanged, naming convention TBD):** when you add a NEW FIR kind
+(`FirSpec` variant), or add/change a NYES state or transition, you MUST add or extend a unit
+test asserting that kind's NYES progression, so it is documented and pinned. These are unit
+tests (NYES is internal FVM state), not approval cases. Until the audit above happens, follow
+the pattern of the nearest existing `FirSpec` variant's NYES test in `fvm_storage.rs` rather
+than inventing a new one.
 
 ### Approval Test
 Approval tests demonstrate the behavior of the Foolish VM by writing inputs in '.foo' files, running a special
@@ -730,7 +766,9 @@ contexted navigates neighbors.
 ##### The one-engine model (cursor-source × predicate)
 
 All search operators share one `ContextfulSearch` engine (in
-`foolish-ubca/src/fir_kinds.rs`), parameterized by two independent properties:
+`foolish-ubca2/src/fvm_storage.rs` — `CursorSource`, `SearchPredicate`, and
+`CandidateNavigator` all still exist there under these same names), parameterized by two
+independent properties:
 
 - **Cursor-source** (`CursorSource::Contextless` | `CursorSource::Contexted`) —
   where the Navigator starts. Contextless: anchor resolved to a brane, cursor
@@ -828,8 +866,10 @@ a following `&`-search can read.
   or that is merely an operand/sub-expression of a larger RHS, is not a named creation and has
   no original name. **Named creations cannot be renamed**: giving an already-named creation a
   SECOND, DIFFERENT null-characterized name (e.g. `'other = 'True`) is refused (NF) — see
-  `CreationFir::get_display_name` and `StatementFir::check_rename_of_named_creation` in
-  `foolish-ubca/src/fir_kinds.rs`. Re-stating a creation's OWN existing name (`'True = 'True`)
+  `FirPointer::get_display_name` and `FirPointer::check_rename_of_named_creation` in
+  `foolish-ubca2/src/fvm_storage.rs` (enum-dispatch methods on `FirPointer`, not per-kind
+  structs — `foolish-ubca2`'s design differs from `foolish-ubca`'s here, though the rule they
+  enforce is identical). Re-stating a creation's OWN existing name (`'True = 'True`)
   is not a rename and remains permitted.
 - **Lexed** - feature parses to AST
 - **Interpreted** - feature fully implemented in VM

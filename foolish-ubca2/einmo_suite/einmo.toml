@@ -1,34 +1,17 @@
-# einmo suite configuration — foolish-ubca (FOOP-64)
+# einmo suite configuration — FOOP-36 rendering contract
 #
-# The UBCa FVM's approval corpus, tested by einmo. (Inverse of zweimomo, where
-# the FVM is an evaluator used to test einmo.)
-#
-# Two tiers run against this one directory (FOOP-64 §Two-tier signing gate):
-#   * feature-complete test suite — output <-> checked; the computer key is
-#     acceptable here (AI promotion `output->checked` is the einmo design).
-#   * merge-ready test suite — output <-> verified; every stage:verified stamp
-#     must carry the human reviewer's key, and zero may carry the computer key.
-#
-# `verified` is deliberately NOT configured: with no passphrase tier set, the
-# cascade falls through to an interactive prompt, so a human must type their
-# passphrase to produce a verified stamp. An AI piping --passphrase "" gets the
-# well-known computer key, which the merge gate detects post-hoc.
+# This suite is deliberately separate from `einmo_suite`: its checked artifact
+# was written from FOOP-36 before the Foolish renderer was implemented. Output
+# uses the computer key; checked uses a suite-specific key. Verified remains
+# unconfigured so only an interactive human promotion can create that tier.
 
 [signing.output]
 passphrase = ""
 
 [signing.checked]
-passphrase = "foolish-ubca"
+passphrase = "foolish-ubca2-suite2"
 
 [suite]
-# Separator: einmo's DEFAULT — `①` (U+2460) + LF. `ubca_snapshot_tester.rs`
-# constructs the config with plain `TestConfig::new(...)` and does NOT call
-# `TestConfig::foolish_separator()`, so the default applies; the artifacts in
-# this suite carry `separator=①\n` in their header line.
-#
-# `①` is not Foolish syntax, so no input can collide with it (einmo hard-errors
-# at write time on a section body containing the separator — see
-# `einmo/src/format.rs::serialize`). Note this differs from
-# `foolish-ubca/einmo_suite`, which does use the Foolish line-comment separator
-# `!!` + LF; a case copied between the two suites must be re-checked.
+# Keep einmo's default `①` (U+2460) + LF separator, matching the sibling ubca2
+# suite. Neither INPUT nor OUTPUT may contain that separator sequence.
 walk_depth_limit = 32

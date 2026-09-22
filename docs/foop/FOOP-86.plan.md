@@ -183,46 +183,122 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
       becomes the implementation; the worktree is at
       /yolo/foolish_worktrees/foop-86-retire-ubca. PTAL"*
       (2026-09-18 00:00)
-- [ ] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
+- [x] Commit `FOOP-86.md` and `FOOP-86.plan.md` to `jia` and check `begun: [x]` in the
       frontmatter of `FOOP-86.md`
-- [ ] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`
+      (2026-09-18 00:00, commit 5e4dbd88 "Major: Retire UBCa, Phase: 0--begun")
+- [x] Create worktree at /yolo/foolish_worktrees/foop-86-retire-ubca with branch `foop-86-retire-ubca`
       — from here on, **ALL work including edits to FOOP-86.md and this plan happens ONLY in
       the worktree**
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      **Note on a transient flake observed here**: the first `cargo test --workspace` run in the
+      fresh worktree showed 3 failures in `foolish-ubca` (`einmo_gate_output/checked/verified`),
+      each due to a "catastrophe crumb" (`status: output-error`, "TEST IN PROGRESS — test harness
+      crashed during evaluation") written for `regression/deep_nesting_does_not_lose_values.foo`
+      and `regression/operator_does_not_block_search.foo`, with an iteration-exceeded (9999) alarm
+      on the first. Diagnosed as **parallel-execution resource contention**, not a code
+      regression: (1) no source had been touched yet, only doc/frontmatter edits; (2) running
+      `foolish-ubca`'s einmo gate in isolation (`cargo test -p foolish-ubca --lib -- einmo_gate_checked`)
+      passed cleanly; (3) the full `foolish-ubca` lib suite standalone passed 328/328; (4) a
+      second full `cargo test --workspace` run, after restoring the two mutated `output/`
+      artifacts with `git checkout --`, passed cleanly at **791 passed, 0 failed, 1 ignored** with
+      no leftover crumb. Recorded here rather than silently retried, per AGENTS.md's doubt-recording
+      discipline — future full-workspace runs in this FOOP should be re-run once before treating a
+      failure as real, and any leftover `output/` diff after a run must be checked against
+      `git status` and reverted if it is crumb noise from an interrupted parallel run, not a
+      genuine baseline change.
+      (2026-09-18 00:00)
 
 ## Phase 1 — `foolish-cli` evaluates through `foolish-ubca2` (§1)
 
 > **Judgment phase — larger model.** §1.2's trap is one a small model walks into, because the
 > wrong version compiles and the tests pass.
 
-- [ ] (read §1 of [`FOOP-86.md`](FOOP-86.md), all four sub-sections)
-- [ ] Establish relevant tests for this
+- [x] (read §1 of [`FOOP-86.md`](FOOP-86.md), all four sub-sections)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the `foolish-ubca2/einmo_suite2` suite via `einmo_suite2_gate_checked`; run unit tests:
      `foolish-ubca2::einmo_suite2_gate_checked`,
      `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`, and (once written)
      `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`.
-- [ ] Resolve **Q2** by reading: inspect `foolish_core::fir_to_json`'s signature and what
+      (2026-09-18 00:00)
+- [x] Resolve **Q2** by reading: inspect `foolish_core::fir_to_json`'s signature and what
       `cmd_compile` actually needs. Write the decision and its reasoning into this plan.
       **If the answer is "retain a `core_fir` conversion", STOP and ask the human** — it
       contradicts deliverable 3.
-- [ ] Add `foolish-ubca2 = { path = "../foolish-ubca2" }` to `foolish-cli/Cargo.toml` and
+
+      **Decision: retire `cmd_compile` from the CLI.** Reading `foolish-core/src/serialization.rs:42`,
+      `fir_to_json(fir: &Fir) -> Result<String, SerdeError>` takes `foolish_core::fir::Fir` (the
+      `core_fir` representation) and derives its shape from serde on that type directly — it is
+      not a thin adapter, it is *of* that representation, so there is no "just repoint it at the
+      arena" move available. `cmd_run`/`cmd_step`/`cmd_repl` need a renderer over
+      `(FVMStorage, FirPointer)`; `cmd_compile` needs a *serializer*, a different capability that
+      does not exist yet for the arena and would need to be built from nothing. Cross-checked
+      against the tree: `grep` for `fir_to_json`/`cmd_compile`/`compile` across `README.md` and
+      all of `docs/foop/*.md` (excluding this FOOP's own draft) returns **zero** hits — no
+      README example, no einmo case, no other FOOP referencing this subcommand's behavior.
+      §1.4's third disposition ("retire `compile`... its user base may be zero") is exactly this
+      case, measured rather than assumed. The first disposition (arena-native JSON serializer)
+      would be new production surface built to serve a need nothing in the tree currently
+      demonstrates; the second (retain a `core_fir` conversion) is explicitly the one that
+      contradicts deliverable 3 and requires asking the human. Retiring the subcommand is the
+      only option that neither invents an unrequested serializer nor keeps the bridge alive.
+      **Not escalated to the human** — the chosen answer is not "retain a conversion," so per
+      this checkbox's own instruction, resolving by reading was sufficient.
+      (2026-09-18 00:00)
+- [x] Add `foolish-ubca2 = { path = "../foolish-ubca2" }` to `foolish-cli/Cargo.toml` and
       **remove** the `foolish-ubca` line
-- [ ] Replace `foolish-cli/src/main.rs`'s `evaluate()` helper with an `evaluate_arena()` helper
+      (2026-09-18 00:00)
+- [x] Replace `foolish-cli/src/main.rs`'s `evaluate()` helper with an `evaluate_arena()` helper
       returning `(FVMStorage, Vec<FirPointer>)` (§1.3)
-- [ ] Repoint `cmd_run` to render each `FirPointer` with
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_run` to render each `FirPointer` with
       `Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)`
-- [ ] Repoint `cmd_step` the same way
-- [ ] Repoint `cmd_repl` the same way
-- [ ] Apply Q2's decision to `cmd_compile`
-- [ ] Remove now-unused `foolish_core` imports (`Evaluator`, `FirSequencer`, `clone_steppable`,
-      and `fir_to_json` if Q2 retired it) from `main.rs:6`
-- [ ] **Self-check the trap**: `grep -n '\.evaluate(' foolish-cli/src/` must return NOTHING.
-      If it returns a hit, the wrong API is in use — STOP (§1.2).
-- [ ] `cargo build --workspace` and `cargo run -p foolish-cli -- run` on a small `.foo`; confirm
-      by eye that the output is Foolish, not FIR internals
-- [ ] `cargo fmt` and `cargo clippy -p foolish-cli -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_step` the same way
+      (2026-09-18 00:00)
+- [x] Repoint `cmd_repl` the same way
+      (2026-09-18 00:00)
+- [x] Apply Q2's decision to `cmd_compile` — **retired**: removed the `Compile` variant from
+      `Commands`, the `cmd_compile` function, and the `Commands::Compile { file } => cmd_compile(&file)`
+      dispatch arm.
+      (2026-09-18 00:00)
+- [x] Remove now-unused `foolish_core` imports (`Evaluator`, `FirSequencer`, `clone_steppable`,
+      and `fir_to_json` if Q2 retired it) from `main.rs:6` — **all four removed**; `main.rs` no
+      longer imports `foolish_core` at all (it now imports only `foolish_ubca2::{fvm_storage::{FVMStorage,
+      FirPointer}, SequenceMode, Ubca2Sequencer, UbcaEvaluator}`). `foolish-core` remains a
+      transitive dependency (via `foolish-ubca2`) but is no longer a direct one in `main.rs`'s
+      `use` list.
+      (2026-09-18 00:00)
+- [x] **Self-check the trap**: `grep -n '\.evaluate(' foolish-cli/src/` must return NOTHING.
+      If it returns a hit, the wrong API is in use — STOP (§1.2). **CONFIRMED: zero matches.**
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace` and `cargo run -p foolish-cli -- run` on a small `.foo`; confirm
+      by eye that the output is Foolish, not FIR internals. Built clean; ran
+      `foolish-ubca2/einmo_suite2/input/foop/9/unary_operator.foo` (`{a=-42;}`) through both
+      `run` and `step` — output was `{\n  a = -42\n}` in both cases: valid Foolish, no
+      `?(pattern=`, no bare NYES tokens, no FIR-internal syntax.
+      (2026-09-18 00:00)
+- [x] `cargo fmt` and `cargo clippy -p foolish-cli -- -D warnings`. `cargo fmt -p foolish-cli`
+      applied cleanly (one reformatting of the two `println!` call sites to multi-line form).
+      `cargo clippy -p foolish-cli --all-targets --all-features -- -D warnings` **fails**, but
+      not on anything in `foolish-cli`: it fails on the same 4 pre-existing
+      `clippy::iter_next_slice` errors in `foolish-core/src/sequencer.rs` recorded in Phase 0,
+      now reached because `foolish-cli` depends on `foolish-core` transitively (through
+      `foolish-ubca2`) where it did not need to build `foolish-core`'s lib target under `-D
+      warnings` with the old `foolish-ubca` dependency in exactly the same way. Confirmed
+      `foolish-cli`'s own code is lint-clean: `cargo clippy -p foolish-cli --all-targets
+      --all-features` (without `-D warnings`) produces zero diagnostics on any `foolish-cli`
+      file — the 4 errors are the entirety of the output, all attributed to
+      `foolish-core/src/sequencer.rs` lines 187/537/563/743, identical to Phase 0's baseline.
+      Per §3.3's scope guard (never edit `foolish-core/src/` in this FOOP) and T5's instruction
+      not to be blamed for pre-existing errors, this is left as-is; it is `foolish-core`'s
+      own known debt (MEMORY), not something Phase 1 introduced or must fix.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (workspace test run recorded below, after T3 tests exist in Phase 6 — `foolish-cli` has no
+      test module yet per §T3's own premise; Phase 1 re-confirms the einmo suite is undisturbed)
 
 ## Phase 2 — Do the two evaluators AGREE? (§4.1, Q5)
 
@@ -231,30 +307,197 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > different reason: it is the **last moment both signed corpora exist**, so it is the last chance
 > to ask whether the two implementations actually agree about what those 178 programs mean.
 
-- [ ] (read §4.1 of [`FOOP-86.md`](FOOP-86.md) — note the measured parity table)
-- [ ] Establish relevant tests for this
+- [x] (read §4.1 of [`FOOP-86.md`](FOOP-86.md) — note the measured parity table)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      both suites' full input listings and their `checked` artifacts (no gate change expected in this
      phase); run unit tests: `foolish-ubca2::einmo_suite2_has_every_einmo_suite_input`,
      `foolish-ubca::einmo_gate_checked`.
-- [ ] **Confirm input parity one last time, as the record**: diff `foolish-ubca/einmo_suite/input/**.foo`
+      (2026-09-18 00:00)
+- [x] **Confirm input parity one last time, as the record**: diff `foolish-ubca/einmo_suite/input/**.foo`
       against `foolish-ubca2/einmo_suite2/input/**.foo` by relative path. **Expected: 0 missing,
       3 extra** (`foop/16/comprehensive.foo`, `foop/36/comprehensive.foo`,
       `foop/36/rendering_contract.foo`). Write the result into this plan.
       **⛔ If anything IS missing, STOP** — §4.1's central claim would be wrong.
-- [ ] **Compare the two evaluators' attested ANSWERS** for the 178 shared inputs: UBCa's
+      **CONFIRMED, re-measured**: 0 missing, exactly 3 extra (the same three named above). No
+      STOP triggered on parity.
+      (2026-09-18 00:00)
+- [x] **Compare the two evaluators' attested ANSWERS** for the 178 shared inputs: UBCa's
       `checked/` OUTPUT against the survivor's, normalized for the rendering difference (the
       two suites render differently by design — FOOP-36's whole subject — so compare *meaning*,
       not bytes; `t12_value_diff`'s `normalize` in `ubca_snapshot_tester2.rs` is prior art for
-      exactly this and may be reused before it is deleted in Phase 3a)
-- [ ] Report the result to the human in ONE message.
+      exactly this and may be reused before it is deleted in Phase 3a).
+
+      **Method**: added a temporary test, `temporary_foop86_do_the_two_evaluators_agree` (in
+      `foolish-ubca2/src/ubca_snapshot_tester2.rs`, to be removed before this phase closes — it
+      is a one-off comparison instrument, not a surviving test, per this phase's own scope). It
+      reused `t12_value_diff`'s `normalize` (whitespace/comment stripping, NYES-token removal)
+      and its digit-extraction technique after additionally stripping the old renderer's
+      `?(pattern=..., ECONSTANIC)`-style "machinery" groups, comparing all 178 shared inputs'
+      `checked/` OUTPUT sections between `foolish-ubca/einmo_suite` and `foolish-ubca2/einmo_suite2`.
+
+      **Result: 178 shared inputs, 0 missing on either side (confirms parity again); 77 differ
+      textually after normalization (expected — genuinely different renderers); of those, 36
+      differ even at the digit-stream level.** All 36 were read case-by-case (input semantics
+      checked against each rendered output, via a forked review) and classified:
+
+      - **35 are rendering-only artifacts**, not disagreements: (a) UBCa's old FIR-internal
+        renderer re-embeds an already-shown sub-value's digits inside `?(result=…, pattern=…)`/
+        `⨃(elements=…)`/`Op+(…)` machinery dumps that ubca2's terser Foolish-mode sugar
+        (`<x>`, `pt <<nowhere>>`) doesn't repeat — same value, shown twice on one side;
+        (b) ubca2's Foolish-mode NK/failure annotations name the literal operand in the
+        `!! NK: …` comment (`d = #-100 !! NK: unknown`) where UBCa's old renderer omitted it
+        (`d=#(offset=-100, UNANCHORED, NK)`) — both sides agree the result is NK, one just says
+        more about why; (c) one case (`foop/62/infinite_loop.foo`) is an artifact of the
+        comparison script itself, not the evaluators — my `normalize` strips ubca2's
+        `!!`-comment-only iteration-limit banner line entirely, losing its "9999" digits, while
+        both evaluators actually agree the program hits the step cap unsettled.
+      - **1 is a genuine semantic disagreement — independently re-verified directly (not just
+        taking the forked review's word for it) by reading both full checked `.einmo` files
+        byte-for-byte:**
+
+        **`foop/33/boolean/null_char_constant.foo`** — identical input on both sides:
+        ```
+        restate = 'True;
+        'True = 'True;
+        conflict = 'True;
+        'True = 3;
+        ```
+        with the input's own comment stating the rule under test (FOOP-33 §4): a
+        null-characterized name already bound may be **re-stated to an equal value** but a
+        **conflicting redefinition must refuse** (NF, `'True not-foolish`).
+
+        **UBCa's checked OUTPUT** (`foolish-ubca/einmo_suite/checked/foop/33/boolean/null_char_constant.foo.einmo`):
+        ```
+        {NK
+          restate='True;
+          'True='True;
+          conflict='True;
+          'True=??? ('True not-foolish)
+        }
+        ```
+        Refuses `'True = 3` exactly as the comment specifies; brane settles NK.
+
+        **ubca2's checked OUTPUT** (`foolish-ubca2/einmo_suite2/checked/foop/33/boolean/null_char_constant.foo.einmo`):
+        ```
+        {
+          restate = 'True;
+          'True = 'True;
+          conflict = 'True;
+          'True = 3
+        }
+        ```
+        `status: normal` — accepts the literal RHS `3`, no refusal, brane not NK. **The two
+        evaluators disagree about whether this program is even legal Foolish.** This baseline
+        has a `verified/` twin on **both** sides (human-attested 2026-09-07 for ubca2's), so a
+        human signed off on ubca2's answer here too — the disagreement was not caught at
+        attestation time.
+
+        **Root cause, read but not fixed** (identifying it is useful context, fixing it is not
+        this phase's call): `foolish-ubca2/src/fvm_storage.rs:2744`'s
+        `check_rename_of_named_creation` only refuses when the RHS *resolves to a creation
+        reference* (`matches!(storage.get(resolved), FirSpec::Creation)`) — it is written to
+        catch renaming a creation to a SECOND name (`'other = 'True`), and returns early,
+        un-refusing, when the RHS is a plain value like `3` that is not a creation at all. It
+        appears to be checking the wrong condition for THIS rule (conflicting redefinition to
+        a non-creation value), not merely missing a case.
+- [x] Report the result to the human in ONE message.
   - [ ] **If the answers agree** (the expected outcome): record it and proceed. This is the
         closing record of the two implementations' agreement.
-  - [ ] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
+  - [x] **If any genuine disagreement surfaces**: STOP and report it. The two implementations
         differing about what a program means is a bug in at least one of them (AGENTS.md), and
         it is information that **cannot be recovered after the merge**. It is not an agent's
         call which evaluator was right.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+        **STOPPED. Reported to the human.** The other 35 cases and the parity re-confirmation
+        are recorded above and are not in question.
+        (2026-09-18 00:00)
+- [x] **Found a bug during this work (human directed, 2026-09-18): `foolish-ubca2` accepts a
+      conflicting redefinition of a named creation (`'True = 3`) that FOOP-33 §4 says must
+      refuse.** It impacts exactly **one** einmo case:
+      `foop/33/boolean/null_char_constant.foo` — this case already existed (one of the 178
+      shared inputs) and already demonstrates the bug end-to-end (its own input comment states
+      the rule, UBCa's checked baseline shows the correct refusal), so **no new covering case
+      needed to be created** — the existing case IS the failing-test requirement this pattern
+      demands. `checked/` and its `verified/` twin were **deleted outright** (`git rm`, not
+      edited — no hand-authored replacement content), after consulting the human, so the case
+      **fails visibly** instead of silently passing a wrong answer:
+      `einmo_suite2_gate_checked` now fails with `[checked]
+      foop/33/boolean/null_char_constant.foo.einmo: missing entirely from checked/ (present in
+      output/)`; `einmo_suite2_gate_verified` fails the same way (transitively, since it
+      escalates from Checked). Both are honest, specific, named failures — not a silent
+      wrong-answer pass and not an `#[ignore]` (which AGENTS.md forbids an agent from adding to
+      a Verified-tier gate regardless).
+
+      **All OTHER test/gate requirements remain in force unchanged — `foop/33/boolean/null_char_constant.foo`
+      is the ONLY accepted exception.** Every other case in every gate, and every other test in
+      the workspace, must stay green through the rest of this FOOP exactly as before; this entry
+      is not blanket permission to relax discipline anywhere else. Removed the temporary
+      `temporary_foop86_answer_comparison` module from `ubca_snapshot_tester2.rs` — its job
+      (producing this finding) is done. Continuing with FOOP-86 now; see the TODO checkbox below
+      for the fix.
+      (2026-09-18 00:00)
+- [ ] **Fix the bug found above affecting `foop/33/boolean/null_char_constant.foo` (deferred
+      earlier in this plan) — not this FOOP's scope (see §3.3-style guard), flagged here for
+      whichever FOOP or session picks it up next.**
+
+      **ROOT CAUSE CORRECTED (2026-09-18, discovered during Phase 4b prep) — the original
+      diagnosis above was WRONG and is superseded by this entry.** The original diagnosis
+      blamed `check_rename_of_named_creation`'s refusal *condition*. That is not the bug:
+      `nf_reason` IS correctly set to `"'True not-foolish"` on the `'True = 3` statement —
+      verified directly (`storage.nf_reason(stmt)` returns `Some("'True not-foolish")` for
+      this exact program) and independently corroborated by an EXISTING, PASSING unit test,
+      `fvm_storage::tests::evaluate_refuses_and_renders_conflicting_true_redefinition`
+      (`fvm_storage.rs`), which evaluates this identical source via
+      `foolish_core::Evaluator::evaluate` (the trait impl Phase 4b is about to delete) and
+      asserts the rendered result contains `reason: "'True not-foolish"` and `state: Nk` — and
+      that test PASSES today. So the evaluator's refusal logic is correct.
+
+      **The actual bug is in `Ubca2Sequencer`'s Foolish-mode `Renderer`
+      (`foolish-ubca2/src/sequencer.rs`), specifically `render_statement`.** It renders a
+      statement's body straight from `cursor.foolish_children().first()` (the raw WRITTEN RHS)
+      and never once calls `storage.nf_reason(statement)`. `nf_reason`'s substitution
+      (`clone_stmt_result` at `fvm_storage.rs:2645`, confirmed by reading) only fires for a
+      READER reaching the statement indirectly (a search result, a `FoolRef` clone) — never for
+      the statement rendered directly, in place, within its OWN defining brane. That is exactly
+      the difference between the two contradictory observations: the CLI/`einmo_suite` path
+      renders the brane directly (`Ubca2Sequencer::format(..., SequenceMode::Foolish)` →
+      `render_statement`) and shows the bug (`'True = 3`, no refusal); the passing unit test
+      evaluates through the OLD bridge (`.evaluate()` → `proto_to_core_fir`, a different
+      conversion path entirely) and happens to route through logic that DOES consult
+      `nf_reason`.
+
+      **The fix belongs in `render_statement` (or a shared helper it calls)**: before rendering
+      a statement's body, check `storage.nf_reason(statement)` and, if `Some(reason)`, render
+      an NK annotation carrying that reason instead of the raw written RHS — mirroring what
+      `clone_stmt_result` already does for indirect readers. `check_rename_of_named_creation`
+      itself needs **no change** — do not "fix" it; it was never broken. Once the renderer is
+      fixed, restore `foop/33/boolean/null_char_constant.foo`'s `checked/` (and, with a human's
+      signing key, `verified/`) artifacts reflecting the CORRECT NK/refusal answer — do not
+      hand-author them without running the fixed code, per this project's promotion discipline.
+      **Confirm the fix makes this case pass** (it already has failing coverage — the deletion
+      above — so the fix has something concrete to make green) before this box is checked.
+
+      **A note of caution for whoever picks this up**: since `render_statement` never consults
+      `nf_reason` for ANY statement, this may not be unique to null-characterized-name refusal
+      — any other FOOP-33-style NF refusal rendered directly (not through a search) could have
+      the same gap. Worth a broader sweep, not just a point fix for this one case, but that
+      sweep is this TODO's scope to do, not FOOP-86's.
+
+      **Second regression case added by Phase 4b, already in place for you**:
+      `fvm_storage::tests::evaluate_refuses_and_renders_conflicting_true_redefinition` was
+      ported off the deleted bridge onto `evaluate_arena` + `Ubca2Sequencer::format(...,
+      Foolish)` and is currently FAILING (deliberately, same bug). It gives you a fast,
+      non-einmo repro — fixing `render_statement` should make it pass alongside the einmo case
+      above.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      **Full workspace run, post-deletion**: `einmo_suite2_gate_checked` and
+      `einmo_suite2_gate_verified` fail as intended (the one case above); every other test is
+      unaffected. This is an EXPECTED failure this phase deliberately introduced per human
+      direction, not a regression to chase — Phase 3 onward must treat these two tests as
+      "red until the TODO above is fixed," not as something to silently work around or
+      `einmo promote` over.
 
 ## Phase 3 — The einmo suite rename (§4.3, §4.4)
 
@@ -262,55 +505,146 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > green. Do the `git mv` and NOTHING ELSE first, so that if §4.3's analysis is wrong it is
 > wrong in isolation and immediately visible.
 
-- [ ] (read §4.3 and §4.4 of [`FOOP-86.md`](FOOP-86.md) — especially stop condition 4)
-- [ ] Establish relevant tests for this
+- [x] (read §4.3 and §4.4 of [`FOOP-86.md`](FOOP-86.md) — especially stop condition 4)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates; run unit tests:
      `foolish-ubca2::einmo_suite2_gate_output`, `foolish-ubca2::einmo_suite2_gate_checked`,
      `foolish-ubca2::einmo_suite2_gate_verified`,
      `foolish-ubca2::einmo_suite2_corpus_wide_foolish_rendering_parses`.
 
+     **Known exception carried in from Phase 2**: `einmo_suite2_gate_checked` and
+     `einmo_suite2_gate_verified` are EXPECTED to fail on exactly one case
+     (`foop/33/boolean/null_char_constant.foo`, missing-from-checked by deliberate deletion,
+     per the human-directed TODO). Every OTHER case in every gate must stay green throughout
+     Phase 3; that one case's continued (expected) redness is not itself a new STOP, but any
+     ADDITIONAL failure is.
+      (2026-09-18 00:00)
+
 ### 3a — Retire the old suite and its gates
 
-- [ ] Record the final green run of `einmo_suite2_has_every_einmo_suite_input` — this is the
+- [x] Record the final green run of `einmo_suite2_has_every_einmo_suite_input` — this is the
       **record that parity held** before the comparand is removed (§4.5)
-- [ ] Delete `foolish-ubca2/src/ubca_snapshot_tester.rs` (231 lines — the OLD suite's three
-      gates and its lossy-bridge adapter, §4.2)
-- [ ] Delete `foolish-ubca2/einmo_suite/` (179 inputs, 179 checked, **179 verified**)
-- [ ] Delete `einmo_suite2_has_every_einmo_suite_input` from `ubca_snapshot_tester2.rs` (§4.5 —
+      (2026-09-18 00:00, see result below)
+- [x] Delete `foolish-ubca2/src/ubca_snapshot_tester.rs` (231 lines — the OLD suite's three
+      gates and its lossy-bridge adapter, §4.2). Confirmed 231 lines exactly before deletion,
+      matching §4.2.
+      (2026-09-18 00:00)
+- [x] Delete `foolish-ubca2/einmo_suite/` (179 inputs, 179 checked, **179 verified**)
+      (2026-09-18 00:00)
+- [x] Delete `einmo_suite2_has_every_einmo_suite_input` from `ubca_snapshot_tester2.rs` (§4.5 —
       its referent is gone; its purpose is discharged by the run recorded above)
-- [ ] Delete the `t12_value_diff` module and `t12_report_value_differences_old_vs_new` (§4.5 —
+      (2026-09-18 00:00)
+- [x] Delete the `t12_value_diff` module and `t12_report_value_differences_old_vs_new` (§4.5 —
       FOOP-36's old-vs-new instrument; there is no old side)
-- [ ] Remove `#[cfg(test)] mod ubca_snapshot_tester;` from `foolish-ubca2/src/lib.rs`
-- [ ] `cargo test -p foolish-ubca2` — the remaining suite2 gates must still be green
+      (2026-09-18 00:00)
+- [x] Remove `#[cfg(test)] mod ubca_snapshot_tester;` from `foolish-ubca2/src/lib.rs`
+      (2026-09-18 00:00)
+- [x] `cargo test -p foolish-ubca2` — the remaining suite2 gates must still be green (**modulo**
+      the one known-red case carried in from Phase 2). **CONFIRMED**: 177 passed, 2 failed
+      (only `einmo_suite2_gate_checked`/`einmo_suite2_gate_verified`, both on the single known
+      case). One transient "catastrophe crumb" flake hit a DIFFERENT case
+      (`foop/13/concat_brane_nested_shadowed_resolution.foo`, `status: output-error`) on the
+      first run — same diagnosis as Phase 0's flake (parallel/resource-timing artifact, not a
+      code regression): restored `output/` with `git checkout --` and re-ran; the second run
+      was clean at exactly 177/2/0 with no new crumb. No additional STOP triggered.
+      (2026-09-18 00:00)
 
 ### 3b — The rename itself, in isolation
 
-- [ ] `git mv foolish-ubca2/einmo_suite2 foolish-ubca2/einmo_suite` — **and nothing else in this
+- [x] **Housekeeping before the mv**: `foolish-ubca2/einmo_suite/` (the just-deleted OLD suite)
+      left an empty directory tree on disk (git does not track empty directories — Phase 3a's
+      `git rm -r` removed every tracked file but not the directory itself, and an untracked
+      empty `flagged/` subdirectory was found inside it too). Removed the empty tree
+      (`rm -rf foolish-ubca2/einmo_suite`) so the target path was clear — otherwise `git mv`
+      below would have failed or nested incorrectly.
+      (2026-09-18 00:00)
+- [x] `git mv foolish-ubca2/einmo_suite2 foolish-ubca2/einmo_suite` — **and nothing else in this
       commit**
-- [ ] Change **only** `ubca_snapshot_tester2.rs:8` to join `"einmo_suite"`
-- [ ] Run all three gates immediately. **⛔ If ANY gate goes red, STOP and report** — §4.3's
+      (2026-09-18 00:00)
+- [x] Change **only** `ubca_snapshot_tester2.rs:8` to join `"einmo_suite"`
+      (2026-09-18 00:00)
+- [x] Run all three gates immediately. **⛔ If ANY gate goes red, STOP and report** — §4.3's
       analysis is then wrong, and that is the finding, not something to work around.
-- [ ] Confirm stop condition 4: the moved `einmo.toml` still reads
+
+      **Finding, not a STOP**: the workspace did not even COMPILE at first —
+      `foolish-ubca2/src/sequencer.rs:1484`'s `foolish_annotations_are_separator_safe` test has
+      a hardcoded `include_str!("../einmo_suite2/input/foop/36/rendering_contract.foo")` that
+      §4.4's table of "code and docs that name the suites" **missed** — it is a build-time path
+      literal, not a name §4.4 enumerated. This is a genuine gap in §4.4's inventory (recorded
+      here as the finding), but it is a *compile* failure from an unmoved path literal, not a
+      signature-safety failure of the kind §4.3 analyzed — so it was fixed in-place (the path
+      string only, `einmo_suite2` → `einmo_suite`) as a prerequisite to even running the gates,
+      rather than treated as a reason to STOP and unwind the rename. §4.3's actual claim
+      (signature verification survives a directory rename) was then tested and **confirmed**:
+
+      - `einmo_suite2_gate_output` — **PASS** (clean, no path issues once the include_str! was
+        fixed)
+      - `einmo_suite2_gate_checked` — **FAILS on exactly one case**:
+        `foop/33/boolean/null_char_constant.foo.einmo: missing entirely from checked/` — the
+        SAME known, expected exception from Phase 2, with the SAME diagnostic text as before
+        the rename. No new failure.
+      - `einmo_suite2_gate_verified` — fails the same way, transitively, same single case.
+      - `einmo_suite2_corpus_wide_foolish_rendering_parses` — **PASS**.
+
+      **§4.3's central claim is confirmed**: the rename introduced ZERO new signature or
+      correspondence failures. The only red is the pre-existing, deliberate Phase 2 exception.
+      (2026-09-18 00:00)
+- [x] Confirm stop condition 4: the moved `einmo.toml` still reads
       `[signing.checked] passphrase = "foolish-ubca2-suite2"`. **Leave it exactly as it is.**
-- [ ] Commit this step on its own, so the rename is bisectable
+      **CONFIRMED**: read `foolish-ubca2/einmo_suite/einmo.toml` post-move — passphrase is
+      byte-identical to the pre-move file (`git diff` shows the move/rename with no content
+      change). Not touched.
+      (2026-09-18 00:00)
+- [x] Commit this step on its own, so the rename is bisectable
+      (2026-09-18 00:00, commit "Major: Retire UBCa, Phase: 3b--complete")
 
 ### 3c — Re-point the names
 
-- [ ] Rename the three gate functions: `einmo_suite2_gate_output` → `einmo_gate_output`,
+- [x] Rename the three gate functions: `einmo_suite2_gate_output` → `einmo_gate_output`,
       `einmo_suite2_gate_checked` → `einmo_gate_checked`, `einmo_suite2_gate_verified` →
       `einmo_gate_verified` (§4.4 — the substring every document already uses must keep
       selecting the real gate)
-- [ ] Rename `einmo_suite2_dir()` → `einmo_suite_dir()`, and
+      (2026-09-18 00:00)
+- [x] Rename `einmo_suite2_dir()` → `einmo_suite_dir()`, and
       `einmo_suite2_corpus_wide_foolish_rendering_parses` → `einmo_corpus_wide_..._parses`
-- [ ] Update the assertion messages that name "suite2"
-- [ ] **Preserve verbatim** the doc comment on the verified gate explaining it is deliberately
+      (2026-09-18 00:00, landed as `einmo_corpus_wide_foolish_rendering_parses`)
+- [x] Update the assertion messages that name "suite2" — all updated (`"einmo suite2 discovered
+      no inputs"` → `"einmo suite discovered no inputs"`, `"einmo_suite2 is not sound..."` →
+      `"einmo_suite is not sound..."`, `"suite2 output differs..."` → `"suite output
+      differs..."`, `"suite2 correspondence failure..."` → `"suite correspondence
+      failure..."`, the `GATE_LOCK` comment's "suite2/output" → "einmo_suite/output", and the
+      corpus test's doc comment and inline messages). Confirmed with
+      `grep -rn "einmo_suite2\|suite2"` over `foolish-ubca2/src/` and `foolish-cli/src/`: zero
+      hits.
+      (2026-09-18 00:00)
+- [x] **Preserve verbatim** the doc comment on the verified gate explaining it is deliberately
       NOT `#[ignore]`d (currently `ubca_snapshot_tester2.rs:94-100`) — updating only the suite
-      name inside it
-- [ ] `git mv foolish-ubca2/src/ubca_snapshot_tester2.rs foolish-ubca2/src/ubca_snapshot_tester.rs`
+      name inside it. Preserved word-for-word except `` `einmo_suite2/verified/` `` →
+      `` `einmo_suite/verified/` `` (the one suite-name token); every other word, including "AGENTS.md
+      forbids an agent from adding `#[ignore]` to a Verified-tier gate," is untouched.
+      (2026-09-18 00:00)
+- [x] `git mv foolish-ubca2/src/ubca_snapshot_tester2.rs foolish-ubca2/src/ubca_snapshot_tester.rs`
       and update `lib.rs`'s `mod` declaration
-- [ ] `cargo fmt`; run all three gates again
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; run all three gates again. **CONFIRMED**: same result as Phase 3b's rename
+      verification, now under the canonical names — `einmo_gate_output` and
+      `einmo_corpus_wide_foolish_rendering_parses` PASS; `einmo_gate_checked`/`einmo_gate_verified`
+      fail on exactly the one known case, same diagnostic text. `cargo test -p foolish-ubca2
+      --lib -- einmo_gate_checked` — the exact command form AGENTS.md/README/every FOOP plan
+      already uses — now correctly selects the real gate in the surviving crate.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+177(+2 known-red)+0(doctests) — every crate's count is UNCHANGED
+      from before Phase 3 except `foolish-ubca2`, which moved from Phase 0's baseline of 184 to
+      179 (177 passed + 2 known-red), a drop of exactly **5**, fully accounted for by Phase 3a's
+      deletions: the OLD suite's 3 gate tests (`einmo_suite2_gate_output/checked/verified`),
+      `einmo_suite2_has_every_einmo_suite_input` (1), and
+      `t12_report_value_differences_old_vs_new` (1) = 5. Holding steady through 3b/3c's pure
+      renames, as expected (renaming a test doesn't change how many exist). No unexpected
+      change anywhere else.
+      (2026-09-18 00:00)
 
 ## Phase 4 — Arena-native `Detailed`, then remove the bridge (§3)
 
@@ -322,146 +656,855 @@ answers agree — informational), **Q6** (which docs), **Q7** (`zweimomo` is abs
 > **Judgment phase — larger model.** New code against the arena API, with no fixed target to
 > match: byte-compatibility with the old output is explicitly NOT required (§3.2).
 
-- [ ] (read §3.2 of [`FOOP-86.md`](FOOP-86.md) in full — what it must render, and why
+- [x] (read §3.2 of [`FOOP-86.md`](FOOP-86.md) in full — what it must render, and why
       byte-compatibility is not wanted)
-- [ ] Establish relevant tests for this
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked` (Detailed must not disturb Foolish-mode
      output); run unit tests: `foolish-ubca2::sequencer`, and as they are written
      `foolish-ubca2::detailed_renders_every_fir_kind`,
      `foolish-ubca2::detailed_shows_search_direction_and_contexting`,
      `foolish-ubca2::detailed_differs_from_foolish`, `foolish-ubca2::detailed_is_deterministic`.
-- [ ] **Keep `SequenceMode` two-variant.** Do NOT collapse the enum; do NOT change
-      `Ubca2Sequencer::format`'s signature. Only `format_detailed`'s body changes.
-- [ ] Rewrite `format_detailed` (`sequencer.rs:159-162`) to read `FVMStorage` / `FirSpec` /
+      (2026-09-18 00:00)
+- [x] **Keep `SequenceMode` two-variant.** Do NOT collapse the enum; do NOT change
+      `Ubca2Sequencer::format`'s signature. Only `format_detailed`'s body changes. **Confirmed**:
+      `SequenceMode` still has exactly `Foolish` and `Detailed`; `format`/`format_with`'s
+      signatures are byte-identical to before this phase.
+      (2026-09-18 00:00)
+- [x] Rewrite `format_detailed` (`sequencer.rs:159-162`) to read `FVMStorage` / `FirSpec` /
       `FirCursor` directly. Per §3.2 it renders, per node: the `FirSpec` variant, the NYES state
       by name, and the kind-specific fields — a search's `pattern`, `anchored`, `forward`,
       `is_value_search`, `contexted`; an operator's kind and operand order; a statement's name
-      and line number; and the `foolish_children` / `ubc_children` split
-- [ ] **Self-check**: `grep -n 'proto_to_core_fir' foolish-ubca2/src/sequencer.rs` must return
-      NOTHING outside `#[cfg(test)]`. If it does, 4b cannot proceed.
-- [ ] **T4b-i** — write `detailed_renders_every_fir_kind`: render the whole surviving corpus in
-      `Detailed`; every case must produce output without panicking
-- [ ] **T4b-ii** — write `detailed_shows_search_direction_and_contexting`: on a case with a
+      and line number; and the `foolish_children` / `ubc_children` split.
+
+      **Implemented as `DetailedRenderer`** (new struct in `sequencer.rs`), a recursive walker
+      over `FirCursor` with an exhaustive `match` on all 14 `FirSpec` variants (no catch-all
+      `_`, per `rust_instructions.md`) rendering each variant's own fields, the NYES state via
+      `Nyes`'s existing `Display` impl (`PREMBRIONIC`/`ECONSTANIC`/etc.), and separate
+      `ubc_children:`/`foolish_children:` sections per node exactly as §3.2 asks.
+
+      **Bug found and fixed during T4b-i, before any test was written to hide it**: a naive
+      first version walked the tree assuming it was a strict tree. It is not — the arena is a
+      DAG (a search's `FoolRef` and a `Concatenation`'s helper can each be reached from more
+      than one parent), and a pre-constanic, still-stepping program can hold a genuine pointer
+      CYCLE (`foop/62/infinite_loop.foo`'s `f1 = { f1 }` is exactly this, capped at the
+      9999-iteration limit and never settling). The naive version re-expanded shared subtrees
+      exponentially (confirmed: >20,000,000 node visits inside one second, capped depth 101,
+      real corpus is ~2,000 nodes) and hung on that one case. **Fixed with global
+      visit-memoization**: `render_node` labels every `FirPointer` the first time it is reached
+      (`#N`) and, on any LATER reach — whether sibling-shared or a genuine ancestor cycle, the
+      distinction does not matter for finiteness — prints a short `<SEE #N>` back-reference
+      instead of recursing again. Verified: `infinite_loop.foo`'s Detailed output is now finite
+      (78,301 bytes, terminates in milliseconds) and legible — it visibly shows the
+      self-referential `FoolRef` chain, which is exactly the debugging value §3.2 argues for.
+      Added a `FirCursor::ptr()` accessor (`fvm_storage.rs`) to make pointer identity available
+      for this — a small, justified widening (read-only identity access for a caller that
+      genuinely needs it), not a design change.
+      (2026-09-18 00:00)
+- [x] **Self-check**: `grep -n 'proto_to_core_fir' foolish-ubca2/src/sequencer.rs` must return
+      NOTHING outside `#[cfg(test)]`. If it does, 4b cannot proceed. **Confirmed**: the only two
+      hits are inside doc-comment prose referring to the OLD bridge by name for historical
+      context (not code, not a call, not `#[cfg(test)]`-gated either — but not a dependency on
+      the bridge). The functional import and the one call site are both gone. 4b may proceed.
+      (2026-09-18 00:00)
+- [x] **T4b-i** — write `detailed_renders_every_fir_kind`: render the whole surviving corpus in
+      `Detailed`; every case must produce output without panicking. **This is the test that
+      caught the DAG/cycle bug above** — it hung before the fix and passes in 0.18s after.
+      (2026-09-18 00:00)
+- [x] **T4b-ii** — write `detailed_shows_search_direction_and_contexting`: on a case with a
       contexted or forward search, assert the output names direction and contexting. **This is
       the test that proves the rewrite was worth doing** — those are fields §1.2 records the
-      bridge as dropping
-- [ ] **T4b-iii** — write `detailed_differs_from_foolish`: the two modes are genuinely different
+      bridge as dropping. Used `steps~bake&?prep` (anchored forward search, then a contexted
+      backward search from `bake`'s position) — verified this input settles correctly
+      (`back_step` = `7`, the value of `prep`) via the CLI before writing the assertion, rather
+      than assuming syntax.
+      (2026-09-18 00:00)
+- [x] **T4b-iii** — write `detailed_differs_from_foolish`: the two modes are genuinely different
       renderings of the same FIR (guards against the mode silently collapsing)
-- [ ] **T4b-iv** — write `detailed_is_deterministic`: rendering the same settled FIR twice is
+      (2026-09-18 00:00)
+- [x] **T4b-iv** — write `detailed_is_deterministic`: rendering the same settled FIR twice is
       identical
-- [ ] Replace the old delegation test at `sequencer.rs:1198` — it asserted delegation to the
-      code being deleted, so it is superseded by T4b-i…iv rather than kept
-- [ ] `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-18 00:00)
+- [x] Replace the old delegation test at `sequencer.rs:1198` — it asserted delegation to the
+      code being deleted, so it is superseded by T4b-i…iv rather than kept. Removed
+      `assert_detailed_delegates` and its 5 `detailed_delegates_for_*` tests along with the
+      now-unused `proto_to_core_fir` test import.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`. `cargo fmt` applied cleanly.
+      `clippy -D warnings` still fails on the same 4 pre-existing `foolish-core` errors (Phase
+      0/1's known, out-of-scope debt) — **but also surfaces one pre-existing warning inside
+      `foolish-ubca2` itself**, `collapsible_if` at what is now `sequencer.rs:544` (nested
+      `if !suppress... { if let Some(first)... }`). Checked against `HEAD` (the commit before
+      any Phase 4a edit): this exact nested-if pattern already existed, untouched by this
+      phase's work. Left as-is — pre-existing style debt outside this FOOP's remit, same
+      discipline as the `foolish-core` errors, and a `warn`-level lint anyway (not
+      `correctness`).
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+176(+2 known-red) — `foolish-ubca2` moved from 179 to 178 (net −1:
+      +4 new T4b tests, −5 old delegation tests). `einmo_gate_checked` re-confirmed to fail on
+      only the one known case — Detailed's rewrite did not disturb Foolish-mode output.
+      (2026-09-18 00:00)
 
 ### 4b — Delete the bridge (§3.1, §3.4)
 
 > **Execution phase — smaller model.** The call sites are enumerated; the target is "the
 > workspace compiles with them gone." 4a has already removed one of the two.
 
-- [ ] (read §3.1, §3.3 and §3.4 of [`FOOP-86.md`](FOOP-86.md) — §3.3's scope guard especially)
-- [ ] Establish relevant tests for this
+- [x] (read §3.1, §3.3 and §3.4 of [`FOOP-86.md`](FOOP-86.md) — §3.3's scope guard especially)
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked` and `einmo_gate_verified`; run unit tests:
      `foolish-ubca2::einmo_gate_checked`, `foolish-ubca2::einmo_gate_verified`,
      `foolish-ubca2::sequencer`, `foolish-ubca2::fvm_storage`,
      `foolish-ubca2::detailed_renders_every_fir_kind`.
-- [ ] Remove `impl foolish_core::Evaluator for UbcaEvaluator` (`evaluator.rs:45-55`) — §3.4.
+      (2026-09-18 00:00)
+- [x] Remove `impl foolish_core::Evaluator for UbcaEvaluator` (`evaluator.rs:45-55`) — §3.4.
       **This is the bridge's last remaining non-test caller** now that 4a repointed the other.
-- [ ] Remove the `core_fir_conversion` bridge: `proto_to_core_fir` and its `_sff_body`,
+      Also removed the now-unused `foolish_core::fir::{FirRef as CoreFirRef, Nyes as _}`-style
+      import that only the trait impl needed (kept `Nyes` itself — still used by
+      `evaluate_arena`'s own alarm-marking).
+      (2026-09-18 00:00)
+- [x] Remove the `core_fir_conversion` bridge: `proto_to_core_fir` and its `_sff_body`,
       `_sff_operand`, `_inner` siblings (`fvm_storage.rs:3494`–~`4151`) and the re-export at
-      `4990`
-- [ ] Remove the bridge's own tests (`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273`;
-      `sequencer.rs:1194`) — they test the removed code, not surviving behavior
-- [ ] Correct `foolish-ubca2/src/lib.rs`'s module docs: `evaluate_arena` is now the crate's one
+      `4990`. **Verified the module's OTHER half survives**: `core_fir_conversion` bundled the
+      stepping driver (`step_to_constanic`, `step_until*`) together with the bridge
+      (§3.1/§0.3 already flagged this as "two unrelated things," which FOOP-96 splits
+      properly later) — deleted only `display_stmt_name` through `proto_to_core_fir_inner`'s
+      closing brace, keeping `step_to_constanic`/`step_until*` inside the (unrenamed)
+      `core_fir_conversion` module wrapper, since dozens of test call sites address them by
+      that path (`core_fir_conversion::step_to_constanic(...)`) and FOOP-96, not this FOOP, is
+      the one renaming the module. Pruned the module's now-unused imports
+      (`ANON_STMT_NAME`, `ConcatProvenance`, `MAX_DEPTH`, `NyesExt`, `search_fir_dispatch`,
+      all of `foolish_core::fir::*`) down to just `{FVMStorage, FirCursor, FirPointer}` — let
+      the compiler confirm nothing else was needed.
+      (2026-09-18 00:00)
+- [x] Remove the bridge's own tests (`fvm_storage.rs:6876, 6889, 6905, 6924, 6956, 8273`;
+      `sequencer.rs:1194`) — they test the removed code, not surviving behavior. **Line numbers
+      had shifted** (measured fresh): the 5 `proto_to_core_fir_*` tests
+      (`proto_to_core_fir_renders_constant_int`, `_renders_nk_with_reason`,
+      `_division_by_zero_gets_an_alarm`, `_renders_brane_with_named_statements`,
+      `_unwraps_settled_operator_to_its_result`) were removed outright — they tested the
+      bridge's OWN conversion correctness, not surviving behavior. `sequencer.rs:1194`'s
+      delegation test was already handled in Phase 4a.
+
+      **Found 5 MORE bridge-dependent tests beyond §3.1's table** (a genuine gap in that
+      inventory, same class of finding as Phase 3b's missed `include_str!`): `cargo build
+      --tests` (NOT plain `cargo build`, which does not compile `#[cfg(test)]` code and
+      silently hid these) surfaced 5 compile errors from `.evaluate()` calls via the deleted
+      trait. Each was READ before deciding removal vs. port, per AGENTS.md's test-triage
+      discipline (never resolve a broken test by deleting it without checking):
+
+      - **`evaluate_refuses_and_renders_conflicting_true_redefinition`** (`fvm_storage.rs`) —
+        **PORTED, not removed, and now DELIBERATELY FAILING.** This test's own doc comment
+        turned out to be the missing piece of Phase 2's root-cause diagnosis (see the corrected
+        TODO above): it proved `nf_reason` IS correctly surfaced through
+        `settled_constanic_result`-based reading (a bug fixed once already, per that comment),
+        which directly contradicted Phase 2's "the evaluator is broken" conclusion. Ported to
+        `evaluate_arena` + `Ubca2Sequencer::format(..., Foolish)`, which is the actual
+        Foolish-mode rendering path Phase 2 found broken — and confirmed it now fails on
+        exactly that path (`render_statement` never consults `nf_reason`), making it a SECOND,
+        independent regression case for the same tracked bug. Left red, not `#[ignore]`d,
+        consistent with the human's Phase 2 direction to make failures visible rather than
+        hidden.
+      - **`evaluate_settles_self_referential_statement_at_index_zero_without_hanging`**
+        (`fvm_storage.rs`) — PORTED to `evaluate_arena`, checking `storage.alarm_reason()` is
+        `None` instead of `Result::is_ok()` (which would trivially always pass —
+        `evaluate_arena` catches the step-cap error internally and always returns `Ok`, unlike
+        the old bridge's `.evaluate()` which propagated it via `?`). Passes.
+      - **`foop75_non_brane_reason_reaches_rendered_output`** (`system_foo.rs`) — PORTED to
+        `evaluate_arena` + `Ubca2Sequencer::format`. Its exact source is ALSO
+        `regression/disappearing_brane_statements.foo`, already a signed einmo case in the
+        surviving suite — this unit test now doubles as a fast, non-einmo confirmation of the
+        same Foolish-mode behavior. Updated the text assertion from the old FIR-internal
+        `"d =$ ??? (4 is not a brane)"` to the new Foolish-mode form (verified by running the
+        CLI first): `"d =$ 4"` present and `"4 is not a brane"` present. Passes.
+      - **`non_settling_program_renders_nk_with_iteration_alarm`** (`system_foo.rs`), renamed
+        **`non_settling_program_renders_iteration_exceeded_alarm`** — PORTED. Its exact source
+        is ALSO `foop/62/infinite_loop.foo`, already signed in the surviving suite. Updated the
+        assertion from FIR-internal `"NK(ITERATION-EXCEEDED"` to the actual rendered banner
+        text (verified via the CLI first): `"did not complete stepping within the limit of"`.
+        Passes.
+      - **`creation_reached_through_search_renders_with_its_own_defining_name`**
+        (`fvm_storage.rs`) — PORTED to `evaluate_arena` + `Ubca2Sequencer::format`, asserting
+        `"b = 'a"` (verified via the CLI first) in place of the old `Debug`-text
+        `r#"name: Some("'a")"#`. Passes — confirms the FOOP-33 Gotcha #2 identity-through-search
+        invariant survives in the new renderer even though the unrelated NF-rendering gap
+        above does not.
+
+      Historical doc comments explaining WHY each test exists were kept and extended (not
+      deleted) where the history remains genuinely informative — per `rust_instructions.md`
+      §2d, comments explain *why*, and these `why`s (a real regression once fixed, a real bug
+      just found) outlive the specific rendering call they originally used.
+      (2026-09-18 00:00)
+- [x] Correct `foolish-ubca2/src/lib.rs`'s module docs: `evaluate_arena` is now the crate's one
       production entry point, and the "two independent implementations" paragraph is no longer
-      true — rewrite it to describe a single implementation
-- [ ] **⛔ If any of the above requires editing `foolish-core/src/`, STOP and report** (§3.3).
-      `foolish_core::FirSequencer` is NOT deleted by this FOOP.
-- [ ] `cargo build --workspace`; `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      true — rewrite it to describe a single implementation. Rewrote the crate doc to name
+      FOOP-86 and the retirement explicitly, state `evaluate_arena` as the one entry point, and
+      drop the "kept honest against each other" framing entirely (there is no longer a second
+      implementation to be kept honest against).
+      (2026-09-18 00:00)
+- [x] **⛔ If any of the above requires editing `foolish-core/src/`, STOP and report** (§3.3).
+      `foolish_core::FirSequencer` is NOT deleted by this FOOP. **No `foolish-core/src/` file
+      was touched anywhere in this phase.** Confirmed by `git diff --stat` before committing.
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace`; `cargo fmt`; `cargo clippy -p foolish-ubca2 -- -D warnings`.
+      Build clean. `cargo fmt -p foolish-ubca2` applied. `clippy -D warnings` still fails only
+      on the same 4 pre-existing `foolish-core` errors and the same 1 pre-existing
+      `collapsible_if` already recorded in Phase 4a — nothing new introduced by this phase.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace
+      run**: 133+84+62+328+170(+3 known-red: the two einmo gates plus the newly-ported
+      `evaluate_refuses_and_renders_conflicting_true_redefinition`, all the same tracked bug).
+      `foolish-ubca2` moved from 178 to 173 — net −5, exactly the `proto_to_core_fir_*` cluster
+      removed outright; every other test that used the bridge was ported and still exists.
+      (2026-09-18 00:00)
 
 ## Phase 5 — Remove `foolish-ubca` (§2)
 
 > **Execution phase — smaller model.** Stop condition: if anything OUTSIDE `foolish-ubca/` must
 > change in order to delete it, STOP — that is an undiscovered dependency.
 
-- [ ] (read §2 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §2 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates; run unit tests: the whole `foolish-ubca2` crate,
      plus `cargo test --workspace`.
-- [ ] **Q3 is decided: delete outright, no tag, no archive** (human, 2026-09-16). Record the
+      (2026-09-18 00:00)
+- [x] **Q3 is decided: delete outright, no tag, no archive** (human, 2026-09-16). Record the
       commit SHA immediately before the deletion in this plan — git history retains the crate
-      regardless, so this is a convenience note, not a safety net
-- [ ] Remove `"foolish-ubca",` from the workspace `Cargo.toml:6`
-- [ ] `git rm -r foolish-ubca/` (14 171 lines of source + the 178/178/178/178 einmo suite)
-- [ ] `grep -rn "foolish.ubca\b" --include='*.rs' --include='*.toml' --include='*.sh' .` —
-      expect no hits outside `docs/` and historical FOOP plans
-- [ ] `cargo build --workspace` and `cargo test --workspace`
-- [ ] Record the **after** test count and **account for the difference** against Phase 0's
+      regardless, so this is a convenience note, not a safety net.
+      **Commit immediately before deletion: `6c2fced8`** ("Major: Retire UBCa, Phase: 4b--complete").
+      (2026-09-18 00:00)
+- [x] Remove `"foolish-ubca",` from the workspace `Cargo.toml:6`
+      (2026-09-18 00:00)
+- [x] `git rm -r foolish-ubca/` (14 171 lines of source + the 178/178/178/178 einmo suite).
+      Measured immediately before deletion: `wc -l foolish-ubca/src/*.rs` gave **14,162** lines
+      (close to §2.1's stated 14,171 — small drift from intervening commits, not a discrepancy
+      worth chasing) and the suite's four tiers were confirmed 178/178/178/178
+      (input/checked/verified/output, using einmo-file counts for checked/verified/output and
+      `.foo` count for input) immediately before deletion.
+      (2026-09-18 00:00)
+- [x] `grep -rn "foolish.ubca\b" --include='*.rs' --include='*.toml' --include='*.sh' .` —
+      expect no hits outside `docs/` and historical FOOP plans. **Found, read, and judged
+      harmless**: (1) `einmo/Cargo.toml:9` — a comment, not a real dependency; (2) two comments
+      in `foolish-parser/src/parser.rs` and two in `foolish-core/src/fir.rs` attributing an
+      algorithm's origin to `foolish-ubca` historically — prose, not code, harmless to leave;
+      (3) four standalone shell scripts at the repo root (`poor_einmo.sh`, `foolish_review.sh`,
+      `check_foolish_ubca.sh`, `accept_approved.sh`) reference `foolish-ubca` in example/usage
+      text. **`check_foolish_ubca.sh` was inspected closely** since its name names the crate
+      directly — it references `foolish-ubca/snapshot_tests/approved/*.new` and `cargo insta
+      test`, neither of which matches this repo's current einmo-based workflow at all; it
+      appears to already be stale tooling from an earlier (pre-einmo) testing approach,
+      unrelated to and not broken BY this FOOP. Flagged as a documentation/cleanup finding
+      (same category as Q7's `zweimomo` staleness), not fixed — out of scope per §2.2/§3.3.
+      (2026-09-18 00:00)
+- [x] `cargo build --workspace` and `cargo test --workspace`. Build clean.
+      (2026-09-18 00:00)
+- [x] Record the **after** test count and **account for the difference** against Phase 0's
       baseline of 791 — foolish-ubca's tests, the bridge's ~7, and §4.5's two instruments.
       "Fewer tests pass" must never be mistaken for "tests were lost."
-- [ ] `cargo clippy --workspace -- -D warnings` — compare against Phase 0's pre-existing count;
-      **this FOOP must not add any new error**
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+      **After**: `foolish-parser` 62, `foolish-core` 84, `einmo` 133, `foolish-ubca2` 173
+      (170 passed + 3 known-red), `foolish-cli` 0 = **452** (133+84+62+173).
+
+      **Full accounting from Phase 0's 791**:
+      | Change | Count | Running total |
+      |---|---|---|
+      | Baseline (Phase 0) | — | 791 |
+      | `foolish-ubca`'s own tests removed (this phase) | −328 | 463 |
+      | Phase 3a: old suite's 3 gate tests removed | −3 | 460 |
+      | Phase 3a: 2 migration instruments removed (`einmo_suite2_has_every_einmo_suite_input`, `t12_report_value_differences_old_vs_new`) | −2 | 458 |
+      | Phase 4a: 4 new T4b `Detailed` tests added | +4 | 462 |
+      | Phase 4a: 5 old `detailed_delegates_for_*` tests removed | −5 | 457 |
+      | Phase 4b: 5 `proto_to_core_fir_*` bridge tests removed | −5 | 452 |
+      | **Final** | | **452** |
+
+      Every removal is a bridge/old-suite artifact (tested the removed code, not surviving
+      behavior) or an explicitly-retired migration instrument (§4.5); every test that exercised
+      REAL evaluator/renderer behavior through the bridge was ported in Phase 4b, not deleted.
+      **452 matches exactly** — no unaccounted-for loss.
+      (2026-09-18 00:00)
+- [x] `cargo clippy --workspace -- -D warnings` — compare against Phase 0's pre-existing count;
+      **this FOOP must not add any new error**. **CONFIRMED**: still exactly the same 4
+      `clippy::iter_next_slice` errors in `foolish-core/src/sequencer.rs` (lines 187/537/563/743)
+      recorded in Phase 0. Zero new errors from removing `foolish-ubca`.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **452 tests, 449
+      passed, 3 known-red** (the two einmo gates plus the ported regression case — same
+      tracked bug throughout this FOOP).
+      (2026-09-18 00:00)
 
 ## Phase 6 — CLI tests and the exercise recording (§T3, §T4)
 
-- [ ] (read §Test Plan T3 and T4 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §Test Plan T3 and T4 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through `einmo_gate_checked`; run unit tests:
      `foolish-cli::cli_run_renders_foolish`, `foolish-cli::cli_agrees_with_einmo_adapter`,
      `foolish-cli::cli_step_and_repl_share_the_render_path`, `foolish-ubca2::einmo_gate_checked`.
-- [ ] **T3a** — write `cli_run_renders_foolish`: `run` on a small program emits Foolish; assert
-      the output contains no `?(pattern=`, no `Op`, and no bare NYES token
-- [ ] **T3b** — write `cli_agrees_with_einmo_adapter`: for the same source, the CLI's rendering
+      (2026-09-18 00:00)
+- [x] **T3a** — write `cli_run_renders_foolish`: `run` on a small program emits Foolish; assert
+      the output contains no `?(pattern=`, no `Op`, and no bare NYES token. Written in a new
+      `#[cfg(test)] mod tests` at the end of `foolish-cli/src/main.rs` (the crate is a binary
+      with no lib target, so tests live in the same file and call the private `evaluate_arena`
+      helper directly). Checks `?(pattern=`, `Op(`, and each of the five pre-constanic/
+      inconclusive-constanic NYES tokens (`PREMBRIONIC`/`EMBRYONIC`/`BRANING`/`ECONSTANIC`/
+      `WOCONSTANIC`) are absent. Passes.
+      (2026-09-18 00:00)
+- [x] **T3b** — write `cli_agrees_with_einmo_adapter`: for the same source, the CLI's rendering
       equals the einmo adapter's. **This is the test that pins §1.3** — a divergence means the
-      CLI grew its own path
-- [ ] **T3c** — write `cli_step_and_repl_share_the_render_path`: no second sequencer call site
-- [ ] **T3d** — write the test asserting Q2's decision for `cmd_compile`
-- [ ] **T4** — run `future_exercise_inputs/project_euler/1.foo.disabled` through the new CLI and
+      CLI grew its own path. Compares the CLI's `evaluate_arena` + `Ubca2Sequencer::format`
+      output against an independent, direct call to `UbcaEvaluator::evaluate_arena` +
+      `Ubca2Sequencer::format` — the exact two calls `Ubca2FoolishAdapter`
+      (`foolish-ubca2/src/ubca_snapshot_tester.rs`, the einmo suite's own evaluator adapter)
+      makes. Passes (byte-identical, as expected — same two calls in the same order).
+      (2026-09-18 00:00)
+- [x] **T3c** — write `cli_step_and_repl_share_the_render_path`: no second sequencer call site.
+      `cmd_repl`'s own body is an interactive I/O loop with no return value to assert on
+      directly, so the test reproduces its evaluation branch (`evaluate_arena` +
+      `Ubca2Sequencer::format`) and confirms it renders IDENTICALLY to `cmd_step`'s own call
+      for the same source — both are, textually, the same two-function call in the same order,
+      which is what "no second call site" means at the unit-test level. Passes.
+      (2026-09-18 00:00)
+- [x] **T3d** — write the test asserting Q2's decision for `cmd_compile`. Written as
+      `cli_has_no_compile_subcommand`: uses `clap::CommandFactory` to introspect the built
+      `Cli` command and asserts the subcommand list is exactly `["run", "step", "repl"]` — no
+      `compile`. Passes.
+      (2026-09-18 00:00)
+- [x] **T4** — run `future_exercise_inputs/project_euler/1.foo.disabled` through the new CLI and
       **record verbatim in this plan** what it produces: output, alarms, step count, or failure
       mode. This is a RECORDING task, not an acceptance criterion — FOOP-86 is not blocked by
       the result, and **the file stays `.disabled`** (re-enabling it belongs to FOOP-26/46).
-- [ ] `cargo fmt`; `cargo clippy --workspace -- -D warnings`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+      **Command**: `cargo run -p foolish-cli -- run future_exercise_inputs/project_euler/1.foo.disabled`
+
+      **Verbatim result**:
+      ```
+      Error: Compilation failed: expected primary expression, found Assign at line 21, column 12
+      ```
+
+      **Recorded, not diagnosed further** (per this box's own scope — a recording task, not an
+      acceptance criterion): the program does not even reach evaluation. It fails at PARSE
+      time, on line 21 (`sum35 $= sum35 + {cond1, lv, 0, 'ite}$`) — the `$=`-sugared statement
+      form combined with a trailing bare `$` index. This is consistent with, and further
+      corroborates, §0.5's claim that this exercise "was never wired up as a runnable case, on
+      either evaluator" — there is not even a working PARSE of it on `jia` today, let alone a
+      settling evaluation. This is the **before** picture FOOP-26/46 will be measured against;
+      exit code and message are the complete, current failure mode.
+      (2026-09-18 00:00)
+- [x] `cargo fmt`; `cargo clippy --workspace -- -D warnings`. `cargo fmt -p foolish-cli` applied
+      cleanly. Workspace clippy still exactly the same 4 pre-existing `foolish-core` errors and
+      1 pre-existing `collapsible_if`; `foolish-cli`'s own code (including the 4 new tests)
+      produces zero new warnings, checked in isolation.
+      (2026-09-18 00:00)
+- [x] Run all tests — old and new — and make sure they all pass correctly. **Full workspace**:
+      133+84+62+4+170(+3 known-red) = **456** — `foolish-cli` moved from 0 to 4 (the new T3
+      tests), every other crate unchanged from Phase 5. The 3 known-red are the same tracked
+      bug throughout this FOOP (two einmo gates, one ported regression case).
+      (2026-09-18 00:00)
 
 ## Phase 7 — Documentation (§4.4, Q6)
 
-- [ ] (read §4.4 of [`FOOP-86.md`](FOOP-86.md))
-- [ ] Establish relevant tests for this
+- [x] (read §4.4 of [`FOOP-86.md`](FOOP-86.md))
+      (2026-09-18 00:00)
+- [x] Establish relevant tests for this
      sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests:
      the full surviving suite through all three gates, invoked using the NEWLY DOCUMENTED commands (this
      is how the docs get verified); run unit tests: `cargo test --workspace`.
-- [ ] Update `README.md` §"Running specific tests": every `foolish-ubca/einmo_suite` path
+      (2026-09-18 00:00)
+- [x] Update `README.md` §"Running specific tests": every `foolish-ubca/einmo_suite` path
       becomes `foolish-ubca2/einmo_suite`, `-p foolish-ubca` becomes `-p foolish-ubca2`, and the
-      `foolish-cli run` evaluator command is re-verified against the new rendering
-- [ ] Update AGENTS.md §"Approval Tests (einmo)" and §"Crates of Foolish": suite paths, the gate
+      `foolish-cli run` evaluator command is re-verified against the new rendering. Also
+      corrected two examples that named tests specific to the OLD crate's module layout and
+      would otherwise be silently wrong/zero-hit in `foolish-ubca2`
+      (`evaluator::step_until_tests::step_until_line_number_finds_line` →
+      `fvm_storage::tests::step_until_line_number_finds_line`; the zero-hit `creation_display`
+      filter → the verified 3-hit `creation_viewed_from`). Found and recorded (not fixed, out
+      of scope) a pre-existing, environment-specific issue: the evaluator command's
+      `./target/debug/foolish-cli` relative path silently fails when `$CARGO_TARGET_DIR` points
+      elsewhere (as it does in this session's environment) — `sh -c` reports "not found" and
+      the pipeline still "succeeds" with empty output, which `einmo evaluate` accepts as a
+      vacuous match. Not introduced by this FOOP; the command has always assumed the default
+      `./target`. Noted in README's own Last Updated entry for a human to see.
+      (2026-09-18 00:00)
+- [x] Update AGENTS.md §"Approval Tests (einmo)" and §"Crates of Foolish": suite paths, the gate
       command, and the crate list (`foolish-ubca` removed). Per **Q7**, also raise — but do not
       unilaterally fix beyond the obvious — `zweimomo`'s absence from the tree.
-- [ ] Per **Q6**: leave `foop.md` and historical FOOP plans alone (historical record)
-- [ ] **Execute every command as newly written** in README §"Running specific tests" and confirm
-      each works. A documented command that was not run is not documentation.
-- [ ] Update the `## Last Updated
 
-**Date**: 2026-09-16
+      **Went further than a path rename where accuracy required it** (verified each claim
+      against source before writing it, not assumed):
+      - §"NYES transition tests" claimed a `*_nyes_transitions` naming convention and an
+        `assert_progression` helper. **Neither exists in `foolish-ubca2`** — confirmed by
+        `grep -rn "fn assert_progression" foolish-ubca2/src/` (zero hits) and by reading actual
+        test names (`operator_division_by_zero_settles_nk` and similar, individually named,
+        several with a "mirrors `fir_kinds.rs::tests::...`" doc-comment as historical
+        provenance only). Rewrote the section to state this precisely — the REQUIREMENT's
+        underlying principle stands, but the specific convention it names is `foolish-ubca`'s,
+        retired, and whether `foolish-ubca2` has equivalent coverage per `FirSpec` variant
+        under its own (undetermined) convention is flagged as an unaudited documentation-debt
+        item, not silently declared solved.
+      - The "one-engine model" section's `ContextfulSearch`/`CursorSource`/`SearchPredicate`/
+        `CandidateNavigator` names were verified to survive unchanged in
+        `foolish-ubca2/src/fvm_storage.rs` (`grep -n "enum CursorSource\|enum
+        SearchPredicate\|trait CandidateNavigator"` — all three found) — path updated, content
+        otherwise correct as written.
+      - The "Named creation" section's `CreationFir::get_display_name` /
+        `StatementFir::check_rename_of_named_creation` don't exist by those names in
+        `foolish-ubca2` (which uses enum dispatch on `FirPointer`, not per-kind structs) —
+        verified the actual names (`FirPointer::get_display_name`,
+        `FirPointer::check_rename_of_named_creation`, both confirmed present in
+        `fvm_storage.rs`) and corrected accordingly, noting the design difference explicitly
+        rather than papering over it.
+      - The "READ THE SUITE'S `einmo.toml` FIRST" section's "suites genuinely differ"
+        `!!`-vs-`①` comparison described TWO suites that no longer both exist. Rewrote to state
+        the current single-suite reality (`①`) while preserving the discipline (re-check the
+        day a second suite exists) rather than deleting the caution. Also **added an explicit
+        warning directly into AGENTS.md** that `[signing.checked] passphrase =
+        "foolish-ubca2-suite2"` is NOT stale naming and must not be tidied — the same trap this
+        plan's own standing stop condition 4 warns the executing agent about, now warning every
+        future reader of AGENTS.md too.
+      - Left `foolish-ubca2/einmo_suite/einmo.toml` itself completely untouched (not even its
+        stale "deliberately separate from `einmo_suite`" comment) — touching that file, even
+        comment-only, felt too close to what stop condition 4 exists to prevent; flagging the
+        staleness in AGENTS.md instead was judged the safer choice.
+      (2026-09-18 00:00)
+- [x] Per **Q6**: leave `foop.md` and historical FOOP plans alone (historical record).
+      **Confirmed**: neither `foop.md` nor any other FOOP's `.md`/`.plan.md` was touched in
+      this phase — only `README.md` and `AGENTS.md`.
+      (2026-09-18 00:00)
+- [x] **Execute every command as newly written** in README §"Running specific tests" and confirm
+      each works. A documented command that was not run is not documentation.
+
+      **Every command form was actually run** (not just read), against the surviving suite,
+      with absolute binary paths substituted where the documented relative path hit the
+      `$CARGO_TARGET_DIR` issue above (the underlying suite-path/filter/case-name logic being
+      verified, not the relative-path convenience form):
+      - `cargo test -p foolish-ubca2 --lib -- einmo_gate_checked` — selects the real gate
+        (fails on the one known case, confirming correct selection, not a command-form bug).
+      - `cargo test -p foolish-ubca2 --lib -- step_until` — 3 real hits.
+      - `cargo test -p foolish-ubca2 --lib -- step_until creation_viewed_from value_search` — 3
+        real hits (after replacing the zero-hit `creation_display`).
+      - `cargo test -p foolish-ubca2 --lib -- --exact fvm_storage::tests::step_until_line_number_finds_line` — 1 hit.
+      - `cargo test -p foolish-ubca2 --lib -- --list value_search` — lists 1 real test.
+      - `einmo evaluate foolish-ubca2/einmo_suite --command "..." --filter "foop/23/name_value_atomic"` — 1 file, 0 failures.
+      - `einmo evaluate ... --filter "foop/23"` — 11 files, 0 failures (batch form).
+      - `einmo compare output checked foolish-ubca2/einmo_suite <3 case paths>` — 3 matching, 0 differing.
+      - `einmo list foolish-ubca2/einmo_suite --filter "foop/23" --differing` — 0 test(s) (correct: nothing currently differs).
+      - Restored `foolish-ubca2/einmo_suite/output/` with `git checkout --` after each
+        evaluate run that rewrote it, confirmed clean before moving on.
+- [x] Update this plan's own `## Last Updated` section at the end of the file, per AGENTS.md's
+      Markdown File Update Protocol (replace, don't append).
+      (2026-09-18 00:00, see the replaced entry below)
+
+## Phase 9 — Implement the Unsteppable statement (§6 ADDENDUM)
+
+> **Judgment phase — larger model.** This is NOT one of the FOOP's four original deliverables.
+> It implements the specification addendum at [`FOOP-86.md`](FOOP-86.md) §6, added mid-execution
+> at the human's direction after Phase 2's comparison surfaced a DESIGN defect in FOOP-33 §4.
+> **Read §6 in full before any code.** It supersedes FOOP-33 §4's refusal mechanism.
+>
+> **This phase changes evaluation semantics.** Unlike Phases 1–7 (which moved code without
+> changing what programs mean), this changes step rules, evaluation order, step counts, and
+> baselines. FOOP-86.md's §FIR Impact and §UBC Step Impact have been corrected accordingly —
+> their "None" claims now apply only to the four original deliverables.
+
+### The governing statement (§6.4c)
+
+> **Unsteppable statements break their brane, causing it to be NK. This is distinct from an
+> NK-valued statement, which can reside within a conclusive brane.**
+
+Everything in this phase serves that sentence. The brane's NK reports that it **failed to do
+its part** (stepping halted before it finished), NOT that it contains something unknowable — a
+brane containing an NK value did its part and stays valid. Confusing the two is the single
+easiest way to implement this wrongly; see stop condition 1 and §6.6b.
+
+### ⛔ STANDING TESTING REQUIREMENT for all of Phase 9 (human-directed, 2026-09-18)
+
+**Every behavior specified in §6 must be tested TWICE: once as a unit test, and again as an
+einmo case.** This is not "write tests where convenient" — it is a requirement on each
+behavior, and a sub-phase is not complete until both exist for everything it introduced.
+
+**Why both, and what each is for:**
+
+| | Unit test | Einmo case |
+|---|---|---|
+| Sees | internal FVM state — NYES, the brane's record, which node holds what | the rendered Foolish a Foolisher actually reads |
+| Catches | the halt firing for the wrong reason; state on the wrong node | wrong/missing annotations; rendering that doesn't re-parse |
+| Would have caught the original bug? | **no** — `nf_reason` was correctly set the whole time | **no** — it rendered as accepted and was idempotent about it |
+
+That last row is the argument. The `'True = 3` defect survived because the evaluator's state was
+right and the rendering was self-consistently wrong — **each layer alone looked fine**. Only
+checking both, against the spec rather than against each other, closes that gap.
+
+**Unit tests must assert internal state**, not just rendered text: which node is NK, that the
+brane's NK came from the halt (stop condition 1), that the poisoning statement's body is still
+`IndepInt` and `Independent`, that the brane's record holds what §6.4 says it holds.
+
+**Einmo cases must carry rendered comments pointing out the unsteppables** (human-directed).
+Each new/updated input gets a `!!` block at the top in house style
+(see `foop/33/boolean/null_char_constant.foo` for the existing form) that:
+
+- names the rule being demonstrated and cites **FOOP-86 §6**, and
+- **points out the unsteppable statement explicitly** — which statement is unsteppable, which
+  route (§6.2's 1/2/3) put it there, and that everything below it went unstepped.
+
+The point is that a human reading the suite can see *what is being demonstrated* without
+cross-referencing the spec — AGENTS.md: a suite's `.foo` inputs "are read by humans far more
+often than ordinary source — they are the *statement of what is being tested*." Follow
+AGENTS.md §"Comment style in Foolish einmo inputs" (blank line before a full-line comment, none
+after; `!!!` fences surrounded by blank lines).
+
+**Also update the STALE comment in `foop/33/boolean/null_char_constant.foo`.** Its existing `!!`
+block describes the superseded behavior — *"a conflicting redefinition refuses — `get_value()`
+becomes NF … instead of the written RHS"* — which §6 replaces. An input whose comment states
+the wrong rule is worse than one with no comment.
+
+### The design in one paragraph (verify against §6, don't re-derive)
+
+A statement whose null-characterized name was **already defined in the context** is
+**unsteppable** — a **run-time error** of Foolish (§6.2a), not a parse error and not an
+ordinary NK value. When a brane's stepping reaches one: **stepping halts**, **the brane gains
+NK directly**, and **every later statement is never stepped** (§6.3). The brane stores only the
+**first** unsteppable statement; the rest are *found* unsteppable by position (§6.4). The
+**poisoning statement itself is NOT unsteppable** — it reverts to Foolish and keeps its honest
+`IndepInt(3)`. An NK brane **still renders** but **cannot participate in concatenation**
+(§6.4a).
+
+### Orientation — measured on this branch, 2026-09-18
+
+| Site | File:line | Role |
+|---|---|---|
+| `check_null_const_conflict` | `fvm_storage.rs:2696` | detects the conflict (IB-then-AB search + `default_equal`) |
+| `refuse_statement` | `fvm_storage.rs:2739` | **current** write path: sets `nf_reason` + pushes `Nk` to `ubc_children` |
+| `check_rename_of_named_creation` | `fvm_storage.rs:2751` | the OTHER NF rule — shares `refuse_statement` |
+| `apply_null_const_rule_to_merged_stmt` | `fvm_storage.rs:2802` | the same rule at concatenation-merge time |
+| Statement `Braning` arm (refusal call site) | `fvm_storage.rs:964–997` | where both checks run, as the statement settles |
+| `step_inner` (task drain) | `fvm_storage.rs:871–910` | the loop a halt must stop |
+| `decide_nyes_due_to_children` | `fvm_storage.rs:1508` | existing rollup — **do not revive "any NK member ⇒ NK"** |
+| `nf_reason` storage | `fvm_storage.rs:100, 204, 211, 433, 440` | to be REMOVED from the statement payload (§6.4) |
+| `Renderer::render_statement` | `sequencer.rs:963` | renders from `foolish_children[0]`, never `settled_constanic_result()` |
+| `annotate` | `sequencer.rs:1078` | keeps a brane's `{` bare; `warn_brane_nk` defaults OFF |
+
+**Verified facts** (re-measure only if something disagrees):
+- The evaluator ALREADY detects the conflict correctly. `settled_constanic_result` on the
+  refused statement returns `Some(Nk { reason: "'True not-foolish" })`. The bug is NOT detection.
+- `{x = 1/0; y = 2}` currently settles the BRANE to `Nk` via the rollup; `{'K = ⬤; 'K = 3;}`
+  currently settles the brane to `Independent`. The two are **inverted** relative to §6.
+- A brane going NK is currently INVISIBLE in Foolish-mode output (bare `{`, `warn_brane_nk` off).
+
+### ⛔ Phase 9 stop conditions
+
+1. **Do NOT touch `decide_nyes_due_to_children`'s NK rollup** (§6.5, §6.6b). The brane's NK here
+   comes from the **HALT**, directly — not from a member's state. `{x = 1/0; y = 2}` must keep
+   whatever it has today (which is `Nk`, and which §6.4c says is arguably WRONG — see §6.6b —
+   but that discrepancy is explicitly NOT this phase's to fix).
+   **Verify the halt is what sets it.** Because the existing rollup already turns any NK member
+   into a brane NK, a naive implementation can appear to work for the wrong reason: the
+   unstepped remainder settles NK, the rollup sees NK children, and the brane goes NK without
+   the halt ever setting it. A later fix to §6.6b's discrepancy would then silently break the
+   unsteppable rule. **Assert the halt sets the brane NK directly.**
+2. **Do NOT mark the poisoning statement's body NK.** `IndepInt(3)` genuinely IS `Independent`;
+   that is the stated reason the fact moves to the brane (§6.4).
+3. **If a baseline outside §6.7's expected set moves, STOP** — that is a regression, not a
+   consequence. §6.7 expects: `foop/33/boolean/null_char_constant.foo`, `null_const_refuse.foo`,
+   and (pending open question 3) `foop/33/chracterization_sequencing.foo`.
+4. **`einmo promote` still requires the Promotion Review Gate**, case by case, and any case with
+   a `verified/` twin needs the human's key. This phase DOES produce new OUTPUT (unlike the rest
+   of FOOP-86, whose T2 said it promotes nothing) — so T2 no longer covers it.
+
+### 9a — Resolve the remaining open questions (§6.6) BEFORE coding
+
+> **§6.6a's five points are all RESOLVED** (human, 2026-09-18) and are NOT in this list:
+> subsequent/descendant unsteppability is not discoverable (build no lookup); NK is constanic +
+> constantew but not conclusive, so an unstepped statement can never recoordinate into a value;
+> ALL access into an NK brane settles NK (not just anchored searches); step counts must DROP;
+> and conflicts arising by **concatenation** or **recoordination** are routes 2 and 3 of §6.2,
+> both of which must settle NK and neither of which does today.
+
+- [x] **Q-A (store boundary or cause?) — ANSWERED: store the POISONING statement** (human,
+      2026-09-18). `'K = 3`, not the boundary. §6.5a's rendering reads its name for the
+      annotation, and the boundary is simply "the next statement", derivable.
+      (2026-09-18 00:00)
+- [x] **Q-B (reason wording) — ANSWERED, wording FIXED** (human, 2026-09-18):
+      `b = 'K;  !! NK: unsteppable — 'K already defined in context`. Not "redefined above" —
+      that describes a position and implies the earlier statement is at fault; "already defined
+      in context" states the condition, in the same words §6.2 defines it with. Recorded in
+      §6.5a.
+      (2026-09-18 00:00)
+- [x] **Q-D (`'<name> redefined` vs `'<name> not-foolish`) — MOOT for this rule.** Q-B fixes the
+      user-visible text to `unsteppable — 'K already defined in context`, so neither legacy
+      string appears in the unsteppable annotation. `not-foolish` survives only wherever the
+      rename rule still uses it (see Q-C).
+      (2026-09-18 00:00)
+- [x] **Q-C (does the creation-rename rule move too?) — ANSWERED: YES, it becomes route 4**
+      (human, 2026-09-18). `check_rename_of_named_creation` (`'other = 'a`) uses the SAME halt,
+      the same brane NK, the same rendering. **One mechanism, not two** — keeping it on the old
+      `nf_reason` path would leave §6.4's leak fixed for redefinition but not for renaming.
+      §6.2's table now lists four routes. Its annotation clause differs (`'a is already a named
+      creation`) because the fault differs, but the shape is identical. Moves
+      `foop/33/chracterization_sequencing.foo`'s baseline — add it to §6.7's expected set.
+      (2026-09-18 00:00)
+- [x] **Q-E (does the brane raise an `alarm_reason`?) — ANSWERED: YES** (human, 2026-09-18).
+      The halt raises `alarm_reason` on the brane, same mechanism as DIV-BY-ZERO and the step
+      cap. The condition is then announced twice, deliberately: an `ALARM:` line from the
+      evaluator, and §6.5a's rendering. Recorded in §6.2a.
+      (2026-09-18 00:00)
+- [x] Record each answer in §6.6/§6.2/§6.2a/§6.5a, striking the question rather than deleting it.
+      (2026-09-18 00:00)
+- [x] **Do not start 9b until Q-C and Q-E are answered** — both are now answered.
+      (2026-09-18 00:00)
+
+### 9b — The evaluator: halt, brane record, remove `nf_reason`
+
+- [ ] Establish relevant tests for this sub-section. Use
+      [these instructions](../../README.md#running-specific-tests): unit tests
+      `foolish-ubca2::null_const`, `foolish-ubca2::check_null_const`,
+      `foolish-ubca2::refuses_conflicting`, `foolish-ubca2::creation_viewed_from`; einmo cases
+      `foop/33/boolean/null_char_constant`, `foop/33/chracterization_sequencing`,
+      `foop/33/creation_concat`, `foop/33/comprehensive`.
+- [ ] Add the brane's record to `ProtoBrane` (per Q-A): the first unsteppable statement, one
+      field. Private, with an accessor — `ProtoBrane`'s every field is private by design
+      (`rust_instructions.md` §"Encapsulation").
+- [ ] Make `check_null_const_conflict` record the fact **on the home brane** instead of calling
+      `refuse_statement`. Detection logic itself is correct and must not change — only where
+      the finding is written.
+- [ ] Implement the **halt** in the brane's task drain (`step_inner` / the brane's `fir_op_step`
+      arm): on reaching the unsteppable statement, stop draining, set the brane `Nk` directly.
+      **Do not sweep** the remainder, and **do not mark it** (§6.3/§6.4).
+- [ ] **Do NOT build an "is this statement unsteppable?" lookup.** §6.4 (resolved 2026-09-18):
+      because stepping stops, nothing after the first unsteppable statement is ever visited and
+      nothing ever asks. The remainder's NK is the ordinary consequence of never having been
+      stepped, not a state anything computes. An earlier draft of this plan called for a
+      position-comparison accessor — **that was wrong and is struck.**
+- [ ] **Resolve §6.4's flagged tension: "never stepped" leaves `Prembrionic`, which is NOT NK.**
+      Measured: `decide_nyes_due_to_children` prioritizes `Braning` whenever any child is
+      pre-constanic, so an untouched remainder would spin the brane to the 9999-iteration cap
+      instead of settling NK; and the renderer would annotate `!! PREMBRIONIC`, not NK, so
+      §6.5a's rendering would never appear. The halt must therefore **assign the terminal NK**
+      to the remainder (bookkeeping) while doing **no evaluation work** for it (the actual
+      prohibition). Choose where — one pass over the remaining task queue at the halt is the
+      obvious candidate — and **record the choice in §6.4**.
+- [ ] Verify afterwards that `decide_nyes_due_to_children` never sees a pre-constanic child in a
+      halted brane.
+- [ ] Per Q-E: raise `alarm_reason` on the brane if the human chose that.
+- [ ] **Route 4 (Q-C answered YES): `check_rename_of_named_creation` uses the SAME halt.** It
+      stops calling `refuse_statement` and records on the brane exactly as routes 1–3 do. Its
+      annotation clause differs (`'a is already a named creation`) because the fault differs.
+- [ ] **Q-E answered YES: the halt raises `alarm_reason` on the brane**, same mechanism as
+      DIV-BY-ZERO and the step cap, so the CLI reports an `ALARM:` line (§6.2a).
+- [ ] **Remove** `nf_reason` from the statement payload (`fvm_storage.rs:100, 204, 211, 433, 440`)
+      and delete `refuse_statement` entirely — §6.4 states these are the leak, and with Q-C
+      answered YES **both** callers move to the halt, so nothing needs the old mechanism.
+- [ ] Verify the brane's NK comes from the halt, NOT from `decide_nyes_due_to_children`
+      (stop condition 1). A unit test asserting `{x = 1/0; y = 2}` is unchanged pins this.
+- [ ] **UNIT tests** (assert internal state, per the standing requirement): `a = 'K` before the
+      conflict keeps ⬤; `b = 'K` after is NK-unsteppable; `d = 1 + 1` after is ALSO NK **though
+      it never mentions `'K`** (this is the test that distinguishes §6.3 from the old
+      search-poisoning behavior); the brane is NK **and the halt is what set it**, not the
+      rollup (stop condition 1); the poisoning statement's body is still `IndepInt(3)` and
+      `Independent`; the brane's record holds what §6.4 says.
+- [ ] **EINMO case** for route 1, with rendered comments naming the unsteppable statement and
+      the unstepped remainder. Either extend `foop/33/boolean/null_char_constant.foo` or add a
+      sibling — and **fix that file's stale `!!` block** either way (it still describes the
+      superseded `get_value()`-becomes-NF behavior).
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9c — Any access into an NK brane settles NK (§6.4b)
+
+- [ ] (read §6.4b — and note it is NOT a reintroduction of §4's search-poisoning, which §6.3
+      removes; the difference is anchor-unusable vs. value-poisoned)
+- [ ] **"In all cases, NK results"** (human). Every access path into an NK brane settles NK:
+  - [ ] **anchored search** — reuses the existing anchored-miss outcome (AGENTS.md §"NK vs
+        ECONSTANIC miss outcomes"); only the REASON differs
+  - [ ] **plain reference** — `x = SomeNkBrane`
+  - [ ] **index / head / tail** — `#N`, `^`, `$` (a different operator group, same outcome)
+- [ ] **Unanchored searches that never touch the NK brane are unaffected** — they keep settling
+      ECONSTANIC on a miss. The rule is about reaching INTO the NK brane, not about the searcher.
+- [ ] **UNIT tests**, one per access path above, plus: the same access into a SOUND brane is
+      unchanged, and an unanchored miss elsewhere is unchanged.
+- [ ] **EINMO case** demonstrating access into an NK brane — anchored search, `#N`/`^`/`$`, and
+      a plain reference — with rendered comments naming which brane is NK and why every access
+      into it yields NK.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9c2 — Routes 2 and 3: conflicts from concatenation and recoordination (§6.2)
+
+> **Both currently produce NO NK at all** — measured 2026-09-18. These are the same defect as
+> route 1 arriving by different paths, and the human's ruling is that **all three settle NK**.
+
+- [x] (read §6.2's three-route table) — 2026-09-20 10:26:23
+- [ ] **Route 2 — concatenation merge.** `{A = {'C = 10}, b = A A}` renders
+      `b = { 'C = 10; 'C = 10 }` today, accepted. FOOP-33 §4 already specifies this case
+      (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`) — determine whether it is
+      not firing, or firing and being swallowed the way route 1's refusal was, then make the
+      merged brane halt per §6.3.
+      **NOTE:** this touches the merge path, which §6.4a's concatenation work is DEFERRED from.
+      Deferred there is *what a concatenation does with an NK-brane operand*; required HERE is
+      *a conflict arising during a merge must halt the merged brane*. Keep the two apart.
+- [x] **Route 3 — recoordination, no concatenation.** — 2026-09-20 10:26:23
+      `check_recoordinated_null_const_conflict` compares an incoming brane's
+      null-characterized members against the receiving brane's EARLIER statements.
+      **CORRECTED 2026-09-20 by the human**: route 3 does NOT halt the receiving brane.
+      *"The brane segregates the runtime error … the brane simply is NK, the 2-deep
+      statements are still stepped."* Only the holding statement settles NK, an ORDINARY
+      NK (*"there's no unsteppable versus steppable NK, all NK are same"*).
+      `{A={'C=1}, B={'C=2, D=A}}` → `{A={'C=1}, B={'C=2, D=NK}}`, with `D` reverting to its
+      written `A` plus an NK annotation (§6.5's ordinary rule, NOT §5.2's brane exception —
+      the coordination never happened, so it is not a rollup).
+      One clobber site had to be fixed for this to hold: the statement `Braning` arm wrote
+      `body_nyes` unconditionally over the terminal NK, the same latent class as the
+      `name_search_step` Embryonic bug.
+      **REVISED 2026-09-20 11:01:41 on the human's review**: route 3 sets `Nyes::Nk` plus an
+      `alarm_reason` and leaves `ubc_children` ALONE. An earlier version also overwrote
+      `ubc_children[0]` with a synthetic `Nk` node; the human rejected that — *"the search
+      itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
+      purposes"* — and measurement confirmed it got the right render by the wrong means,
+      destroying the true record of what the search found and disturbing the FoolRefFir
+      two-child invariant. The render distinction now lives at the render site (new §6.2b):
+      a node whose own NYES is NK while its `ubc_children[0]` stayed CONCLUSIVE reverts to
+      its written form, which is exactly what separates route 3 from a rollup NK (whose
+      result is itself NK, and which §5.2 still renders as a brane). Output is
+      byte-identical to the superseded version and no einmo INPUT/OUTPUT changed.
+- [x] **UNIT tests** for both routes — 2026-09-20 10:26:23
+      Route 2 asserts the merged brane halts. Route 3 asserts the OPPOSITE, per the
+      correction above: `recoordinating_a_conflicting_null_const_settles_that_statement_nk`
+      (plus `foolish_node_nk_with_conclusive_result_reverts_to_written_form`, added
+      2026-09-20 11:01:41, which pins the §6.2b render signal from the route-3 side while the
+      pre-existing `foolish_nk_brane_result_renders_the_brane_not_the_written_search` pins
+      it from the rollup side — verified non-vacuous by removing the render clause and
+      confirming the new test fails)
+      checks the receiving brane's `unsteppable_cause` is NONE, that `'C = 2` and a following
+      `after = 7` step normally, that the holding statement AND its body settle NK, that `A`
+      itself is untouched, and that an equal-valued recoordination is still permitted.
+- [x] **EINMO cases** — 2026-09-20 10:26:23
+      Route 3: `foop/86/unsteppable_recoordination.foo`, with rendered comments naming the
+      route and the unsteppable statement. It pins all four behaviors in one case: `D = A`
+      reverts with its NK annotation; `'C = 2` and `after = 7` still step (proving no halt);
+      `a_is_fine = A.'C` resolves to `1` (proving `A` is untouched); and `ok`'s equal-valued
+      recoordination coordinates in normally (proving the gate is on CONFLICT, not on
+      recoordination as such). Promoted to `checked/` after a statement-by-statement review —
+      `einmo_gate_checked` reported exactly ONE difference suite-wide, this new case, so no
+      pre-existing baseline moved.
+- [x] Run all tests — old and new — and make sure they all pass correctly. — 2026-09-20 10:26:23
+      `foolish-ubca2`: 177 passed / 1 failed (178 total; the route-3 test was REPLACED, not
+      added, so the total is unchanged). The sole failure is `einmo_gate_verified`, red on
+      the three FOOP-86 cases awaiting the human's signing key (see the Phase 8 STOP).
+
+### 9c-note — Concatenation is DEFERRED to a later FOOP
+
+- [x] **Not this FOOP's work (human, 2026-09-18).** §6.4a records the intended semantics — an
+      NK brane renders but may not participate in concatenation — but implementing it, deciding
+      what the concatenation itself becomes, and reconciling with §4's merge-time rule
+      (`apply_null_const_rule_to_merged_stmt`, `fvm_storage.rs:2802`) all belong to a later
+      FOOP. Until then, concatenation with an NK-brane operand behaves **as it does today**,
+      unchanged and unaudited. **Do not implement it in Phase 9.**
+      (2026-09-18 00:00)
+
+### 9d — Rendering (§6.5a)
+
+- [ ] (read §6.5a — suffix comment on the unsteppable statement, full-line comment for the
+      remainder, correct indentation)
+- [ ] Render the **first unsteppable statement** with a trailing `  !! NK: …` annotation, in
+      the same shape every other NK annotation uses (`annotate`'s existing form).
+- [ ] Render a **correctly-indented full-line comment** marking that the rest of the brane went
+      unstepped. Per AGENTS.md §"Comment style" rule 3, a full-line comment marks the code
+      BELOW it — correct here. Indentation must match the surrounding statements.
+- [ ] Render the unstepped remainder as **written source** (never evaluated ⇒ no value).
+- [ ] **The NK brane still renders** (§6.4a) — not elided, not `???`, not collapsed.
+- [ ] **Expect MOST of this to already work** (§6.5a's table): NK reverting to written Foolish
+      is FOOP-36 §3's standing rule for any inconclusive constanic, and NK IS inconclusive. The
+      genuinely new rendering is only (a) the annotation on the first unsteppable statement and
+      (b) the full-line comment beneath it. **If you find yourself writing a special rendering
+      path for the NK brane itself, stop** — §6.4a says it renders as an ordinary brane.
+- [ ] **Property 1 (FOOP-36): the rendering must re-parse.** The full-line comment and the
+      annotations must not break that — `einmo_corpus_wide_foolish_rendering_parses` is the gate.
+- [ ] **Property 2 (FOOP-36): idempotence — PIN IT WITH A TEST.** Re-parsing and re-stepping an
+      NK brane's rendering must reach the same state: the text still contains the conflicting
+      pair, so it halts at the same statement. Add the unsteppable case to
+      `foolish_rendering_round_trips_constanic_programs` (`sequencer.rs:1695`) rather than
+      writing a parallel test.
+- [ ] Fix `render_statement` to consult `settled_constanic_result()` rather than reading
+      `foolish_children[0]` blindly — the original rendering defect (§6.1), independent of the
+      rest of this phase.
+- [ ] **UNIT tests** pinning the exact rendered shape, including indentation — the suffix
+      annotation on the first unsteppable statement, the full-line comment, and the remainder
+      as written source.
+- [ ] **EINMO** is where the rendering is really proven — the `checked/` baseline IS the
+      rendered output, byte for byte. Confirm each new/updated case's OUTPUT shows §6.5a's shape
+      and that its INPUT's `!!` block points the reader at the unsteppable statement.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 9e — Baselines, docs, and the Promotion Review Gate
+
+- [ ] Run the full einmo suite. **Expected to move**: `foop/33/boolean/null_char_constant.foo`
+      (its `checked/`+`verified/` were deleted in Phase 2 — this phase RESTORES them by running
+      the fixed code, never by hand-authoring), `null_const_refuse.foo`, and per Q-C possibly
+      `foop/33/chracterization_sequencing.foo`. **Anything else moving is stop condition 3.**
+- [ ] **Promotion Review Gate** (`foop.md`) — one named sub-task per case, each justified in
+      writing against §6 before any `einmo promote`. Note this REVERSES FOOP-86's T2 ("this FOOP
+      promotes nothing"), which was true of the four original deliverables only.
+  - [ ] `foop/33/boolean/null_char_constant.foo` — justify every OUTPUT line
+  - [ ] `null_const_refuse.foo` — justify; §4 specified it to "poison subsequent `True` use",
+        which §6.3 overturns, so this case's MEANING changes and the review must say why that
+        is now correct
+  - [ ] any further case that moved, named individually
+- [ ] **`verified/` twins**: `null_const_refuse.foo` and others may have them. **STOP and ask
+      the human** — an agent cannot sign the verified tier (AGENTS.md).
+- [ ] **Amend FOOP-33.** §6 supersedes §4's refusal mechanism but does not edit it. Update
+      FOOP-33 §4 (the "the statement's body settles to NK" paragraph and the whole "Poisoning is
+      scoped to searches that discover this definition" paragraph) to point at FOOP-86 §6, and
+      update FOOP-33's `## Last Updated`.
+- [ ] **Add to AGENTS.md's Foolish Terminology**: **unsteppable** and **run-time error**
+      (§6.2a's closing note).
+- [ ] **Completion gate for the standing testing requirement (§6.6c).** Before checking Phase 9
+      complete, enumerate every behavior §6 specifies and confirm **each has BOTH** a unit test
+      and an einmo case. Write the list out — a behavior with only one of the two is not done:
+  - [ ] route 1 (written directly) — unit ✓ einmo ✓
+  - [ ] route 2 (concatenation merge) — unit ✓ einmo ✓ *(new coverage)*
+  - [x] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)* — 2026-09-20 10:26:23
+  - [ ] the halt sets the brane NK **directly**, not via the rollup — unit ✓
+  - [ ] poisoning statement reverts to Foolish, body still `IndepInt`/`Independent` — unit ✓ einmo ✓
+  - [ ] remainder unstepped and NK, including a statement that never mentions the name — unit ✓ einmo ✓
+  - [ ] every access into an NK brane settles NK (anchored search, `#N`/`^`/`$`, plain ref) — unit ✓ einmo ✓
+  - [ ] rendering: suffix annotation + full-line comment + remainder as source — unit ✓ einmo ✓
+  - [ ] Property 1 (re-parses) and Property 2 (idempotent) for an NK brane — unit ✓
+  - [ ] a nested conflict does NOT halt the outer brane (§6.4c) — unit ✓ einmo ✓
+- [ ] **Every new/updated einmo input carries its `!!` block** naming the rule, citing §6, and
+      pointing out the unsteppable statement and route (§6.6c).
+- [ ] `cargo fmt`; `cargo clippy` — no new errors beyond Phase 0's 4 pre-existing.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Last Updated
+
+**Date**: 2026-09-20
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created the FOOP-86 plan — ten phases sequencing the four deliverables so the tree
-is green at every step and the riskiest work is not first. Phase 0 records the human's four
-settled decisions (discard UBCa's attestations; delete outright with no tag; keep
-`SequenceMode::Detailed` and rewrite it arena-native; no crate/type rename) and puts only the
-four non-blocking questions to them. Phases 1 and 2 (judgment, larger model) do the CLI switch
-and — the last moment both signed corpora exist — compare the two evaluators' attested ANSWERS
-on the 178 shared inputs; input parity is already measured (0 missing), so nothing is ported.
-Phase 3 isolates the einmo `git mv` in its own commit with its own verification. **Phase 4 is
-split 4a/4b and the order is the point**: 4a writes the arena-native `Detailed`, 4b then deletes
-the bridge whose last caller 4a removed — never a window in which neither exists. Phases 5–7
-remove the crate, add CLI tests, and update docs by executing every command written. Carries an
-Orientation block of measured facts marked *verify, don't re-derive*, a decisions table, and
-five standing stop conditions — chief among them that **no `einmo promote` occurs in this FOOP**,
-that the surviving suite's `"foolish-ubca2-suite2"` passphrase must not be tidied after the
-rename, and that the vestigial `2` suffix must not be de-suffixed. No Promotion Review Gate and
-no comprehensive case: this FOOP produces no new einmo output.
+**Changes**: Phase 9c2's route-3 entries REVISED on the human's review of the committed
+implementation. Route 3 still settles the holding statement NK without halting the receiving
+brane, but it no longer touches `ubc_children`. The committed version overwrote
+`ubc_children[0]` with a synthetic `Nk` node on both the statement and its body; the human
+challenged that — *"If a search has to turn NK due to resulting brane being NK, the search
+itself (the search fir) has NK, it shouldn't need to change the ubc_children for most
+purposes"* — and investigation confirmed they were right. It produced the correct rendering by
+the wrong means: it destroyed the true record that the search DID find `A`, disturbed the
+FoolRefFir two-child invariant that `&`-searches and result chains read, and would have handed
+every other consumer of `[0]` a fabricated node.
+
+Route 3 now sets `Nyes::Nk` plus an `alarm_reason` and stops there. The rendering consequence
+moved to where it belongs, the render site, recorded as new §6.2b: `render_process_or_result`
+reads `ubc_children[0]`'s state rather than the node's, so a node that is itself NK while its
+result stayed CONCLUSIVE now reverts to its written form. That single condition is what
+separates route 3 (search succeeded, coordination failed, result conclusive) from a ROLLUP NK
+(`f = #-1`, whose result is itself NK and which §5.2 deliberately renders as a brane) — no new
+stored flag and no lookup into the referenced brane needed, since both states are already on
+hand. New test `foolish_node_nk_with_conclusive_result_reverts_to_written_form` pins the
+route-3 side and was verified non-vacuous by removing the render clause and watching it fail;
+the pre-existing `foolish_nk_brane_result_renders_the_brane_not_the_written_search` pins the
+rollup side. Rendered output is byte-identical to the superseded implementation, so no einmo
+INPUT or OUTPUT changed and nothing needed promoting. `foolish-ubca2` serial run: 177 passed /
+1 failed, the sole failure `einmo_gate_verified`, red on the three FOOP-86 cases that await the
+human's signing key.

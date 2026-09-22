@@ -1,0 +1,68 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: foop/86/unsteppable_recoordination.foo
+suite: /yolo/foolish_worktrees/foop-86-retire-ubca/foolish-ubca2/einmo_suite
+producer: 836f9d07
+producer-diff: sha256:06e4a485ef5bd918391a3890bab66800c1d38c1ac0a50700bff5dbe29cf5128f
+generated: 2026-09-20T17:16:13.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS①
+{
+
+  !!!
+  FOOP-86 §6.2 route 3 -- RECOORDINATION.
+
+  A statement whose settled value is a brane brings that brane's members into
+  this context. When one of them is a null-characterized name ALREADY defined
+  here with a DIFFERENT value, the brane cannot be coordinated in.
+
+  Route 3 is the one route that does NOT halt its brane. The brane SEGREGATES
+  the run-time error: only the statement holding the value settles NK, and it
+  is an ORDINARY NK -- there is no unsteppable-versus-steppable NK. The
+  receiving brane did its part, so its other statements step normally (§6.4c).
+
+  Rendering follows §6.5's ordinary NK-reverts-to-Foolish rule, NOT §5.2's
+  brane exception. That exception exists for a ROLLUP NK -- a brane NK on
+  account of something inside it -- whose resolved members are worth showing.
+  Here the coordination NEVER HAPPENED, so printing the would-be-coordinated
+  brane would show a result that does not exist.
+  !!!
+
+  A = {'C = 1};
+
+  !! 'C is already 2 here, so coordinating A in would give 'C a second
+  !! meaning. THIS statement is the unsteppable one: it reverts to its
+  !! written `A` and carries an NK annotation. Note what does NOT happen --
+  !! B is not halted, 'C = 2 is untouched, and `after` below still steps.
+  B = {'C = 2; D = A; after = 7};
+
+  !! A itself is a perfectly good brane. The conflict is with the RECEIVING
+  !! context, not with A, so every access into A resolves normally.
+  a_is_fine = A.'C;
+
+  !! The SAME value is not a conflict -- coordinating it in is permitted.
+  ok = {'C = 1; E = A};
+}
+①
+{
+  A = {
+    'C = 1
+  };
+  B = {
+    'C = 2;
+    D = A;  !! NK: 'C already defined in context
+    after = 7
+  };
+  aˍisˍfine = 1;
+  ok = {
+    'C = 1;
+    E = {
+      'C = 1
+    }
+  }
+}①
+①
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:65dca05ae3b9db497a883e54d7b4282ea1e1926c89258618e627c70dc740ebb4","timestamp":"2026-09-20T17:16:13.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:65dca05ae3b9db497a883e54d7b4282ea1e1926c89258618e627c70dc740ebb4","timestamp":"2026-09-20T17:16:13.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"/YkGAblxTsJF/51jVYrvVrwq7j46uuBRJHXtoAwwtCV8abhx+ANBdpj1Pxnq2DWK37Jt+CaRbzd+V8SKzhrUCw==","produced_by":"einmo 0.1.0 sha256:65dca05ae3b9db497a883e54d7b4282ea1e1926c89258618e627c70dc740ebb4","timestamp":"2026-09-20T17:16:13.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"1nlaM12eoB7mCiuspK03+2oLFGyqTgpOPXjnPpVmFi8RYoV9B/l/Bjwv34b+GBtCpUYvBpVvXEQjoS1bX4jCDg==","produced_by":"einmo 0.1.0 sha256:542caec225f38ba6b8ebdfffe1debdd7ef507aad43e47580df225e28838cf69c","timestamp":"2026-09-20T19:24:39.000000000Z"}

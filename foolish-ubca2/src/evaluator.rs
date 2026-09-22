@@ -1,7 +1,6 @@
 //! `UbcaEvaluator` — the crate's one production-facing entry point.
 
-use foolish_core::fir as core_fir;
-use foolish_core::fir::{FirRef as CoreFirRef, Nyes};
+use foolish_core::fir::Nyes;
 
 use crate::fvm_storage::{FVMStorage, FirPointer};
 
@@ -39,17 +38,5 @@ impl UbcaEvaluator {
         }
 
         Ok((storage, results))
-    }
-}
-
-impl foolish_core::Evaluator for UbcaEvaluator {
-    /// Runs on the arena path: `crate::fvm_storage`'s `FVMStorage`/
-    /// `FirPointer`/`arena_compiler`/`core_fir_conversion`.
-    fn evaluate(&self, source: &str) -> Result<Vec<CoreFirRef>, String> {
-        let (storage, firs) = self.evaluate_arena(source)?;
-        Ok(firs
-            .into_iter()
-            .map(|fir| core_fir::fir_to_ref(crate::fvm_storage::proto_to_core_fir(&storage, fir)))
-            .collect())
     }
 }
