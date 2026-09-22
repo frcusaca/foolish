@@ -1483,14 +1483,30 @@ NK directly**, and **every later statement is never stepped** (§6.3). The brane
       Enumerated and VERIFIED against the source, not assumed. One genuine gap found and
       reported rather than ticked (route 2, below).
   - [x] route 1 (written directly) — unit ✓ (`unsteppable_halts_the_brane_and_leaves_the_remainder_unstepped`) einmo ✓ (`foop/33/boolean/null_char_constant`)
-  - [ ] **route 2 (concatenation merge) — NEITHER unit NOR einmo. NOT COVERED.**
-        Measured 2026-09-21 17:59:40: `{A = {'C = 10}; b = A A;}` renders `b = { 'C = 10; 'C = 10 }` —
-        no halt, no NK, no annotation. `apply_null_const_rule_to_merged_stmt` exists
-        (`fvm_storage.rs:3074`) but does not fire. **This is OUT OF SCOPE by the human's
-        2026-09-18 direction** — see §9c-note, "Do not implement it in Phase 9": concatenation
-        with an NK-brane operand stays "unchanged and unaudited" until a later FOOP. Recorded
-        here as a KNOWN, DELIBERATE gap so the gate is not falsely reported complete. It is the
-        one §6.2 route with no coverage; carry it into the concatenation FOOP.
+  - [ ] **route 2 (concatenation merge) — BEHAVIOR IS CORRECT; test coverage is missing.**
+        **CORRECTED %s — an earlier entry here claimed route 2 "does not halt". That was a
+        FALSE FINDING and is retracted.** The measurement behind it was
+        `{A = {'C = 10}; b = A A;}` rendering `b = { 'C = 10; 'C = 10 }` with no NK. But that
+        program concatenates `A` with ITSELF, so both copies carry `'C = 10` — the SAME value.
+        `default_equal` returns `Equal`, and an equal restatement is PERMITTED by §4/§6.2. The
+        check fired and correctly APPROVED; "no NK" was the right answer, misread as "the check
+        never ran". The human caught this immediately (2026-09-22): *"is that actually wrong?
+        what happens when we do `{ 'a=10; 'a='a}` — that shouldn't fail, it is idempotent."*
+        Re-measured with a GENUINE conflict, route 2 halts correctly:
+
+        | Program | Result |
+        |---|---|
+        | `{A={'C=10}; b=A A}` | `b = { 'C=10; 'C=10 }` — equal, permitted ✓ |
+        | `{A={'C=10}; B={'C=11}; b=A B}` | halts, `!! NK: 'C already defined in context` ✓ |
+        | `{b={'C=10} {'C=11}}` | halts ✓ (inline operands, no named intermediary) |
+        | `{'a=10; 'a='a}` | `'a = 10` — idempotent, permitted ✓ |
+        | `{'a=10; 'a=11}` | halts ✓ |
+
+        **What is genuinely missing is TEST COVERAGE, not behavior**: route 2 has no unit test
+        and no einmo case pinning either path. Any such test MUST cover BOTH the permitted
+        (equal) and refused (conflicting) cases — testing only the refusal would have passed
+        while leaving exactly the misreading above undetected. Still out of scope per §9c-note;
+        carried to the concatenation FOOP as a COVERAGE gap.
   - [x] route 3 (recoordination) — unit ✓ einmo ✓ *(new coverage)* — 2026-09-20 10:26:23
   - [x] route 4 (creation rename) — unit ✓ einmo ✓ (`foop/33/chracterization_sequencing`) — 2026-09-21 17:59:40
   - [x] the halt sets the brane NK **directly**, not via the rollup — unit ✓
