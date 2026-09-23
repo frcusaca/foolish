@@ -12,11 +12,7 @@ pub enum ParseError {
         col: u32,
     },
     #[error("syntax error at line {line}, column {col}: {message}")]
-    Syntax {
-        message: String,
-        line: u32,
-        col: u32,
-    },
+    Syntax { message: String, line: u32, col: u32 },
     #[error("unexpected end of input at line {line}, column {col}")]
     Eof { line: u32, col: u32 },
 }
@@ -546,12 +542,7 @@ impl Parser {
             None => return false,
         };
         match current_token.token {
-            Token::LBrace
-            | Token::LParen
-            | Token::Ident(_)
-            | Token::Up
-            | Token::LtLt
-            | Token::Lt => {
+            Token::LBrace | Token::LParen | Token::Ident(_) | Token::Up | Token::LtLt | Token::Lt => {
                 let Some(prev_idx) = self.pos.checked_sub(1) else {
                     return false;
                 };
@@ -1130,17 +1121,13 @@ impl Parser {
                 self.advance();
                 let expr = self.parse_expr()?;
                 self.expect(&Token::GtGt)?;
-                Ok(Astn::StayFullyFoolish {
-                    expr: Box::new(expr),
-                })
+                Ok(Astn::StayFullyFoolish { expr: Box::new(expr) })
             }
             Some(Token::Lt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
                 self.expect(&Token::Gt)?;
-                Ok(Astn::StayFoolish {
-                    expr: Box::new(expr),
-                })
+                Ok(Astn::StayFoolish { expr: Box::new(expr) })
             }
             Some(Token::Integer(n)) => {
                 self.advance();
@@ -1517,9 +1504,7 @@ mod tests {
             Astn::Brane { statements, .. } => {
                 assert_eq!(statements.len(), 4, "all four statements survive");
                 match &statements[2] {
-                    Astn::Assignment {
-                        expr, identifier, ..
-                    } => {
+                    Astn::Assignment { expr, identifier, .. } => {
                         assert_eq!(identifier, "seekˍunanchored");
                         assert!(
                             matches!(**expr, Astn::UnanchoredSeek { offset: -2 }),
@@ -1579,10 +1564,7 @@ mod tests {
         let attached_like = parse_single("{B={1,2,3}; A =&?x B;}");
         let postfix = parse_single("{B={1,2,3}; A = B&?x;}");
         if let (Ok(a), Ok(p)) = (attached_like, postfix) {
-            assert_ne!(
-                a, p,
-                "`=&?x` must not be rewritten as an attached search (§5.4)"
-            );
+            assert_ne!(a, p, "`=&?x` must not be rewritten as an attached search (§5.4)");
         }
     }
 
@@ -1619,13 +1601,11 @@ mod tests {
                             assert_eq!(statements.len(), 3);
                             assert!(matches!(statements[0], Astn::IntLit(1)));
                             assert!(matches!(statements[1], Astn::IntLit(2)));
-                            assert!(
-                                matches!(&statements[2], Astn::Identifier { id, .. } if id == "lt")
-                            );
+                            assert!(matches!(&statements[2], Astn::Identifier { id, .. } if id == "lt"));
                         }
-                        other => panic!(
-                            "expected the $ anchor to be the WHOLE brane literal, got {other:?}"
-                        ),
+                        other => {
+                            panic!("expected the $ anchor to be the WHOLE brane literal, got {other:?}")
+                        }
                     },
                     other => panic!("expected HeadTail (tail search), got {other:?}"),
                 },
@@ -1769,10 +1749,7 @@ mod tests {
         let ast = parse_single("{x^;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => {
-                assert!(matches!(
-                    &statements[0],
-                    Astn::HeadTail { is_head: true, .. }
-                ));
+                assert!(matches!(&statements[0], Astn::HeadTail { is_head: true, .. }));
             }
             _ => panic!("expected brane"),
         }
@@ -2124,15 +2101,9 @@ mod tests {
                         match &elements[3] {
                             Astn::Concatenation { elements: elems } => {
                                 assert_eq!(elems.len(), 3);
-                                assert!(
-                                    matches!(&elems[0], Astn::Identifier { id, .. } if id == "d")
-                                );
-                                assert!(
-                                    matches!(&elems[1], Astn::Identifier { id, .. } if id == "e")
-                                );
-                                assert!(
-                                    matches!(&elems[2], Astn::Identifier { id, .. } if id == "f")
-                                );
+                                assert!(matches!(&elems[0], Astn::Identifier { id, .. } if id == "d"));
+                                assert!(matches!(&elems[1], Astn::Identifier { id, .. } if id == "e"));
+                                assert!(matches!(&elems[2], Astn::Identifier { id, .. } if id == "f"));
                             }
                             other => {
                                 panic!("expected Concatenation for 4th operand, got {other:?}")
@@ -2177,9 +2148,7 @@ mod tests {
         match ast {
             Astn::Brane { statements, .. } => match &statements[0] {
                 Astn::Assignment { expr, .. } => {
-                    assert!(
-                        matches!(&**expr, Astn::TailConcatenation { elements } if elements.len() == 2)
-                    );
+                    assert!(matches!(&**expr, Astn::TailConcatenation { elements } if elements.len() == 2));
                 }
                 other => panic!("expected assignment, got {other:?}"),
             },

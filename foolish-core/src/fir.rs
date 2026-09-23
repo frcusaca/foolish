@@ -189,11 +189,9 @@ impl Nyes {
         }
         match self {
             Nyes::Constant | Nyes::Independent | Nyes::Nk => self,
-            Nyes::Econstanic
-            | Nyes::Woconstanic
-            | Nyes::Prembrionic
-            | Nyes::Embryonic
-            | Nyes::Braning => Nyes::Embryonic,
+            Nyes::Econstanic | Nyes::Woconstanic | Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => {
+                Nyes::Embryonic
+            }
         }
     }
 }
@@ -662,9 +660,7 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_stay_fully_foolish()
     }
-    fn hs_concatenation(
-        &self,
-    ) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
         let fir = clone_steppable(&self.inner);
         fir.hs_concatenation()
     }
@@ -804,9 +800,7 @@ impl FirQueryable for Fir {
             None
         }
     }
-    fn hs_concatenation(
-        &self,
-    ) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
         if let Fir::Concatenation(i) = self {
             Some((
                 i.elements
@@ -829,8 +823,7 @@ impl FirQueryable for Fir {
                     .iter()
                     .map(|s| StatementSimple {
                         name: s.name.clone(),
-                        body: Box::new(FirChildRef::new(Rc::clone(&s.body)))
-                            as Box<dyn FirQueryable>,
+                        body: Box::new(FirChildRef::new(Rc::clone(&s.body))) as Box<dyn FirQueryable>,
                     })
                     .collect(),
             ))
@@ -1591,11 +1584,7 @@ impl<'de> Deserialize<'de> for Fir {
                 let alarm = obj
                     .get("alarm")
                     .and_then(|v| serde_json::from_value::<Alarm>(v.clone()).ok());
-                Ok(Fir::Nk(Box::new(NkFir {
-                    reason,
-                    state,
-                    alarm,
-                })))
+                Ok(Fir::Nk(Box::new(NkFir { reason, state, alarm })))
             }
             "Operator" => {
                 let op = obj
@@ -1614,11 +1603,7 @@ impl<'de> Deserialize<'de> for Fir {
                             .map(fir_to_ref)
                     })
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(Fir::Operator(Box::new(OperatorFir {
-                    op,
-                    operands,
-                    state,
-                })))
+                Ok(Fir::Operator(Box::new(OperatorFir { op, operands, state })))
             }
             "Search" => {
                 let pattern = obj
@@ -1630,10 +1615,7 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("direction")
                     .and_then(|v| serde_json::from_value::<SearchDirection>(v.clone()).ok())
                     .unwrap_or(SearchDirection::Backward);
-                let anchored = obj
-                    .get("anchored")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
                 let anchor = obj
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
@@ -1642,10 +1624,7 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("result")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
-                let is_value = obj
-                    .get("is_value")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let is_value = obj.get("is_value").and_then(|v| v.as_bool()).unwrap_or(false);
                 let value = obj
                     .get("value")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
@@ -1669,10 +1648,7 @@ impl<'de> Deserialize<'de> for Fir {
                     .and_then(|v| v.as_i64())
                     .map(|n| n as i32)
                     .ok_or_else(|| serde::de::Error::custom("missing offset field"))?;
-                let anchored = obj
-                    .get("anchored")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
                 let anchor = obj
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
@@ -1693,10 +1669,7 @@ impl<'de> Deserialize<'de> for Fir {
                 // Legacy: deserialize HeadTail as Index (offset=0 for head, -1 for tail)
                 let is_head = obj.get("is_head").and_then(|v| v.as_bool()).unwrap_or(true);
                 let offset: i32 = if is_head { 0 } else { -1 };
-                let anchored = obj
-                    .get("anchored")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
                 let anchor = obj
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
@@ -1784,8 +1757,7 @@ impl<'de> Deserialize<'de> for Fir {
                             .get("body")
                             .ok_or_else(|| serde::de::Error::custom("missing body field"))
                             .and_then(|bv| {
-                                serde_json::from_value::<Fir>(bv.clone())
-                                    .map_err(serde::de::Error::custom)
+                                serde_json::from_value::<Fir>(bv.clone()).map_err(serde::de::Error::custom)
                             })?;
                         let s = stmt_obj
                             .get("state")
@@ -1810,10 +1782,7 @@ impl<'de> Deserialize<'de> for Fir {
                 })))
             }
             "Creation" => {
-                let name = obj
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
+                let name = obj.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
                 Ok(Fir::Creation { name })
             }
             _ => Err(serde::de::Error::custom(format!(
@@ -2193,13 +2162,11 @@ impl NormalBraneFirBuilder {
         self
     }
     pub fn statement(mut self, name: Option<String>, body: Fir) -> Self {
-        self.statements
-            .push(StatementFir::new(name, fir_to_ref(body)));
+        self.statements.push(StatementFir::new(name, fir_to_ref(body)));
         self
     }
     pub fn anonymous_statement(mut self, body: Fir) -> Self {
-        self.statements
-            .push(StatementFir::anonymous(fir_to_ref(body)));
+        self.statements.push(StatementFir::anonymous(fir_to_ref(body)));
         self
     }
     pub fn statements(mut self, stmts: Vec<(Option<String>, Fir)>) -> Self {
@@ -2419,9 +2386,7 @@ mod builder_tests {
     #[test]
     fn test_stay_foolish_builder() {
         let inner = ConstantIntFirBuilder::new(99).build();
-        let fir = StayFoolishFirBuilder::new(inner)
-            .state(Nyes::Constant)
-            .build();
+        let fir = StayFoolishFirBuilder::new(inner).state(Nyes::Constant).build();
         if let Fir::StayFoolish(i) = fir {
             assert_eq!(i.state, Nyes::Constant);
             assert_eq!(i.expr.borrow().as_int(), Some(99));
@@ -2632,8 +2597,7 @@ mod builder_tests {
         let fir = CreationFirBuilder::new().name("'a").build();
         let json = to_json_val(&fir);
         let expected: serde_json::Value =
-            serde_json::from_str(r#"{"type":"Creation","state":"INDEPENDENT","name":"'a"}"#)
-                .unwrap();
+            serde_json::from_str(r#"{"type":"Creation","state":"INDEPENDENT","name":"'a"}"#).unwrap();
         assert_eq!(json, expected);
     }
 

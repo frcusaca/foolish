@@ -45,13 +45,8 @@ const SALT: &[u8] = b"einmo:stamp-key:v1";
 /// Construct the pinned Argon2id instance. The parameters are constants (not
 /// crate defaults) so a dependency bump cannot silently change key derivation.
 fn argon2_instance() -> Argon2<'static> {
-    let params = Params::new(
-        ARGON2_MEMORY_KIB,
-        ARGON2_TIME_COST,
-        ARGON2_PARALLELISM,
-        None,
-    )
-    .expect("OWASP Argon2id params are valid");
+    let params = Params::new(ARGON2_MEMORY_KIB, ARGON2_TIME_COST, ARGON2_PARALLELISM, None)
+        .expect("OWASP Argon2id params are valid");
     Argon2::new(Algorithm::Argon2id, Version::V0x13, params)
 }
 
@@ -343,8 +338,8 @@ impl Stamp {
     }
 
     fn from_json_line(line: &str) -> Result<Self> {
-        let wire: StampWire = serde_json::from_str(line)
-            .map_err(|e| EinmoError::Stamp(format!("bad stamp JSON: {e}")))?;
+        let wire: StampWire =
+            serde_json::from_str(line).map_err(|e| EinmoError::Stamp(format!("bad stamp JSON: {e}")))?;
         validate_stamp_key(&wire.key)?;
         Ok(Stamp {
             key: wire.key,
@@ -446,9 +441,7 @@ impl Stamps {
     /// `true` if any stamp's pubkey starts with `prefix`.
     #[must_use]
     pub fn stamped_by(&self, prefix: &str) -> bool {
-        self.entries
-            .iter()
-            .any(|s| s.pubkey_hex.starts_with(prefix))
+        self.entries.iter().any(|s| s.pubkey_hex.starts_with(prefix))
     }
 
     /// Parse the STAMPS section: one JSON object per non-empty line.
@@ -487,11 +480,7 @@ impl Stamps {
     /// The stage stamp signs `prior_bytes` followed by the two certification
     /// lines and a trailing LF, matching exactly what the file contains before
     /// the `stage:output` line at read time.
-    pub fn generate(
-        prior_bytes: &[u8],
-        configured: &SigningKey,
-        stage_output: &SigningKey,
-    ) -> Self {
+    pub fn generate(prior_bytes: &[u8], configured: &SigningKey, stage_output: &SigningKey) -> Self {
         let (compiled_sk, compiled_vk) = compiled_keypair();
         let configured_vk = configured.verifying_key();
         let stage_vk = stage_output.verifying_key();
@@ -540,12 +529,7 @@ impl Stamps {
     /// every existing stamp line each terminated by LF. Existing stamps are
     /// preserved byte-for-byte. Callers append only after verifying the chain
     /// (see [`Stamps::verify_chain`]) — a broken chain must be refused first.
-    pub fn append_stage(
-        &mut self,
-        stage_key: &str,
-        signing: &SigningKey,
-        file_before_new_stamp: &[u8],
-    ) {
+    pub fn append_stage(&mut self, stage_key: &str, signing: &SigningKey, file_before_new_stamp: &[u8]) {
         let pb = produced_by();
         let ts = now_iso8601();
         let stamp = stage_stamp(stage_key, signing, file_before_new_stamp, pb, &ts);
@@ -614,8 +598,7 @@ fn decode_pubkey(hex_str: &str) -> Result<VerifyingKey> {
         .ok()
         .and_then(|v| v.try_into().ok())
         .ok_or_else(|| EinmoError::Stamp(format!("bad pubkey hex {hex_str:?}")))?;
-    VerifyingKey::from_bytes(&bytes)
-        .map_err(|e| EinmoError::Stamp(format!("bad pubkey bytes: {e}")))
+    VerifyingKey::from_bytes(&bytes).map_err(|e| EinmoError::Stamp(format!("bad pubkey bytes: {e}")))
 }
 
 /// Verify one Ed25519 signature (b64) over `message` under `pubkey_hex`.
@@ -659,9 +642,7 @@ impl Stamps {
         for stamp in &self.entries {
             let ok = match &stamp.signs {
                 StampRole::Certifies(role) => self.verify_certification(stamp, role),
-                StampRole::PriorBytes => {
-                    verify_one(&stamp.pubkey_hex, &prior, &stamp.signature_b64)
-                }
+                StampRole::PriorBytes => verify_one(&stamp.pubkey_hex, &prior, &stamp.signature_b64),
             };
             checks.push(StampCheck {
                 key: stamp.key.clone(),
@@ -684,11 +665,7 @@ impl Stamps {
         let Ok(certified_vk) = decode_pubkey(&certified.pubkey_hex) else {
             return false;
         };
-        verify_one(
-            &stamp.pubkey_hex,
-            &certified_vk.to_bytes(),
-            &stamp.signature_b64,
-        )
+        verify_one(&stamp.pubkey_hex, &certified_vk.to_bytes(), &stamp.signature_b64)
     }
 
     /// `true` iff every stamp in the chain verifies against `body_with_separator`.
@@ -809,10 +786,7 @@ mod tests {
         let (configured, _) = derive_keypair("cfg");
         let (stage, _) = derive_keypair("");
         let stamps = Stamps::generate(&body, &configured, &stage);
-        assert!(
-            stamps.chain_valid(&body),
-            "freshly generated chain must verify"
-        );
+        assert!(stamps.chain_valid(&body), "freshly generated chain must verify");
         for check in stamps.verify_chain(&body) {
             assert!(check.ok, "stamp {} must verify", check.key);
         }
@@ -857,10 +831,7 @@ mod tests {
             .find(|c| c.key == "stage:output")
             .map(|c| c.ok)
             .unwrap();
-        assert!(
-            !stage_ok,
-            "tampered body must invalidate the stage:output stamp"
-        );
+        assert!(!stage_ok, "tampered body must invalidate the stage:output stamp");
         assert!(!stamps.chain_valid(&tampered));
     }
 
@@ -895,11 +866,7 @@ mod tests {
         // certification (which signed the *original* configured pubkey) must
         // now fail, because the certified role's pubkey no longer matches.
         let (_, foreign) = derive_keypair("attacker");
-        let idx = stamps
-            .entries
-            .iter()
-            .position(|s| s.key == "configured")
-            .unwrap();
+        let idx = stamps.entries.iter().position(|s| s.key == "configured").unwrap();
         stamps.entries[idx].pubkey_hex = hex::encode(foreign.to_bytes());
         let checks = stamps.verify_chain(&body);
         let compiled_ok = checks.iter().find(|c| c.key == "compiled").unwrap().ok;
@@ -959,10 +926,7 @@ mod tests {
         let prefix = build_prefix(&body, &stamps);
         let (v, _) = derive_keypair("human");
         stamps.append_stage("stage:verified", &v, &prefix);
-        assert_eq!(
-            stamps.highest_stage_stamp().unwrap().key(),
-            "stage:verified"
-        );
+        assert_eq!(stamps.highest_stage_stamp().unwrap().key(), "stage:verified");
     }
 
     #[test]

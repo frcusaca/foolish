@@ -43,11 +43,7 @@ pub fn verify_bytes(bytes: &[u8]) -> Result<EinmoFile> {
     // that `parse()` would normalize away (e.g. extra spaces after a `key:`).
     let raw_prefix = raw_signed_prefix(bytes, &file)?;
     let checks = file.stamps().verify_chain(raw_prefix);
-    let failed: Vec<&str> = checks
-        .iter()
-        .filter(|c| !c.ok)
-        .map(|c| c.key.as_str())
-        .collect();
+    let failed: Vec<&str> = checks.iter().filter(|c| !c.ok).map(|c| c.key.as_str()).collect();
     if failed.is_empty() {
         Ok(file)
     } else {
@@ -124,9 +120,7 @@ impl EinmoFile {
         let bytes = std::fs::read(path).map_err(|e| EinmoError::io(path, e))?;
         verify_bytes(&bytes).map_err(|e| match e {
             // Annotate verification/parse failures with the path for the caller.
-            EinmoError::Verification(msg) => {
-                EinmoError::Verification(format!("{}: {msg}", path.display()))
-            }
+            EinmoError::Verification(msg) => EinmoError::Verification(format!("{}: {msg}", path.display())),
             EinmoError::Parse(msg) => EinmoError::Parse(format!("{}: {msg}", path.display())),
             other => other,
         })

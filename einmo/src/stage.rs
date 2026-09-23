@@ -19,12 +19,7 @@ pub enum Stage {
 
 impl Stage {
     /// All four stages, in lifecycle order.
-    pub const ALL: [Stage; 4] = [
-        Stage::Output,
-        Stage::Checked,
-        Stage::Flagged,
-        Stage::Verified,
-    ];
+    pub const ALL: [Stage; 4] = [Stage::Output, Stage::Checked, Stage::Flagged, Stage::Verified];
 
     /// The default directory name for this stage.
     #[must_use]
@@ -130,14 +125,7 @@ pub fn walk_input_tree_reporting(
 ) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let mut found = Vec::new();
     let mut extraneous = Vec::new();
-    walk_dir_depth(
-        input_dir,
-        input_dir,
-        &mut found,
-        &mut extraneous,
-        0,
-        depth_limit,
-    )?;
+    walk_dir_depth(input_dir, input_dir, &mut found, &mut extraneous, 0, depth_limit)?;
     found.sort();
     extraneous.sort();
     Ok((found, extraneous))
@@ -175,11 +163,7 @@ fn walk_dir_depth(
         // is a file someone deliberately named. They are skipped for *discovery* — an open editor must not
         // inject phantom tests — but recorded as extraneous so the caller can report them. Einmo never
         // silently ignores a file in its own tree.
-        if entry
-            .file_name()
-            .to_str()
-            .is_some_and(|n| n.starts_with('.'))
-        {
+        if entry.file_name().to_str().is_some_and(|n| n.starts_with('.')) {
             if let Ok(rel) = path.strip_prefix(root) {
                 extraneous.push(rel.to_path_buf());
             }
@@ -336,9 +320,7 @@ mod tests {
 
         let found = walk_input_tree(&input, MAX_WALK_DEPTH).unwrap();
         assert!(
-            found
-                .iter()
-                .any(|p| p == &PathBuf::from("link_dir/inside.foo")),
+            found.iter().any(|p| p == &PathBuf::from("link_dir/inside.foo")),
             "file inside symlinked dir not discovered: {found:?}"
         );
     }

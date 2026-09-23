@@ -332,9 +332,7 @@ impl Lexer {
             if self.pos >= self.chars.len() {
                 break;
             }
-            if self.peek_at(0) == Some('!')
-                && self.peek_at(1) == Some('!')
-                && self.peek_at(2) == Some('!')
+            if self.peek_at(0) == Some('!') && self.peek_at(1) == Some('!') && self.peek_at(2) == Some('!')
             {
                 self.advance();
                 self.advance();
@@ -345,12 +343,7 @@ impl Lexer {
             body.push(c);
         }
         (
-            TokenAndLocation::new(
-                Token::BlockComment(body.trim().to_string()),
-                line,
-                column,
-                false,
-            ),
+            TokenAndLocation::new(Token::BlockComment(body.trim().to_string()), line, column, false),
             false,
         )
     }
@@ -361,8 +354,7 @@ impl Lexer {
         self.advance();
         self.advance();
         // Read until newline
-        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r')
-        {
+        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r') {
             self.advance();
         }
         (
@@ -376,8 +368,7 @@ impl Lexer {
         self.advance(); // #
         self.advance(); // !
         let mut body = String::new();
-        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r')
-        {
+        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r') {
             body.push(self.advance());
         }
         (
@@ -410,19 +401,13 @@ impl Lexer {
         if self.peek_at(0) == Some('=') && self.peek_at(1) == Some('>') {
             self.advance();
             self.advance();
-            return (
-                TokenAndLocation::new(Token::LtEqGt, line, column, false),
-                false,
-            );
+            return (TokenAndLocation::new(Token::LtEqGt, line, column, false), false);
         }
 
         // <<
         if self.peek_at(0) == Some('<') {
             self.advance();
-            return (
-                TokenAndLocation::new(Token::LtLt, line, column, false),
-                false,
-            );
+            return (TokenAndLocation::new(Token::LtLt, line, column, false), false);
         }
 
         (TokenAndLocation::new(Token::Lt, line, column, false), false)
@@ -431,9 +416,7 @@ impl Lexer {
     fn integer(&mut self) -> (TokenAndLocation, bool) {
         let (line, column) = self.record_pos();
         let mut num = String::new();
-        while self.pos < self.chars.len()
-            && self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false)
-        {
+        while self.pos < self.chars.len() && self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
             num.push(self.advance());
         }
         let value = num.parse().unwrap_or(u64::MAX);
@@ -463,23 +446,11 @@ impl Lexer {
         // Check for keywords
         match s.as_str() {
             "if" => (TokenAndLocation::new(Token::If, line, column, false), false),
-            "then" => (
-                TokenAndLocation::new(Token::Then, line, column, false),
-                false,
-            ),
-            "elif" => (
-                TokenAndLocation::new(Token::Elif, line, column, false),
-                false,
-            ),
-            "else" => (
-                TokenAndLocation::new(Token::Else, line, column, false),
-                false,
-            ),
+            "then" => (TokenAndLocation::new(Token::Then, line, column, false), false),
+            "elif" => (TokenAndLocation::new(Token::Elif, line, column, false), false),
+            "else" => (TokenAndLocation::new(Token::Else, line, column, false), false),
             "fi" => (TokenAndLocation::new(Token::Fi, line, column, false), false),
-            _ => (
-                TokenAndLocation::new(Token::Ident(s), line, column, false),
-                false,
-            ),
+            _ => (TokenAndLocation::new(Token::Ident(s), line, column, false), false),
         }
     }
 }
@@ -585,17 +556,11 @@ mod tests {
     fn foop75_lexer_records_preceding_space() {
         let toks = Lexer::new("{a =$ b}").tokenize();
         let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");
-        assert!(
-            !dollar.preceded_by_space,
-            "`=$`: the $ is adjacent to the ="
-        );
+        assert!(!dollar.preceded_by_space, "`=$`: the $ is adjacent to the =");
 
         let toks = Lexer::new("{a = $ b}").tokenize();
         let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");
-        assert!(
-            dollar.preceded_by_space,
-            "`= $`: the $ is NOT adjacent to the ="
-        );
+        assert!(dollar.preceded_by_space, "`= $`: the $ is NOT adjacent to the =");
 
         let toks = Lexer::new("{a =   $ b}").tokenize();
         let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");

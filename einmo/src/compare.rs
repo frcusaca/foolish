@@ -93,10 +93,7 @@ pub fn compare(
     let mut result = ComparisonResult::default();
 
     let rels: Vec<PathBuf> = if let Some(files) = files {
-        let mut v: Vec<PathBuf> = files
-            .iter()
-            .map(|p| normalize_file_path(p, config))
-            .collect();
+        let mut v: Vec<PathBuf> = files.iter().map(|p| normalize_file_path(p, config)).collect();
         v.sort();
         v.dedup();
         v
@@ -114,14 +111,14 @@ pub fn compare(
             (false, true) => result.only_in_b.push(rel.clone()),
             (true, true) => {
                 // Verify-on-inspect both; a failure means tampered, not differing.
-                let (file_a, file_b) =
-                    match (EinmoFile::from_file(&path_a), EinmoFile::from_file(&path_b)) {
-                        (Ok(fa), Ok(fb)) => (fa, fb),
-                        _ => {
-                            result.tampered.push(rel.clone());
-                            continue;
-                        }
-                    };
+                let (file_a, file_b) = match (EinmoFile::from_file(&path_a), EinmoFile::from_file(&path_b))
+                {
+                    (Ok(fa), Ok(fb)) => (fa, fb),
+                    _ => {
+                        result.tampered.push(rel.clone());
+                        continue;
+                    }
+                };
                 let diverged = compare_sections(&file_a, &file_b, sections);
                 if diverged.is_empty() {
                     result.matching.push(rel.clone());
@@ -181,8 +178,7 @@ fn is_strict_descendant(descendant: &Path, ancestor: &Path) -> bool {
     let Some(subtree) = subtree_dir(ancestor) else {
         return false;
     };
-    descendant.starts_with(&subtree)
-        && descendant.components().count() > ancestor.components().count()
+    descendant.starts_with(&subtree) && descendant.components().count() > ancestor.components().count()
 }
 
 /// The subtree directory a file owns: its path with the `.einmo` and the
@@ -190,9 +186,7 @@ fn is_strict_descendant(descendant: &Path, ancestor: &Path) -> bool {
 fn subtree_dir(path: &Path) -> Option<PathBuf> {
     // Strip `.einmo` then the input extension (`.foo`, `.py`, …).
     let without_einmo = path.file_name()?.to_string_lossy();
-    let base = without_einmo
-        .strip_suffix(".einmo")
-        .unwrap_or(&without_einmo);
+    let base = without_einmo.strip_suffix(".einmo").unwrap_or(&without_einmo);
     let stem = Path::new(base).file_stem()?.to_string_lossy().into_owned();
     Some(match path.parent() {
         Some(p) if !p.as_os_str().is_empty() => p.join(stem),
@@ -366,11 +360,7 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(
-            default.matching.len(),
-            1,
-            "COMMENTS drift ignored by default"
-        );
+        assert_eq!(default.matching.len(), 1, "COMMENTS drift ignored by default");
 
         let strict = compare(
             &config,

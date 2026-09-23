@@ -256,10 +256,7 @@ pub fn confirm_signatures(path: &Path, pubkey_prefix: &str) -> Result<SignatureR
     files.sort();
     for file_path in files {
         let file = EinmoFile::from_file(&file_path)?;
-        let rel = file_path
-            .strip_prefix(path)
-            .unwrap_or(&file_path)
-            .to_path_buf();
+        let rel = file_path.strip_prefix(path).unwrap_or(&file_path).to_path_buf();
         if file.stamps().stamped_by(pubkey_prefix) {
             report.matched.push(rel);
         } else {
@@ -531,10 +528,7 @@ mod tests {
             vec![(Stage::Verified, PathBuf::from("a.foo.einmo"))]
         );
         assert!(
-            config
-                .stage_dir(Stage::Checked)
-                .join("a.foo.einmo")
-                .exists(),
+            config.stage_dir(Stage::Checked).join("a.foo.einmo").exists(),
             "the checked baseline survives"
         );
     }
@@ -573,10 +567,7 @@ mod tests {
         promote(&config, Stage::Output, Stage::Checked, &key, None, None).unwrap();
         let hkey = KeySource::from_passphrase("human-passphrase");
         let report = promote(&config, Stage::Checked, Stage::Verified, &hkey, None, None).unwrap();
-        assert!(
-            !report.promoted[0].non_human,
-            "human key is not the computer key"
-        );
+        assert!(!report.promoted[0].non_human, "human key is not the computer key");
         let verified = config.stage_dir(Stage::Verified).join("a.foo.einmo");
         let file = EinmoFile::from_file(&verified).unwrap();
         assert_eq!(
@@ -636,11 +627,7 @@ mod tests {
         // Flagged file present with advisory, still chain-valid.
         let flagged = config.stage_dir(Stage::Flagged).join("a.foo.einmo");
         let file = EinmoFile::from_file(&flagged).unwrap();
-        assert!(
-            file.advisory()
-                .unwrap()
-                .starts_with("# flagged: looks wrong")
-        );
+        assert!(file.advisory().unwrap().starts_with("# flagged: looks wrong"));
         assert!(file.chain_valid(), "advisory must not invalidate stamps");
     }
 
@@ -685,10 +672,7 @@ mod tests {
 
     #[test]
     fn glob_matches_subtree() {
-        assert!(glob_match(
-            "algorithms/sorting/quick.foo",
-            "algorithms/sorting/*"
-        ));
+        assert!(glob_match("algorithms/sorting/quick.foo", "algorithms/sorting/*"));
         assert!(!glob_match(
             "algorithms/searching/bin.foo",
             "algorithms/sorting/*"
@@ -751,35 +735,12 @@ mod tests {
         write_three(&config);
         let key = KeySource::from_passphrase("");
         let files = vec![PathBuf::from("a.foo.einmo")];
-        let report = promote(
-            &config,
-            Stage::Output,
-            Stage::Checked,
-            &key,
-            None,
-            Some(&files),
-        )
-        .unwrap();
+        let report = promote(&config, Stage::Output, Stage::Checked, &key, None, Some(&files)).unwrap();
         assert_eq!(report.promoted.len(), 1);
         assert_eq!(report.promoted[0].rel_path, PathBuf::from("a.foo.einmo"));
-        assert!(
-            config
-                .stage_dir(Stage::Checked)
-                .join("a.foo.einmo")
-                .exists()
-        );
-        assert!(
-            !config
-                .stage_dir(Stage::Checked)
-                .join("b.foo.einmo")
-                .exists()
-        );
-        assert!(
-            !config
-                .stage_dir(Stage::Checked)
-                .join("c.foo.einmo")
-                .exists()
-        );
+        assert!(config.stage_dir(Stage::Checked).join("a.foo.einmo").exists());
+        assert!(!config.stage_dir(Stage::Checked).join("b.foo.einmo").exists());
+        assert!(!config.stage_dir(Stage::Checked).join("c.foo.einmo").exists());
     }
 
     #[test]
@@ -788,37 +749,14 @@ mod tests {
         write_three(&config);
         let key = KeySource::from_passphrase("");
         let files = vec![PathBuf::from("a.foo.einmo"), PathBuf::from("c.foo.einmo")];
-        let report = promote(
-            &config,
-            Stage::Output,
-            Stage::Checked,
-            &key,
-            None,
-            Some(&files),
-        )
-        .unwrap();
+        let report = promote(&config, Stage::Output, Stage::Checked, &key, None, Some(&files)).unwrap();
         assert_eq!(report.promoted.len(), 2);
         let promoted: Vec<PathBuf> = report.promoted.iter().map(|p| p.rel_path.clone()).collect();
         assert!(promoted.contains(&PathBuf::from("a.foo.einmo")));
         assert!(promoted.contains(&PathBuf::from("c.foo.einmo")));
-        assert!(
-            config
-                .stage_dir(Stage::Checked)
-                .join("a.foo.einmo")
-                .exists()
-        );
-        assert!(
-            config
-                .stage_dir(Stage::Checked)
-                .join("c.foo.einmo")
-                .exists()
-        );
-        assert!(
-            !config
-                .stage_dir(Stage::Checked)
-                .join("b.foo.einmo")
-                .exists()
-        );
+        assert!(config.stage_dir(Stage::Checked).join("a.foo.einmo").exists());
+        assert!(config.stage_dir(Stage::Checked).join("c.foo.einmo").exists());
+        assert!(!config.stage_dir(Stage::Checked).join("b.foo.einmo").exists());
     }
 
     #[test]
@@ -828,22 +766,9 @@ mod tests {
         let key = KeySource::from_passphrase("");
         // `output/b.foo.einmo` is stage-relative.
         let files = vec![PathBuf::from("output/b.foo.einmo")];
-        let report = promote(
-            &config,
-            Stage::Output,
-            Stage::Checked,
-            &key,
-            None,
-            Some(&files),
-        )
-        .unwrap();
+        let report = promote(&config, Stage::Output, Stage::Checked, &key, None, Some(&files)).unwrap();
         assert_eq!(report.promoted.len(), 1);
-        assert!(
-            config
-                .stage_dir(Stage::Checked)
-                .join("b.foo.einmo")
-                .exists()
-        );
+        assert!(config.stage_dir(Stage::Checked).join("b.foo.einmo").exists());
     }
 
     #[test]
@@ -856,12 +781,7 @@ mod tests {
         assert!(!config.stage_dir(Stage::Output).join("b.foo.einmo").exists());
         assert!(config.stage_dir(Stage::Output).join("a.foo.einmo").exists());
         assert!(config.stage_dir(Stage::Output).join("c.foo.einmo").exists());
-        assert!(
-            config
-                .stage_dir(Stage::Flagged)
-                .join("b.foo.einmo")
-                .exists()
-        );
+        assert!(config.stage_dir(Stage::Flagged).join("b.foo.einmo").exists());
     }
 
     #[test]

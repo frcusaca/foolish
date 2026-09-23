@@ -21,8 +21,8 @@ impl UbcaEvaluator {
         let mut results = Vec::with_capacity(composed_roots.len());
         for composed_root in composed_roots {
             let failure = crate::fvm_storage::step_to_constanic(&mut storage, composed_root).err();
-            let program_fir = crate::fvm_storage::program_result(&storage, composed_root)
-                .unwrap_or(composed_root);
+            let program_fir =
+                crate::fvm_storage::program_result(&storage, composed_root).unwrap_or(composed_root);
 
             if let Some(alarm_msg) = failure {
                 for &target in &[composed_root, program_fir] {

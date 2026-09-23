@@ -218,10 +218,7 @@ impl TestConfig {
 
     /// Alias kept close to the spec's `TestConfig::default("…")` examples.
     #[must_use]
-    pub fn default_for(
-        work_dir: impl Into<PathBuf>,
-        level: crate::einmo_suite::ValidationLevel,
-    ) -> Self {
+    pub fn default_for(work_dir: impl Into<PathBuf>, level: crate::einmo_suite::ValidationLevel) -> Self {
         Self::new(work_dir, level)
     }
 
@@ -423,9 +420,7 @@ impl TestConfig {
             .ok()
             .and_then(|s| s.parse::<usize>().ok())
             .or(self.parallel)
-            .unwrap_or_else(|| {
-                std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
-            });
+            .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get));
         // 0 and 1 both mean "no worker threads": run in the calling thread.
         (threads > 1).then_some(threads)
     }
@@ -679,10 +674,7 @@ fn merge_toml(crate_wide: EinmoTomlConfig, per_suite: EinmoTomlConfig) -> EinmoT
                 .suite
                 .walk_depth_limit
                 .or(crate_wide.suite.walk_depth_limit),
-            duration_limit: per_suite
-                .suite
-                .duration_limit
-                .or(crate_wide.suite.duration_limit),
+            duration_limit: per_suite.suite.duration_limit.or(crate_wide.suite.duration_limit),
             suite_duration_limit: per_suite
                 .suite
                 .suite_duration_limit
@@ -731,24 +723,15 @@ fn parse_toml_content(content: &str) -> Result<EinmoTomlConfig> {
         if let Some(v) = suite.get("duration_limit").and_then(|v| v.as_integer()) {
             config.suite.duration_limit = Some(v as u64);
         }
-        if let Some(v) = suite
-            .get("suite_duration_limit")
-            .and_then(|v| v.as_integer())
-        {
+        if let Some(v) = suite.get("suite_duration_limit").and_then(|v| v.as_integer()) {
             config.suite.suite_duration_limit = Some(v as u64);
         }
         if let Some(v) = suite.get("rerun_catastrophes").and_then(|v| v.as_bool()) {
             config.suite.rerun_catastrophes = Some(v);
         }
-        if let Some(arr) = suite
-            .get("ignore_catastrophe_crumbs")
-            .and_then(|v| v.as_array())
-        {
-            config.suite.ignore_catastrophe_crumbs = Some(
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect(),
-            );
+        if let Some(arr) = suite.get("ignore_catastrophe_crumbs").and_then(|v| v.as_array()) {
+            config.suite.ignore_catastrophe_crumbs =
+                Some(arr.iter().filter_map(|v| v.as_str().map(String::from)).collect());
         }
     }
     Ok(config)
@@ -765,14 +748,8 @@ mod tests {
     #[test]
     fn stage_dirs_default_and_paths() {
         let c = cfg();
-        assert_eq!(
-            c.stage_dir(Stage::Output),
-            PathBuf::from("/tmp/suite/output")
-        );
-        assert_eq!(
-            c.stage_dir(Stage::Verified),
-            PathBuf::from("/tmp/suite/verified")
-        );
+        assert_eq!(c.stage_dir(Stage::Output), PathBuf::from("/tmp/suite/output"));
+        assert_eq!(c.stage_dir(Stage::Verified), PathBuf::from("/tmp/suite/verified"));
         assert_eq!(c.input_path(), PathBuf::from("/tmp/suite/input"));
     }
 
@@ -783,10 +760,7 @@ mod tests {
             .require_correspondence(Stage::Output, Stage::Checked)
             .with_match_sections(MatchSections::InputOutputComments);
         assert_eq!(c.separator(), FOOLISH_SEPARATOR);
-        assert_eq!(
-            c.required_correspondences(),
-            &[(Stage::Output, Stage::Checked)]
-        );
+        assert_eq!(c.required_correspondences(), &[(Stage::Output, Stage::Checked)]);
         assert_eq!(c.match_sections(), MatchSections::InputOutputComments);
     }
 
@@ -850,10 +824,6 @@ mod tests {
             ..Default::default()
         };
         let key = resolve_stage_key(Stage::Verified, &inputs, &c, || panic!("no prompt")).unwrap();
-        assert_eq!(
-            key.passphrase(),
-            "",
-            "explicit empty string is the computer key"
-        );
+        assert_eq!(key.passphrase(), "", "explicit empty string is the computer key");
     }
 }

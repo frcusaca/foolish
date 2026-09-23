@@ -3,8 +3,8 @@
 use foolish_core::fir::Nyes;
 
 use crate::fvm_storage::{
-    ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirPointer,
-    FirSpec, StayMarker,
+    ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirPointer, FirSpec,
+    StayMarker,
 };
 use crate::nyes_ext::NyesExt;
 
@@ -154,12 +154,7 @@ impl Ubca2Sequencer {
     fn format_detailed(storage: &FVMStorage, fir: FirPointer) -> String {
         let mut out = String::new();
         let mut visited = std::collections::HashMap::new();
-        DetailedRenderer::new(storage).render_node(
-            FirCursor::new(fir, storage),
-            0,
-            &mut visited,
-            &mut out,
-        );
+        DetailedRenderer::new(storage).render_node(FirCursor::new(fir, storage), 0, &mut visited, &mut out);
         out
     }
 }
@@ -287,8 +282,7 @@ impl<'a> Renderer<'a> {
     }
 
     fn render(&self, fir: FirPointer) -> String {
-        self.render_expr(fir, self.options.width, None, true)
-            .join("\n")
+        self.render_expr(fir, self.options.width, None, true).join("\n")
     }
 
     fn render_expr(
@@ -314,31 +308,18 @@ impl<'a> Renderer<'a> {
             }
             FirSpec::Comparison { .. } => {
                 self.render_process_or_result(fir, width, current_stmt, |renderer| {
-                    renderer.render_operator(
-                        fir,
-                        cursor.as_op_name().unwrap_or("?"),
-                        width,
-                        current_stmt,
-                    )
+                    renderer.render_operator(fir, cursor.as_op_name().unwrap_or("?"), width, current_stmt)
                 })
             }
             FirSpec::Statement { .. } => self.render_statement(fir, width, true),
-            FirSpec::Brane { .. } | FirSpec::ConcatHelper => {
-                self.render_brane(fir, width, current_stmt)
-            }
-            FirSpec::Search { .. } => {
-                self.render_process_or_result(fir, width, current_stmt, |renderer| {
-                    renderer.render_search(fir, width, current_stmt)
-                })
-            }
-            FirSpec::Index { .. } => {
-                self.render_process_or_result(fir, width, current_stmt, |renderer| {
-                    renderer.render_index(fir, width, current_stmt)
-                })
-            }
-            FirSpec::FoolRef { referent } => {
-                self.render_expr(*referent, width, current_stmt, false)
-            }
+            FirSpec::Brane { .. } | FirSpec::ConcatHelper => self.render_brane(fir, width, current_stmt),
+            FirSpec::Search { .. } => self.render_process_or_result(fir, width, current_stmt, |renderer| {
+                renderer.render_search(fir, width, current_stmt)
+            }),
+            FirSpec::Index { .. } => self.render_process_or_result(fir, width, current_stmt, |renderer| {
+                renderer.render_index(fir, width, current_stmt)
+            }),
+            FirSpec::FoolRef { referent } => self.render_expr(*referent, width, current_stmt, false),
             FirSpec::StayFoolish => self.render_stay(fir, width, current_stmt, false),
             FirSpec::StayFullyFoolish => self.render_stay(fir, width, current_stmt, true),
             FirSpec::Concatenation {
@@ -594,8 +575,7 @@ impl<'a> Renderer<'a> {
             unreachable!()
         };
         let children = cursor.foolish_children();
-        let anchor =
-            anchored.then(|| self.render_written_operand_inline(children[0], width, current_stmt));
+        let anchor = anchored.then(|| self.render_written_operand_inline(children[0], width, current_stmt));
         let marker = if *forward { "~" } else { "?" };
         let context = if *contexted { "&" } else { "" };
 
@@ -660,12 +640,7 @@ impl<'a> Renderer<'a> {
         }]
     }
 
-    fn render_index(
-        &self,
-        fir: FirPointer,
-        width: usize,
-        current_stmt: Option<FirPointer>,
-    ) -> Vec<String> {
+    fn render_index(&self, fir: FirPointer, width: usize, current_stmt: Option<FirPointer>) -> Vec<String> {
         let cursor = FirCursor::new(fir, self.storage);
         let FirSpec::Index {
             offset,
@@ -704,9 +679,7 @@ impl<'a> Renderer<'a> {
         let inner = cursor
             .foolish_children()
             .first()
-            .map(|&child| {
-                self.render_written_operand_inline(child, width.saturating_sub(4), current_stmt)
-            })
+            .map(|&child| self.render_written_operand_inline(child, width.saturating_sub(4), current_stmt))
             .unwrap_or_else(|| "???".to_string());
         // A `<`/`<<` wrapper must not let its content's own leading/trailing
         // `<`/`>` fuse with this wrapper's delimiter: the lexer greedily
@@ -807,10 +780,7 @@ impl<'a> Renderer<'a> {
         // `ConcatRenderingAid`, which is the only thing that knows whether the source actually wrote one.
         // Unwrapping just SF and letting SFF render its own marker would double-wrap the SFF case.
         let cursor = FirCursor::new(child, self.storage);
-        if matches!(
-            cursor.node(),
-            FirSpec::StayFoolish | FirSpec::StayFullyFoolish
-        ) {
+        if matches!(cursor.node(), FirSpec::StayFoolish | FirSpec::StayFullyFoolish) {
             return cursor
                 .foolish_children()
                 .first()
@@ -840,23 +810,12 @@ impl<'a> Renderer<'a> {
     /// multi-line form universal: a brane's `{` and `}` are now ALWAYS on
     /// their own lines, so joining them with spaces would render every
     /// inline brane anchor as `{ 1; 2; 'True }` rather than `{1; 2; 'True}`.
-    fn render_inline(
-        &self,
-        fir: FirPointer,
-        width: usize,
-        current_stmt: Option<FirPointer>,
-    ) -> String {
+    fn render_inline(&self, fir: FirPointer, width: usize, current_stmt: Option<FirPointer>) -> String {
         tighten_braces(
             &self
                 .render_expr(fir, width, current_stmt, false)
                 .into_iter()
-                .map(|line| {
-                    line.split("  !!")
-                        .next()
-                        .unwrap_or(&line)
-                        .trim()
-                        .to_string()
-                })
+                .map(|line| line.split("  !!").next().unwrap_or(&line).trim().to_string())
                 .collect::<Vec<_>>()
                 .join(" "),
         )
@@ -875,13 +834,7 @@ impl<'a> Renderer<'a> {
             &self
                 .render_written_operand(fir, width, current_stmt)
                 .into_iter()
-                .map(|line| {
-                    line.split("  !!")
-                        .next()
-                        .unwrap_or(&line)
-                        .trim()
-                        .to_string()
-                })
+                .map(|line| line.split("  !!").next().unwrap_or(&line).trim().to_string())
                 .collect::<Vec<_>>()
                 .join(" "),
         )
@@ -934,8 +887,7 @@ impl<'a> Renderer<'a> {
             .iter()
             .enumerate()
             .map(|(index, &statement)| {
-                let mut rendered =
-                    self.render_statement(statement, width, index + 1 == stmt_ptrs.len());
+                let mut rendered = self.render_statement(statement, width, index + 1 == stmt_ptrs.len());
                 if unsteppable_at.is_some_and(|at| index >= at)
                     && !self.options.suppress_sequencing_comments
                 {
@@ -1056,8 +1008,7 @@ impl<'a> Renderer<'a> {
             attached
         } else {
             let prefix = name.map_or(0, |name| name.chars().count() + 3);
-            let mut rendered =
-                self.render_expr(body, width.saturating_sub(prefix), Some(statement), true);
+            let mut rendered = self.render_expr(body, width.saturating_sub(prefix), Some(statement), true);
             if let Some(name) = name
                 && let Some(first) = rendered.first_mut()
             {
@@ -1150,15 +1101,14 @@ impl<'a> Renderer<'a> {
         // rendered to ONE line (`stuck = f1`) has no member lines of its own,
         // so it keeps its annotation like any other single-line node.
         let cursor = FirCursor::new(fir, self.storage);
-        let renders_as_brane =
-            matches!(cursor.node(), FirSpec::Brane { .. } | FirSpec::ConcatHelper)
-                || (lines.len() > 1
-                    && cursor.ubc_children().first().is_some_and(|&result| {
-                        matches!(
-                            FirCursor::new(result.value(self.storage), self.storage).node(),
-                            FirSpec::Brane { .. }
-                        )
-                    }));
+        let renders_as_brane = matches!(cursor.node(), FirSpec::Brane { .. } | FirSpec::ConcatHelper)
+            || (lines.len() > 1
+                && cursor.ubc_children().first().is_some_and(|&result| {
+                    matches!(
+                        FirCursor::new(result.value(self.storage), self.storage).node(),
+                        FirSpec::Brane { .. }
+                    )
+                }));
         let warnings = &self.options.warnings;
         let state = self.storage.get_nyes(fir);
         if renders_as_brane {
@@ -1222,15 +1172,11 @@ impl<'a> Renderer<'a> {
             self.nk_reason(result)
         } else {
             match cursor.node() {
-                FirSpec::Search { anchored: true, .. } => {
-                    "anchored search found no match".to_string()
-                }
+                FirSpec::Search { anchored: true, .. } => "anchored search found no match".to_string(),
                 FirSpec::Index { anchored: true, .. } => cursor
                     .foolish_children()
                     .first()
-                    .and_then(|&anchor| {
-                        FirCursor::new(anchor.value(self.storage), self.storage).as_i64()
-                    })
+                    .and_then(|&anchor| FirCursor::new(anchor.value(self.storage), self.storage).as_i64())
                     .map_or_else(
                         || "anchored index found no match".to_string(),
                         |value| format!("{value} is not a brane"),
@@ -1358,11 +1304,7 @@ mod tests {
     #[test]
     fn detailed_renders_every_fir_kind() {
         fn foo_inputs_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
-            fn walk(
-                dir: &std::path::Path,
-                root: &std::path::Path,
-                out: &mut Vec<std::path::PathBuf>,
-            ) {
+            fn walk(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
                 let Ok(entries) = std::fs::read_dir(dir) else {
                     return;
                 };
@@ -1380,8 +1322,7 @@ mod tests {
             paths
         }
 
-        let suite_dir =
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite/input");
+        let suite_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite/input");
         let inputs = foo_inputs_under(&suite_dir);
         assert!(!inputs.is_empty(), "no einmo_suite inputs found to check");
 
@@ -1574,10 +1515,7 @@ mod tests {
                 ..SequenceOptions::default()
             },
         );
-        assert!(
-            narrow.contains("\n  a = 1;"),
-            "narrow rendering was {narrow}"
-        );
+        assert!(narrow.contains("\n  a = 1;"), "narrow rendering was {narrow}");
     }
 
     #[test]
@@ -1635,8 +1573,7 @@ mod tests {
 
     #[test]
     fn foolish_width_preserves_atoms_and_indents_nested_branes() {
-        let source =
-            "{outer={an_unsplittable_identifier_that_exceeds_the_budget=1;alpha=2;beta=3;};}";
+        let source = "{outer={an_unsplittable_identifier_that_exceeds_the_budget=1;alpha=2;beta=3;};}";
         let (storage, program) = evaluated_program(source);
         let rendered = Ubca2Sequencer::format_with(
             &storage,
@@ -1702,10 +1639,7 @@ mod tests {
 
     #[test]
     fn foolish_annotations_are_separator_safe() {
-        assert_eq!(
-            sanitize_reason("first①\nsecond\rthird"),
-            "first second third"
-        );
+        assert_eq!(sanitize_reason("first①\nsecond\rthird"), "first second third");
         let contract = include_str!("../einmo_suite/input/foop/36/rendering_contract.foo");
         assert!(!contract.contains('①'));
         assert!(contract.contains("\n  !!!\n"));
@@ -1738,8 +1672,7 @@ mod tests {
 
         for program in ["{a=missing;b=a+absent;}", "{x=1+2;}", "{x={a=1;b=2;};}"] {
             let mut storage = FVMStorage::new();
-            let roots =
-                compose_program_with_system(&mut storage, program).expect("source compiles");
+            let roots = compose_program_with_system(&mut storage, program).expect("source compiles");
             let root = roots[0];
 
             for _ in 0..32 {
@@ -1762,20 +1695,13 @@ mod tests {
                     {
                         continue;
                     }
-                    let rendered =
-                        Ubca2Sequencer::format(&storage, candidate, SequenceMode::Foolish);
+                    let rendered = Ubca2Sequencer::format(&storage, candidate, SequenceMode::Foolish);
                     for line in rendered.lines() {
                         let source = line.split("  !!").next().unwrap_or(line);
                         assert!(
-                            ![
-                                "PREMBRYONIC",
-                                "EMBRYONIC",
-                                "BRANING",
-                                "ECONSTANIC",
-                                "WOCONSTANIC"
-                            ]
-                            .iter()
-                            .any(|token| source.contains(token)),
+                            !["PREMBRYONIC", "EMBRYONIC", "BRANING", "ECONSTANIC", "WOCONSTANIC"]
+                                .iter()
+                                .any(|token| source.contains(token)),
                             "state leaked into source syntax: {line}"
                         );
                     }
@@ -1811,10 +1737,7 @@ mod tests {
             _ => unreachable!("only pre-constanic states are recorded"),
         });
 
-        assert_eq!(
-            seen,
-            vec![Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning]
-        );
+        assert_eq!(seen, vec![Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning]);
     }
 
     /// T2b's fourth case: a program halted MID-STEP, short of the iteration cap that settles it NK (that
@@ -1839,19 +1762,11 @@ mod tests {
         );
 
         let rendered = Ubca2Sequencer::format(&storage, root, SequenceMode::Foolish);
-        for token in [
-            "PREMBRYONIC",
-            "EMBRYONIC",
-            "BRANING",
-            "ECONSTANIC",
-            "WOCONSTANIC",
-        ] {
+        for token in ["PREMBRYONIC", "EMBRYONIC", "BRANING", "ECONSTANIC", "WOCONSTANIC"] {
             assert!(
-                !rendered.lines().any(|line| line
-                    .split("  !!")
-                    .next()
-                    .unwrap_or(line)
-                    .contains(token)),
+                !rendered
+                    .lines()
+                    .any(|line| line.split("  !!").next().unwrap_or(line).contains(token)),
                 "state leaked into source syntax via {token}: {rendered}"
             );
         }
@@ -1912,7 +1827,9 @@ mod tests {
             let (storage, program) = evaluated_program(source);
             let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
             compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
-                panic!("unanchored-anchor statement must not use an ambiguous attached form: {e:?}\n{rendered}")
+                panic!(
+                    "unanchored-anchor statement must not use an ambiguous attached form: {e:?}\n{rendered}"
+                )
             });
         }
 
@@ -1925,9 +1842,7 @@ mod tests {
              ambiguous per FOOP-75 §6: {rendered}"
         );
         compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
-            panic!(
-                "unanchored seek anchor must render as parseable postfix form: {e:?}\n{rendered}"
-            )
+            panic!("unanchored seek anchor must render as parseable postfix form: {e:?}\n{rendered}")
         });
     }
 
@@ -1962,9 +1877,8 @@ mod tests {
             !rendered.contains(">>>") && !rendered.contains("<<<"),
             "adjacent SF/SFF delimiters must never fuse into a longer run: {rendered}"
         );
-        compose_program_with_system(&mut FVMStorage::new(), &rendered).unwrap_or_else(|e| {
-            panic!("nested SF/SFF wrappers must remain parseable: {e:?}\n{rendered}")
-        });
+        compose_program_with_system(&mut FVMStorage::new(), &rendered)
+            .unwrap_or_else(|e| panic!("nested SF/SFF wrappers must remain parseable: {e:?}\n{rendered}"));
     }
 
     /// Corpus bugs (`foop/42/…hfs.foo`, `foop/62/anchored_search_suite.foo`): per FOOP-75 §6.1 (current,
@@ -2019,8 +1933,7 @@ mod tests {
     /// resolve. Per §4.0 the rendered brane's own opening line stays bare.
     #[test]
     fn foolish_nk_brane_result_renders_the_brane_not_the_written_search() {
-        let (storage, program) =
-            evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
+        let (storage, program) = evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
         assert!(
             rendered.contains("f = {"),
@@ -2124,8 +2037,7 @@ mod tests {
         // ECONSTANIC: ordinary, so quiet by default and shown when asked.
         let (storage, program) = evaluated_program("{r=missing;}");
         assert!(
-            !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
-                .contains("ECONSTANIC"),
+            !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish).contains("ECONSTANIC"),
             "ECONSTANIC is ordinary and must be quiet by default"
         );
         assert!(
@@ -2136,8 +2048,7 @@ mod tests {
         // Non-brane NK: unknowable, so announced by default.
         let (storage, program) = evaluated_program("{x=1/0;}");
         assert!(
-            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish)
-                .contains("!! NK: DIV-BY-ZERO"),
+            Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish).contains("!! NK: DIV-BY-ZERO"),
             "a non-brane NK must be announced by default"
         );
         assert!(
@@ -2147,8 +2058,7 @@ mod tests {
 
         // A brane's own rollup NK: quiet by default (§4.0/§5.2), since the
         // member lines already carry it; shown under verbose.
-        let (storage, program) =
-            evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
+        let (storage, program) = evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
         assert!(
             !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish).contains("f = {  !!"),
             "a brane's rollup NK is quiet by default"
@@ -2200,8 +2110,7 @@ mod tests {
     /// counting `foolish_children` on the re-parsed program.
     #[test]
     fn foolish_unmerged_concatenation_separates_its_elements() {
-        let (storage, program) =
-            evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
+        let (storage, program) = evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
         assert!(
             rendered.contains("o = f1 <f2> <<f3>>"),
@@ -2251,8 +2160,7 @@ mod tests {
         );
 
         // Mixed: only the marked ones come back, with the right marker each.
-        let (storage, program) =
-            evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
+        let (storage, program) = evaluated_program("{f1={p=1};f2={q=2};f3={r=3};o = f1 <f2> <<f3>>;}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
         assert!(
             rendered.contains("o = f1 <f2> <<f3>>"),
@@ -2325,8 +2233,8 @@ mod tests {
             let (st, pr) = evaluated_program(src);
             let root = FirCursor::new(pr, &st);
             let a_brane = FirCursor::new(root.stmt_at(0).unwrap(), &st).foolish_children()[0];
-            let a_tick = FirCursor::new(FirCursor::new(a_brane, &st).stmt_at(0).unwrap(), &st)
-                .foolish_children()[0];
+            let a_tick =
+                FirCursor::new(FirCursor::new(a_brane, &st).stmt_at(0).unwrap(), &st).foolish_children()[0];
             let b_brane = FirCursor::new(root.stmt_at(1).unwrap(), &st).foolish_children()[0];
             let bc = FirCursor::new(b_brane, &st);
             let last = bc.stmt_at(bc.stmt_count().unwrap_or(0) - 1).unwrap();
@@ -2373,10 +2281,7 @@ mod tests {
         let (storage, program) =
             evaluated_program("{A = {'a = ⬤; l = 10;}; B = {'a = ⬤; r = A~=10&#-1;};}");
         let rendered = Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish);
-        let reverted = rendered
-            .lines()
-            .find(|l| l.contains("r ="))
-            .unwrap_or_default();
+        let reverted = rendered.lines().find(|l| l.contains("r =")).unwrap_or_default();
         assert!(
             reverted.contains("!! This is Foolish because of out-of-context")
                 && reverted.contains("Creation Postulation application"),

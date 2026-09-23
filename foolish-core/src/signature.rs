@@ -106,9 +106,7 @@ pub fn verify_signature(verifying_key: &VerifyingKey, content: &str, signature: 
         Ok(s) => s,
         Err(_) => return false,
     };
-    verifying_key
-        .verify_strict(content.as_bytes(), &sig)
-        .is_ok()
+    verifying_key.verify_strict(content.as_bytes(), &sig).is_ok()
 }
 
 // ============================================================================
@@ -327,15 +325,9 @@ pub fn parse_snapshot_footer(snapshot_text: &str) -> Option<SnapshotSignature> {
         return None;
     }
     let public_key_hex = after[0].strip_prefix("Public key: ")?.trim().to_string();
-    let foolish_sig_b64 = after[1]
-        .strip_prefix("Foolish signature: ")?
-        .trim()
-        .to_string();
+    let foolish_sig_b64 = after[1].strip_prefix("Foolish signature: ")?.trim().to_string();
     let hs_sig_b64 = after[2].strip_prefix("HFS signature: ")?.trim().to_string();
-    let comments_sig_b64 = after[3]
-        .strip_prefix("Comments signature: ")?
-        .trim()
-        .to_string();
+    let comments_sig_b64 = after[3].strip_prefix("Comments signature: ")?.trim().to_string();
     if public_key_hex.is_empty()
         || foolish_sig_b64.is_empty()
         || hs_sig_b64.is_empty()
@@ -407,11 +399,7 @@ mod tests {
             vk2.to_bytes(),
             "derive_keypair(\"\") must produce the same keypair on repeated calls"
         );
-        assert_eq!(
-            sk1.to_bytes(),
-            sk2.to_bytes(),
-            "Signing keys must also match"
-        );
+        assert_eq!(sk1.to_bytes(), sk2.to_bytes(), "Signing keys must also match");
     }
 
     #[test]
@@ -594,10 +582,7 @@ mod tests {
         // because they are progressive (include input in their content)
         let v = verify_snapshot("", "{ x = 2 }", &hs_outputs, comments, &sig);
         assert!(!v.foolish_ok, "Tampered input must fail foolish_ok");
-        assert!(
-            !v.hs_ok,
-            "Tampered input must also fail hs_ok (progressive)"
-        );
+        assert!(!v.hs_ok, "Tampered input must also fail hs_ok (progressive)");
         assert!(
             !v.comments_ok,
             "Tampered input must also fail comments_ok (progressive)"
@@ -667,14 +652,14 @@ mod tests {
     #[test]
     fn parse_snapshot_footer_no_signatures_label_returns_none() {
         // Lines with the right prefixes but no SIGNATURES: marker → None
-        let old =
-            "Public key: abc\nFoolish signature: def\nHFS signature: ghi\nComments signature: jkl";
+        let old = "Public key: abc\nFoolish signature: def\nHFS signature: ghi\nComments signature: jkl";
         assert!(parse_snapshot_footer(old).is_none());
     }
 
     #[test]
     fn parse_snapshot_footer_wrong_prefixes_returns_none() {
-        let bad = "SIGNATURES:\nPublic key: abc\nBad prefix: xyz\nHFS signature: def\nComments signature: jkl";
+        let bad =
+            "SIGNATURES:\nPublic key: abc\nBad prefix: xyz\nHFS signature: def\nComments signature: jkl";
         assert!(parse_snapshot_footer(bad).is_none());
     }
 }

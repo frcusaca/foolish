@@ -894,7 +894,11 @@ a following `&`-search can read.
 ### Code Style
 
 - Tabs for depth markers (reduces storage)
-- 108 character width for documents
+- 108 character width for documents **and for Rust source, including comments**. Configured in
+  `rustfmt.toml` at the repo root (`max_width`, `comment_width`, `wrap_comments`, all 108/true).
+  **Only `max_width` is enforced on stable** — `comment_width` and `wrap_comments` are
+  nightly-only, so `cargo fmt` prints a warning and ignores them. Consequence: **comment width is
+  maintained BY HAND**; `cargo fmt` will neither enforce it nor undo it.
 - `.foo` extension for Foolish programs
 - Full-width space (＿) in approval tests shows indentation precisely
 - Variable names follow power-law distribution (mean 3.5 chars short, 5 chars long)
@@ -1017,28 +1021,24 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-09-21
+**Date**: 2026-09-22
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **Unsteppable** and **Run-time error** to §Foolish Terminology (before
-**Named creation**), per FOOP-86 §6.2a's closing note, on merging FOOP-86 to `jia`
-(`35d18b69`). A statement is **unsteppable** when stepping it would give a null-characterized
-name a second, conflicting meaning in its context; four routes reach it (written directly,
-concatenation merge, recoordination, renaming a named creation). An unsteppable statement HALTS
-ITS BRANE: the brane takes NK, the remaining statements go unstepped, and the unsteppable
-statement itself REVERTS TO FOOLISH keeping its written value — it is the CAUSE, not a
-casualty, and is never itself labelled NK. The cause is stored on the brane
-(`unsteppable_cause`), not the statement, since the statement's body keeps its own honest
-value. The entry states the distinction the human was emphatic about: a brane that is NK
-because of an unsteppable statement is DIFFERENT from an NK-VALUED statement, which can reside
-within a conclusive brane (§6.4c). It also records that there are NO CLASSES of NK —
-unsteppable is not a NYES and does not correspond to NK; the brane containing one simply has
-NK, the same NK as any other — and that route 3 (recoordination) is the exception that does NOT
-halt, because the brane segregates the run-time error. This mechanism SUPERSEDES FOOP-33 §4's
-poisoning rule, which was removed because it destroyed the very meaning the no-redefinition
-rule exists to preserve: a conflicting `'True = 3` took `'True` away from the readers ABOVE it.
-**Run-time error** is defined as a Foolish fault discovered while STEPPING rather than at parse
-time — not a NYES and not a value, but a fact recorded about the brane in which it occurred;
-unsteppable statements are the first named example.
+**Changes**: Added `rustfmt.toml` at the repo root setting `max_width`, `comment_width` and
+`wrap_comments` to 108/true, and amended §"Code Style" to say the 108-character width applies to
+**Rust source including comments**, not only to prose documents. Previously there was NO rustfmt
+configuration at all, so rustfmt ran on defaults (`max_width = 100`, `comment_width = 80`) and the
+project's stated 108 was folk knowledge that nothing enforced. **Important caveat, now recorded in
+both files so it is not rediscovered:** only `max_width` is enforced on a stable toolchain;
+`comment_width` and `wrap_comments` are NIGHTLY-ONLY, and stable rustfmt prints "can't set
+`wrap_comments = true`, unstable features are only available in nightly channel" and then ignores
+them. Verified empirically — a 206-column comment survived `cargo fmt` untouched. The consequence
+is that **comment width is maintained BY HAND**: `cargo fmt` will neither enforce it nor undo it,
+which is also what makes hand-wrapping safe. The options are set regardless so the intent is
+explicit and so they activate automatically on nightly or a future stable that promotes them.
+Applying `max_width = 108` reformatted 25 files (code previously wrapped for 100); workspace tests
+unchanged at 183 passed / 1 failed (`einmo_gate_verified`, awaiting the human's signing key) and
+clippy unchanged at `jia`'s 5 pre-existing `foolish-core` errors. Prior entry added **Unsteppable**
+and **Run-time error** to §Foolish Terminology on merging FOOP-86.
 
 ### MISC
 

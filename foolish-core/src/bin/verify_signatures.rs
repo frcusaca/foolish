@@ -93,9 +93,7 @@ fn main() {
             match check_file(file, &passphrase) {
                 Check::Verified(v) => (columns_from_verification(&v), String::new()),
                 Check::Unsigned => (columns_unsigned(), String::new()),
-                Check::ParseError(e) | Check::IoError(e) => {
-                    (columns_error(), format!("[ERROR: {e}]"))
-                }
+                Check::ParseError(e) | Check::IoError(e) => (columns_error(), format!("[ERROR: {e}]")),
             }
         };
 
@@ -157,13 +155,7 @@ fn check_file(path: &Path, passphrase: &str) -> Check {
         return Check::ParseError("could not parse INPUT/RESULT/COMMENTS blocks".to_string());
     };
 
-    Check::Verified(verify_snapshot(
-        passphrase,
-        &input,
-        &hs_outputs,
-        &comments,
-        &sig,
-    ))
+    Check::Verified(verify_snapshot(passphrase, &input, &hs_outputs, &comments, &sig))
 }
 
 /// Re-sign (and optionally append comments to) a snapshot file, writing it back in place.
@@ -225,8 +217,7 @@ fn replace_comments_and_footer(text: &str, new_comments_block: &str, new_footer:
 }
 
 fn is_snap_file(p: &Path) -> bool {
-    p.extension().and_then(|e| e.to_str()) == Some("snap")
-        || p.to_string_lossy().ends_with(".snap.new")
+    p.extension().and_then(|e| e.to_str()) == Some("snap") || p.to_string_lossy().ends_with(".snap.new")
 }
 
 /// Extract the raw input, HS output blocks, and comments block from a snapshot file.

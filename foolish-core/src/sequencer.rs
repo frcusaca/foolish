@@ -34,12 +34,7 @@ impl FirSequencer {
     }
     pub fn format_with_header(source: &str, fir: &Fir, steps: u64) -> String {
         let body = Self::format(fir);
-        format!(
-            "INPUT: {}\nPARSED:\n{}\nSTEPS: {}",
-            source.trim(),
-            body,
-            steps
-        )
+        format!("INPUT: {}\nPARSED:\n{}\nSTEPS: {}", source.trim(), body, steps)
     }
 }
 
@@ -97,10 +92,7 @@ fn materialize_indented(lines: &FormattedLines, base_indent: usize) -> String {
 // ──────────────────────────────────────────────
 
 fn body_indent_compute(open_indent: usize, close_indent: usize) -> usize {
-    std::cmp::min(
-        open_indent.saturating_sub(close_indent) + B_DENT,
-        2 * B_DENT,
-    )
+    std::cmp::min(open_indent.saturating_sub(close_indent) + B_DENT, 2 * B_DENT)
 }
 
 // ──────────────────────────────────────────────
@@ -306,14 +298,7 @@ fn render_fir(
             let mut items = body_items;
             items.push(state.to_string());
             let opener = format!("Op{}(", op);
-            return proto_brane_formatter(
-                &opener,
-                ")",
-                open_indent,
-                close_indent,
-                &items,
-                line_hint,
-            );
+            return proto_brane_formatter(&opener, ")", open_indent, close_indent, &items, line_hint);
         }
 
         // Multi-line: opener on its own line, operands at body_indent
@@ -518,8 +503,7 @@ fn render_fir(
                         body_lines.push((bi + prefix, text));
                     }
                     if !is_last
-                        && let Some((_, last_text)) =
-                            body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
+                        && let Some((_, last_text)) = body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
                     {
                         last_text.push_str(" `");
                     }
@@ -548,8 +532,7 @@ fn render_fir(
                     body_lines.push((bi + prefix, text));
                 }
                 if !is_last
-                    && let Some((_, last_text)) =
-                        body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
+                    && let Some((_, last_text)) = body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
                     && !last_text.ends_with(';')
                     && !last_text.ends_with('}')
                     && !last_text.ends_with(')')
@@ -642,8 +625,7 @@ fn render_fir(
     if fir.hs_creation() {
         return vec![(
             0,
-            fir.hs_creation_name()
-                .unwrap_or_else(|| "\u{2B24}".to_string()),
+            fir.hs_creation_name().unwrap_or_else(|| "\u{2B24}".to_string()),
         )];
     }
 

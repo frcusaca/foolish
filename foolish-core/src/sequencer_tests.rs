@@ -1,23 +1,16 @@
 use crate::fir::{
-    Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    CreationFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
-    OperatorFirBuilder, SearchDirection, SearchFirBuilder, StayFoolishFirBuilder,
-    StayFullyFoolishFirBuilder,
+    Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder, CreationFirBuilder,
+    IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes, OperatorFirBuilder, SearchDirection,
+    SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 use crate::sequencer::format_fir_simple;
 use crate::*;
 
 #[test]
 fn test_hs_variant_all_types() {
-    assert_eq!(
-        ConstantIntFirBuilder::new(42).build().hs_variant(),
-        "ConstantInt"
-    );
+    assert_eq!(ConstantIntFirBuilder::new(42).build().hs_variant(), "ConstantInt");
     assert_eq!(NkFirBuilder::new("unknown").build().hs_variant(), "Nk");
-    assert_eq!(
-        OperatorFirBuilder::new("+").build().hs_variant(),
-        "Operator"
-    );
+    assert_eq!(OperatorFirBuilder::new("+").build().hs_variant(), "Operator");
     assert_eq!(SearchFirBuilder::new("x").build().hs_variant(), "Search");
     assert_eq!(IndexFirBuilder::new(1).build().hs_variant(), "Index");
     assert_eq!(
@@ -36,10 +29,7 @@ fn test_hs_variant_all_types() {
         ConcatenationFirBuilder::new().build().hs_variant(),
         "Concatenation"
     );
-    assert_eq!(
-        NormalBraneFirBuilder::new().build().hs_variant(),
-        "NormalBrane"
-    );
+    assert_eq!(NormalBraneFirBuilder::new().build().hs_variant(), "NormalBrane");
 }
 
 #[test]
@@ -117,11 +107,7 @@ fn test_format_operator() {
         .build();
     let s = format_fir_simple(&op);
     // CONSTANT state operator is transparent - renders computed first operand value
-    assert!(
-        s.contains("1"),
-        "Expected '1' (transparent CONSTANT) in: {}",
-        s
-    );
+    assert!(s.contains("1"), "Expected '1' (transparent CONSTANT) in: {}", s);
 }
 
 #[test]
@@ -225,11 +211,7 @@ fn test_integration_statement_with_operator_format() {
 
     assert!(formatted.contains("x="), "Expected 'x=' in: {}", formatted);
     // Operator is Embryonic → shows full operator with operands
-    assert!(
-        formatted.contains("Op+("),
-        "Expected 'Op+(' in: {}",
-        formatted
-    );
+    assert!(formatted.contains("Op+("), "Expected 'Op+(' in: {}", formatted);
 }
 
 #[test]
@@ -244,21 +226,9 @@ fn test_integration_multi_statement_roundtrip() {
         .build();
     let formatted = format_fir_simple(&brane);
 
-    assert!(
-        formatted.contains("a=1"),
-        "Expected 'a=1' in: {}",
-        formatted
-    );
-    assert!(
-        formatted.contains("b=2"),
-        "Expected 'b=2' in: {}",
-        formatted
-    );
-    assert!(
-        formatted.contains("c=3"),
-        "Expected 'c=3' in: {}",
-        formatted
-    );
+    assert!(formatted.contains("a=1"), "Expected 'a=1' in: {}", formatted);
+    assert!(formatted.contains("b=2"), "Expected 'b=2' in: {}", formatted);
+    assert!(formatted.contains("c=3"), "Expected 'c=3' in: {}", formatted);
 }
 
 #[test]

@@ -282,9 +282,9 @@ impl Problem {
     #[must_use]
     pub fn level(&self) -> ValidationLevel {
         match self {
-            Problem::ExtraneousInputFile { .. }
-            | Problem::EmptySuite
-            | Problem::ArtifactUnsound { .. } => ValidationLevel::Output,
+            Problem::ExtraneousInputFile { .. } | Problem::EmptySuite | Problem::ArtifactUnsound { .. } => {
+                ValidationLevel::Output
+            }
             Problem::OrphanedStageArtifact { stage, .. }
             | Problem::SignatureDoesNotVerify { stage, .. } => match stage {
                 Stage::Verified => ValidationLevel::Verified,
@@ -297,8 +297,9 @@ impl Problem {
                 Stage::Verified => ValidationLevel::Verified,
                 _ => ValidationLevel::Checked,
             },
-            Problem::SignedByUnexpectedKey { .. }
-            | Problem::KeyDerivedFromEmptyPassphrase { .. } => ValidationLevel::Verified,
+            Problem::SignedByUnexpectedKey { .. } | Problem::KeyDerivedFromEmptyPassphrase { .. } => {
+                ValidationLevel::Verified
+            }
         }
     }
 
@@ -336,9 +337,7 @@ impl Problem {
             Problem::LeftMissingEntirely { .. } => {
                 "the right side holds a record the left does not: delete the stray, or restore the left"
             }
-            Problem::RightMissingEntirely { .. } => {
-                "review the diff, then promote the left side through"
-            }
+            Problem::RightMissingEntirely { .. } => "review the diff, then promote the left side through",
             Problem::SectionDifference { .. } => {
                 "review the diff: repair the code, or promote after review"
             }
@@ -397,11 +396,7 @@ impl std::fmt::Display for Problem {
                 left.dir_name(),
                 right.dir_name()
             ),
-            Problem::SignatureDoesNotVerify {
-                stage,
-                path,
-                detail,
-            } => write!(
+            Problem::SignatureDoesNotVerify { stage, path, detail } => write!(
                 f,
                 "{}/{}: signature invalid: {detail}",
                 stage.dir_name(),
@@ -455,10 +450,7 @@ impl TestResults {
     #[must_use]
     pub fn all_output_written_and_verified(&self) -> bool {
         self.integrity.is_clean()
-            && self
-                .files
-                .iter()
-                .all(|f| f.written_and_verified || f.ignored)
+            && self.files.iter().all(|f| f.written_and_verified || f.ignored)
             && self.correspondence_failures.is_empty()
     }
 }
@@ -585,8 +577,7 @@ impl EinmoSuite {
         expected: &std::collections::HashSet<PathBuf>,
     ) -> Result<Vec<Problem>> {
         let dir = self.config.stage_dir(stage);
-        let (present, _) =
-            crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
+        let (present, _) = crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
         let mut out: Vec<Problem> = present
             .into_iter()
             .filter(|rel| !expected.contains(rel))
@@ -604,13 +595,7 @@ impl EinmoSuite {
     /// by design (they carry per-run timestamps; comparing them is the insta
     /// defect this FOOP exists to fix).
     fn stage_pair_problems(&self, left: Stage, right: Stage) -> Result<Vec<Problem>> {
-        let cmp = crate::compare::compare(
-            &self.config,
-            left,
-            right,
-            self.config.match_sections(),
-            None,
-        )?;
+        let cmp = crate::compare::compare(&self.config, left, right, self.config.match_sections(), None)?;
         let mut out = Vec::new();
         // `only_in_a` = present left, absent right → the right side is missing.
         for rel in cmp.only_in_a {
@@ -658,8 +643,7 @@ impl EinmoSuite {
     /// and must: an AI-signed `verified/` is detectable regardless.
     fn attestation_problems(&self) -> Result<Vec<Problem>> {
         let dir = self.config.stage_dir(Stage::Verified);
-        let (present, _) =
-            crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
+        let (present, _) = crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
         let expected_prefix = self.config.reviewer_key_prefix().map(str::to_string);
         let mut out = Vec::new();
         for rel in present {
@@ -694,10 +678,7 @@ impl EinmoSuite {
 
     fn is_catastrophe_crumb(&self, out_path: &Path) -> bool {
         match EinmoFile::from_file(out_path) {
-            Ok(file) => file
-                .metadata()
-                .status_detail
-                .starts_with("TEST IN PROGRESS"),
+            Ok(file) => file.metadata().status_detail.starts_with("TEST IN PROGRESS"),
             Err(_) => false,
         }
     }
@@ -829,19 +810,11 @@ impl EinmoSuite {
                 let source = match self.read_input(rel) {
                     Ok(s) => s,
                     Err(e) => {
-                        raw.push((
-                            rel.clone(),
-                            String::new(),
-                            EvalOutcome::read_error(&e),
-                            None,
-                        ));
+                        raw.push((rel.clone(), String::new(), EvalOutcome::read_error(&e), None));
                         continue;
                     }
                 };
-                let out_path = self
-                    .config
-                    .stage_dir(Stage::Output)
-                    .join(mirror_input_path(rel));
+                let out_path = self.config.stage_dir(Stage::Output).join(mirror_input_path(rel));
                 if let Some(gated) = self.check_catastrophe_crumb(rel, &out_path) {
                     crumb_gated.push(gated);
                     continue;
@@ -910,8 +883,7 @@ impl EinmoSuite {
                 .any(|ip| ip == p || mirror_input_path(ip) == p)
         };
         for &(a, b) in self.config.required_correspondences() {
-            let mut cmp =
-                crate::compare::compare(&self.config, a, b, self.config.match_sections(), None)?;
+            let mut cmp = crate::compare::compare(&self.config, a, b, self.config.match_sections(), None)?;
             if !ignored_paths.is_empty() {
                 cmp.differing.retain(|d| !ignored_match(&d.rel_path));
                 cmp.only_in_a.retain(|p| !ignored_match(p));
@@ -1043,10 +1015,7 @@ impl EinmoSuite {
                         }
                         let idx = next.fetch_add(1, Ordering::Relaxed);
                         let Some(rel) = ordered.get(idx) else { break };
-                        let out_path = self
-                            .config
-                            .stage_dir(Stage::Output)
-                            .join(mirror_input_path(rel));
+                        let out_path = self.config.stage_dir(Stage::Output).join(mirror_input_path(rel));
                         if let Some(gated) = self.check_catastrophe_crumb(rel, &out_path) {
                             if let Ok(mut g) = crumb_gated.lock() {
                                 g.push(gated);
@@ -1055,54 +1024,48 @@ impl EinmoSuite {
                         }
                         // Wrap the worker body so ANY panic (read, evaluate, lock) becomes a failed
                         // `EvalOutcome` instead of poisoning the shared `Mutex`.
-                        let entry: RawEvaluation =
-                            match std::panic::catch_unwind(AssertUnwindSafe(|| {
-                                let source = match self.read_input(rel) {
-                                    Ok(s) => s,
-                                    Err(e) => {
-                                        return (
-                                            rel.clone(),
-                                            String::new(),
-                                            EvalOutcome::read_error(&e),
-                                            None,
-                                        );
-                                    }
-                                };
-                                let existing = EinmoFile::from_file(&out_path).ok();
-                                let _ = self.write_crash_crumb(rel, &source, &out_path);
-                                let test_start = std::time::Instant::now();
-                                let mut outcome = evaluate_capturing(evaluator, &source);
-                                if let Some(limit) = self.config.duration_limit() {
-                                    let elapsed = test_start.elapsed();
-                                    if elapsed > limit {
-                                        outcome = EvalOutcome {
-                                            outputs: vec![],
-                                            status: Status::OutputError,
-                                            detail: Some(format!(
-                                                "exceeded EINMO_DURATION_LIMIT ({}s, actual {}ms)",
-                                                limit.as_secs(),
-                                                elapsed.as_millis()
-                                            )),
-                                        };
-                                    }
-                                }
-                                (rel.clone(), source, outcome, existing)
-                            })) {
-                                Ok(entry) => entry,
-                                Err(panic) => {
-                                    let msg = panic_message(&panic);
-                                    (
-                                        rel.clone(),
-                                        String::new(),
-                                        EvalOutcome {
-                                            outputs: vec![format!("PANIC: {msg}")],
-                                            status: Status::OutputError,
-                                            detail: Some(msg),
-                                        },
-                                        None,
-                                    )
+                        let entry: RawEvaluation = match std::panic::catch_unwind(AssertUnwindSafe(|| {
+                            let source = match self.read_input(rel) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    return (rel.clone(), String::new(), EvalOutcome::read_error(&e), None);
                                 }
                             };
+                            let existing = EinmoFile::from_file(&out_path).ok();
+                            let _ = self.write_crash_crumb(rel, &source, &out_path);
+                            let test_start = std::time::Instant::now();
+                            let mut outcome = evaluate_capturing(evaluator, &source);
+                            if let Some(limit) = self.config.duration_limit() {
+                                let elapsed = test_start.elapsed();
+                                if elapsed > limit {
+                                    outcome = EvalOutcome {
+                                        outputs: vec![],
+                                        status: Status::OutputError,
+                                        detail: Some(format!(
+                                            "exceeded EINMO_DURATION_LIMIT ({}s, actual {}ms)",
+                                            limit.as_secs(),
+                                            elapsed.as_millis()
+                                        )),
+                                    };
+                                }
+                            }
+                            (rel.clone(), source, outcome, existing)
+                        })) {
+                            Ok(entry) => entry,
+                            Err(panic) => {
+                                let msg = panic_message(&panic);
+                                (
+                                    rel.clone(),
+                                    String::new(),
+                                    EvalOutcome {
+                                        outputs: vec![format!("PANIC: {msg}")],
+                                        status: Status::OutputError,
+                                        detail: Some(msg),
+                                    },
+                                    None,
+                                )
+                            }
+                        };
                         if let Ok(mut guard) = results.lock() {
                             guard.push(entry);
                         }
@@ -1562,10 +1525,7 @@ mod tests {
         let (_tmp, suite) = suite();
         let result = suite.evaluate_inline("bad.foo", "!garbage", &Echo).unwrap();
         assert_eq!(result.status, Status::InputError);
-        let out = suite
-            .config()
-            .stage_dir(Stage::Output)
-            .join("bad.foo.einmo");
+        let out = suite.config().stage_dir(Stage::Output).join("bad.foo.einmo");
         let file = EinmoFile::from_file(&out).unwrap();
         assert!(file.metadata().status_detail.contains("cannot parse"));
     }
@@ -1579,10 +1539,7 @@ mod tests {
             result.written_and_verified,
             "a panicking eval still writes a signed file"
         );
-        let out = suite
-            .config()
-            .stage_dir(Stage::Output)
-            .join("boom.foo.einmo");
+        let out = suite.config().stage_dir(Stage::Output).join("boom.foo.einmo");
         let file = EinmoFile::from_file(&out).unwrap();
         assert!(file.section("OUTPUT").unwrap().body().contains("PANIC"));
     }
@@ -1600,13 +1557,12 @@ mod tests {
     fn perspective_section_emitted() {
         let (_tmp, _suite) = suite();
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path(), ValidationLevel::Output).with_perspectives(vec![
-            Perspective {
+        let config =
+            TestConfig::new(tmp.path(), ValidationLevel::Output).with_perspectives(vec![Perspective {
                 name: "shout",
                 of: PerspectiveOf::Input,
                 extract: |s| s.to_uppercase(),
-            },
-        ]);
+            }]);
         config.ensure_stage_dirs().unwrap();
         let suite = EinmoSuite::new(config);
         suite.evaluate_inline("p.foo", "hello", &Echo).unwrap();
@@ -1620,16 +1576,11 @@ mod tests {
         let tmp1 = tempfile::tempdir().unwrap();
         let tmp2 = tempfile::tempdir().unwrap();
         for (tmp, threads) in [(&tmp1, None), (&tmp2, Some(4))] {
-            let config =
-                TestConfig::new(tmp.path(), ValidationLevel::Output).with_parallel(threads);
+            let config = TestConfig::new(tmp.path(), ValidationLevel::Output).with_parallel(threads);
             config.ensure_stage_dirs().unwrap();
             std::fs::create_dir_all(config.input_path()).unwrap();
             for i in 0..6 {
-                std::fs::write(
-                    config.input_path().join(format!("n{i}.foo")),
-                    format!("{{{i};}}"),
-                )
-                .unwrap();
+                std::fs::write(config.input_path().join(format!("n{i}.foo")), format!("{{{i};}}")).unwrap();
             }
             let suite = EinmoSuite::new(config);
             let results = suite.evaluate_all(&Echo).unwrap();
@@ -1667,10 +1618,7 @@ mod tests {
 
     #[test]
     fn topological_puts_reference_first() {
-        let inputs = vec![
-            PathBuf::from("arith++divZero.foo"),
-            PathBuf::from("arith.foo"),
-        ];
+        let inputs = vec![PathBuf::from("arith++divZero.foo"), PathBuf::from("arith.foo")];
         let ordered = topological_order(&inputs, "++");
         assert_eq!(ordered[0], PathBuf::from("arith.foo"));
     }
@@ -1679,11 +1627,7 @@ mod tests {
     fn dependent_diff_is_generated_and_signed() {
         let (_tmp, suite) = suite();
         std::fs::write(suite.config().input_path().join("base.foo"), "10 20 30").unwrap();
-        std::fs::write(
-            suite.config().input_path().join("base++case.foo"),
-            "10 99 30",
-        )
-        .unwrap();
+        std::fs::write(suite.config().input_path().join("base++case.foo"), "10 99 30").unwrap();
         let results = suite.evaluate_all(&Echo).unwrap();
         assert!(results.files.iter().all(|f| f.written_and_verified));
         let dep = suite
@@ -1693,10 +1637,7 @@ mod tests {
         let file = EinmoFile::from_file(&dep).unwrap();
         assert_eq!(file.metadata().reference, "base.foo");
         let diff = file.section("DIFF").unwrap().body();
-        assert!(
-            diff.contains("--- reference"),
-            "diff header present: {diff}"
-        );
+        assert!(diff.contains("--- reference"), "diff header present: {diff}");
         assert!(diff.contains("+++ dependent"));
     }
 
@@ -1758,10 +1699,7 @@ mod tests {
             failed.written_and_verified,
             "a read-failed input still writes a valid signed envelope"
         );
-        let out = suite
-            .config()
-            .stage_dir(Stage::Output)
-            .join("bad.foo.einmo");
+        let out = suite.config().stage_dir(Stage::Output).join("bad.foo.einmo");
         let file = EinmoFile::from_file(&out).unwrap();
         assert!(
             file.metadata().status_detail.contains("read error"),
@@ -1870,10 +1808,7 @@ mod tests {
     /// The levels escalate: each carries every requirement of the level below.
     #[test]
     fn levels_escalate_cumulatively() {
-        assert_eq!(
-            ValidationLevel::Output.escalation(),
-            &[ValidationLevel::Output]
-        );
+        assert_eq!(ValidationLevel::Output.escalation(), &[ValidationLevel::Output]);
         assert_eq!(
             ValidationLevel::Checked.escalation(),
             &[ValidationLevel::Output, ValidationLevel::Checked]
@@ -1941,10 +1876,7 @@ mod tests {
             "checked/ is empty, so the output has no counterpart — and verified/ \
              must not be mentioned at this level"
         );
-        assert_eq!(
-            results.integrity.problems[0].level(),
-            ValidationLevel::Checked
-        );
+        assert_eq!(results.integrity.problems[0].level(), ValidationLevel::Checked);
     }
 
     /// Every problem knows which level owns it, so a report can be read foundation-first.
@@ -2158,10 +2090,7 @@ mod tests {
             let input_dir = std::path::Path::new(&dir).join("input");
             std::fs::create_dir_all(&input_dir).unwrap();
             std::fs::write(input_dir.join("overflow.foo"), "trigger").unwrap();
-            let _ = suite.evaluate(
-                std::path::Path::new("overflow.foo"),
-                &StackOverflowEvaluator,
-            );
+            let _ = suite.evaluate(std::path::Path::new("overflow.foo"), &StackOverflowEvaluator);
             return;
         }
 
@@ -2174,12 +2103,8 @@ mod tests {
             .output()
             .unwrap();
         let crumb_path = tmp.path().join("output").join("overflow.foo.einmo");
-        assert!(
-            crumb_path.exists(),
-            "crash-crumb should survive stack overflow"
-        );
-        let file =
-            EinmoFile::from_file(&crumb_path).expect("crash-crumb must be valid signed .einmo");
+        assert!(crumb_path.exists(), "crash-crumb should survive stack overflow");
+        let file = EinmoFile::from_file(&crumb_path).expect("crash-crumb must be valid signed .einmo");
         assert!(file.metadata().status_detail.contains("TEST IN PROGRESS"));
     }
 
@@ -2368,8 +2293,7 @@ mod tests {
     #[test]
     fn catastrophe_crumb_rerun_overwrites() {
         let tmp = tempfile::tempdir().unwrap();
-        let config =
-            TestConfig::new(tmp.path(), ValidationLevel::Output).with_rerun_catastrophes(true);
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output).with_rerun_catastrophes(true);
         config.ensure_stage_dirs().unwrap();
         std::fs::create_dir_all(config.input_path()).unwrap();
         let suite = EinmoSuite::new(config);
@@ -2416,10 +2340,7 @@ mod tests {
         .unwrap();
         let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         assert_eq!(config.walk_depth_limit(), 10);
-        assert_eq!(
-            config.duration_limit(),
-            Some(std::time::Duration::from_secs(5))
-        );
+        assert_eq!(config.duration_limit(), Some(std::time::Duration::from_secs(5)));
         assert_eq!(
             config.suite_duration_limit(),
             Some(std::time::Duration::from_secs(100))
@@ -2444,11 +2365,7 @@ mod tests {
         .unwrap();
         let work_dir = parent.path().join("suite");
         std::fs::create_dir_all(&work_dir).unwrap();
-        std::fs::write(
-            work_dir.join("einmo.toml"),
-            "[suite]\nwalk_depth_limit = 16\n",
-        )
-        .unwrap();
+        std::fs::write(work_dir.join("einmo.toml"), "[suite]\nwalk_depth_limit = 16\n").unwrap();
         let config = TestConfig::new(&work_dir, ValidationLevel::Output);
         assert_eq!(config.walk_depth_limit(), 16);
     }

@@ -52,28 +52,22 @@ fn evaluate_arena(source: &str) -> anyhow::Result<(FVMStorage, Vec<FirPointer>)>
 }
 
 fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
-    let source = std::fs::read_to_string(file)
-        .with_context(|| format!("Failed to read {}", file.display()))?;
+    let source =
+        std::fs::read_to_string(file).with_context(|| format!("Failed to read {}", file.display()))?;
     let (storage, firs) = evaluate_arena(&source)?;
     for fir in firs {
-        println!(
-            "{}",
-            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)
-        );
+        println!("{}", Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish));
     }
     Ok(())
 }
 
 fn cmd_step(file: &PathBuf) -> anyhow::Result<()> {
-    let source = std::fs::read_to_string(file)
-        .with_context(|| format!("Failed to read {}", file.display()))?;
+    let source =
+        std::fs::read_to_string(file).with_context(|| format!("Failed to read {}", file.display()))?;
     let (storage, firs) = evaluate_arena(&source)?;
     for (i, fir) in firs.into_iter().enumerate() {
         println!("[{}] RESULT:", i);
-        println!(
-            "{}",
-            Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish)
-        );
+        println!("{}", Ubca2Sequencer::format(&storage, fir, SequenceMode::Foolish));
     }
     Ok(())
 }
@@ -149,13 +143,7 @@ mod tests {
             !rendered.contains("Op("),
             "Foolish-mode output must not show a bare operator-node token: {rendered}"
         );
-        for token in [
-            "PREMBRIONIC",
-            "EMBRYONIC",
-            "BRANING",
-            "ECONSTANIC",
-            "WOCONSTANIC",
-        ] {
+        for token in ["PREMBRIONIC", "EMBRYONIC", "BRANING", "ECONSTANIC", "WOCONSTANIC"] {
             assert!(
                 !rendered.contains(token),
                 "Foolish-mode output must not show a bare NYES token ({token}): {rendered}"

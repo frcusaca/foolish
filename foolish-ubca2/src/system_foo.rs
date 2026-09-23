@@ -128,9 +128,7 @@ mod tests {
     #[test]
     fn foop75_non_brane_reason_reaches_rendered_output() {
         use crate::sequencer::{SequenceMode, Ubca2Sequencer};
-        let (storage, firs) = crate::UbcaEvaluator
-            .evaluate_arena("{a = 1; d =$ 4}")
-            .unwrap();
+        let (storage, firs) = crate::UbcaEvaluator.evaluate_arena("{a = 1; d =$ 4}").unwrap();
         let rendered = firs
             .iter()
             .map(|&f| Ubca2Sequencer::format(&storage, f, SequenceMode::Foolish))

@@ -119,10 +119,7 @@ impl ProtoBrane {
     /// No caller yet — kept as the symmetric counterpart to [`Self::set_nyes`] for code that already holds
     /// an `&ProtoBrane` (e.g. inside a `with_mut`/`get_mut` closure) and would otherwise have to route back
     /// through `FVMStorage` just to read what it already has in hand.
-    #[expect(
-        dead_code,
-        reason = "no caller yet — symmetric counterpart to set_nyes"
-    )]
+    #[expect(dead_code, reason = "no caller yet — symmetric counterpart to set_nyes")]
     pub(crate) fn get_nyes(&self) -> Nyes {
         self.nyes
     }
@@ -282,9 +279,7 @@ impl ConcatRenderingAid {
     /// The marker element `index` was written with, if any.
     #[must_use]
     pub fn marker_at(&self, index: usize) -> Option<StayMarker> {
-        self.marked
-            .iter()
-            .find_map(|&(i, m)| (i == index).then_some(m))
+        self.marked.iter().find_map(|&(i, m)| (i == index).then_some(m))
     }
 }
 
@@ -442,11 +437,7 @@ impl FVMStorage {
     /// `RefCell`-style runtime borrow tracking is needed: the `&mut self` borrow on `FVMStorage` is the
     /// only exclusivity check required. `pub(crate)`: `ProtoBrane` is this module's own internal payload
     /// type, never exposed outside it.
-    pub(crate) fn with_mut<R>(
-        &mut self,
-        ptr: FirPointer,
-        f: impl FnOnce(&mut ProtoBrane) -> R,
-    ) -> R {
+    pub(crate) fn with_mut<R>(&mut self, ptr: FirPointer, f: impl FnOnce(&mut ProtoBrane) -> R) -> R {
         let index = self.validate(ptr);
         f(&mut self.slots[index].payload)
     }
@@ -522,9 +513,7 @@ impl FVMStorage {
     pub(crate) fn attach_shared_foolish_child(&mut self, parent: FirPointer, child: FirPointer) {
         self.validate(parent);
         self.validate(child);
-        self.slots[parent.index as usize]
-            .foolish_children
-            .push(child);
+        self.slots[parent.index as usize].foolish_children.push(child);
     }
 
     /// Inserts the very first node of a fresh arena, self-parented (its own
@@ -734,10 +723,7 @@ impl FirPointer {
 
     /// Climbs the parent chain from `self` until a `Statement` kind is found, then returns that statement
     /// together with its home brane. `None` if the climb reaches the structural root without finding one.
-    pub fn find_enclosing_stmt_and_brane(
-        self,
-        storage: &FVMStorage,
-    ) -> Option<(FirPointer, FirPointer)> {
+    pub fn find_enclosing_stmt_and_brane(self, storage: &FVMStorage) -> Option<(FirPointer, FirPointer)> {
         let mut current = storage.parent(self);
         let mut prev = self;
         loop {
@@ -839,12 +825,7 @@ struct ArenaScope {
 }
 
 /// Recursion companion for [`FirPointer::step`], carrying the depth counter.
-fn step_inner(
-    ptr: FirPointer,
-    storage: &mut FVMStorage,
-    scope: ArenaScope,
-    depth: usize,
-) -> FirPointer {
+fn step_inner(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope, depth: usize) -> FirPointer {
     if depth > MAX_DEPTH {
         return ptr;
     }
@@ -909,9 +890,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Braning));
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
-                let all_foolish_children_conclusive = children
-                    .iter()
-                    .all(|&c| storage.get_nyes(c).is_conclusive());
+                let all_foolish_children_conclusive =
+                    children.iter().all(|&c| storage.get_nyes(c).is_conclusive());
                 if !all_foolish_children_conclusive {
                     for child in children {
                         storage.with_mut(ptr, |fir| fir.push_task(child));
@@ -967,9 +947,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         // null-characterized name already defined here, the brane cannot be coordinated in:
                         // THIS STATEMENT is the unsteppable one, so the check runs on the statement holding
                         // the value, not on the members it would have introduced.
-                        search_fir_dispatch::check_recoordinated_null_const_conflict(
-                            storage, ptr, body,
-                        );
+                        search_fir_dispatch::check_recoordinated_null_const_conflict(storage, ptr, body);
                         // Do NOT clobber a terminal state the route checks above already reached.
                         // `check_recoordinated_null_const_conflict` settles THIS statement NK (FOOP-86 §6.2
                         // route 3) and the route 1/4 checks may have halted the brane; writing `body_nyes`
@@ -1027,14 +1005,11 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 if let Some(&expr) = storage.foolish_children(ptr).first() {
                     let expr_nyes = storage.get_nyes(expr);
                     if expr_nyes.is_constanic() {
-                        let (result, result_nyes) = match FirCursor::new(expr, storage)
-                            .ubc_children()
-                            .first()
-                            .copied()
-                        {
-                            Some(r) => (r, storage.get_nyes(r)),
-                            None => (expr, expr_nyes),
-                        };
+                        let (result, result_nyes) =
+                            match FirCursor::new(expr, storage).ubc_children().first().copied() {
+                                Some(r) => (r, storage.get_nyes(r)),
+                                None => (expr, expr_nyes),
+                            };
                         let me = storage.get_mut(ptr);
                         me.push_ubc_child(result, result_nyes);
                         me.set_nyes(result_nyes);
@@ -1062,14 +1037,11 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     && let Some(&expr) = children.first()
                 {
                     let expr_nyes = storage.get_nyes(expr);
-                    let (result, result_nyes) = match FirCursor::new(expr, storage)
-                        .ubc_children()
-                        .first()
-                        .copied()
-                    {
-                        Some(r) => (r, storage.get_nyes(r)),
-                        None => (expr, expr_nyes),
-                    };
+                    let (result, result_nyes) =
+                        match FirCursor::new(expr, storage).ubc_children().first().copied() {
+                            Some(r) => (r, storage.get_nyes(r)),
+                            None => (expr, expr_nyes),
+                        };
                     let constanic_nyes = nyes_from_found(result_nyes);
                     let me = storage.get_mut(ptr);
                     me.push_ubc_child(result, result_nyes);
@@ -1161,14 +1133,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 if !already_populated {
                     storage.get_mut(ptr).set_helpers_populated();
                     search_fir_dispatch::populate_concat_helpers(storage, ptr);
-                    let helpers: Vec<FirPointer> =
-                        FirCursor::new(ptr, storage).ubc_children().to_vec();
+                    let helpers: Vec<FirPointer> = FirCursor::new(ptr, storage).ubc_children().to_vec();
                     for helper in helpers {
                         storage.with_mut(ptr, |fir| fir.push_task(helper));
                     }
                 } else {
-                    let helpers: Vec<FirPointer> =
-                        FirCursor::new(ptr, storage).ubc_children().to_vec();
+                    let helpers: Vec<FirPointer> = FirCursor::new(ptr, storage).ubc_children().to_vec();
                     let decided_nyes = if helpers.is_empty() {
                         Nyes::Constant
                     } else {
@@ -1213,8 +1183,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     })
                     .collect();
 
-                let (Some(&Some(left)), Some(&Some(right))) = (values.first(), values.get(1))
-                else {
+                let (Some(&Some(left)), Some(&Some(right))) = (values.first(), values.get(1)) else {
                     // The operands DID evaluate here, and at least one is not an integer. Only integers are
                     // comparable (FOOP-33 §5, same principle `default_equal` follows).
                     let nk_ptr = storage.make_orphan_child(
@@ -1253,17 +1222,14 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         op.searchable_name()
                     );
                 };
-                let clone =
-                    storage.revive_constanic(boolean, ptr, 0, scope.has_ancestral_sfm, false);
+                let clone = storage.revive_constanic(boolean, ptr, 0, scope.has_ancestral_sfm, false);
                 let mut cursor = FirCursorMut::new(ptr, storage);
                 cursor.push_ubc_child(clone);
                 cursor.set_nyes(Nyes::Constant);
             }
             _ => {}
         },
-        FirSpec::Search {
-            is_value_search, ..
-        } => {
+        FirSpec::Search { is_value_search, .. } => {
             if is_value_search {
                 search_fir_dispatch::value_search_step(storage, ptr, scope.has_ancestral_sfm);
             } else {
@@ -1301,41 +1267,42 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                                 match brane_ref.find_stmt_index(storage, stmt_ref) {
                                     Some(idx) => {
                                         let target = idx as i32 + offset;
-                                        let len = FirCursor::new(brane_ref, storage)
-                                            .stmt_count()
-                                            .unwrap_or(0)
-                                            as i32;
+                                        let len =
+                                            FirCursor::new(brane_ref, storage).stmt_count().unwrap_or(0)
+                                                as i32;
                                         if target < 0 || target >= len {
                                             storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
                                         } else {
                                             let mut nav = search_engine::BraneNavigator::new(
                                                 storage, brane_ref, true,
                                             );
-                                            let predicate =
-                                                search_engine::SearchPredicate::Index(target);
+                                            let predicate = search_engine::SearchPredicate::Index(target);
                                             match search_engine::contextful_search_scan_no_body_check(
-                                            storage, &mut nav, &predicate,
-                                        ) {
-                                            search_engine::ScanOutcome::Found(stmt) => {
-                                                let body = storage.foolish_children(stmt).first().copied();
-                                                match body {
-                                                    Some(_) => {
-                                                        let clone = search_fir_dispatch::clone_stmt_result(
-                                                            storage,
-                                                            stmt,
-                                                            ptr,
-                                                            scope.has_ancestral_sfm,
-                                                        );
-                                                        let mut cursor = FirCursorMut::new(ptr, storage);
-                                                        cursor.push_search_result_pair(clone, stmt);
-                                                        cursor.set_nyes(Nyes::Braning);
+                                                storage, &mut nav, &predicate,
+                                            ) {
+                                                search_engine::ScanOutcome::Found(stmt) => {
+                                                    let body =
+                                                        storage.foolish_children(stmt).first().copied();
+                                                    match body {
+                                                        Some(_) => {
+                                                            let clone =
+                                                                search_fir_dispatch::clone_stmt_result(
+                                                                    storage,
+                                                                    stmt,
+                                                                    ptr,
+                                                                    scope.has_ancestral_sfm,
+                                                                );
+                                                            let mut cursor =
+                                                                FirCursorMut::new(ptr, storage);
+                                                            cursor.push_search_result_pair(clone, stmt);
+                                                            cursor.set_nyes(Nyes::Braning);
+                                                        }
+                                                        None => storage
+                                                            .with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
                                                     }
-                                                    None => storage
-                                                        .with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
                                                 }
+                                                _ => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
                                             }
-                                            _ => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
-                                        }
                                         }
                                     }
                                     None => storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk)),
@@ -1350,22 +1317,17 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         search_fir_dispatch::settle_from_ubc_result(storage, ptr);
                     } else if contexted && anchored {
                         let anchor = storage.foolish_children(ptr)[0];
-                        let fool_ref_fir = FirCursor::new(anchor, storage)
-                            .ubc_children()
-                            .get(1)
-                            .copied();
+                        let fool_ref_fir = FirCursor::new(anchor, storage).ubc_children().get(1).copied();
                         let contexted_result = fool_ref_fir.and_then(|frf| {
                             let referent = FirCursor::new(frf, storage).as_fool_ref_referent()?;
                             let h_brane = referent.home_brane(storage)?;
                             let p = h_brane.find_stmt_index(storage, referent)?;
                             let target = p as i32 + offset;
-                            let len =
-                                FirCursor::new(h_brane, storage).stmt_count().unwrap_or(0) as i32;
+                            let len = FirCursor::new(h_brane, storage).stmt_count().unwrap_or(0) as i32;
                             if target < 0 || target >= len {
                                 return None;
                             }
-                            let mut nav =
-                                search_engine::BraneNavigator::new(storage, h_brane, true);
+                            let mut nav = search_engine::BraneNavigator::new(storage, h_brane, true);
                             let predicate = search_engine::SearchPredicate::Index(target);
                             match search_engine::contextful_search_scan_no_body_check(
                                 storage, &mut nav, &predicate,
@@ -1410,9 +1372,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             // other FIR (commonly a search that itself settled NK), there is no value to
                             // name — leave the result unset so the existing failed-anchor rendering shows
                             // through unchanged.
-                            let named = FirCursor::new(resolved, storage)
-                                .as_i64()
-                                .map(|v| v.to_string());
+                            let named = FirCursor::new(resolved, storage).as_i64().map(|v| v.to_string());
                             if let Some(shown) = named {
                                 let reason = format!("{shown} is not a brane");
                                 let nk_ptr = storage.make_orphan_child(
@@ -1665,10 +1625,7 @@ fn combine(ptr: FirPointer, storage: &mut FVMStorage) {
             // The compiler is the only producer of `Operator` specs and only ever uses known operators, so
             // an unknown one here means the compiler and this dispatch have fallen out of sync — an
             // internal-consistency bug, not a runtime error to propagate.
-            unreachable!(
-                "combine: unknown operator {op:?} ({} operands)",
-                values.len()
-            )
+            unreachable!("combine: unknown operator {op:?} ({} operands)", values.len())
         }
     };
 
@@ -1718,10 +1675,7 @@ impl<'s> FirCursor<'s> {
     /// `ubc_children` first (the evaluator renders these as `result=`), then
     /// `foolish_children` — this render order is load-bearing for output.
     pub fn all_children(&self) -> impl Iterator<Item = FirPointer> + 's {
-        self.ubc_children()
-            .iter()
-            .chain(self.foolish_children())
-            .copied()
+        self.ubc_children().iter().chain(self.foolish_children()).copied()
     }
 
     /// `None` only for the true structural root — see [`FirPointer::get_parent`].
@@ -1824,9 +1778,7 @@ impl<'s> FirCursor<'s> {
     /// lands inside one, then delegates to that helper's `stmt_at`.
     pub fn stmt_at(&self, idx: usize) -> Option<FirPointer> {
         match self.node() {
-            FirSpec::Brane { .. } | FirSpec::ConcatHelper => {
-                self.foolish_children().get(idx).copied()
-            }
+            FirSpec::Brane { .. } | FirSpec::ConcatHelper => self.foolish_children().get(idx).copied(),
             FirSpec::Concatenation { .. } => {
                 let mut remaining = idx;
                 for &helper in self.ubc_children() {
@@ -1956,8 +1908,7 @@ impl<'s> FirCursorMut<'s> {
     /// internal-consistency violation, not a recoverable condition. `child` must already be a child of
     /// `self.ptr`.
     pub fn check_sff_marked_child(&self, child: FirPointer) {
-        if let Some(offender) = sift_for_first_non_econstanic_descendent_search(self.storage, child)
-        {
+        if let Some(offender) = sift_for_first_non_econstanic_descendent_search(self.storage, child) {
             let spec = self.storage.get(offender);
             let nyes = self.storage.get_nyes(offender);
             panic!(
@@ -1974,9 +1925,7 @@ impl<'s> FirCursorMut<'s> {
 
     pub fn push_ubc_child(&mut self, child: FirPointer) {
         let child_nyes = self.storage.get_nyes(child);
-        self.storage
-            .get_mut(self.ptr)
-            .push_ubc_child(child, child_nyes);
+        self.storage.get_mut(self.ptr).push_ubc_child(child, child_nyes);
     }
 
     pub fn push_search_result(&mut self, result: FirPointer) {
@@ -2024,10 +1973,7 @@ fn sift_for_first_non_econstanic_descendent_search(
     storage: &FVMStorage,
     node: FirPointer,
 ) -> Option<FirPointer> {
-    let is_search_kind = matches!(
-        storage.get(node),
-        FirSpec::Search { .. } | FirSpec::Index { .. }
-    );
+    let is_search_kind = matches!(storage.get(node), FirSpec::Search { .. } | FirSpec::Index { .. });
     if is_search_kind && storage.get_nyes(node) != Nyes::Econstanic {
         return Some(node);
     }
@@ -2121,13 +2067,7 @@ impl FVMStorage {
             if matches!(spec, FirSpec::StayFoolish)
                 && let Some(result) = FirCursor::new(root, self).ubc_children().first().copied()
             {
-                return self.revive_constanic(
-                    result,
-                    new_parent,
-                    index,
-                    sfm,
-                    skip_foolish_children,
-                );
+                return self.revive_constanic(result, new_parent, index, sfm, skip_foolish_children);
             }
             if let Some(inner) = self.foolish_children(root).first().copied() {
                 return self.revive_constanic(inner, new_parent, index, sfm, skip_foolish_children);
@@ -2145,8 +2085,7 @@ impl FVMStorage {
         // `foolish_children` afterward would silently see the shared child missing, even though
         // `revive_constanic` reported success.
         let is_share_kind = matches!(spec, FirSpec::FoolRef { .. } | FirSpec::Creation);
-        let is_conclusive_non_brane =
-            nyes.is_conclusive() && !matches!(spec, FirSpec::Brane { .. });
+        let is_conclusive_non_brane = nyes.is_conclusive() && !matches!(spec, FirSpec::Brane { .. });
         if is_share_kind || is_conclusive_non_brane {
             self.attach_shared_foolish_child(new_parent, root);
             return root;
@@ -2666,9 +2605,7 @@ mod search_fir_dispatch {
             .first()
             .copied()
             .expect("statement must have a body");
-        let index = FirCursor::new(stmt, storage)
-            .as_stmt_line_number()
-            .unwrap_or(0);
+        let index = FirCursor::new(stmt, storage).as_stmt_line_number().unwrap_or(0);
         storage.revive_constanic(body, new_parent, index, sfm, false)
     }
 
@@ -2842,16 +2779,13 @@ mod search_fir_dispatch {
             ) else {
                 continue;
             };
-            if !storage.get_nyes(prior_body).is_constanic()
-                || !storage.get_nyes(member_body).is_constanic()
+            if !storage.get_nyes(prior_body).is_constanic() || !storage.get_nyes(member_body).is_constanic()
             {
                 continue;
             }
             if super::default_equal(storage, member_body, prior_body) != super::Equality::Equal {
                 let name = match storage.get(member) {
-                    FirSpec::Statement { identifier, .. } => {
-                        identifier.identifier_name().to_string()
-                    }
+                    FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                     _ => continue,
                 };
                 // The conflict belongs to THIS statement -- it is the one that cannot be stepped, because
@@ -2902,9 +2836,7 @@ mod search_fir_dispatch {
             return;
         }
         let is_nully = match storage.get(stmt) {
-            FirSpec::Statement { identifier, .. } => {
-                identifier.is_nully_characterizing_coordinate_name()
-            }
+            FirSpec::Statement { identifier, .. } => identifier.is_nully_characterizing_coordinate_name(),
             _ => return,
         };
         if !is_nully {
@@ -2926,11 +2858,7 @@ mod search_fir_dispatch {
                 FirSpec::Statement { identifier, .. } => identifier.identifier_name().to_string(),
                 _ => return,
             };
-            halt_brane_at(
-                storage,
-                stmt,
-                format!("'{name} is already a named creation"),
-            );
+            halt_brane_at(storage, stmt, format!("'{name} is already a named creation"));
         }
     }
 
@@ -2969,9 +2897,7 @@ mod search_fir_dispatch {
         let Some(prior_body) = statement_value_for_comparison(storage, prior_stmt) else {
             return;
         };
-        if !storage.get_nyes(new_body).is_constanic()
-            || !storage.get_nyes(prior_body).is_constanic()
-        {
+        if !storage.get_nyes(new_body).is_constanic() || !storage.get_nyes(prior_body).is_constanic() {
             return; // one side not yet constanic -- nothing to compare yet.
         }
         if super::default_equal(storage, new_body, prior_body) != super::Equality::Equal {
@@ -3154,10 +3080,7 @@ mod search_fir_dispatch {
         forward: bool,
     ) -> Option<(FirPointer, Nyes)> {
         let anchor = storage.foolish_children(ptr)[0];
-        let fool_ref_fir = FirCursor::new(anchor, storage)
-            .ubc_children()
-            .get(1)
-            .copied()?;
+        let fool_ref_fir = FirCursor::new(anchor, storage).ubc_children().get(1).copied()?;
         let referent = FirCursor::new(fool_ref_fir, storage).as_fool_ref_referent()?;
         let h_brane = referent.home_brane(storage)?;
         let p = h_brane.find_stmt_index(storage, referent)?;
@@ -3354,8 +3277,7 @@ mod search_fir_dispatch {
         if FirCursor::new(value_fir, storage).as_i64().is_none() && !resolved_is_creation {
             storage.with_mut(ptr, |fir| {
                 fir.set_alarm_reason(
-                    "VALUE-SEARCH-UNSUPPORTED-PATTERN: pattern is neither integer nor creation"
-                        .to_string(),
+                    "VALUE-SEARCH-UNSUPPORTED-PATTERN: pattern is neither integer nor creation".to_string(),
                 )
             });
             storage.with_mut(ptr, |fir| fir.set_nyes(Nyes::Nk));
@@ -3371,11 +3293,7 @@ mod search_fir_dispatch {
     /// scan bounded to the enclosing statement's own position; `Braning` does the
     /// contexted/anchored/unanchored (AB-style) dispatch, mirroring `name_search_step`'s `Braning` arm
     /// shape closely but scanning with the value predicate instead of a name predicate.
-    pub(crate) fn value_search_step(
-        storage: &mut FVMStorage,
-        ptr: FirPointer,
-        has_ancestral_sfm: bool,
-    ) {
+    pub(crate) fn value_search_step(storage: &mut FVMStorage, ptr: FirPointer, has_ancestral_sfm: bool) {
         let (anchored, forward, contexted) = match storage.get(ptr) {
             FirSpec::Search {
                 anchored,
@@ -3530,10 +3448,7 @@ mod core_fir_conversion {
     /// from `step_inner`'s `MAX_DEPTH`, which caps recursion depth within a single iteration.
     const MAX_STEPS: usize = 10_000;
 
-    pub(crate) fn step_to_constanic(
-        storage: &mut FVMStorage,
-        ptr: FirPointer,
-    ) -> Result<(), String> {
+    pub(crate) fn step_to_constanic(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
         let mut last_step = 0;
         for step in 0..MAX_STEPS {
             ptr.step(storage);
@@ -3810,11 +3725,7 @@ mod arena_compiler {
     }
 
     /// Writes the collected aid onto an already-built concatenation node.
-    fn set_concat_rendering_aid(
-        storage: &mut FVMStorage,
-        node: FirPointer,
-        aid: ConcatRenderingAid,
-    ) {
+    fn set_concat_rendering_aid(storage: &mut FVMStorage, node: FirPointer, aid: ConcatRenderingAid) {
         if aid.is_empty() {
             return;
         }
@@ -3844,9 +3755,7 @@ mod arena_compiler {
             };
         }
         match ast {
-            Astn::IntLit(n) => {
-                child_parent!().create_child(storage, FirSpec::IndepInt { value: n as i64 })
-            }
+            Astn::IntLit(n) => child_parent!().create_child(storage, FirSpec::IndepInt { value: n as i64 }),
             Astn::UnknownLit => child_parent!().create_child(
                 storage,
                 FirSpec::Nk {
@@ -3862,8 +3771,7 @@ mod arena_compiler {
                 let full_pattern = if characterizations.is_empty() {
                     id.clone()
                 } else {
-                    let char_str: String =
-                        characterizations.iter().map(|c| format!("{c}'")).collect();
+                    let char_str: String = characterizations.iter().map(|c| format!("{c}'")).collect();
                     format!("{char_str}{id}")
                 };
                 let node = child_parent!().create_child(
@@ -3887,9 +3795,7 @@ mod arena_compiler {
                     Some(p) => p.create_child(
                         storage,
                         FirSpec::Brane {
-                            characterizations: Characterizations::from_brane_parts(
-                                characterizations,
-                            ),
+                            characterizations: Characterizations::from_brane_parts(characterizations),
                         },
                     ),
                     None => storage.make_root(FirSpec::Brane {
@@ -4161,10 +4067,7 @@ mod arena_compiler {
                       not this plain compile path; exercised only by this file's own tests"
         )
     )]
-    pub(crate) fn compile_standalone(
-        storage: &mut FVMStorage,
-        ast: Astn,
-    ) -> anyhow::Result<FirPointer> {
+    pub(crate) fn compile_standalone(storage: &mut FVMStorage, ast: Astn) -> anyhow::Result<FirPointer> {
         validate_astn(&ast)?;
         if !matches!(ast, Astn::Brane { .. }) {
             anyhow::bail!("only a Brane can be a top-level (root) node");
@@ -4173,14 +4076,8 @@ mod arena_compiler {
     }
 
     /// No production caller — see `compile_standalone`'s doc comment.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "see compile_standalone's doc comment")
-    )]
-    pub(crate) fn compile(
-        storage: &mut FVMStorage,
-        source: &str,
-    ) -> anyhow::Result<Vec<FirPointer>> {
+    #[cfg_attr(not(test), expect(dead_code, reason = "see compile_standalone's doc comment"))]
+    pub(crate) fn compile(storage: &mut FVMStorage, source: &str) -> anyhow::Result<Vec<FirPointer>> {
         let asts = foolish_parser::parse(source)?;
         asts.into_iter()
             .map(|ast| compile_standalone(storage, ast))
@@ -4198,9 +4095,8 @@ mod arena_compiler {
         parent: FirPointer,
     ) -> anyhow::Result<FirPointer> {
         let asts = foolish_parser::parse(source)?;
-        let [ast] = <[Astn; 1]>::try_from(asts).map_err(|v| {
-            anyhow::anyhow!("expected exactly one top-level brane, found {}", v.len())
-        })?;
+        let [ast] = <[Astn; 1]>::try_from(asts)
+            .map_err(|v| anyhow::anyhow!("expected exactly one top-level brane, found {}", v.len()))?;
         validate_astn(&ast)?;
         let Astn::Brane { mut statements, .. } = ast else {
             anyhow::bail!("expected a brane");
@@ -4211,9 +4107,7 @@ mod arena_compiler {
         let Astn::Assignment { expr, operator, .. } = statements.remove(0) else {
             anyhow::bail!("expected an assignment");
         };
-        Ok(build_expr_with_operator(
-            storage, *expr, operator, parent, false,
-        ))
+        Ok(build_expr_with_operator(storage, *expr, operator, parent, false))
     }
 
     /// A body-override hook: takes `&mut FVMStorage` (needed to construct a replacement body) and the
@@ -4382,10 +4276,7 @@ mod arena_compiler {
     /// on the STATEMENT itself would just return the statement (a plain `Statement` has no constanic result
     /// in the common case), so this resolves through `foolish_children().first()` (the written body) first,
     /// THEN `.value()`.
-    pub(crate) fn program_result(
-        storage: &FVMStorage,
-        composed_root: FirPointer,
-    ) -> Option<FirPointer> {
+    pub(crate) fn program_result(storage: &FVMStorage, composed_root: FirPointer) -> Option<FirPointer> {
         let count = FirCursor::new(composed_root, storage).stmt_count()?;
         if count == 0 {
             return None;
@@ -4444,12 +4335,7 @@ mod tests {
         let int_child = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         assert_eq!(storage.get_nyes(int_child), Nyes::Independent);
 
-        let op_child = root.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let op_child = root.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
         assert_eq!(storage.get_nyes(op_child), Nyes::Prembrionic);
     }
 
@@ -4542,12 +4428,7 @@ mod tests {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let settled = root.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         storage.with_mut(settled, |fir| fir.set_nyes(Nyes::Constant));
-        let unsettled = root.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let unsettled = root.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
 
         {
             let mut cursor = FirCursorMut::new(root, &mut storage);
@@ -4637,10 +4518,7 @@ mod tests {
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
         let cloned = storage.revive_constanic(settled, other_root, 0, false, false);
-        assert_eq!(
-            cloned, settled,
-            "Constant non-Brane must share, never clone"
-        );
+        assert_eq!(cloned, settled, "Constant non-Brane must share, never clone");
     }
 
     /// `revive_constanic`'s full-rebuild behavior: a pre-constanic node is rebuilt as a genuinely new
@@ -4680,12 +4558,8 @@ mod tests {
     #[test]
     fn revive_constanic_recursively_clones_foolish_children() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
+            FirSpec::Operator { op: "+".to_string() },
+            FirSpec::Operator { op: "+".to_string() },
         ]);
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
@@ -4807,9 +4681,7 @@ mod tests {
     #[test]
     fn operator_addition_settles_constant() {
         let mut storage = FVMStorage::new();
-        let op = storage.make_root(FirSpec::Operator {
-            op: "+".to_string(),
-        });
+        let op = storage.make_root(FirSpec::Operator { op: "+".to_string() });
         let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
         let b = op.create_child(&mut storage, FirSpec::IndepInt { value: 3 });
         storage.with_mut(a, |fir| fir.set_nyes(Nyes::Constant));
@@ -4831,9 +4703,7 @@ mod tests {
     #[test]
     fn operator_division_by_zero_settles_nk() {
         let mut storage = FVMStorage::new();
-        let op = storage.make_root(FirSpec::Operator {
-            op: "/".to_string(),
-        });
+        let op = storage.make_root(FirSpec::Operator { op: "/".to_string() });
         let a = op.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         let b = op.create_child(&mut storage, FirSpec::IndepInt { value: 0 });
         storage.with_mut(a, |fir| fir.set_nyes(Nyes::Constant));
@@ -4861,21 +4731,9 @@ mod tests {
     #[test]
     fn operator_pushes_tasks_for_inconclusive_operands() {
         let mut storage = FVMStorage::new();
-        let op = storage.make_root(FirSpec::Operator {
-            op: "+".to_string(),
-        });
-        let a = op.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
-        let _b = op.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let op = storage.make_root(FirSpec::Operator { op: "+".to_string() });
+        let a = op.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
+        let _b = op.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
         // `a`/`b` both start Prembrionic (unsettled) — the default.
 
         op.step(&mut storage);
@@ -4895,15 +4753,8 @@ mod tests {
     #[test]
     fn operator_pushes_tasks_for_econstanic_operand() {
         let mut storage = FVMStorage::new();
-        let op = storage.make_root(FirSpec::Operator {
-            op: "+".to_string(),
-        });
-        let a = op.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let op = storage.make_root(FirSpec::Operator { op: "+".to_string() });
+        let a = op.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
         storage.with_mut(a, |fir| fir.set_nyes(Nyes::Econstanic));
 
         op.step(&mut storage);
@@ -4944,10 +4795,7 @@ mod tests {
                 .map(|id| id.identifier_name()),
             Some("a")
         );
-        assert_eq!(
-            FirCursor::new(stmt, &storage).as_stmt_line_number(),
-            Some(0)
-        );
+        assert_eq!(FirCursor::new(stmt, &storage).as_stmt_line_number(), Some(0));
     }
 
     /// A brane whose statements are all literal (`Independent`) values settles `Independent` itself —
@@ -5113,11 +4961,7 @@ mod tests {
 
         let read = FirCursor::new(root, &storage);
         let children = read.ubc_children();
-        assert_eq!(
-            children.len(),
-            2,
-            "exactly two ubc_children, per the invariant"
-        );
+        assert_eq!(children.len(), 2, "exactly two ubc_children, per the invariant");
         assert_eq!(children[0], result, "[0] is the result value");
         assert_eq!(
             FirCursor::new(children[1], &storage).node(),
@@ -5187,10 +5031,7 @@ mod tests {
         }
 
         assert_eq!(storage.get_nyes(sff), Nyes::Constant);
-        assert_eq!(
-            FirCursor::new(sff, &storage).ubc_children().first(),
-            Some(&expr)
-        );
+        assert_eq!(FirCursor::new(sff, &storage).ubc_children().first(), Some(&expr));
     }
 
     /// `revive_constanic`'s SF/SFF unwrap: a `StayFoolish` with a constanic result unwraps to that result
@@ -5218,8 +5059,7 @@ mod tests {
             "SF unwraps through to its constanic result, which then shares"
         );
         assert!(
-            storage.foolish_children(other_root).is_empty()
-                || storage.foolish_children(other_root) != [sf],
+            storage.foolish_children(other_root).is_empty() || storage.foolish_children(other_root) != [sf],
             "no cloned SF wrapper node should ever be produced"
         );
     }
@@ -5230,31 +5070,15 @@ mod tests {
     fn revive_constanic_unwraps_stay_fully_foolish_to_first_foolish_child() {
         let (mut storage, root) = FVMStorage::test_root_brane(&[]);
         let sff = root.create_child(&mut storage, FirSpec::StayFullyFoolish);
-        let inner = sff.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let inner = sff.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
         // inner stays Prembrionic — a full-rebuild case, not a share.
         let other_root = storage.make_root(FirSpec::IndepInt { value: 0 });
 
         let cloned = storage.revive_constanic(sff, other_root, 0, false, false);
 
-        assert_ne!(
-            cloned, sff,
-            "no cloned SFF wrapper node should ever be produced"
-        );
-        assert_ne!(
-            cloned, inner,
-            "a pre-constanic inner must be rebuilt, not shared"
-        );
-        assert_eq!(
-            storage.get(cloned),
-            &FirSpec::Operator {
-                op: "+".to_string()
-            }
-        );
+        assert_ne!(cloned, sff, "no cloned SFF wrapper node should ever be produced");
+        assert_ne!(cloned, inner, "a pre-constanic inner must be rebuilt, not shared");
+        assert_eq!(storage.get(cloned), &FirSpec::Operator { op: "+".to_string() });
     }
 
     /// `ConcatHelper` steps identically to a `Brane` — it is transparent, inheriting brane-shaped stepping.
@@ -5483,9 +5307,7 @@ mod tests {
         use crate::system_foo::ComparisonOp;
 
         let mut storage = FVMStorage::new();
-        let cmp = storage.make_root(FirSpec::Comparison {
-            op: ComparisonOp::Lt,
-        });
+        let cmp = storage.make_root(FirSpec::Comparison { op: ComparisonOp::Lt });
         // Operand shaped like `<<#-1>>`: an SFF-wrapped index search whose own inner search sits Econstanic
         // (searched nothing in this context yet).
         let operand = cmp.create_child(&mut storage, FirSpec::StayFullyFoolish);
@@ -5565,12 +5387,7 @@ mod tests {
                 line_number: 0,
             },
         );
-        let cmp = holder.create_child(
-            &mut storage,
-            FirSpec::Comparison {
-                op: ComparisonOp::Eq,
-            },
-        );
+        let cmp = holder.create_child(&mut storage, FirSpec::Comparison { op: ComparisonOp::Eq });
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
@@ -5581,10 +5398,7 @@ mod tests {
             Nyes::Constant,
             "1 =̲=̲ 1 must resolve the real verdict, not defer to Woconstanic"
         );
-        let result = FirCursor::new(cmp, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let result = FirCursor::new(cmp, &storage).ubc_children().first().copied();
         assert_eq!(
             result,
             Some(true_creation),
@@ -5642,13 +5456,9 @@ mod tests {
         let mut nav = BraneNavigator::new(&storage, brane, true);
         assert_eq!(nav.total(), 3);
 
-        let yielded: Vec<(FirPointer, usize)> =
-            std::iter::from_fn(|| nav.next_candidate()).collect();
+        let yielded: Vec<(FirPointer, usize)> = std::iter::from_fn(|| nav.next_candidate()).collect();
         assert_eq!(yielded, vec![(s0, 0), (s1, 1), (s2, 2)]);
-        assert!(
-            nav.next_candidate().is_none(),
-            "must stop after all yielded"
-        );
+        assert!(nav.next_candidate().is_none(), "must stop after all yielded");
     }
 
     /// Backward direction yields in reverse order, exactly once — mirrors
@@ -5661,8 +5471,7 @@ mod tests {
         let s2 = make_named_statement(&mut storage, brane, "c", 2, 30);
 
         let mut nav = BraneNavigator::new(&storage, brane, false);
-        let yielded: Vec<(FirPointer, usize)> =
-            std::iter::from_fn(|| nav.next_candidate()).collect();
+        let yielded: Vec<(FirPointer, usize)> = std::iter::from_fn(|| nav.next_candidate()).collect();
         assert_eq!(yielded, vec![(s2, 2), (s1, 1), (s0, 0)]);
         assert!(nav.next_candidate().is_none());
     }
@@ -5772,10 +5581,7 @@ mod tests {
             name: "x".to_string(),
             value: pattern,
         };
-        assert_eq!(
-            both_match.matches(&storage, stmt, &ctx),
-            MatchOutcome::Approve
-        );
+        assert_eq!(both_match.matches(&storage, stmt, &ctx), MatchOutcome::Approve);
 
         // Name matches, value does NOT -> Reject (not NkStop: NotEqual, not Unknowable).
         let other_pattern = brane.create_child(&mut storage, FirSpec::IndepInt { value: 999 });
@@ -5784,10 +5590,7 @@ mod tests {
             name: "x".to_string(),
             value: other_pattern,
         };
-        assert_eq!(
-            name_only.matches(&storage, stmt, &ctx),
-            MatchOutcome::Reject
-        );
+        assert_eq!(name_only.matches(&storage, stmt, &ctx), MatchOutcome::Reject);
     }
 
     /// `SearchPredicate::Index` with a negative offset resolves relative to
@@ -6280,10 +6083,7 @@ mod tests {
         let steps = step_until_line_number(&mut storage, root, 2).unwrap();
         eprintln!("stopped after {steps} steps");
         let front = FirCursor::new(root, &storage).front_task().unwrap();
-        assert_eq!(
-            FirCursor::new(front, &storage).as_stmt_line_number(),
-            Some(2)
-        );
+        assert_eq!(FirCursor::new(front, &storage).as_stmt_line_number(), Some(2));
     }
 
     /// The generic `step_until` matcher — stops when the front task's own `Nyes` is constanic — mirrors
@@ -6373,10 +6173,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let err = arena_compiler::compile_standalone(&mut storage, foolish_parser::Astn::IntLit(1))
             .expect_err("non-Brane root must be rejected");
-        assert_eq!(
-            err.to_string(),
-            "only a Brane can be a top-level (root) node"
-        );
+        assert_eq!(err.to_string(), "only a Brane can be a top-level (root) node");
     }
 
     /// `1 + 2` compiles to an `Operator` node with two `IndepInt` operands —
@@ -6486,10 +6283,7 @@ mod tests {
         // first, per this operator's real parse shape — walk to find a Search with contexted == true
         // anywhere in y's body subtree.
         fn sift_for_contexted_search(storage: &FVMStorage, ptr: FirPointer) -> bool {
-            if let FirSpec::Search {
-                contexted: true, ..
-            } = storage.get(ptr)
-            {
+            if let FirSpec::Search { contexted: true, .. } = storage.get(ptr) {
                 return true;
             }
             storage
@@ -6509,10 +6303,7 @@ mod tests {
     /// c=30`, returning `(storage, idx, [a, b, c] statement pointers)`. The anchor brane is built AS the
     /// index node's own child from the start (the arena's tree is built strictly top-down — there is no
     /// "attach an existing pointer as a child" primitive), avoiding any re-parenting.
-    fn index_with_anchor_brane(
-        offset: i32,
-        anchored: bool,
-    ) -> (FVMStorage, FirPointer, [FirPointer; 3]) {
+    fn index_with_anchor_brane(offset: i32, anchored: bool) -> (FVMStorage, FirPointer, [FirPointer; 3]) {
         let mut storage = FVMStorage::new();
         let idx = storage.make_root(FirSpec::Index {
             offset,
@@ -6548,10 +6339,7 @@ mod tests {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(1, true);
         core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
-        let result = FirCursor::new(idx, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert!(
             result.is_some(),
             "constanic Index must have a ubc_children result"
@@ -6577,10 +6365,7 @@ mod tests {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(-1, true);
         core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
-        let result = FirCursor::new(idx, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
             result.map(|r| FirCursor::new(r.value(&storage), &storage).as_i64()),
             Some(Some(30)),
@@ -6625,10 +6410,7 @@ mod tests {
 
         core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
-        let result = FirCursor::new(idx, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
             result.map(|r| FirCursor::new(r.value(&storage), &storage).as_i64()),
             Some(Some(10)),
@@ -6690,13 +6472,11 @@ mod tests {
             Some("4 is not a brane"),
             "a nameable non-brane anchor (an int literal) must name itself in the alarm reason"
         );
-        let ubc_nk = FirCursor::new(idx, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let ubc_nk = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert!(
-            ubc_nk.is_some_and(|nk| matches!(storage.get(nk), FirSpec::Nk { .. })
-                && storage.get_nyes(nk) == Nyes::Nk),
+            ubc_nk.is_some_and(
+                |nk| matches!(storage.get(nk), FirSpec::Nk { .. }) && storage.get_nyes(nk) == Nyes::Nk
+            ),
             "the named-reason NK must also be pushed as a ubc_children result"
         );
     }
@@ -6789,10 +6569,7 @@ mod tests {
 
         core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
-        let result = FirCursor::new(idx, &storage)
-            .ubc_children()
-            .first()
-            .copied();
+        let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
             result.map(|r| FirCursor::new(r.value(&storage), &storage).as_i64()),
             Some(Some(20)),
@@ -6945,11 +6722,7 @@ mod tests {
              about that node, which is WHY the fact lives on the brane (§6.4)"
         );
 
-        assert_eq!(
-            storage.get_nyes(stmt(3)),
-            Nyes::Nk,
-            "`b = 'K` was never stepped"
-        );
+        assert_eq!(storage.get_nyes(stmt(3)), Nyes::Nk, "`b = 'K` was never stepped");
         assert_eq!(
             storage.get_nyes(stmt(4)),
             Nyes::Nk,
@@ -7062,10 +6835,7 @@ mod tests {
         // PERMITTED: same value from both operands.
         for (label, src) in [
             ("self-concatenation", "{A = {'C = 10}; b = A A;}"),
-            (
-                "two equal operands",
-                "{A = {'C = 10}; B = {'C = 10}; b = A B;}",
-            ),
+            ("two equal operands", "{A = {'C = 10}; B = {'C = 10}; b = A B;}"),
             ("equal inline operands", "{b = {'C = 10} {'C = 10};}"),
         ] {
             let (storage, program) = eval_program(src);
@@ -7088,10 +6858,7 @@ mod tests {
 
         // REFUSED: the same name with different values.
         for (label, src) in [
-            (
-                "two named operands",
-                "{A = {'C = 10}; B = {'C = 11}; b = A B;}",
-            ),
+            ("two named operands", "{A = {'C = 10}; B = {'C = 11}; b = A B;}"),
             ("inline operands", "{b = {'C = 10} {'C = 11};}"),
         ] {
             let (storage, program) = eval_program(src);
@@ -7155,8 +6922,7 @@ mod tests {
     fn recoordinating_a_conflicting_null_const_settles_that_statement_nk() {
         let (storage, program) = evaluated("{A={'C=1}, B={'C=2, D=A}}");
         let cursor = FirCursor::new(program, &storage);
-        let b_body =
-            FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
+        let b_body = FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
         assert!(
             storage.unsteppable_cause(b_body).is_none(),
             "the receiving brane is NOT halted -- the brane segregates the run-time error"
@@ -7184,8 +6950,7 @@ mod tests {
 
         // `A` itself is entirely unaffected -- it is a perfectly good brane;
         // only bringing it into THIS context fails.
-        let a_body =
-            FirCursor::new(cursor.stmt_at(0).expect("A exists"), &storage).foolish_children()[0];
+        let a_body = FirCursor::new(cursor.stmt_at(0).expect("A exists"), &storage).foolish_children()[0];
         assert!(
             storage.get_nyes(a_body).is_conclusive(),
             "A is untouched -- the conflict is with the RECEIVING context, not with A"
@@ -7194,8 +6959,7 @@ mod tests {
         // The SAME value is not a conflict: coordinating it in is permitted.
         let (storage, program) = evaluated("{A={'C=1}, B={'C=1, D=A}}");
         let cursor = FirCursor::new(program, &storage);
-        let ok_body =
-            FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
+        let ok_body = FirCursor::new(cursor.stmt_at(1).expect("B exists"), &storage).foolish_children()[0];
         assert!(
             storage.unsteppable_cause(ok_body).is_none(),
             "the SAME value is not a conflict -- coordinating it in is permitted"
@@ -7286,11 +7050,7 @@ mod tests {
         assert_eq!(storage.get_nyes(cat), Nyes::Independent);
 
         let helpers = FirCursor::new(cat, &storage).ubc_children().to_vec();
-        assert_eq!(
-            helpers.len(),
-            1,
-            "one flat ConcatHelper for both merged branes"
-        );
+        assert_eq!(helpers.len(), 1, "one flat ConcatHelper for both merged branes");
         let helper = helpers[0];
         assert!(matches!(storage.get(helper), FirSpec::ConcatHelper));
         let joined_count = FirCursor::new(helper, &storage).stmt_count();
@@ -7414,8 +7174,7 @@ mod tests {
     fn compose_program_with_system_resolves_a_comparison() {
         let mut storage = FVMStorage::new();
         let roots =
-            arena_compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}")
-                .unwrap();
+            arena_compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}").unwrap();
         let composed_root = roots[0];
 
         core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
@@ -7477,8 +7236,7 @@ mod tests {
     #[test]
     fn compose_program_with_system_refuses_conflicting_true_redefinition() {
         let mut storage = FVMStorage::new();
-        let roots =
-            arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
+        let roots = arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
         let composed_root = roots[0];
 
         core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
@@ -7629,12 +7387,7 @@ mod tests {
                 line_number: 0,
             },
         );
-        let op = a_stmt.create_child(
-            &mut storage,
-            FirSpec::Operator {
-                op: "+".to_string(),
-            },
-        );
+        let op = a_stmt.create_child(&mut storage, FirSpec::Operator { op: "+".to_string() });
         op.create_child(
             &mut storage,
             FirSpec::Search {
@@ -7772,9 +7525,7 @@ mod tests {
     #[test]
     fn creation_reached_through_search_renders_with_its_own_defining_name() {
         use crate::sequencer::{SequenceMode, Ubca2Sequencer};
-        let (storage, firs) = crate::UbcaEvaluator
-            .evaluate_arena("{'a=⬤; b='a;}")
-            .unwrap();
+        let (storage, firs) = crate::UbcaEvaluator.evaluate_arena("{'a=⬤; b='a;}").unwrap();
         let rendered = Ubca2Sequencer::format(&storage, firs[0], SequenceMode::Foolish);
         assert!(
             rendered.contains("b = 'a"),
@@ -7787,8 +7538,8 @@ mod tests {
     /// Evaluates `src` and returns the storage plus the program brane.
     fn eval_program(src: &str) -> (FVMStorage, FirPointer) {
         let mut storage = FVMStorage::new();
-        let roots = arena_compiler::compose_program_with_system(&mut storage, src)
-            .expect("program compiles");
+        let roots =
+            arena_compiler::compose_program_with_system(&mut storage, src).expect("program compiles");
         let root = roots[0];
         let _ = core_fir_conversion::step_to_constanic(&mut storage, root);
         let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
@@ -7796,11 +7547,7 @@ mod tests {
     }
 
     /// The body FIR of statement `index` in `program`, with its settled Nyes.
-    fn stmt_body_and_nyes(
-        storage: &FVMStorage,
-        program: FirPointer,
-        index: usize,
-    ) -> (FirPointer, Nyes) {
+    fn stmt_body_and_nyes(storage: &FVMStorage, program: FirPointer, index: usize) -> (FirPointer, Nyes) {
         let stmt = FirCursor::new(program, storage)
             .stmt_at(index)
             .expect("statement exists");

@@ -41,19 +41,14 @@ mod einmo_tests {
 
     fn assert_evaluation(level: ValidationLevel) -> einmo::TestResults {
         let config = match level {
-            ValidationLevel::Checked => {
-                config(level).require_correspondence(Stage::Output, Stage::Checked)
-            }
+            ValidationLevel::Checked => config(level).require_correspondence(Stage::Output, Stage::Checked),
             _ => config(level),
         };
         let results = EinmoSuite::new(config)
             .evaluate_all(&Ubca2FoolishAdapter)
             .expect("evaluate_all must not fail at the filesystem level");
 
-        assert!(
-            !results.files.is_empty(),
-            "einmo suite discovered no inputs"
-        );
+        assert!(!results.files.is_empty(), "einmo suite discovered no inputs");
         for file in &results.files {
             assert!(
                 file.written_and_verified,

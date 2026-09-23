@@ -103,10 +103,7 @@ mod tests {
     fn constantew_is_subset_of_constanic() {
         for &nyes in ALL_NYES {
             if nyes.is_constantew() {
-                assert!(
-                    nyes.is_constanic(),
-                    "{nyes:?} is constantew but not constanic"
-                );
+                assert!(nyes.is_constanic(), "{nyes:?} is constantew but not constanic");
             }
         }
     }
@@ -145,10 +142,7 @@ mod tests {
     fn conclusive_is_subset_of_constantew() {
         for &nyes in ALL_NYES {
             if nyes.is_conclusive() {
-                assert!(
-                    nyes.is_constantew(),
-                    "{nyes:?} is conclusive but not constantew"
-                );
+                assert!(nyes.is_constantew(), "{nyes:?} is conclusive but not constantew");
             }
         }
     }

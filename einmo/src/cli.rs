@@ -19,11 +19,7 @@ use crate::stage::Stage;
 
 /// The `einmo` command-line interface.
 #[derive(Parser, Debug)]
-#[command(
-    name = "einmo",
-    version,
-    about = "Signed directory-based snapshot testing"
-)]
+#[command(name = "einmo", version, about = "Signed directory-based snapshot testing")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -338,10 +334,7 @@ fn parse_transition(s: &str) -> Result<(Stage, Stage)> {
 
 /// Expand any `-` entries in `files` by pulling paths from `stdin_lines` (one per line, blanks skipped).
 /// Non-`-` entries are kept verbatim. An empty `files` yields an empty result.
-fn resolve_files_from_iter(
-    files: Vec<PathBuf>,
-    stdin_lines: impl Iterator<Item = String>,
-) -> Vec<PathBuf> {
+fn resolve_files_from_iter(files: Vec<PathBuf>, stdin_lines: impl Iterator<Item = String>) -> Vec<PathBuf> {
     if files.is_empty() {
         return Vec::new();
     }
@@ -377,10 +370,7 @@ fn resolve_files(files: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
         .lock()
         .read_to_string(&mut input)
         .map_err(|e| EinmoError::io("<stdin>", e))?;
-    Ok(resolve_files_from_iter(
-        files,
-        input.lines().map(String::from),
-    ))
+    Ok(resolve_files_from_iter(files, input.lines().map(String::from)))
 }
 
 /// Convert a resolved `Vec<PathBuf>` into the `Option<&[PathBuf]>` the library
@@ -401,9 +391,10 @@ fn split_promote_args(raw: &[String]) -> Result<(Stage, Stage, PathBuf, Vec<Path
     if raw.len() >= 3 && raw[1].eq_ignore_ascii_case("to") {
         let from = Stage::parse(raw[0].trim())?;
         let to = Stage::parse(raw[2].trim())?;
-        let work_dir = raw.get(3).cloned().ok_or_else(|| {
-            EinmoError::Config("missing work directory after `<from> to <to>`".into())
-        })?;
+        let work_dir = raw
+            .get(3)
+            .cloned()
+            .ok_or_else(|| EinmoError::Config("missing work directory after `<from> to <to>`".into()))?;
         let files = raw[4.min(raw.len())..].iter().map(PathBuf::from).collect();
         return Ok((from, to, PathBuf::from(work_dir), files));
     }
@@ -425,14 +416,7 @@ fn cmd_promote(args: PromoteArgs) -> Result<ExitCode> {
     }
     let key = resolve_promotion_key(to, &args, &config)?;
     let files = resolve_files(positional_files)?;
-    let report = crate::promote(
-        &config,
-        from,
-        to,
-        &key,
-        args.filter.as_deref(),
-        files_ref(&files),
-    )?;
+    let report = crate::promote(&config, from, to, &key, args.filter.as_deref(), files_ref(&files))?;
 
     // Warn on any non-human verified attestation.
     for promoted in &report.promoted {
@@ -601,8 +585,7 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
                 format!(
                     "{{\"level\":\"{}\",\"path\":\"{}\",\"problem\":\"{}\",\"remedy\":\"{}\"}}",
                     p.level(),
-                    p.path()
-                        .map_or_else(String::new, |x| x.display().to_string()),
+                    p.path().map_or_else(String::new, |x| x.display().to_string()),
                     p,
                     p.remedy()
                 )
@@ -695,13 +678,7 @@ fn cmd_show(args: ShowArgs) -> Result<ExitCode> {
             .stamps()
             .entries()
             .iter()
-            .map(|s| {
-                format!(
-                    "{{\"key\":\"{}\",\"pubkey\":\"{}\"}}",
-                    s.key(),
-                    s.pubkey_hex()
-                )
-            })
+            .map(|s| format!("{{\"key\":\"{}\",\"pubkey\":\"{}\"}}", s.key(), s.pubkey_hex()))
             .collect();
         println!(
             "{{\"test\":\"{}\",\"status\":\"{}\",\"stamps\":[{}]}}",
@@ -831,8 +808,7 @@ fn scan_tests(config: &TestConfig, filter: Option<&str>) -> Result<Vec<TestRow>>
             }
         }
         // Differing unless every stage is present and their bodies agree.
-        let differing =
-            bodies.iter().any(Option::is_none) || bodies.windows(2).any(|w| w[0] != w[1]);
+        let differing = bodies.iter().any(Option::is_none) || bodies.windows(2).any(|w| w[0] != w[1]);
         rows.push(TestRow {
             rel,
             stages,
@@ -845,10 +821,7 @@ fn scan_tests(config: &TestConfig, filter: Option<&str>) -> Result<Vec<TestRow>>
 fn cmd_list(args: ListArgs) -> Result<ExitCode> {
     let config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     let rows = scan_tests(&config, args.filter.as_deref())?;
-    let rows: Vec<&TestRow> = rows
-        .iter()
-        .filter(|r| !args.differing || r.differing)
-        .collect();
+    let rows: Vec<&TestRow> = rows.iter().filter(|r| !args.differing || r.differing).collect();
 
     for row in &rows {
         let rel = row.rel.to_string_lossy();
@@ -954,8 +927,8 @@ fn read_stdin_line() -> Result<String> {
 /// keyboard instead. Used by the stage-key cascade's interactive tier (§B.5).
 fn prompt_tty() -> Result<String> {
     loop {
-        let first = rpassword::prompt_password("einmo passphrase: ")
-            .map_err(|e| EinmoError::io("<tty>", e))?;
+        let first =
+            rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
         let second = rpassword::prompt_password("einmo passphrase (again): ")
             .map_err(|e| EinmoError::io("<tty>", e))?;
         if first == second {
@@ -981,9 +954,7 @@ impl crate::einmo_suite::Evaluator for CommandEvaluator {
             .spawn()
             .map_err(|e| format!("evaluator command failed: {e}"))?;
         if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(source.as_bytes())
-                .map_err(|e| e.to_string())?;
+            stdin.write_all(source.as_bytes()).map_err(|e| e.to_string())?;
         }
         let output = child
             .wait_with_output()
@@ -1011,10 +982,8 @@ fn cmd_evaluate(args: EvaluateArgs) -> Result<ExitCode> {
         command: args.command,
     };
 
-    let inputs = crate::stage::walk_input_tree(
-        &args.work_dir.join("input"),
-        args.walk_depth_limit.unwrap_or(64),
-    )?;
+    let inputs =
+        crate::stage::walk_input_tree(&args.work_dir.join("input"), args.walk_depth_limit.unwrap_or(64))?;
     let filtered: Vec<_> = inputs
         .into_iter()
         .filter(|p| {
@@ -1141,15 +1110,7 @@ mod tests {
         assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s", "--filter", "foop/23"]).is_ok());
         assert!(Cli::try_parse_from(["einmo", "body", "/tmp/a.einmo"]).is_ok());
         assert!(
-            Cli::try_parse_from([
-                "einmo",
-                "body",
-                "/tmp/a.einmo",
-                "--section",
-                "OUTPUT",
-                "--bare"
-            ])
-            .is_ok()
+            Cli::try_parse_from(["einmo", "body", "/tmp/a.einmo", "--section", "OUTPUT", "--bare"]).is_ok()
         );
     }
 
@@ -1212,10 +1173,7 @@ mod tests {
         let (f, t, dir, files) = split_promote_args(&a.args).unwrap();
         assert_eq!((f, t), (Stage::Output, Stage::Checked));
         assert_eq!(dir, PathBuf::from("/tmp/s"));
-        assert_eq!(
-            files,
-            vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
-        );
+        assert_eq!(files, vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]);
     }
 
     #[test]
@@ -1236,15 +1194,8 @@ mod tests {
 
     #[test]
     fn cli_promote_no_files_is_empty() {
-        let cli = Cli::try_parse_from([
-            "einmo",
-            "promote",
-            "output->checked",
-            "/tmp/s",
-            "--filter",
-            "*",
-        ])
-        .unwrap();
+        let cli = Cli::try_parse_from(["einmo", "promote", "output->checked", "/tmp/s", "--filter", "*"])
+            .unwrap();
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
@@ -1280,10 +1231,7 @@ mod tests {
             vec![PathBuf::from("-")],
             ["a.einmo", "b.einmo"].into_iter().map(String::from),
         );
-        assert_eq!(
-            out,
-            vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
-        );
+        assert_eq!(out, vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]);
     }
 
     #[test]
@@ -1311,14 +1259,9 @@ mod tests {
     fn resolve_files_from_iter_skips_blank_lines() {
         let out = resolve_files_from_iter(
             vec![PathBuf::from("-")],
-            ["a.einmo", "", "  ", "b.einmo"]
-                .into_iter()
-                .map(String::from),
+            ["a.einmo", "", "  ", "b.einmo"].into_iter().map(String::from),
         );
-        assert_eq!(
-            out,
-            vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
-        );
+        assert_eq!(out, vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]);
     }
 
     #[test]

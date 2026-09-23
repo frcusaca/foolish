@@ -125,8 +125,7 @@ impl Identifier {
         let name = id.to_owned();
 
         // Build the canonicalized characterization string. Each component gets a ' suffix: a'b'c''
-        let characterization_string: String =
-            canonical_chars.iter().map(|c| format!("{c}'")).collect();
+        let characterization_string: String = canonical_chars.iter().map(|c| format!("{c}'")).collect();
 
         // Build the fully-characterized name.
         let fully_characterized_name = format!("{characterization_string}{name}");
@@ -164,8 +163,7 @@ impl Identifier {
     /// True iff this is a null-characterized coordinate name (a constant).
     /// Delegates to the contained `Characterizations`.
     pub fn is_nully_characterizing_coordinate_name(&self) -> bool {
-        self.characterizations
-            .is_nully_characterizing_coordinate_name()
+        self.characterizations.is_nully_characterizing_coordinate_name()
     }
 }
 
@@ -207,12 +205,7 @@ mod tests {
     fn multiple_characterizations_with_null_at_end() {
         // a'b'c''name — null characterization touching name
         let id = Identifier::from_parts(
-            vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c".to_string(),
-                "".to_string(),
-            ],
+            vec!["a".to_string(), "b".to_string(), "c".to_string(), "".to_string()],
             "name",
         );
         assert_eq!(id.identifier_name(), "name");
@@ -224,10 +217,7 @@ mod tests {
     #[test]
     fn multiple_characterizations_without_null() {
         // a'b'c'name — no null characterization
-        let id = Identifier::from_parts(
-            vec!["a".to_string(), "b".to_string(), "c".to_string()],
-            "name",
-        );
+        let id = Identifier::from_parts(vec!["a".to_string(), "b".to_string(), "c".to_string()], "name");
         assert_eq!(id.identifier_name(), "name");
         assert_eq!(id.searchable_name(), "a'b'c'name");
         assert!(!id.is_nully_characterizing_coordinate_name());
@@ -237,10 +227,7 @@ mod tests {
     fn interior_null_does_not_count() {
         // a''b'name — the null is interior (on b), NOT touching name
         // Proximity is king: only the LAST characterization matters.
-        let id = Identifier::from_parts(
-            vec!["a".to_string(), "".to_string(), "b".to_string()],
-            "name",
-        );
+        let id = Identifier::from_parts(vec!["a".to_string(), "".to_string(), "b".to_string()], "name");
         assert_eq!(id.identifier_name(), "name");
         assert_eq!(id.searchable_name(), "a''b'name");
         // The last characterization is "b", not empty → NOT null-characterized.

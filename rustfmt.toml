@@ -1,0 +1,26 @@
+# Foolish project rustfmt configuration.
+#
+# AGENTS.md §"Code Style" sets 108 characters as the project's document width.
+# That applies to Rust as well as prose, so all three width knobs below are set
+# to 108 rather than rustfmt's defaults (max_width = 100, comment_width = 80).
+#
+# STABILITY NOTE, so a future reader is not surprised by the warnings:
+# `comment_width` and `wrap_comments` are NIGHTLY-ONLY options. On a stable
+# toolchain rustfmt prints
+#
+#     Warning: can't set `wrap_comments = true`, unstable features are only
+#     available in nightly channel.
+#
+# and then IGNORES them -- it will not rewrap comment text at all. They are set
+# here regardless, for two reasons: they state the intended width so it is not
+# folk knowledge, and they take effect automatically for anyone running nightly
+# or a future stable that promotes them. Because stable does not rewrap
+# comments, comment width in this repo is maintained BY HAND; `cargo fmt` will
+# neither enforce it nor fight it.
+#
+# `max_width` IS stable and takes effect immediately. It governs code, not
+# comment prose.
+
+max_width = 108
+comment_width = 108
+wrap_comments = true

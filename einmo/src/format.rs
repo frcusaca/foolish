@@ -147,10 +147,7 @@ impl Metadata {
         }
         out.push_str(&format!("generated: {}\n", self.generated));
         out.push_str(&format!("status: {}\n", self.status.as_str()));
-        out.push_str(&format!(
-            "status-detail: {}\n",
-            escape_line(&self.status_detail)
-        ));
+        out.push_str(&format!("status-detail: {}\n", escape_line(&self.status_detail)));
         if !self.reference.is_empty() {
             out.push_str(&format!("reference: {}\n", self.reference));
         }
@@ -199,25 +196,20 @@ impl Metadata {
         Ok(Metadata {
             test: test.ok_or_else(|| EinmoError::Parse("missing metadata `test`".into()))?,
             suite: suite.ok_or_else(|| EinmoError::Parse("missing metadata `suite`".into()))?,
-            producer: producer
-                .ok_or_else(|| EinmoError::Parse("missing metadata `producer`".into()))?,
+            producer: producer.ok_or_else(|| EinmoError::Parse("missing metadata `producer`".into()))?,
             producer_diff,
-            generated: generated
-                .ok_or_else(|| EinmoError::Parse("missing metadata `generated`".into()))?,
+            generated: generated.ok_or_else(|| EinmoError::Parse("missing metadata `generated`".into()))?,
             status: status.ok_or_else(|| EinmoError::Parse("missing metadata `status`".into()))?,
             status_detail,
             reference,
-            sections: sections
-                .ok_or_else(|| EinmoError::Parse("missing metadata `sections`".into()))?,
+            sections: sections.ok_or_else(|| EinmoError::Parse("missing metadata `sections`".into()))?,
         })
     }
 }
 
 /// Escape a possibly-multi-line value onto a single metadata line.
 fn escape_line(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
+    s.replace('\\', "\\\\").replace('\n', "\\n").replace('\r', "\\r")
 }
 
 /// Inverse of [`escape_line`].
@@ -406,11 +398,7 @@ impl EinmoFile {
     /// ~0.2ms of actual Ed25519 signing.
     ///
     /// The plaintext key exists only inside [`StageKeypair::with_signing_key`].
-    pub(crate) fn append_stage_stamp_with(
-        &mut self,
-        stage_key: &str,
-        keypair: &StageKeypair,
-    ) -> String {
+    pub(crate) fn append_stage_stamp_with(&mut self, stage_key: &str, keypair: &StageKeypair) -> String {
         let prefix = self.stamps.prefix_for_next_stamp(&self.signed_prefix());
         // The plaintext key exists only inside this closure.
         keypair.with_signing_key(|signing| self.stamps.append_stage(stage_key, signing, &prefix));
@@ -465,8 +453,7 @@ impl EinmoFile {
     /// Returns [`EinmoError::Parse`] on a malformed header, missing section, or
     /// bad UTF-8.
     pub fn parse(bytes: &[u8]) -> Result<Self> {
-        let text =
-            std::str::from_utf8(bytes).map_err(|e| EinmoError::Parse(format!("bad utf-8: {e}")))?;
+        let text = std::str::from_utf8(bytes).map_err(|e| EinmoError::Parse(format!("bad utf-8: {e}")))?;
 
         let (header, rest) = text
             .split_once('\n')
@@ -736,11 +723,7 @@ mod tests {
         );
         let (configured, _) = derive_keypair("cfg");
         let (stage, _) = derive_keypair("");
-        rebuilt.set_stamps(Stamps::generate(
-            &rebuilt.signed_prefix(),
-            &configured,
-            &stage,
-        ));
+        rebuilt.set_stamps(Stamps::generate(&rebuilt.signed_prefix(), &configured, &stage));
         let bytes = rebuilt.serialize().unwrap();
         let parsed = EinmoFile::parse(&bytes).unwrap();
         assert_eq!(parsed.metadata().status, Status::InputError);
@@ -772,10 +755,7 @@ mod tests {
             parsed.advisory(),
             Some("# flagged: regenerate 2026-07-11T07:00:00Z")
         );
-        assert!(
-            parsed.chain_valid(),
-            "advisory must not be part of signed bytes"
-        );
+        assert!(parsed.chain_valid(), "advisory must not be part of signed bytes");
     }
 
     #[test]
@@ -814,11 +794,7 @@ mod tests {
         );
         let (configured, _) = derive_keypair("cfg");
         let (stage, _) = derive_keypair("");
-        rebuilt.set_stamps(Stamps::generate(
-            &rebuilt.signed_prefix(),
-            &configured,
-            &stage,
-        ));
+        rebuilt.set_stamps(Stamps::generate(&rebuilt.signed_prefix(), &configured, &stage));
         let bytes = rebuilt.serialize().unwrap();
         let parsed = EinmoFile::parse(&bytes).unwrap();
         assert_eq!(parsed.metadata().status_detail, "line 1\r\nline 2");
