@@ -63,7 +63,7 @@ it in a context window alongside the change it is making. `rust_instructions.md`
 the project's own rule and this file violates it plainly: **one responsibility per module**,
 and *"a name you can't pick usually means the module does too many things"* (§2c.5). The
 current file holds an arena, a step machine, cursors, a search engine, a search dispatcher, a
-stepping driver, a compatibility bridge, an AST compiler, and 110 tests. There is no name for
+stepping driver, a compatibility bridge, an AST compiler, and 115 tests. There is no name for
 that.
 
 This is not a hypothetical cost. The module currently named `core_fir_conversion` prompted
@@ -262,10 +262,10 @@ says so explicitly rather than leaving an executor to guess.
 mod tests;
 ```
 
-**Not split by subject.** The 110 tests are already organized by subject *within* the module
+**Not split by subject.** The 115 tests are already organized by subject *within* the module
 (contiguous runs with their own local `use` lines), and splitting them into subject files is a
 **judgment** change — deciding which test belongs to which subject — which §0 forbids bundling
-into a mechanical move. One file at 3 290 lines is not ideal, but it is a test file, it is no
+into a mechanical move. One file at 3 400 lines is not ideal, but it is a test file, it is no
 longer in the way of the production code, and subdividing it is a legitimate follow-up that
 should be proposed on its own merits. **This is the single biggest win — 40% of the file —
 and the one most likely to have a subtle import problem**, which is precisely why it should
@@ -406,9 +406,9 @@ Measured on `jia` at `8c9043d8` on 2026-09-16 via `cargo test --workspace`:
 |---|---|
 | **passed** | **791** |
 | failed | 0 |
-| ignored | 1 (`foolish-ubca/src/evaluator.rs` doctest — pre-existing) |
+| ignored | 0 (the `foolish-ubca/src/evaluator.rs` doctest went with that crate, FOOP-86) |
 | `foolish-ubca2` lib tests | 184 passed, incl. all three einmo gates |
-| `#[test]` fns in `fvm_storage.rs` | 110 |
+| `#[test]` fns in `fvm_storage.rs` | 115 |
 
 **791 must not move in either direction.** A test that *vanishes* is as bad as one that fails:
 a `#[cfg(test)]` block that stops being compiled in reports no error, it simply stops running,
@@ -490,7 +490,7 @@ marking any Verified-tier test `#[ignore]`.
 
 ### A. Do nothing
 
-The file stays 8 282 lines (or ~7 600 after FOOP-86). FOOP-26 and FOOP-46 then run in parallel
+The file stays 7 737 lines. FOOP-26 and FOOP-46 then run in parallel
 worktrees against one enormous file, and every merge conflict between them is a line-proximity
 accident rather than a real disagreement — the expensive kind, because a human must read both
 sides to discover there was no conflict. It also leaves the project in standing violation of
@@ -545,7 +545,7 @@ schedule moves.
 
 **Rejected for this FOOP, and worth proposing separately.** Deciding which test belongs to
 which subject is judgment work, and §0.3 forbids bundling judgment into a move — especially in
-the single largest and import-riskiest block (§3.2). One 3 290-line test file that is out of
+the single largest and import-riskiest block (§3.2). One 3 400-line test file that is out of
 the production code's way is a real improvement; subdividing it is a further one that should
 stand on its own argument.
 
@@ -601,13 +601,12 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 **Date**: 2026-09-24
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: PREP FOR EXECUTION — re-measured against `jia` at `0df1865b`, after FOOP-86 merged.
-Every figure in the 2026-09-16 draft was stale. The file is **7 737** lines, not 8 282; the
-workspace baseline is **467** tests, not 791; `mod tests` holds **115** test functions, not 110;
-and every module boundary moved, `arena_compiler` by −603 lines. §1's structure table is replaced
-with brace-matched measurements plus a drift table so a reader holding the old figures can see
-what changed and why. §2's central finding has **resolved itself**: it reported
-`core_fir_conversion` bundling two unrelated concerns and predicted FOOP-86 would delete one of
-them — the prediction held (`grep -c proto_to_core_fir` returns 0), leaving a 94-line module that
-is no longer misfactored, only misnamed. §3's layout drops `core_fir_bridge.rs` (nothing to
-house) and §3.1's either-way conditional is marked resolved.
+**Changes**: PREP FOR EXECUTION — re-measured against `jia`, after FOOP-86 merged, then re-read
+end to end in a second pass. The file is **7 737** lines, not 8 282; the workspace baseline is
+**467 / 0 / 0** tests, not 791 / 0 / 1 (the one ignored test was a `foolish-ubca` doctest, gone
+with that crate); `mod tests` holds **115** test functions in **3 400** lines, not 110 in 3 290.
+§1's structure table is replaced with brace-matched measurements plus a drift table. §2's central
+finding has **resolved itself**: it reported `core_fir_conversion` bundling two unrelated concerns
+and predicted FOOP-86 would delete one — the prediction held (`grep -c proto_to_core_fir` → 0),
+leaving a 94-line module that is no longer misfactored, only misnamed, so a split became a rename.
+§3's layout drops `core_fir_bridge.rs` and §3.1's either-way conditional is marked resolved.

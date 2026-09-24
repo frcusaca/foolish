@@ -19,7 +19,7 @@ new file, and changes nothing else. The governing rule, from FOOP-96.md §0:
 |---|---|
 | `cargo test --workspace` passed | **467** |
 | failed | **0** |
-| ignored | **1** (pre-existing `foolish-ubca` doctest) |
+| ignored | **0** (the old `foolish-ubca` doctest went with that crate, FOOP-86) |
 | `cargo fmt --all --check` | clean |
 | `cargo clippy -p foolish-ubca2 --all-targets` | no NEW warnings |
 
@@ -59,7 +59,8 @@ FOOP-86 (retire UBCa) is scheduled **before** this FOOP and deletes the ~650-lin
 |---|---|
 | The bridge is gone. **Strike Phase 5** as `[-] not needed — FOOP-86 removed the bridge`. | **Execute Phase 5** normally. The bridge moves to its own file and FOOP-86 later deletes that file whole. |
 
-Phase 0 determines which world this is. Nothing else in the plan changes either way.
+**RESOLVED 2026-09-24: FOOP-86 landed (merged 2026-09-21).** The left column is the world you
+are in. Phase 5 is already struck in this plan; nothing else changes.
 
 ### Worktree
 
@@ -85,11 +86,11 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
       `git worktree add -b "foop-96-split-fvm-storage" "/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage"`
       **From here until merge, ALL work — including edits to `FOOP-96.md` and this plan — happens
       ONLY in the worktree.**
-- [ ] **Determine whether FOOP-86 has landed.** Check whether `proto_to_core_fir` still exists:
-      `grep -n "fn proto_to_core_fir" foolish-ubca2/src/fvm_storage.rs`
-  - [ ] If **absent** → FOOP-86 landed. Strike Phase 5 below as
-        `[-] not needed — FOOP-86 removed the bridge`, and note the date.
-  - [ ] If **present** → execute Phase 5 normally.
+- [x] **Determine whether FOOP-86 has landed.** — **RESOLVED 2026-09-24, before execution.**
+      FOOP-86 merged to `jia` on 2026-09-21. Verified:
+      `grep -c "fn proto_to_core_fir" foolish-ubca2/src/fvm_storage.rs` → **0**.
+      **Phase 5 is struck** and Phase 7's dependent `core_fir_bridge` rename with it. Re-run the
+      grep to confirm for yourself, but do not re-litigate the branch — it is decided.
 - [ ] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
       *Verify, don't re-derive* — FOOP-96.md §1 gives the values RE-MEASURED at `0df1865b`
       (2026-09-24, post-FOOP-86). The 2026-09-16 `8c9043d8` figures are stale in EVERY row:
@@ -106,10 +107,23 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 - [ ] Establish relevant tests for this FOOP. Use
       [these instructions](../../README.md#running-specific-tests). **Every phase of this FOOP
       uses the SAME set — the whole workspace — because a move can break anything:**
-      `cargo test --workspace` (all 467), plus the einmo gates
-      `foolish_ubca2::ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked` and
-      `einmo_suite2_gate_verified` as the byte-identity oracle. There is no smaller meaningful
-      subset for a file split, and the plan says so rather than inventing one.
+      `cargo test --workspace -- --test-threads=1` (all 467), plus the einmo gates
+      `ubca_snapshot_tester::einmo_tests::einmo_gate_checked` and `einmo_gate_verified` as the
+      byte-identity oracle. There is no smaller meaningful subset for a file split, and the plan
+      says so rather than inventing one.
+
+      **CORRECTED 2026-09-24.** This previously named
+      `ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked` — a module and test name
+      that FOOP-86 RETIRED along with `einmo_suite2`. Neither exists; running them matches
+      nothing and reports success, so an executor would believe the byte-identity oracle passed
+      when it never ran. Verified: `grep -rn "einmo_suite2_gate_checked" foolish-ubca2/src/`
+      returns nothing.
+
+      **Always pass `-- --test-threads=1`.** The three einmo gates share
+      `foolish-ubca2/einmo_suite/output/` and corrupt each other when run in parallel, producing
+      spurious `status: output-error` "catastrophe crumb" failures that look exactly like a
+      regression you caused. If you see one: `git checkout -- foolish-ubca2/einmo_suite/output/`
+      and re-run serially before concluding anything.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
@@ -133,7 +147,8 @@ use regex::Regex;
 - [ ] Establish relevant tests for this sub-section: the whole workspace (see Phase 0's
       checkbox — a move can break anything). Run
       [these instructions](../../README.md#running-specific-tests) for `cargo test --workspace`
-      and the einmo gates `einmo_suite2_gate_checked`, `einmo_suite2_gate_verified`.
+      and the einmo gates `einmo_gate_checked`, `einmo_gate_verified` (run with
+      `-- --test-threads=1`; see Phase 0).
 - [ ] Create `foolish-ubca2/src/fvm_storage/` (the sibling directory; **no `mod.rs`** —
       `rust_instructions.md` §5).
 - [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_engine.rs`: cut lines
@@ -163,9 +178,18 @@ renames are behavior-adjacent and never bundled with a move (FOOP-96.md §0.3).
 
 **Its imports, verbatim** (*verify, don't re-derive*):
 ```rust
-use super::search_engine::{ /* … */ };
+use super::search_engine::{
+    BraneNavigator, ScanOutcome, SearchPredicate, contextful_search_scan,
+    contextful_search_scan_no_body_check,
+};
 use super::{FVMStorage, FirCursor, FirPointer, FirSpec};
+
+use foolish_core::fir::Nyes;
 ```
+**Verbatim as of `ef7fc880`.** The earlier draft elided the `search_engine::{…}` list as
+`/* … */` and **omitted `use foolish_core::fir::Nyes;` entirely** — copying that block as
+written produces an unresolved-`Nyes` compile error. Still verify against the file rather than
+trusting this listing; that is the standing *verify, don't re-derive* rule.
 
 - [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
@@ -246,10 +270,10 @@ has already happened. What remains is a RENAME plus a doc-comment fix. See FOOP-
 | `step_until_line_number` | breakpoint by line |
 | `step_until_statement_name` | breakpoint by statement name |
 
-**Stays behind with the bridge:** `fn display_stmt_name` — it is a *rendering* helper used by
-`proto_to_core_fir_*`, **not** by the stepping driver. *Verify this before moving:*
-`grep -n "display_stmt_name" foolish-ubca2/src/fvm_storage.rs` — every call site should be inside
-the bridge family.
+~~**Stays behind with the bridge:** `fn display_stmt_name`.~~ **VOID 2026-09-24** — FOOP-86
+deleted `display_stmt_name` along with the bridge it served (`grep -c display_stmt_name
+foolish-ubca2/src/fvm_storage.rs` → **0**). Nothing stays behind: the module holds only
+`MAX_STEPS` and the four `step_*` functions, so this phase empties it.
 
 **Preserve the `#[cfg_attr(not(test), expect(dead_code, …))]` attributes** on `step_until_*`
 verbatim — they have no production caller by design (they are the `foolish-debugging` skill's
@@ -264,23 +288,30 @@ conditions name.
       [these instructions](../../README.md#running-specific-tests). **Pay particular attention to
       the `step_until*` unit tests** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
       `step_to_constanic_settles_a_simple_fir`; they are the direct coverage of this block.
-- [ ] Confirm the boundary: `display_stmt_name`'s callers are all in the bridge family
-      (command above). *If a `step_until*` function calls it → STOP and report; the split
-      boundary in FOOP-96.md §2 is wrong and needs the human.*
+- [-] ~~Confirm the boundary: `display_stmt_name`'s callers are all in the bridge family.~~
+      **VOID 2026-09-24** — there is no boundary left to confirm. FOOP-86 deleted the bridge AND
+      `display_stmt_name` (`grep -c display_stmt_name foolish-ubca2/src/fvm_storage.rs` → 0), so
+      `core_fir_conversion` is now 94 lines holding nothing but the four `step_*` functions and
+      `MAX_STEPS`. Nothing is left behind by this move; the module is emptied and its `mod` line
+      removed.
 - [ ] Move `MAX_STEPS` + the four `step_*` functions **as text** into
       `foolish-ubca2/src/fvm_storage/stepping.rs`, with their doc comments and `#[cfg_attr]`
       attributes.
 - [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints,
       naming the `foolish-debugging` skill as the consumer of the latter
       (`rust_instructions.md` §2d.3).
-- [ ] Add `use super::{…}` to `stepping.rs` with **only** what the four functions actually need —
-      a narrowed subset of `core_fir_conversion`'s list. Let the compiler tell you what is
-      missing; **do not widen anything to make it resolve.**
-- [ ] In `fvm_storage.rs`: add `mod stepping;` and update the re-export to
-      `pub(crate) use stepping::step_to_constanic;` alongside the bridge's own re-export.
-- [ ] Remove the now-moved functions from `core_fir_conversion`, and trim any import in its
-      `use super::{…}` that only the stepping driver used. *The compiler flags unused imports —
-      let it.*
+- [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
+      ONLY these functions now, the whole list comes with them — there is no subset to narrow.
+      Let the compiler flag anything unused; **do not widen anything to make it resolve.**
+- [ ] In `fvm_storage.rs`: replace `mod core_fir_conversion { … }` with `mod stepping;`, and
+      change the re-export at line ~4334 from
+      `pub(crate) use core_fir_conversion::step_to_constanic;` to
+      `pub(crate) use stepping::step_to_constanic;`. **That re-export is already the module's
+      only one** — the earlier draft said "alongside the bridge's own re-export", which no
+      longer exists.
+- [ ] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
+      anything is left in it → STOP and report: something was in that module that this plan did
+      not account for.*
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
@@ -322,7 +353,7 @@ the core is ~660 lines smaller.
 
 - [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The einmo gates matter most
-      here** — the bridge feeds the old rendering path, so `einmo_suite2_gate_checked` is the
+      here** — the bridge feeds the old rendering path, so `einmo_gate_checked` is the
       direct byte-identity check on this move.
 - [ ] Move the remaining `core_fir_conversion` body **as text** into
       `foolish-ubca2/src/fvm_storage/core_fir_conversion.rs`; strip one indent level; drop the
@@ -353,17 +384,23 @@ file. Moved as ONE file; **not** split by subject (FOOP-96.md §Rejected Alterna
 then reaches its **sibling** modules by **bare path** — those paths resolve ONLY because the glob
 pulled the sibling module names into scope:
 
-| line (abs., at `0df1865b`) | the import |
+| line (abs., at `ef7fc880`) | the import |
 |---|---|
-| 6242 | `use search_engine::{BraneNavigator, CandidateNavigator, MatchOutcome, ScanCtx, ScanOutcome, SearchPredicate, contextful_search_scan, contextful_search_scan_no_body_check};` |
-| 6861 | `use core_fir_conversion::{proto_to_core_fir, step_to_constanic};` |
-| 6981 | `use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};` |
-| 7068 | `use arena_compiler::compile;` |
+| 5484 | `use search_engine::{ … };` (multi-line — copy it verbatim from the file) |
+| 6079 | `use core_fir_conversion::step_to_constanic;` |
+| 6090 | `use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};` |
+| 6172 | `use arena_compiler::compile;` |
+
+**RE-MEASURED 2026-09-24. All four line numbers in the earlier draft (6242 / 6861 / 6981 / 7068)
+were wrong**, and the 6861 entry named `proto_to_core_fir`, which FOOP-86 deleted — the import is
+now `step_to_constanic` alone. Re-derive these yourself before moving anything:
+`awk 'NR>=4337 && /use / && /(search_engine|core_fir_conversion|arena_compiler)/ {print NR": "$0}' foolish-ubca2/src/fvm_storage.rs`
 
 **Two consequences, both already handled:**
 - **`use super::*` keeps working.** A `#[cfg(test)] mod tests;` in a sibling file has the same
-  `super` — `fvm_storage` — so all 235 `FirSpec` / 114 `FVMStorage` / 76 `FirCursor` / 21
-  `revive_constanic` / … references resolve exactly as before. The move alone is safe.
+  `super` — `fvm_storage` — so all 229 `FirSpec` / 115 `FVMStorage` / 99 `FirCursor` / 14
+  `revive_constanic` / … references resolve exactly as before (re-counted 2026-09-24; the
+  earlier 235 / 114 / 76 / 21 predate FOOP-86 and FOOP-94). The move alone is safe.
 - **Phase 4 already moved `step_until*` and `step_to_constanic`.** Line 6861's and 6981's
   imports were repointed in that phase. Confirm they still name the right modules here.
 
@@ -371,7 +408,7 @@ pulled the sibling module names into scope:
       [these instructions](../../README.md#running-specific-tests). **This phase's specific
       risk is the test COUNT**, not just pass/fail — see the dedicated checkbox below.
 - [ ] **Record the pre-move `#[test]` count**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 110.*
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 115.*
 - [ ] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
       one indent level; drop the `#[cfg(test)] mod tests {` wrapper and its closing `}`.
       **Keep `use super::*;` as the first line** and keep every bare-path sibling import exactly
@@ -382,7 +419,7 @@ pulled the sibling module names into scope:
       mod tests;
       ```
 - [ ] **Verify the test count moved intact**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 110**, and
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 115**, and
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **must be 0**.
       *Any other numbers → STOP and report.*
 - [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
@@ -505,14 +542,22 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-24
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: PREP FOR EXECUTION BY A SMALLER AGENT. The plan was written against `8c9043d8` and
-would have stalled an executor immediately: its STOP condition demanded **791 / 0 / 1**, while
-the tree now measures **467 / 0 / 0**. All 18 occurrences of 791 corrected, and the ignored count
-with them. Line ranges updated for every phase from the brace-matched re-measurement.
-**Phase 5 is CANCELLED** — it moves the `proto_to_core_fir` bridge, which FOOP-86 deleted; the
-phase's own CONDITIONAL directed exactly this, so it is resolved in the "already landed"
-direction rather than left for the executor to adjudicate. **Phase 4 is reframed**: it was
-written as "the one phase that divides an existing module", but with the bridge gone there is
-nothing to divide, so it becomes an ordinary whole-module move that renames on arrival — with an
-explicit instruction to RAISE rather than silently settle whether a 94-line module earns its own
-file. Phase 7's `core_fir_bridge` rename is struck for the same reason.
+**Changes**: SECOND PREP PASS — read end to end as an executor would, and found five more defects
+that would have misled a smaller agent, on top of the first pass's baseline corrections.
+**(1) The einmo gate names were dead.** Phase 0 and Phase 1 named
+`ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked`, a module and test FOOP-86
+retired; running them matches NOTHING and reports success, so the byte-identity oracle would have
+appeared to pass while never running. Corrected to `ubca_snapshot_tester::einmo_tests::
+einmo_gate_checked`/`einmo_gate_verified`. **(2) `-- --test-threads=1` is now required and
+explained** — the three einmo gates share `einmo_suite/output/` and corrupt each other in
+parallel, producing catastrophe-crumb failures that look exactly like a regression the executor
+caused. **(3) Phase 2's import block was wrong**: it elided the `search_engine::{…}` list and
+omitted `use foolish_core::fir::Nyes;` outright, so copying it as written yields an
+unresolved-`Nyes` error. Replaced with the verbatim text. **(4) Phase 6's bare-path import
+table had all four line numbers wrong** (6242/6861/6981/7068 → 5484/6079/6090/6172) and listed
+`proto_to_core_fir`, which no longer exists; the glob-reference counts (235/114/76/21) were
+likewise pre-FOOP-86 and are now 229/115/99/14. **(5) The invariant table said `ignored: 1`
+citing a `foolish-ubca` doctest** — that crate is gone, so the count is 0, contradicting the STOP
+condition three lines below. Also: Phase 4's `display_stmt_name` boundary check is void (the
+symbol is deleted), Phase 4 now ends by confirming `core_fir_conversion` is EMPTY, and Phase 0's
+FOOP-86-has-landed branch is pre-resolved rather than left for the executor to re-litigate.
