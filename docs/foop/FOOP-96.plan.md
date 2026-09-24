@@ -17,13 +17,13 @@ new file, and changes nothing else. The governing rule, from FOOP-96.md §0:
 
 | metric | required value |
 |---|---|
-| `cargo test --workspace` passed | **791** |
+| `cargo test --workspace` passed | **467** |
 | failed | **0** |
 | ignored | **1** (pre-existing `foolish-ubca` doctest) |
 | `cargo fmt --all --check` | clean |
 | `cargo clippy -p foolish-ubca2 --all-targets` | no NEW warnings |
 
-**791 must not move in EITHER direction.** A test that vanishes is as bad as one that fails —
+**467 must not move in EITHER direction.** A test that vanishes is as bad as one that fails —
 a `#[cfg(test)]` block that stops being compiled reports no error, it just stops running.
 
 *Known, NOT this FOOP's to fix:* 4 pre-existing `foolish-core` clippy errors in `sequencer.rs`
@@ -36,7 +36,7 @@ inside `foolish-ubca2` IS this FOOP's.
 
 - A compile error naming a **private** item (`Slot`, `.payload`, `self.slots`, `validate`,
   or any private field) — the move has found a real coupling. **Do NOT widen visibility.**
-- The test count is **not 791 passed / 0 failed**, in either direction.
+- The test count is **not 467 passed / 0 failed**, in either direction.
 - A **new** clippy warning appears inside `foolish-ubca2`.
 - **Any einmo `checked/` baseline diverges.** That is a regression this FOOP introduced —
   fix the move. **NEVER `einmo promote`** (see "No Promotion Review Gate" below).
@@ -91,7 +91,8 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
         `[-] not needed — FOOP-86 removed the bridge`, and note the date.
   - [ ] If **present** → execute Phase 5 normally.
 - [ ] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
-      *Verify, don't re-derive* — FOOP-96.md §1 gives the values measured at `8c9043d8`:
+      *Verify, don't re-derive* — FOOP-96.md §1 gives the values RE-MEASURED at `0df1865b`
+      (2026-09-24, post-FOOP-86). The 2026-09-16 `8c9043d8` figures are stale in EVERY row:
       `grep -n "^mod search_engine\|^pub(crate) mod search_engine\|^mod search_fir_dispatch\|^mod core_fir_conversion\|^mod arena_compiler\|^mod tests\|^pub(crate) use" foolish-ubca2/src/fvm_storage.rs`
       Record the CURRENT line numbers in this plan before moving anything.
 - [ ] **Re-verify safety property (2): ZERO private-internal reaches.** From the first inner
@@ -100,12 +101,12 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
       **Expected: `0`.** Any non-zero result means FOOP-96.md §4(2) no longer holds — **STOP and
       report** before moving any block.
 - [ ] **Record the test baseline** in this plan: run `cargo test --workspace` and write down
-      passed / failed / ignored. *Expected 791 / 0 / 1.* If it differs, the baseline has moved —
+      passed / failed / ignored. *Expected 467 / 0 / 0.* If it differs, the baseline has moved —
       record the NEW number and use it as the invariant for every phase below.
 - [ ] Establish relevant tests for this FOOP. Use
       [these instructions](../../README.md#running-specific-tests). **Every phase of this FOOP
       uses the SAME set — the whole workspace — because a move can break anything:**
-      `cargo test --workspace` (all 791), plus the einmo gates
+      `cargo test --workspace` (all 467), plus the einmo gates
       `foolish_ubca2::ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked` and
       `einmo_suite2_gate_verified` as the byte-identity oracle. There is no smaller meaningful
       subset for a file split, and the plan says so rather than inventing one.
@@ -115,9 +116,9 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 
 ## Phase 1 — Move `mod search_engine` → `fvm_storage/search_engine.rs`
 
-*Execution phase — smaller model. Fixed target: 377 lines move, 791 still pass.*
+*Execution phase — smaller model. Fixed target: 371 lines move, 467 still pass.*
 
-**The block** (verify against Phase 0's re-measurement): `fvm_storage.rs:2236–2612`, ~377 lines,
+**The block** (verify against Phase 0's re-measurement): `fvm_storage.rs:2237–2607`, ~371 lines,
 plus the doc comment immediately above the `mod` line, which moves WITH it.
 
 **Its imports, verbatim** (*verify, don't re-derive*):
@@ -136,7 +137,7 @@ use regex::Regex;
 - [ ] Create `foolish-ubca2/src/fvm_storage/` (the sibling directory; **no `mod.rs`** —
       `rust_instructions.md` §5).
 - [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_engine.rs`: cut lines
-      `2236–2612` plus the preceding doc comment, strip ONE level of indentation, drop the
+      `2237–2607` plus the preceding doc comment, strip ONE level of indentation, drop the
       `mod search_engine {` wrapper and its closing `}`. **Retype nothing.**
 - [ ] Convert the module's `///` doc comment into a `//!` module-level doc at the top of the new
       file (`rust_instructions.md` §2d.3).
@@ -146,7 +147,7 @@ use regex::Regex;
       *A compile error naming a private item → STOP and report (do not widen visibility).*
 - [ ] `cargo fmt --all` then `cargo fmt --all --check` — clean.
 - [ ] `cargo clippy -p foolish-ubca2 --all-targets` — no NEW warnings.
-- [ ] `cargo test --workspace` — **791 passed, 0 failed, 1 ignored.**
+- [ ] `cargo test --workspace` — **467 passed, 0 failed, 0 ignored.**
       *Any other number, in either direction → STOP and report.*
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_engine--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -155,7 +156,7 @@ use regex::Regex;
 
 ## Phase 2 — Move `mod search_fir_dispatch` → `fvm_storage/search_fir_dispatch.rs`
 
-*Execution phase — smaller model. ~744 lines.*
+*Execution phase — smaller model. ~860 lines.*
 
 **Moved under its CURRENT name.** The rename to `search_dispatch.rs` happens in Phase 7 —
 renames are behavior-adjacent and never bundled with a move (FOOP-96.md §0.3).
@@ -175,7 +176,7 @@ use super::{FVMStorage, FirCursor, FirPointer, FirSpec};
 - [ ] `cargo build -p foolish-ubca2` — compiles.
       *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **791 / 0 / 1.**
+- [ ] `cargo test --workspace` — **467 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -183,7 +184,7 @@ use super::{FVMStorage, FirCursor, FirPointer, FirSpec};
 
 ## Phase 3 — Move `mod arena_compiler` → `fvm_storage/arena_compiler.rs`
 
-*Execution phase — smaller model. ~801 lines.*
+*Execution phase — smaller model. ~749 lines.*
 
 **Moved under its CURRENT name** (renamed to `compiler.rs` in Phase 7).
 
@@ -211,22 +212,31 @@ use crate::identifier::{Characterizations, Identifier};
       `pub(crate) use arena_compiler::{…}` re-export line exactly as it is.**
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **791 / 0 / 1.**
+- [ ] `cargo test --workspace` — **467 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
 
-## Phase 4 — Split the stepping driver out → `fvm_storage/stepping.rs`
+## Phase 4 — Move the stepping driver → `fvm_storage/stepping.rs` (a RENAME, not a split)
 
-*Execution phase — smaller model, but read the note below: this phase SPLITS a module rather than
-moving one whole, so the boundary matters.*
+*Execution phase — smaller model. 94 lines, moved whole.*
 
-**This is the one phase that divides an existing module.** `mod core_fir_conversion` bundles two
-unrelated concerns (FOOP-96.md §2). The stepping driver comes out here; the bridge (if it still
-exists) goes to its own file in Phase 5.
+> **REFRAMED 2026-09-24 (prep for execution).** This phase was written as "the one phase that
+> divides an existing module", because `core_fir_conversion` then bundled the stepping driver
+> with the `proto_to_core_fir` bridge (FOOP-96.md §2). **FOOP-86 deleted the bridge**, so there
+> is nothing left to divide: the module is now 94 lines of stepping driver and nothing else.
+> This phase is therefore an ordinary whole-module move, like Phases 1–3, that happens to
+> rename the module on arrival.
+>
+> **Raise, do not settle silently:** at 94 lines holding four functions, whether this earns its
+> own file at all is a judgement call. If you think it should stay in the core, say so and ask
+> — do not decide it alone.
 
-**The stepping driver** — `fvm_storage.rs:3395–3492` as measured at `8c9043d8`, ~100 lines:
+**The stepping driver** — `fvm_storage.rs:3483–3576` as re-measured at `0df1865b`, **94 lines**
+(was ~100 at `8c9043d8`). NOTE: this module is now the stepping driver ONLY — FOOP-86 deleted the
+`proto_to_core_fir` bridge that used to share it, so the split this phase was written to perform
+has already happened. What remains is a RENAME plus a doc-comment fix. See FOOP-96.md §2.
 
 | function | note |
 |---|---|
@@ -274,13 +284,24 @@ conditions name.
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
-- [ ] `cargo test --workspace` — **791 / 0 / 1.**
+- [ ] `cargo test --workspace` — **467 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
 
-## Phase 5 — Move the `proto_to_core_fir` bridge → `fvm_storage/core_fir_conversion.rs`
+## Phase 5 — ~~Move the `proto_to_core_fir` bridge~~ — CANCELLED
+
+> **[-] not needed — FOOP-86 removed the bridge (resolved 2026-09-24, prep for execution).**
+>
+> The conditional below resolved in the "already landed" direction: FOOP-86 merged to `jia` on
+> 2026-09-21 and deleted the `proto_to_core_fir` family entirely. Verified —
+> `grep -c proto_to_core_fir foolish-ubca2/src/fvm_storage.rs` returns **0**.
+>
+> **Skip this phase and go to Phase 6.** Every checkbox below is void; they are left in place
+> as the record of a conditional that resolved, not as instruction. `core_fir_conversion` is
+> now 94 lines holding only the stepping driver (Phase 4's block), so there is no second
+> concern to separate — see FOOP-96.md §2.
 
 *Execution phase — smaller model. ~660 lines.*
 
@@ -314,7 +335,7 @@ the core is ~660 lines smaller.
       `pub(crate) use core_fir_conversion::proto_to_core_fir;`.
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **791 / 0 / 1.**
+- [ ] `cargo test --workspace` — **467 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -325,14 +346,14 @@ the core is ~660 lines smaller.
 *Execution phase — smaller model, but this is the **largest and riskiest** block. Read
 FOOP-96.md §3.2 first.*
 
-**The block**: `fvm_storage.rs:4993–8282`, **3 290 lines, 110 `#[test]` functions** — 40% of the
+**The block**: `fvm_storage.rs:4337–7736`, **3 400 lines, 115 `#[test]` functions** — 44% of the
 file. Moved as ONE file; **not** split by subject (FOOP-96.md §Rejected Alternatives G).
 
 **Why this is the riskiest phase, stated concretely.** The block opens with `use super::*`, and
 then reaches its **sibling** modules by **bare path** — those paths resolve ONLY because the glob
 pulled the sibling module names into scope:
 
-| line (abs., at `8c9043d8`) | the import |
+| line (abs., at `0df1865b`) | the import |
 |---|---|
 | 6242 | `use search_engine::{BraneNavigator, CandidateNavigator, MatchOutcome, ScanCtx, ScanOutcome, SearchPredicate, contextful_search_scan, contextful_search_scan_no_body_check};` |
 | 6861 | `use core_fir_conversion::{proto_to_core_fir, step_to_constanic};` |
@@ -367,11 +388,11 @@ pulled the sibling module names into scope:
 - [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
       `build` does not compile `#[cfg(test)]` code, so it would not catch a broken test import).
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **791 / 0 / 1.**
+- [ ] `cargo test --workspace` — **467 / 0 / 0.**
       **This is the phase where a silent test-count drop is most likely.** Read the number; do
       not glance at "ok".
 - [ ] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
-      --lib` → **184 passed** (its share of the 791, including all three einmo gates).
+      --lib` → **184 passed** (its share of the 467, including all three einmo gates).
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -391,20 +412,22 @@ the ability to say "this commit moved text and changed nothing."
       `git mv foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs foolish-ubca2/src/fvm_storage/search_dispatch.rs`
       Update `mod` declaration and every `use` / path reference — **including the bare-path
       import inside `tests.rs`** if it names this module.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **791 / 0 / 1.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
 - [ ] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **791 / 0 / 1.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
-- [ ] **Rename `core_fir_conversion` → `core_fir_bridge`** — *skip if Phase 5 was struck.*
+- [-] ~~**Rename `core_fir_conversion` → `core_fir_bridge`**~~ — **SKIP: Phase 5 was struck
+      (2026-09-24), so this file never exists.** The `core_fir_conversion` NAME is retired by
+      Phase 4 instead, which moves the stepping driver to `stepping.rs`.
       `git mv foolish-ubca2/src/fvm_storage/core_fir_conversion.rs foolish-ubca2/src/fvm_storage/core_fir_bridge.rs`
       Update the `mod` declaration, the `pub(crate) use` re-export, and `tests.rs`'s bare-path
       import of it.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **791 / 0 / 1.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
 - [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
@@ -463,7 +486,7 @@ the ability to say "this commit moved text and changed nothing."
         file. If either landed on `jia` while this FOOP was in flight, the merge will conflict —
         resolve by **re-applying their changes into the new file layout**, never by discarding
         either side. *If the conflict is large, STOP and ask the human.*
-  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **791 / 0 / 1.**
+  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **467 / 0 / 0.**
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present the human with
@@ -480,13 +503,16 @@ the ability to say "this commit moved text and changed nothing."
 
 ## Last Updated
 
-**Date**: 2026-09-16
+**Date**: 2026-09-24
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created the FOOP-96 plan — ten phases, one moved block per phase, each with its own
-build/fmt/clippy/test gate asserting the **791 / 0 / 1** invariant in both directions. Phase 0 is
-a judgment phase that re-measures boundaries, re-verifies the zero-private-reaches property, and
-decides whether FOOP-86 has already removed the bridge (striking Phase 5 if so). Phases 1–6 move
-blocks under their CURRENT names; Phase 7 does all renames separately, after the moves, because a
-rename is behavior-adjacent. Phase 6 carries the `use super::*` / bare-path sibling-import hazard
-and an explicit `#[test]`-count check (110). Records that there is **no Promotion Review Gate and
-no `comprehensive.foo`** — deliberately, with the reason — rather than omitting them silently.
+**Changes**: PREP FOR EXECUTION BY A SMALLER AGENT. The plan was written against `8c9043d8` and
+would have stalled an executor immediately: its STOP condition demanded **791 / 0 / 1**, while
+the tree now measures **467 / 0 / 0**. All 18 occurrences of 791 corrected, and the ignored count
+with them. Line ranges updated for every phase from the brace-matched re-measurement.
+**Phase 5 is CANCELLED** — it moves the `proto_to_core_fir` bridge, which FOOP-86 deleted; the
+phase's own CONDITIONAL directed exactly this, so it is resolved in the "already landed"
+direction rather than left for the executor to adjudicate. **Phase 4 is reframed**: it was
+written as "the one phase that divides an existing module", but with the bridge gone there is
+nothing to divide, so it becomes an ordinary whole-module move that renames on arrival — with an
+explicit instruction to RAISE rather than silently settle whether a 94-line module earns its own
+file. Phase 7's `core_fir_bridge` rename is struck for the same reason.

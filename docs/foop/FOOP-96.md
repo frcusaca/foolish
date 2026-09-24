@@ -23,10 +23,10 @@ big-endian sort key preceded by `D` (`foop: D69`, file `FOOP-96.md`, following F
 ## Abstract
 
 A **mechanical, behavior-preserving** decomposition of `foolish-ubca2/src/fvm_storage.rs`
-(8 282 lines — 70% of the crate) into one file per concern, along the module seams the file
+(7 737 lines — 70% of the crate) into one file per concern, along the module seams the file
 **already has**. Nothing is rewritten: every moved block is moved *as text*, so `git blame`
 continues to attribute each line to the commit that wrote it. **No semantics change, no public
-API changes, no test outcome changes** — the workspace's 791 passing tests pass identically,
+API changes, no test outcome changes** — the workspace's 467 passing tests pass identically,
 in the same number, before and after every single commit of this FOOP.
 
 **This FOOP does not make Project Euler 1 or fibonacci run, and is not trying to.** That is
@@ -38,7 +38,7 @@ code, in files a human can read.
 
 ### M1 — It is the file every subsequent FOOP must edit
 
-`fvm_storage.rs` is 8 282 of the crate's 11 893 lines. The remaining Track 6 members all edit
+`fvm_storage.rs` is 7 737 of the crate's 11 049 lines. The remaining Track 6 members all edit
 it, and after FOOP-86 they edit *only* it plus `sequencer.rs`:
 
 | FOOP | What it does to `fvm_storage.rs` |
@@ -123,60 +123,64 @@ Three properties define the change, and each one is a constraint on execution:
 
 ### §1 The verified structure of the file
 
-**Verify, do not re-derive.** These were measured on `jia` at `8c9043d8` on 2026-09-16 with
-`wc -l` and `grep -n`, and re-measured independently while writing this FOOP. `wc -l` reports
-**8 282** lines (the file's last line, `}` closing `mod tests`, is line 8282; a source that
-says 8 283 is counting a trailing newline as a line).
+**Verify, do not re-derive.** **RE-MEASURED 2026-09-24 on `jia` at `0df1865b`, after FOOP-86
+merged.** The figures below replace the 2026-09-16 measurements, every one of which is now
+stale: the file lost 545 lines and every module boundary moved.
 
 | block | lines | size | what it is |
 |---|---|---|---|
-| top-level (the core) | 1–2235 | 2 235 | arena (`FVMStorage`, `FirPointer`, `Slot`, `ProtoBrane`), `FirSpec`, `fir_op_step`, `combine`, cursors (`FirCursor`/`FirCursorMut`), `revive_constanic`, `default_equal` |
-| `mod search_engine` | 2236–2612 | 377 | `BraneNavigator`, `SearchPredicate`, `contextful_search_scan` — navigate + match |
-| *(gap)* | 2613–2618 | 6 | blank + the doc comment introducing the next module |
-| `mod search_fir_dispatch` | 2619–3362 | 744 | reads a `Search` FIR's fields, builds the predicate/navigator, drives the engine |
-| *(gap)* | 3363–3373 | 11 | blank + doc comment |
-| `mod core_fir_conversion` | 3374–4178 | 805 | **TWO unrelated things** — see §2 |
-| *(gap)* | 4179–4182 | 4 | blank + doc comment |
-| `mod arena_compiler` | 4183–4983 | 801 | AST → arena FIR; `compose_program_with_system` lives here |
-| re-export lines | 4989–4990 | 2 | `pub(crate) use arena_compiler::{…}; pub(crate) use core_fir_conversion::{…};` |
-| `mod tests` | 4993–8282 | 3 290 | **110** `#[test]` functions |
+| top-level (the core) | 1–2236 | 2 236 | arena (`FVMStorage`, `FirPointer`, `Slot`, `ProtoBrane`), `FirSpec`, `fir_op_step`, `combine`, cursors (`FirCursor`/`FirCursorMut`), `revive_constanic`, `default_equal` |
+| `mod search_engine` | 2237–2607 | 371 | `BraneNavigator`, `SearchPredicate`, `contextful_search_scan` — navigate + match |
+| *(gap)* | 2608–2611 | 4 | blank + doc comment |
+| `mod search_fir_dispatch` | 2612–3471 | 860 | reads a `Search` FIR's fields, builds the predicate/navigator, drives the engine |
+| *(gap)* | 3472–3482 | 11 | blank + doc comment |
+| `mod core_fir_conversion` | 3483–3576 | **94** | the stepping driver ONLY — see §2 |
+| *(gap)* | 3577–3579 | 3 | blank + doc comment |
+| `mod arena_compiler` | 3580–4328 | 749 | AST → arena FIR; `compose_program_with_system` lives here |
+| *(gap)* | 4329–4336 | 8 | blank + doc comment |
+| `mod tests` | 4337–7736 | 3 400 | **115** `#[test]` functions |
 
-**Discrepancy against the brief, reported rather than silently corrected:** the brief gave the
-inner-module sizes as 383 / 755 / 809 / 810. Those are *seam-to-seam* spans (each module's
-first line to the next module's first line, including the blank lines and doc comments
-between them). The table above gives **brace-to-brace** spans — `mod X {` through its closing
-`}` — which is what actually moves. The difference is the 4–11 line gaps, itemized above. No
-block is a different size than the brief believed; the two measurements simply draw the
-boundary in different places. The doc comment above each `mod` line **moves with it**, so the
-seam-to-seam figure is the better predictor of a commit's diff size.
+Drift against the 2026-09-16 table, for a reader holding the older figures:
 
-### §2 `core_fir_conversion` is misnamed and bundles two unrelated concerns
+| block | then | now | why |
+|---|---|---|---|
+| whole file | 8 282 | **7 737** | −545: FOOP-86 |
+| `search_engine` | 377 | 371 | minor edits |
+| `search_fir_dispatch` | 744 | **860** | +116: FOOP-86 §6 unsteppable routes, FOOP-94 |
+| `core_fir_conversion` | 805 | **94** | **−711: the `proto_to_core_fir` family is GONE** |
+| `arena_compiler` | 801 | 749 | −52 |
+| `mod tests` | 3 290 | 3 400 | +110: new FOOP-86/94 tests (110 → 115 test fns) |
 
-The module holds two things that share no code, no caller, and no lifetime:
+Measured with a brace-matching walk (`mod X {` through its closing `}`), which is what actually
+moves; the doc comment above each `mod` line moves with it.
 
-**(a) The stepping driver** — `fvm_storage.rs:3395–3492`, ~100 lines:
+### §2 `core_fir_conversion` is misnamed — RESOLVED ITSELF, one concern now, still misnamed
 
-| function | role |
-|---|---|
-| `step_to_constanic` | the production stepping loop; `MAX_STEPS = 10_000` budget |
-| `step_until` | generic matcher-driven breakpoint |
-| `step_until_line_number` | breakpoint by line |
-| `step_until_statement_name` | breakpoint by statement name |
+**UPDATED 2026-09-24. This section's central finding has largely dissolved, and saying so is
+cheaper than letting an executor rediscover it.**
 
-The last three are the **debugging entry points the `foolish-debugging` skill documents**.
-They carry `#[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]`
-— they have no production caller by design, and exist for the debugging workflow.
+As written 2026-09-16, this section reported the module bundling **two** unrelated concerns:
 
-**(b) The lossy compatibility bridge** — `fvm_storage.rs:3494–4151`, ~650 lines:
-`proto_to_core_fir` + `_inner` + `_sff_body` + `_sff_operand` + `anchor_to_core_fir`, roughly
-30 recursive call sites, converting arena FIR into `foolish_core::Fir` so the **old** sequencer
-can read it. FOOP-36 §1 documents it as lossy. **FOOP-86 deletes it entirely.**
+- **(a) the stepping driver** (~100 lines) — `step_to_constanic` plus the three `step_until*`
+  breakpoints the `foolish-debugging` skill documents;
+- **(b) the lossy compatibility bridge** (~650 lines) — `proto_to_core_fir` and family,
+  converting arena FIR into `foolish_core::Fir` so the OLD sequencer could read it.
 
-Sharing one module between (a) and (b) is what produced the name `core_fir_conversion`, which
-describes (b) and not (a) — and then the module-level doc comment had to open with *"The
-stepping loop **and** the FIR→core-FIR output-serialization family"*, a conjunction that is
-itself the evidence of two responsibilities (`rust_instructions.md` §2c.5). **This FOOP
-separates them.**
+It also predicted **"FOOP-86 deletes it entirely"** of (b). **That prediction held.**
+`grep -c proto_to_core_fir foolish-ubca2/src/fvm_storage.rs` returns **0**, and the module is
+now 94 lines holding only the four stepping functions.
+
+So the two-responsibility problem is gone; no separation work remains. What survives is
+narrower: **the module is still misnamed.** `core_fir_conversion` described (b), which no
+longer exists — nothing in it converts to core FIR any more. The module-level doc comment that
+§2 cited as evidence of two responsibilities (*"The stepping loop **and** the FIR→core-FIR
+output-serialization family"*) is now simply **wrong**, describing deleted code.
+
+**Consequence for the plan:** what was a split becomes a rename — `core_fir_conversion` →
+something naming what it does (`stepping`, say) — plus fixing its doc comment. Per §0.3 a
+rename is behavior-adjacent and belongs in its OWN commit, after the moves. At 94 lines it is
+also a candidate for **not getting its own file at all**; whether four debugging entry points
+justify a module is a judgement call for the executor to raise rather than settle silently.
 
 ### §3 The target layout
 
@@ -189,17 +193,21 @@ foolish-ubca2/src/
 │                                       cursors, revive_constanic, default_equal
 │                                       + `mod` declarations + the curated re-exports
 └── fvm_storage/
-    ├── search_engine.rs           377  navigate + match (BraneNavigator, SearchPredicate,
+    ├── search_engine.rs           371  navigate + match (BraneNavigator, SearchPredicate,
     │                                   contextful_search_scan)
-    ├── search_dispatch.rs         744  Search FIR → a query the engine can run
-    ├── stepping.rs               ~105  step_to_constanic, step_until, step_until_line_number,
-    │                                   step_until_statement_name
-    ├── core_fir_bridge.rs        ~660  proto_to_core_fir family — DELETED by FOOP-86;
-    │                                   see §3.1 for the conditional
-    ├── compiler.rs                801  AST → arena FIR (compose_program_with_system,
+    ├── search_dispatch.rs         860  Search FIR → a query the engine can run
+    ├── stepping.rs                 94  step_to_constanic, step_until, step_until_line_number,
+    │                                   step_until_statement_name  — see §2: at 94 lines,
+    │                                   whether this earns its own file is the executor's
+    │                                   call to RAISE, not to settle silently
+    ├── compiler.rs                749  AST → arena FIR (compose_program_with_system,
     │                                   program_result, build_fir, …)
-    └── tests.rs                 3 290  the 110 tests — see §3.2
+    └── tests.rs                 3 400  the 115 tests — see §3.2
 ```
+
+**`core_fir_bridge.rs` is NOT in this layout.** The 2026-09-16 draft listed it (~660 lines,
+"DELETED by FOOP-86; see §3.1 for the conditional"). FOOP-86 has since merged and deleted it,
+so the conditional resolved: there is no bridge to house. §3.1's conditional is dead text.
 
 **Naming, justified.** `rust_instructions.md` §2c.5: *modules are named by responsibility.*
 
@@ -208,7 +216,7 @@ foolish-ubca2/src/
 - **`stepping.rs`** — the responsibility is stepping. Not `driver.rs` (says nothing), and
   **deliberately not anything containing "sequencer"**: `sequencer.rs` is the real sequencer
   (`Ubca2Sequencer`, FOOP-36) and reusing that word here would be actively misleading.
-- **`core_fir_bridge.rs`** (from `core_fir_conversion`) — "bridge" names what it *is*: a
+- ~~**`core_fir_bridge.rs`**~~ — moot; FOOP-86 deleted the bridge (§3.1). Originally: "bridge" names what it *is*: a
   one-way adapter to another crate's FIR, kept only for compatibility. It answers the
   human's *"what does conversion mean?"* directly, and its own module doc already calls it a
   bridge (`foolish-ubca/src/fir_trait.rs:143` — *"Accessors for `proto_to_core_fir` bridge"*).
@@ -219,7 +227,13 @@ foolish-ubca2/src/
 A rename changes every `use` site; bundled with a move it makes the diff unreadable and
 removes the ability to say "this commit moved text and changed nothing."
 
-#### §3.1 The bridge file, written to work either way
+#### §3.1 The bridge file, written to work either way — RESOLVED, NO LONGER APPLICABLE
+
+> **RESOLVED 2026-09-24.** This subsection hedged against FOOP-86 landing before or after this
+> FOOP. FOOP-86 merged 2026-09-21 and deleted the bridge, so the "either way" is settled: there
+> is no `core_fir_bridge.rs` and no bridge to move. **Skip this subsection.** It is kept as the
+> record of a conditional that resolved, not as instruction.
+
 
 **Decision: give the bridge its own file, `core_fir_bridge.rs`.** Reasoning:
 
@@ -294,7 +308,7 @@ use arena_compiler::compile;                                            // abs. 
 Those bare paths resolve **only** because `use super::*` imported the sibling module names
 into scope. They survive the move for the same reason — but they are exactly the kind of line
 that breaks if the glob is ever narrowed, and they must be re-pointed when §3's renames land
-(`core_fir_conversion` → `core_fir_bridge` + `stepping`, `arena_compiler` → `compiler`,
+(`core_fir_conversion` → `stepping` — the `core_fir_bridge` half is deleted, `arena_compiler` → `compiler`,
 `search_fir_dispatch` → `search_dispatch`). **The plan re-points them in the rename commits,
 not the move commit.**
 
@@ -585,16 +599,15 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 ## Last Updated
 
-**Date**: 2026-09-16
+**Date**: 2026-09-24
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created FOOP-96 — a mechanical, behavior-preserving split of
-`foolish-ubca2/src/fvm_storage.rs` (8 282 lines, 70% of the crate) into one file per concern
-along its existing module seams. Records the verified structure (§1), separates the misnamed
-`core_fir_conversion` into a stepping driver and a lossy compatibility bridge (§2), fixes the
-target layout and names (§3), decides the bridge gets its own file so the split works whether
-or not FOOP-86 lands first (§3.1), keeps the 110 tests in one `tests.rs` and documents the
-bare-path sibling-import hazard (§3.2), states the two re-verified safety properties — explicit
-`use super::{…}` per module, and ZERO private-internal reaches (§4) — and scopes the 2 235-line
-core out of the split with structural evidence (§5). FIR Impact and UBC Step Impact are both
-None; the 791 existing tests are the whole test plan, with no Promotion Review Gate and no
-`comprehensive.foo` because nothing is generated.
+**Changes**: PREP FOR EXECUTION — re-measured against `jia` at `0df1865b`, after FOOP-86 merged.
+Every figure in the 2026-09-16 draft was stale. The file is **7 737** lines, not 8 282; the
+workspace baseline is **467** tests, not 791; `mod tests` holds **115** test functions, not 110;
+and every module boundary moved, `arena_compiler` by −603 lines. §1's structure table is replaced
+with brace-matched measurements plus a drift table so a reader holding the old figures can see
+what changed and why. §2's central finding has **resolved itself**: it reported
+`core_fir_conversion` bundling two unrelated concerns and predicted FOOP-86 would delete one of
+them — the prediction held (`grep -c proto_to_core_fir` returns 0), leaving a 94-line module that
+is no longer misfactored, only misnamed. §3's layout drops `core_fir_bridge.rs` (nothing to
+house) and §3.1's either-way conditional is marked resolved.

@@ -62,6 +62,7 @@ ls | rev | sort -V | rev
 | [FOOP-84](FOOP-84.md) | Search Engine Refactor — the authoritative search specification, and detachment on it | Draft | phase-2 | 2026-07-28 | Atlas |
 | [FOOP-94](FOOP-94.md) | Brane NK only for an unsteppable statement — remove NK contamination | Complete | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-07](FOOP-07.md) | Direct Access Search vs Search — miss outcomes stop keying on anchoring | Draft | phase-2 | 2026-09-24 | Claude Code / claude-opus-5 |
+| [FOOP-17](FOOP-17.md) | FOOP attachments — structured side documents with frontmatter | Draft | meta | 2026-09-24 | Claude Code / claude-opus-5 |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
@@ -449,6 +450,10 @@ members generally cannot run in parallel worktrees. The order is dependency-driv
 > 3. **[FOOP-07](FOOP-07.md)** — Direct Access Search vs Search: miss outcomes stop keying on
 >    anchoring (**scheduled here 2026-09-24, the human's call**)
 > 4. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
+> 5. **[FOOP-17](FOOP-17.md)** — FOOP attachments: structured side documents (**scheduled here
+>    2026-09-24, the human's call**). Independent of the evaluator work, so it blocks nothing;
+>    placed after 26 so the migration happens once the FOOPs most likely to GENERATE attachments
+>    have finished doing so.
 >
 > **Why FOOP-07 sits between 96 and 46.** *After* the refactor because it edits the search
 > engine's settle sites across `fvm_storage.rs`, which FOOP-96 is about to move wholesale —
