@@ -165,6 +165,19 @@ requirement:
 Expect **broad einmo OUTPUT movement**: every `.`-written case re-renders, and every exhausted
 `?`/`~` changes NYES. Each moved case needs its own Promotion Review Gate entry.
 
+## Plan of Execution for Plan
+
+**Scheduled after FOOP-96 and before FOOP-46** (the human, 2026-09-24; recorded in
+`INDEX.md`'s Track-6 order). After the refactor because this edits settle sites throughout
+`fvm_storage.rs`, the file FOOP-96 moves wholesale. Before **FOOP-46 (BraneConcatOp)** because
+concatenation consumes search results, and whether an exhausted `?` yields NK or ECONSTANIC
+changes what a merge operand is — ECONSTANIC is not constantew, so it may still gain a value.
+
+Judgment phases — choosing the annotation wording (§4.3), deciding whether an einmo case's moved
+OUTPUT is a correct consequence or a regression, and every `output` → `checked` promotion review
+— go to a larger model. The mechanical phases (threading `direct_access` through `build_fir`,
+updating call sites) go to a smaller one.
+
 ## Rejected Alternatives
 
 - **Reinterpret `anchored`.** `g?nope` is also anchored, so the flag cannot carry the meaning.

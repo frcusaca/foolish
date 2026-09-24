@@ -230,7 +230,7 @@ ls | rev | sort -V | rev
   the decisions/registrations (name check, own repo via filter-repo, crates.io account/publish,
   docs.rs) plus the Rust testing battery (proptest, cargo-fuzz on untrusted parsers, mutants,
   deny/audit, MSRV, coverage)
-- [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
+- [FOOP-94](FOOP-94.md) — **COMPLETE 2026-09-24.** Brane NK only for an unsteppable statement. The human AMENDED the original proposal: an all-NK brane is no longer NK either, so `decide_nyes_due_to_children` never returns NK at all and brane NK is purely a run-time-error record (FOOP-86 §6.2a). Operator NK propagation and search semantics untouched. Zero snapshots moved.
 - [FOOP-55](FOOP-55.md) — Project Euler 1: make the first exercise run — `'mod` integer modulo (FOOP-33 §5.1 BodyOverride mechanism, integer result), `'or` boolean OR (FOOP-73 preferred pure-Foolish truth-table design, `'or` only), plus documented platform defects D1–D6 (incl. the leading-`_` lexer workaround via `INTERN_` prefix and the `$=`/`=$` sugar findings, Atlas-directed) and exercise defects E1–E5 (Atlas fixing the file). **Depends on FOOP-65** (exercise rewrite uses backtick application)
 - [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`, i.e. `` a`b`c`d e f `` → exactly TWO ConcatenationFirs, `Concat[tail](Concat[juxt](d,e,f), c, b, a)`). **Revised 2026-08-08: NO separate `TailConcatenationFir`** — a `ConcatProvenance` flag on the existing `ConcatenationFir` instead (the separate-FIR design is now Rejected Alternative C); precedence and the reversal resolve in `build_fir`; the flag affects **sequencing only, never evaluation**, and renders backtick form only while all constituents are embryonic. Prerequisite of FOOP-55; **depends on FOOP-95**; non-regression verified (corpus backticks only in comments)
 - [FOOP-85](FOOP-85.md) — einmo's Foolish-suite separator `"!!\n"` (the Foolish **line** comment) collides with Foolish's **block** comment `!!!`: every `!!!` line ends with the separator, and `serialize`'s collision check is a plain substring test, so **any** `.foo` using a block comment is unserializable — which fails the whole UBCa suite, not the one file. Fix is one constant: `"\n!!!EINMO!!!\n"`, newline-wrapped so it matches only a whole line. **Backward compatible** — each `.einmo` records its own separator in its header and `parse` reads it from there, so existing baselines keep verifying. Found while gating FOOP-75; verified (einmo 133 pass, `einmo_gate_output` fixed, workspace 3 failures → 2). Change was reverted to keep a clean build; Appendix A holds the diff verbatim
@@ -446,9 +446,22 @@ members generally cannot run in parallel worktrees. The order is dependency-driv
 > 1. ~~**[FOOP-86](FOOP-86.md)** — retire UBCa~~ (**COMPLETE, merged to `jia` 2026-09-21**)
 > 2. **[FOOP-96](FOOP-96.md)** — split `foolish-ubca2/src/fvm_storage.rs` (**next**;
 >    written 2026-09-16)
-> 3. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
+> 3. **[FOOP-07](FOOP-07.md)** — Direct Access Search vs Search: miss outcomes stop keying on
+>    anchoring (**scheduled here 2026-09-24, the human's call**)
+> 4. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
 >
-> This **supersedes** the "26 → 46 strictly sequential" statement in items 3 and 4 below and
+> **Why FOOP-07 sits between 96 and 46.** *After* the refactor because it edits the search
+> engine's settle sites across `fvm_storage.rs`, which FOOP-96 is about to move wholesale —
+> doing it first would guarantee conflicts in exactly the file being split, and 96 is
+> deliberately behavior-preserving so it is cheapest against a still branch. *Before*
+> **FOOP-46 (BraneConcatOp)** because 46 rewrites concatenation, and concatenation consumes
+> search results: whether an exhausted `?` hands back NK or ECONSTANIC changes what a merge
+> operand IS, and ECONSTANIC is not constantew, so it may still gain a value. Writing 46
+> against the old miss rule would mean rewriting its operand handling once 07 lands. FOOP-07
+> also finally makes `.` and `?` distinct operators (FOOP-07 §2 — they are currently the SAME
+> FIR node), which 46 and 26 both need settled before they reason about search results.
+>
+> This **supersedes** the "26 → 46 strictly sequential" statement in the numbered members below and
 > FOOP-36 §"Why this should land before FOOP-26"'s implication that 26 comes straight after 36.
 > **Why**: FOOP-86 first means 26 and 46 are written against ONE evaluator, ONE sequencer and
 > ONE einmo suite — no cross-evaluator non-regression burden, no lossy `proto_to_core_fir`
