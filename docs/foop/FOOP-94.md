@@ -1,16 +1,16 @@
 ---
 foop: 49
-title: Brane NK only when all constituents are NK — remove any-NK contamination
+title: Brane NK only for an unsteppable statement — remove NK contamination
 author: Atlas <hc.busy@gmail.com>
-status: Draft
+status: Complete
 type: Standards
 created: 2026-07-14
 phase: phase-2
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
-# FOOP-94: Brane NK only when all constituents are NK — remove any-NK contamination
+# FOOP-94: Brane NK only for an unsteppable statement — remove NK contamination
 
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
@@ -47,30 +47,44 @@ signal.
 
 ### The rule change
 
-All brane-like classification flows through one shared function,
-`_decide_nyes_due_to_children` (`foolish-ubca/src/fir_kinds.rs:11`). Decision cascade, before
-and after (first match wins; applies once all children are constanic or a pre-constanic child
-exists):
+**AMENDED 2026-09-23 by the human, strengthening the original proposal.** As first written, this
+FOOP kept an all-NK brane NK (row 1 below). The amended rule removes that too:
 
-| # | Condition | Today | Proposed |
-|---|-----------|-------|----------|
-| 1 | children non-empty, **all** NK | — (falls to #5) | **NK** |
+> **A brane is NK if and only if it contains an unsteppable statement.** No other brane is NK —
+> not one with some NK members, not one whose members are ALL NK.
+
+Brane NK therefore stops being a rollup of member states and becomes purely the record of a
+run-time error (FOOP-86 §6.2a). It is written directly by `halt_if_unsteppable`, never derived
+from children.
+
+All brane-like classification flows through one shared function, `decide_nyes_due_to_children`
+(`foolish-ubca2/src/fvm_storage.rs`; the original text cited `foolish-ubca/src/fir_kinds.rs:11`,
+a crate FOOP-86 has since retired). Decision cascade, first match wins:
+
+| # | Condition | Today | Amended |
+|---|-----------|-------|---------|
+| 1 | children non-empty, **all** NK | NK (via #6) | **CONSTANT** — the amendment |
 | 2 | all INDEPENDENT | INDEPENDENT | INDEPENDENT |
-| 3 | all ∈ {CONSTANT, INDEPENDENT} — proposed: {CONSTANT, INDEPENDENT, **NK**} | CONSTANT | CONSTANT |
-| 4 | any pre-constanic (PREMBRYONIC/EMBRYONIC/BRANING) | BRANING | BRANING |
+| 3 | all ∈ {CONSTANT, INDEPENDENT, **NK**} | CONSTANT | CONSTANT |
+| 4 | any pre-constanic | BRANING | BRANING |
 | 5 | any ECONSTANIC/WOCONSTANIC | WOCONSTANIC | WOCONSTANIC |
 | 6 | any NK, rest CONSTANT/INDEPENDENT | **NK** | — (covered by #3) |
+
+**The classifier never returns NK.** A halted brane is guarded before classification
+(`decide_brane_nyes`), so the halt's NK is never overwritten.
 
 Consequences:
 
 - `{a = 5; b = 10 / 0; c = 7;}` → brane **CONSTANT** (today NK). The division alarm is still
   emitted (alarms come from the operator, not from brane classification), and `b` itself is
   still NK.
-- `{a = 10 / 0;}` → brane **NK**, unchanged (single constituent, all-NK).
+- `{a = 10 / 0;}` → brane **CONSTANT** (today NK; the original proposal kept it NK).
+- `{'K = ⬤; 'K = 3;}` → brane **NK** — an unsteppable statement, the only remaining route.
 - NK does **not** count as INDEPENDENT-like: `{independents… + one NK}` classifies CONSTANT,
-  not INDEPENDENT (conservative; see Open Questions).
-- An empty brane remains CONSTANT (`BraneFir` handles it before classification; the all-NK
-  check requires non-empty children).
+  not INDEPENDENT. **Conservatism confirmed by the human 2026-09-23** and to be documented:
+  INDEPENDENT asserts "no context dependencies at all", which an NK member's unresolved history
+  does not support.
+- An empty brane remains CONSTANT.
 
 ### Uniform application
 
@@ -151,9 +165,10 @@ the investigation shows container INDEPENDENT status has no such sensitivity.
 
 ## Open Questions
 
-- Should a brane of all-INDEPENDENT members plus NKs classify INDEPENDENT rather than CONSTANT?
-- Should the test-helper brane in `fir_trait.rs` delegate to `_decide_nyes_due_to_children`
-  instead of duplicating the cascade?
+- ~~Should a brane of all-INDEPENDENT members plus NKs classify INDEPENDENT rather than CONSTANT?~~
+  **RESOLVED 2026-09-23 (the human): no — CONSTANT, and the conservatism is to be documented.**
+- ~~Should the test-helper brane in `fir_trait.rs` delegate to `_decide_nyes_due_to_children`?~~
+  **MOOT** — `fir_trait.rs` left with `foolish-ubca`, retired by FOOP-86.
 - Exact sequencer rendering of a mixed brane after the change (investigation question 3).
 
 ## References
@@ -166,3 +181,25 @@ the investigation shows container INDEPENDENT status has no such sensitivity.
   detection, adjacent territory; renumbered from FOOP-84 on 2026-07-29, which is the Search
   Engine Refactor).
 - AGENTS.md §"NK vs ECONSTANIC miss outcomes", §"NYES transition tests".
+
+## Last Updated
+
+**Date**: 2026-09-24
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Status Draft → Complete; implemented. The rule was AMENDED by the human 2026-09-23,
+strengthening the original proposal: an all-NK brane is no longer NK either, so **a brane is NK if
+and only if it contains an unsteppable statement**. Brane NK is therefore purely the record of a
+run-time error (FOOP-86 §6.2a), written directly by `halt_if_unsteppable`, never derived from
+children — the classifier now never returns NK at all. Implementing this exposed a REGRESSION the
+old rule had masked: the cascade ran after the halt and reclassified halted branes, erasing their
+`!! NK:` annotations (caught by `foop/86/unsteppable_concat_merge`). Previously invisible because
+the any-NK rule happened to re-derive the same NK the halt had written. Fixed with
+`decide_brane_nyes`, which consults `unsteppable_cause` before classifying, plus a matching check
+in the concatenation arm where a route-2 cause sits on a HELPER rather than on the node. Both open
+questions resolved: Independent+NK classifies CONSTANT (conservative, per the human), and the
+`fir_trait.rs` question is moot since that file retired with `foolish-ubca`. Two unit tests
+rewritten rather than deleted, both having existed solely to pin the removed rule:
+`brane_with_nk_child_settles_nk` → `..._settles_constant_not_nk`, and the sequencer's "rollup NK
+shown under verbose" block, whose second assertion is now unsatisfiable by design — replaced with
+a check that an UNSTEPPABLE brane's NK still shows under verbose, keeping that machinery pinned.
+Zero einmo baselines moved; workspace 467 tests, 0 failures.

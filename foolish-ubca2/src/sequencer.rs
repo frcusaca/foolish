@@ -2056,16 +2056,41 @@ mod tests {
             "silent must emit no warning at all"
         );
 
-        // A brane's own rollup NK: quiet by default (§4.0/§5.2), since the
-        // member lines already carry it; shown under verbose.
+        // A brane with NK MEMBERS is not itself NK, so it has no brane-level NK to announce --
+        // under either switch. There is no "rollup NK" any more: FOOP-94 (as amended by the human
+        // 2026-09-23) makes a brane NK if and only if it contains an unsteppable statement, so
+        // brane NK records a run-time error rather than rolling up member states. This block
+        // formerly asserted that a rollup NK was quiet by default and SHOWN under verbose; the
+        // second half is now unsatisfiable by design, and the first holds for a stronger reason.
         let (storage, program) = evaluated_program("{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}");
+        for (label, rendered) in [
+            (
+                "default",
+                Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish),
+            ),
+            (
+                "verbose",
+                Ubca2Sequencer::format_with(&storage, program, &verbose),
+            ),
+        ] {
+            assert!(
+                !rendered.contains("f = {  !!"),
+                "{label}: a brane with NK members is not NK, so it has no brane-level annotation"
+            );
+            assert!(
+                rendered.contains("c = #-1;  !! NK:"),
+                "{label}: the NK MEMBER still carries its own annotation -- the information is not \
+                 lost, it sits where it belongs"
+            );
+        }
+
+        // The brane-level NK annotation still exists, for the one thing that still sets it: an
+        // unsteppable statement. Quiet by default, shown under verbose, exactly as before.
+        let (storage, program) = evaluated_program("{u = {'K = ⬤; 'K = 3;}; z = 2;}");
         assert!(
-            !Ubca2Sequencer::format(&storage, program, SequenceMode::Foolish).contains("f = {  !!"),
-            "a brane's rollup NK is quiet by default"
-        );
-        assert!(
-            Ubca2Sequencer::format_with(&storage, program, &verbose).contains("f = {  !! NK:"),
-            "verbose must show a brane's rollup NK"
+            Ubca2Sequencer::format_with(&storage, program, &verbose).contains("!! NK:"),
+            "verbose must still show an UNSTEPPABLE brane's NK -- that is a run-time error, not a \
+             rollup"
         );
     }
 

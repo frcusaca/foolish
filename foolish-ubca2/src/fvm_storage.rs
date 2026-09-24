@@ -974,10 +974,11 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 }
             }
             Nyes::Braning => {
-                // FOOP-86 §6.3's halt is checked in `step_inner`, before each task is drained — see there.
-                // By the time this arm runs the queue is already empty, so a halted brane never reaches it.
+                // FOOP-86 §6.3's halt is checked in `step_inner`, before each task is drained — see
+                // there. `decide_brane_nyes` re-asserts it anyway: the classifier never returns NK, so
+                // a halted brane reaching here must not be reclassified.
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
-                if let Some(nyes) = decide_nyes_due_to_children(storage, &children) {
+                if let Some(nyes) = decide_brane_nyes(storage, ptr, &children) {
                     storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
                 }
             }
@@ -1065,7 +1066,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
             }
             Nyes::Braning => {
                 let children: Vec<FirPointer> = storage.foolish_children(ptr).to_vec();
-                if let Some(nyes) = decide_nyes_due_to_children(storage, &children) {
+                if let Some(nyes) = decide_brane_nyes(storage, ptr, &children) {
                     storage.with_mut(ptr, |fir| fir.set_nyes(nyes));
                 }
             }
@@ -1139,8 +1140,14 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                     }
                 } else {
                     let helpers: Vec<FirPointer> = FirCursor::new(ptr, storage).ubc_children().to_vec();
+                    // A MERGED brane halted by a conflicting null-const (FOOP-86 §6.2 route 2)
+                    // carries the cause on the HELPER, not on this node, so the halt must be read
+                    // from the helpers. Without this a halted merge would be reclassified CONSTANT
+                    // and lose its `!! NK:` annotation — the classifier never returns NK.
                     let decided_nyes = if helpers.is_empty() {
                         Nyes::Constant
+                    } else if helpers.iter().any(|&h| storage.unsteppable_cause(h).is_some()) {
+                        Nyes::Nk
                     } else {
                         decide_nyes_due_to_children(storage, &helpers).unwrap_or(Nyes::Constant)
                     };
@@ -1494,49 +1501,82 @@ fn halt_if_unsteppable(brane: FirPointer, storage: &mut FVMStorage) -> bool {
 /// all-Independent → Independent; all-Constant (nothing pending) → Constant; any pre-constanic child →
 /// Braning (keep waiting — this is the one outcome that is NOT constanic); else any Econstanic/ Woconstanic
 /// → Woconstanic; else any Nk → Nk.
+/// Classifies a brane-like node's settled `Nyes` from its children's states.
+///
+/// **This function never returns NK.** A brane is NK if and only if it contains an unsteppable
+/// statement (FOOP-94, as amended by the human 2026-09-23), and that NK is written directly by
+/// `halt_if_unsteppable` rather than derived here. Brane NK is therefore a record of a run-time
+/// error (FOOP-86 §6.2a), not a rollup of member states.
+///
+/// So an NK member never contaminates its brane, however many there are: a brane holding one
+/// failed division — or holding nothing but failed divisions — still classifies conclusively,
+/// because it did its own part correctly (§6.4c). The members stay NK and stay searchable; only
+/// the container's classification changes.
+///
+/// NK does **not** count as Independent-like. A brane of Independents plus one NK classifies
+/// CONSTANT, not INDEPENDENT — deliberately conservative: INDEPENDENT asserts "no context
+/// dependencies at all", which an NK member's unresolved history does not support.
+///
+/// Cascade, first match wins:
+///
+/// | # | Condition | Result |
+/// |---|-----------|--------|
+/// | 1 | all INDEPENDENT | INDEPENDENT |
+/// | 2 | all ∈ {CONSTANT, INDEPENDENT, NK} | CONSTANT |
+/// | 3 | any pre-constanic | BRANING (keep stepping) |
+/// | 4 | any ECONSTANIC/WOCONSTANIC | WOCONSTANIC |
 fn decide_nyes_due_to_children(storage: &FVMStorage, children: &[FirPointer]) -> Option<Nyes> {
-    let mut all_constant = true;
     let mut all_independent = true;
+    let mut conclusive_or_nk = true;
     let mut preconstanic_count = 0usize;
-    let mut nk_count = 0usize;
     let mut econstanic_woconstanic_count = 0usize;
 
     for &c in children {
-        match storage.get_nyes(c) {
+        let nyes = storage.get_nyes(c);
+        if nyes != Nyes::Independent {
+            all_independent = false;
+        }
+        match nyes {
             Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => {
                 preconstanic_count += 1;
-                all_constant = false;
-                all_independent = false;
-            }
-            Nyes::Nk => {
-                nk_count += 1;
-                all_constant = false;
-                all_independent = false;
+                conclusive_or_nk = false;
             }
             Nyes::Econstanic | Nyes::Woconstanic => {
                 econstanic_woconstanic_count += 1;
-                all_constant = false;
-                all_independent = false;
+                conclusive_or_nk = false;
             }
-            Nyes::Constant => {
-                all_independent = false;
-            }
-            _ => {}
+            Nyes::Nk | Nyes::Constant | Nyes::Independent => {}
         }
     }
+
     if all_independent {
         Some(Nyes::Independent)
-    } else if all_constant {
+    } else if conclusive_or_nk {
         Some(Nyes::Constant)
     } else if preconstanic_count > 0 {
         Some(Nyes::Braning)
     } else if econstanic_woconstanic_count > 0 {
         Some(Nyes::Woconstanic)
-    } else if nk_count > 0 {
-        Some(Nyes::Nk)
     } else {
         unreachable!("ALARM: decide_nyes_due_to_children: no decision made.")
     }
+}
+
+/// `decide_nyes_due_to_children` for a BRANE, with the halt honoured.
+///
+/// A brane halted by an unsteppable statement is NK, and that NK is the record of a run-time
+/// error rather than a classification of its members (FOOP-86 §6.2a, FOOP-94 as amended
+/// 2026-09-23). Reclassifying it would erase the halt: since the classifier never returns NK,
+/// a halted brane would be relabelled CONSTANT and its `!! NK:` annotation would vanish.
+///
+/// This was a live regression, caught by `foop/86/unsteppable_concat_merge`. It was previously
+/// MASKED: the old any-NK-child rule happened to re-derive the same NK the halt had written, so
+/// nothing appeared to depend on the ordering. Removing that rule exposed the overwrite.
+fn decide_brane_nyes(storage: &FVMStorage, brane: FirPointer, children: &[FirPointer]) -> Option<Nyes> {
+    if storage.unsteppable_cause(brane).is_some() {
+        return Some(Nyes::Nk);
+    }
+    decide_nyes_due_to_children(storage, children)
 }
 
 /// Resolves an `Operator` node once all its operands are known: an NK
@@ -4837,10 +4877,19 @@ mod tests {
         assert!(FirCursor::new(brane, &storage).is_brane_like());
     }
 
-    /// Mirrors `fir_kinds.rs::tests::brane_with_nk_child_nyes_transitions`
-    /// exactly: a brane with one NK statement settles Nk overall.
+    /// An NK MEMBER does not make its brane NK (FOOP-94 as amended by the human 2026-09-23).
+    ///
+    /// This test formerly asserted the OPPOSITE — it was named `brane_with_nk_child_settles_nk`
+    /// and pinned the any-NK-child rule, mirroring the retired `foolish-ubca`'s
+    /// `brane_with_nk_child_nyes_transitions`. That rule is gone: a brane is NK if and only if it
+    /// contains an unsteppable statement, so brane NK records a run-time error (FOOP-86 §6.2a)
+    /// rather than rolling up member states. The brane here did its own part correctly, so it
+    /// classifies CONSTANT and keeps `bad` NK and searchable.
+    ///
+    /// CONSTANT rather than INDEPENDENT is deliberate and conservative: INDEPENDENT asserts "no
+    /// context dependencies at all", which an NK member's unresolved history does not support.
     #[test]
-    fn brane_with_nk_child_settles_nk() {
+    fn brane_with_nk_child_settles_constant_not_nk() {
         use crate::identifier::Identifier;
 
         let mut storage = FVMStorage::new();
@@ -4876,7 +4925,21 @@ mod tests {
             brane.step(&mut storage);
         }
 
-        assert_eq!(storage.get_nyes(brane), Nyes::Nk);
+        assert_eq!(
+            storage.get_nyes(brane),
+            Nyes::Constant,
+            "an NK member must not contaminate its brane; only an unsteppable statement makes a \
+             brane NK"
+        );
+        assert!(
+            storage.unsteppable_cause(brane).is_none(),
+            "nothing here is unsteppable -- this brane has no run-time error to record"
+        );
+        assert_eq!(
+            storage.get_nyes(stmt_bad),
+            Nyes::Nk,
+            "the NK member itself stays NK -- only the CONTAINER's classification changed"
+        );
     }
 
     /// An empty `Brane` settles `Constant` in one step, via the `children.is_empty()` short-circuit.

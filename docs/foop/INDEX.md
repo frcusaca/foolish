@@ -60,7 +60,7 @@ ls | rev | sort -V | rev
 | [FOOP-64](FOOP-64.md) | Migrate UBCa snapshot tests to a hierarchical einmo suite | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-74](FOOP-74.md) | FIRID — atomic per-Fir identity for constanic-clone cycle detection | Draft | phase-2 | 2026-07-11 | Atlas |
 | [FOOP-84](FOOP-84.md) | Search Engine Refactor — the authoritative search specification, and detachment on it | Draft | phase-2 | 2026-07-28 | Atlas |
-| [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
+| [FOOP-94](FOOP-94.md) | Brane NK only for an unsteppable statement — remove NK contamination | Complete | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
