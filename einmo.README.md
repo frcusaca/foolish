@@ -584,7 +584,11 @@ Dev dependency: `tempfile` 3 (for tests).
 
 This appendix demonstrates, step by step, how to refactor an existing insta
 snapshot test into an einmo suite. The example is based on a real test in the
-Foolish project (`foolish-ubca/src/ubca_snapshot_tester.rs`).
+Foolish project. **Historical note (2026-09-26):** the "before" code below is the real insta test
+as it stood in `foolish-ubca/src/ubca_snapshot_tester.rs` — a crate FOOP-86 has since retired. The
+surviving equivalent is `foolish-ubca2/src/einmo_gates.rs`, whose suite lives in
+`foolish-ubca2/einmo_suite/`. The paths in the BEFORE block are left as they were, since that is
+what was migrated FROM; the AFTER block names the current file.
 
 ### Before: the insta test
 
@@ -592,7 +596,7 @@ The original test uses insta's `Settings` API to bind a snapshot path, then
 calls `assert_snapshot!` for each evaluated input:
 
 ```rust
-// foolish-ubca/src/ubca_snapshot_tester.rs (BEFORE)
+// foolish-ubca/src/ubca_snapshot_tester.rs (BEFORE — retired crate, historical)
 
 use std::path::PathBuf;
 use crate::evaluator::UbcaEvaluator;
@@ -672,14 +676,14 @@ directory, uses an `Evaluator` adapter around `UbcaEvaluator`, and enforces
 the `output == checked` correspondence gate:
 
 ```rust
-// foolish-ubca/src/ubca_snapshot_tester.rs (AFTER)
+// foolish-ubca2/src/einmo_gates.rs (AFTER — the current file)
 
 use std::path::PathBuf;
 use einmo::{EinmoSuite, Evaluator, Stage, TestConfig};
 
 fn suite_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("snapshot_tests")
+        .join("einmo_suite")
 }
 
 #[cfg(test)]

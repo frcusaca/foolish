@@ -3480,7 +3480,7 @@ mod search_fir_dispatch {
 /// so there is no single type to attach them to as methods — the same
 /// reason `fir_op_step`, `combine`, and every `search_fir_dispatch`
 /// function are also free functions taking `FirPointer` explicitly.
-mod core_fir_conversion {
+pub mod core_fir_conversion {
     use super::{FVMStorage, FirCursor, FirPointer};
 
     /// Steps `ptr` up to `MAX_STEPS` times, returning `Ok(())` once constanic, or an error naming the
@@ -3488,7 +3488,7 @@ mod core_fir_conversion {
     /// from `step_inner`'s `MAX_DEPTH`, which caps recursion depth within a single iteration.
     const MAX_STEPS: usize = 10_000;
 
-    pub(crate) fn step_to_constanic(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
+    pub fn step_to_constanic(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
         let mut last_step = 0;
         for step in 0..MAX_STEPS {
             ptr.step(storage);
@@ -3513,17 +3513,13 @@ mod core_fir_conversion {
     /// because a `FirPointer` carries no data of its own — it must be
     /// read through the arena to be inspected.
     ///
-    /// No production caller: this is developer-facing debugger tooling, not
-    /// part of `evaluate`'s own path. Exercised by this file's own tests.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "developer-facing debugger tooling, not part of evaluate's own path; \
-                      exercised only by this file's own tests"
-        )
-    )]
-    pub(crate) fn step_until(
+    /// **Public API for users of the FVM** (the human, 2026-09-26: *"the debugging code should be
+    /// accessible by users of the fvm"*). This is developer-facing debugger tooling rather than
+    /// part of `evaluate`'s own path, so it has no caller INSIDE this crate — but it is `pub`
+    /// because downstream code driving the FVM needs it, and a `pub` item in a `pub mod` is API,
+    /// never dead code. It therefore needs no `expect(dead_code)`; an earlier
+    /// `pub(crate)` + `expect(dead_code)` pair was papering over the too-narrow visibility.
+    pub fn step_until(
         storage: &mut FVMStorage,
         ptr: FirPointer,
         mut matcher: impl FnMut(&FVMStorage, Option<FirPointer>) -> bool,
@@ -3546,9 +3542,8 @@ mod core_fir_conversion {
         ))
     }
 
-    /// No production caller — see `step_until`'s doc comment.
-    #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
-    pub(crate) fn step_until_line_number(
+    /// Public debugger API — see `step_until`'s doc comment.
+    pub fn step_until_line_number(
         storage: &mut FVMStorage,
         ptr: FirPointer,
         line: usize,
@@ -3560,9 +3555,8 @@ mod core_fir_conversion {
         })
     }
 
-    /// No production caller — see `step_until`'s doc comment.
-    #[cfg_attr(not(test), expect(dead_code, reason = "see step_until's doc comment"))]
-    pub(crate) fn step_until_statement_name(
+    /// Public debugger API — see `step_until`'s doc comment.
+    pub fn step_until_statement_name(
         storage: &mut FVMStorage,
         ptr: FirPointer,
         name: &str,
@@ -6880,6 +6874,263 @@ mod tests {
             .first()
             .copied()
             .unwrap_or(body)
+    }
+
+    /// Lazy **post-order** iterator over a FIR tree: a node is yielded only after all of its
+    /// children, its children's children, and so on.
+    ///
+    /// Post-order, not pre-order, because that is the order the invariant needs (the human,
+    /// 2026-09-26): a node cannot be constanic before its children are, so a traversal that
+    /// yielded the parent first would report a parent as "reached" while its subtree was still
+    /// pre-constanic. In generator form:
+    ///
+    /// ```text
+    /// for child in my_children(front to back):   # in order
+    ///     yield from InOrder(child)              # the child's whole subtree, post-order
+    /// yield self                                 # self LAST
+    /// ```
+    ///
+    /// Yields one `FirPointer` at a time and **never materializes the tree** (the human:
+    /// *"definitely do NOT materialize a Fir vec. Let's use an iterator please."*). State is an
+    /// explicit stack of `(node, next_child_index)` frames, so memory is O(depth) — note this is
+    /// a HIGH-BRANCHING tree, not a binary one, so a frame per level rather than a copy of each
+    /// level's children is what keeps that bound. A caller that stops early walks no further.
+    ///
+    /// This follows the **iterative candidate-generator pattern the search engine already uses**
+    /// (`CandidateNavigator`), which the human named as the replacement for a visitor. The
+    /// ITERATION ORDER differs from the search navigator's deliberately: this is a structural
+    /// deepest-first walk of the whole tree, whereas a search navigator yields statement
+    /// candidates in a direction- and cursor-dependent order.
+    ///
+    /// **Mutation during iteration is not this iterator's problem, and cannot be.** The walk holds
+    /// frames pointing at nodes it has not yet finished, so a tree reshaped mid-iteration could
+    /// hand back pointers whose children changed. The iterator makes no attempt to detect that —
+    /// it is a borrow of a tree assumed still.
+    ///
+    /// In practice `&'s FVMStorage` makes the dangerous cases unrepresentable rather than merely
+    /// discouraged: the shared borrow excludes any `&mut FVMStorage` for the iterator's lifetime,
+    /// so stepping cannot run while a walk is live — verified, it is a compile error (E0502) —
+    /// and `FVMStorage` is a plain owned arena with no interior mutability (no `RefCell`, no
+    /// `Mutex`, no `unsafe impl Send`/`Sync`), so it is not shared across threads either.
+    /// **UBCA2 is single-threaded**; a concurrent mutator is not a scenario the crate supports,
+    /// and the compiler is what enforces it here.
+    ///
+    /// What remains the CALLER's responsibility is the one case borrowing cannot see: collecting
+    /// pointers from a walk, dropping the iterator, stepping, and then using those stale pointers.
+    /// Re-walk instead of caching across a step.
+    ///
+    /// A general FIR iterator on this pattern is future work; kept local while it is this small.
+    struct PostOrder<'s> {
+        storage: &'s FVMStorage,
+        /// One frame per level from the root down to the node being expanded: the node, and how
+        /// many of its children have been fully emitted. O(depth), not O(nodes).
+        stack: Vec<(FirPointer, usize)>,
+    }
+
+    impl<'s> PostOrder<'s> {
+        fn new(storage: &'s FVMStorage, root: FirPointer) -> Self {
+            Self {
+                storage,
+                stack: vec![(root, 0)],
+            }
+        }
+    }
+
+    impl Iterator for PostOrder<'_> {
+        type Item = FirPointer;
+
+        fn next(&mut self) -> Option<FirPointer> {
+            loop {
+                let (node, visited) = *self.stack.last()?;
+                let children = self.storage.foolish_children(node);
+                if visited < children.len() {
+                    // Descend into the next unvisited child, front to back.
+                    let child = children[visited];
+                    self.stack.last_mut().expect("just read").1 += 1;
+                    self.stack.push((child, 0));
+                } else {
+                    // Every child is done, so this node may finally be yielded.
+                    self.stack.pop();
+                    return Some(node);
+                }
+            }
+        }
+    }
+
+    /// Iterates `root`'s tree post-order (children before parents), lazily. See [`PostOrder`].
+    fn post_order(storage: &FVMStorage, root: FirPointer) -> PostOrder<'_> {
+        PostOrder::new(storage, root)
+    }
+
+    /// Renders the traversal as `name=NYES` pairs, for a failure message a human can read.
+    fn nyes_trace(storage: &FVMStorage, root: FirPointer) -> String {
+        post_order(storage, root)
+            .map(|n| format!("{:?}", storage.get_nyes(n)))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// [`PostOrder`] yields children before parents, front-to-back, and is LAZY.
+    ///
+    /// The laziness half matters because the obvious implementation (build a `Vec`, splice
+    /// children in) is both O(n²) and eager; this pins that it was not done that way. The ORDER
+    /// half matters because an earlier version of this iterator was PRE-order — parent first —
+    /// which is exactly backwards for the constanic-prefix invariant below: a node cannot be
+    /// constanic before its children are.
+    #[test]
+    fn post_order_iterator_yields_children_before_parents_and_is_lazy() {
+        use crate::identifier::Identifier;
+
+        // root
+        //   stmt_a -> IndepInt(1)
+        //   stmt_b -> IndepInt(2)
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        let mut stmts = vec![];
+        for (name, line, value) in [("a", 0, 1), ("b", 1, 2)] {
+            let stmt = root.create_child(
+                &mut storage,
+                FirSpec::Statement {
+                    identifier: Identifier::from_parts(vec![], name),
+                    line_number: line,
+                },
+            );
+            stmt.create_child(&mut storage, FirSpec::IndepInt { value });
+            stmts.push(stmt);
+        }
+        let body_a = FirCursor::new(stmts[0], &storage).foolish_children()[0];
+        let body_b = FirCursor::new(stmts[1], &storage).foolish_children()[0];
+
+        // ORDER: deepest-first, children front-to-back, each node AFTER its whole subtree.
+        // The root is LAST, which is the defining property.
+        let walked: Vec<FirPointer> = post_order(&storage, root).collect();
+        assert_eq!(
+            walked,
+            vec![body_a, stmts[0], body_b, stmts[1], root],
+            "post-order: a's body, a, b's body, b, then the root LAST"
+        );
+        assert_eq!(
+            *walked.last().expect("non-empty"),
+            root,
+            "the root is yielded last, not first"
+        );
+
+        // LAZINESS: the stack is O(DEPTH), not O(nodes). This tree is 3 deep, so even mid-walk
+        // the pending frames must stay tiny — that is what makes it safe on a wide tree.
+        let mut it = post_order(&storage, root);
+        assert_eq!(it.next(), Some(body_a), "the deepest front node comes first");
+        assert!(
+            it.stack.len() <= 3,
+            "frames are per-LEVEL (depth 3), not per-node (tree of {}); holds {}",
+            walked.len(),
+            it.stack.len()
+        );
+    }
+
+    /// **The debugger's core invariant** (the human, 2026-09-26): *"stepping until a Fir node is
+    /// constanic means in order traversal of fir tree should all be constanic up to and including
+    /// that node."*
+    ///
+    /// **Why the traversal must be POST-order for this to hold.** The evaluation rule is: *"if a
+    /// brane's children are all evaluated to constanic, then the brane then becomes constanic"*
+    /// (the human). So constanic-ness propagates UPWARD — a brane is the LAST thing in its own
+    /// subtree to settle. A pre-order walk would visit the brane before its contents and report
+    /// it as reached while the subtree behind it was still pre-constanic, inverting the very
+    /// property being checked. Post-order matches the direction evaluation actually flows, which
+    /// is why [`PostOrder`] yields a node only after everything inside it.
+    ///
+    /// This is a property of the stepping ORDER, and nothing else tested it. The existing
+    /// `step_until*` tests assert only that the breakpoint fires at the right place; they say
+    /// nothing about the state of everything BEFORE it. That prefix property is what makes a
+    /// breakpoint meaningful — if stepping could leave a hole behind it, stopping at a node would
+    /// tell you nothing about what had been evaluated.
+    ///
+    /// Checked at four points: before any stepping, twice mid-flight, and after settling.
+    #[test]
+    fn stepping_leaves_a_constanic_prefix_in_traversal_order() {
+        use crate::identifier::Identifier;
+
+        // Build the tree by hand rather than by parsing, so the shape under test is explicit.
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        for (name, line, value) in [("a", 0, 1), ("b", 1, 2), ("c", 2, 3), ("d", 3, 4)] {
+            let stmt = root.create_child(
+                &mut storage,
+                FirSpec::Statement {
+                    identifier: Identifier::from_parts(vec![], name),
+                    line_number: line,
+                },
+            );
+            stmt.create_child(&mut storage, FirSpec::IndepInt { value });
+        }
+
+        // (1) BEFORE: nothing is constanic except the leaf IndepInts, which are born
+        // INDEPENDENT. The root and its statements are all still pre-constanic.
+        assert!(
+            !storage.get_nyes(root).is_constanic(),
+            "before stepping, the root must be pre-constanic: {}",
+            nyes_trace(&storage, root)
+        );
+
+        // (2) DURING: step to each statement in turn and assert the PREFIX property at each
+        // stop -- everything up to and including the target is constanic, in traversal order.
+        for line in [0usize, 2] {
+            let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+            for (name, ln, value) in [("a", 0, 1), ("b", 1, 2), ("c", 2, 3), ("d", 3, 4)] {
+                let stmt = root.create_child(
+                    &mut storage,
+                    FirSpec::Statement {
+                        identifier: Identifier::from_parts(vec![], name),
+                        line_number: ln,
+                    },
+                );
+                stmt.create_child(&mut storage, FirSpec::IndepInt { value });
+            }
+            core_fir_conversion::step_until_line_number(&mut storage, root, line)
+                .unwrap_or_else(|e| panic!("breakpoint at line {line} must fire: {e}"));
+
+            // The breakpoint stopped with `line`'s statement as the front task, i.e. ABOUT to be
+            // stepped. So every statement STRICTLY BEFORE it must already be constanic, and none
+            // after it can be -- that is the prefix, stated as both halves.
+            let cursor = FirCursor::new(root, &storage);
+            for idx in 0..cursor.stmt_count().unwrap_or(0) {
+                let stmt = cursor.stmt_at(idx).expect("statement exists");
+                if idx < line {
+                    assert!(
+                        storage.get_nyes(stmt).is_constanic(),
+                        "stopped at line {line}: statement {idx} precedes it and must be \
+                         constanic. trace: {}",
+                        nyes_trace(&storage, root)
+                    );
+                }
+            }
+        }
+
+        // (3) AFTER: once the root settles, EVERY node in traversal order is constanic --
+        // the prefix has grown to cover the whole tree.
+        let (mut storage, root) = FVMStorage::test_root_brane(&[]);
+        for (name, line, value) in [("a", 0, 1), ("b", 1, 2), ("c", 2, 3), ("d", 3, 4)] {
+            let stmt = root.create_child(
+                &mut storage,
+                FirSpec::Statement {
+                    identifier: Identifier::from_parts(vec![], name),
+                    line_number: line,
+                },
+            );
+            stmt.create_child(&mut storage, FirSpec::IndepInt { value });
+        }
+        core_fir_conversion::step_to_constanic(&mut storage, root).expect("settles");
+
+        let trace = nyes_trace(&storage, root);
+        for (position, node) in post_order(&storage, root).enumerate() {
+            assert!(
+                storage.get_nyes(node).is_constanic(),
+                "after settling, traversal position {position} is NOT constanic. trace: {trace}"
+            );
+        }
+        assert_eq!(
+            storage.get_nyes(root),
+            Nyes::Independent,
+            "a brane of plain integers settles INDEPENDENT"
+        );
     }
 
     /// §6.2 route 2 — CONCATENATION MERGE. A merge brings statements from
