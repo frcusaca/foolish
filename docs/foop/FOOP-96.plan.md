@@ -108,7 +108,7 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
       [these instructions](../../README.md#running-specific-tests). **Every phase of this FOOP
       uses the SAME set — the whole workspace — because a move can break anything:**
       `cargo test --workspace -- --test-threads=1` (all 467), plus the einmo gates
-      `ubca_snapshot_tester::einmo_tests::einmo_gate_checked` and `einmo_gate_verified` as the
+      `einmo_gates::einmo_tests::einmo_gate_checked` and `einmo_gate_verified` as the
       byte-identity oracle. There is no smaller meaningful subset for a file split, and the plan
       says so rather than inventing one.
 
@@ -253,9 +253,24 @@ use crate::identifier::{Characterizations, Identifier};
 > This phase is therefore an ordinary whole-module move, like Phases 1–3, that happens to
 > rename the module on arrival.
 >
-> **Raise, do not settle silently:** at 94 lines holding four functions, whether this earns its
-> own file at all is a judgement call. If you think it should stay in the core, say so and ask
-> — do not decide it alone.
+> **`stepping.rs` IS created — this is decided, not open (the human, 2026-09-25).** The prep
+> pass raised whether 94 lines earns its own file; the answer is yes, and emphatically:
+>
+> > *"those needs their own file. The ability is very important for debugging and have been used
+> > a lot!!! It must be maintained separately and kept in working order."*
+>
+> So do **not** "simplify" by leaving these in the core, and do not treat the `expect(dead_code)`
+> attributes as evidence the code is unused — they mean *no PRODUCTION caller*, which is the
+> design, not neglect. `step_until`, `step_until_line_number` and `step_until_statement_name` are
+> the Foolish debugger: they are the entry points the `foolish-debugging` skill is built on and
+> the primary way FVM behaviour gets diagnosed in this project. A separate file is what keeps
+> them visible and maintained rather than quietly rotting inside the arena core.
+>
+> **Consequences for this phase:** their tests
+> (`fvm_storage::tests::step_until_*`, `step_to_constanic_settles_a_simple_fir`) are a hard gate,
+> not incidental coverage — if any of them fails or stops being compiled, STOP. And the `//!`
+> module doc must name the debugging role explicitly, so the next reader does not mistake
+> dead-code-expecting functions for dead code.
 
 **The stepping driver** — `fvm_storage.rs:3483–3576` as re-measured at `0df1865b`, **94 lines**
 (was ~100 at `8c9043d8`). NOTE: this module is now the stepping driver ONLY — FOOP-86 deleted the
@@ -285,9 +300,15 @@ conditions name.
 `step_to_constanic` now comes from `stepping`. Split it into two lines (one per source module).
 
 - [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
-      [these instructions](../../README.md#running-specific-tests). **Pay particular attention to
-      the `step_until*` unit tests** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
-      `step_to_constanic_settles_a_simple_fir`; they are the direct coverage of this block.
+      [these instructions](../../README.md#running-specific-tests). **The `step_until*` unit tests
+      are a HARD GATE for this phase** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
+      `step_to_constanic_settles_a_simple_fir`. They are the only coverage of the debugger entry
+      points, which have no production caller, so if one of them stops being COMPILED nothing
+      else will notice. Count them before and after: `cargo test -p foolish-ubca2 --lib --
+      step_until --test-threads=1` and confirm the same number runs — **measured 2026-09-25:
+      exactly 3** (`step_until_generic_matcher_by_nyes`, `step_until_line_number_finds_line`,
+      `step_until_statement_name_finds_second_statement`), one per debugger entry point. Any drop
+      → STOP.
 - [-] ~~Confirm the boundary: `display_stmt_name`'s callers are all in the bridge family.~~
       **VOID 2026-09-24** — there is no boundary left to confirm. FOOP-86 deleted the bridge AND
       `display_stmt_name` (`grep -c display_stmt_name foolish-ubca2/src/fvm_storage.rs` → 0), so
@@ -297,9 +318,14 @@ conditions name.
 - [ ] Move `MAX_STEPS` + the four `step_*` functions **as text** into
       `foolish-ubca2/src/fvm_storage/stepping.rs`, with their doc comments and `#[cfg_attr]`
       attributes.
-- [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints,
-      naming the `foolish-debugging` skill as the consumer of the latter
-      (`rust_instructions.md` §2d.3).
+- [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
+      **It must state that the `step_until*` functions are the project's Foolish debugger, that
+      the `foolish-debugging` skill is built on them, and that their
+      `expect(dead_code)` attributes mean "no PRODUCTION caller by design" — NOT that the code is
+      unused** (the human, 2026-09-25: *"very important for debugging and have been used a
+      lot!!! It must be maintained separately and kept in working order."*). A future reader who
+      mistakes these for dead code is the specific failure this doc prevents.
+      (`rust_instructions.md` §2d.3.)
 - [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
       ONLY these functions now, the whole list comes with them — there is no subset to narrow.
       Let the compiler flag anything unused; **do not widen anything to make it resolve.**
@@ -540,24 +566,24 @@ the ability to say "this commit moved text and changed nothing."
 
 ## Last Updated
 
-**Date**: 2026-09-24
+**Date**: 2026-09-25
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: SECOND PREP PASS — read end to end as an executor would, and found five more defects
-that would have misled a smaller agent, on top of the first pass's baseline corrections.
-**(1) The einmo gate names were dead.** Phase 0 and Phase 1 named
-`ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked`, a module and test FOOP-86
-retired; running them matches NOTHING and reports success, so the byte-identity oracle would have
-appeared to pass while never running. Corrected to `ubca_snapshot_tester::einmo_tests::
-einmo_gate_checked`/`einmo_gate_verified`. **(2) `-- --test-threads=1` is now required and
-explained** — the three einmo gates share `einmo_suite/output/` and corrupt each other in
-parallel, producing catastrophe-crumb failures that look exactly like a regression the executor
-caused. **(3) Phase 2's import block was wrong**: it elided the `search_engine::{…}` list and
-omitted `use foolish_core::fir::Nyes;` outright, so copying it as written yields an
-unresolved-`Nyes` error. Replaced with the verbatim text. **(4) Phase 6's bare-path import
-table had all four line numbers wrong** (6242/6861/6981/7068 → 5484/6079/6090/6172) and listed
-`proto_to_core_fir`, which no longer exists; the glob-reference counts (235/114/76/21) were
-likewise pre-FOOP-86 and are now 229/115/99/14. **(5) The invariant table said `ignored: 1`
-citing a `foolish-ubca` doctest** — that crate is gone, so the count is 0, contradicting the STOP
-condition three lines below. Also: Phase 4's `display_stmt_name` boundary check is void (the
-symbol is deleted), Phase 4 now ends by confirming `core_fir_conversion` is EMPTY, and Phase 0's
-FOOP-86-has-landed branch is pre-resolved rather than left for the executor to re-litigate.
+**Changes**: THIRD PREP PASS — two human rulings recorded, plus a rename.
+**(1) `stepping.rs` is DECIDED, not open.** The previous pass left "does a 94-line module earn its
+own file?" for the executor to raise. The human settled it emphatically — *"those needs their own
+file. The ability is very important for debugging and have been used a lot!!! It must be
+maintained separately and kept in working order."* Phase 4 now says so, warns against
+"simplifying" by leaving them in the core, and explains that the `expect(dead_code)` attributes
+mean *no PRODUCTION caller by design* rather than unused code — the specific misreading that could
+get the Foolish debugger deleted. The `//!` doc requirement now mandates stating that role, and
+the three `step_until*` tests are named as a HARD GATE with their measured count (exactly 3, one
+per entry point): they are the only coverage of functions with no production caller, so if one
+stops being COMPILED nothing else notices.
+**(2) `ubca_snapshot_tester` renamed to `einmo_gates`.** The human flagged the name as suspect —
+the project uses einmo, not generic snapshots. The file's own first line already read "Einmo gates
+for FOOP-36's hand-authored Foolish rendering contract", so the filename contradicted its own doc;
+it is `#[cfg(test)]`-only and contains three einmo gates and nothing else. Note the `2` suffix was
+already gone (FOOP-86 renamed the file); what this pass fixed was the NAME, and separately the
+plan's stale references to the retired `ubca_snapshot_tester2` module. Live references updated in
+`lib.rs`, `foolish-cli/src/main.rs`, and this plan; completed FOOP plans left as written, per the
+historical-record rule.

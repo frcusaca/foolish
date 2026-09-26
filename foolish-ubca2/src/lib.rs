@@ -35,4 +35,4 @@ pub use nyes_ext::NyesExt;
 pub use sequencer::{SequenceMode, SequenceOptions, Ubca2Sequencer};
 
 #[cfg(test)]
-mod ubca_snapshot_tester;
+mod einmo_gates;

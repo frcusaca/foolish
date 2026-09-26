@@ -153,7 +153,7 @@ mod tests {
 
     /// T3b (FOOP-86 §Test Plan, §1.3) — the CLI's rendering agrees with the einmo adapter's for the same
     /// source. Both call `evaluate_arena` + `Ubca2Sequencer::format(.., Foolish)`
-    /// (`foolish-ubca2/src/ubca_snapshot_tester.rs`'s `Ubca2FoolishAdapter`); a divergence would mean the
+    /// (`foolish-ubca2/src/einmo_gates.rs`'s `Ubca2FoolishAdapter`); a divergence would mean the
     /// CLI grew its own rendering path.
     #[test]
     fn cli_agrees_with_einmo_adapter() {

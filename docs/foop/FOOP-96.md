@@ -176,6 +176,14 @@ longer exists — nothing in it converts to core FIR any more. The module-level 
 §2 cited as evidence of two responsibilities (*"The stepping loop **and** the FIR→core-FIR
 output-serialization family"*) is now simply **wrong**, describing deleted code.
 
+**`stepping.rs` is created regardless of its size — decided by the human 2026-09-25**, who was
+asked whether 94 lines earns its own file: *"those needs their own file. The ability is very
+important for debugging and have been used a lot!!! It must be maintained separately and kept in
+working order."* The three `step_until*` functions are the project's Foolish debugger and the
+foundation of the `foolish-debugging` skill; their `expect(dead_code)` attributes mean *no
+production caller by design*, not unused code. Keeping them in their own file is what keeps them
+visible and maintained.
+
 **Consequence for the plan:** what was a split becomes a rename — `core_fir_conversion` →
 something naming what it does (`stepping`, say) — plus fixing its doc comment. Per §0.3 a
 rename is behavior-adjacent and belongs in its OWN commit, after the moves. At 94 lines it is
@@ -599,14 +607,15 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 ## Last Updated
 
-**Date**: 2026-09-24
+**Date**: 2026-09-25
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: PREP FOR EXECUTION — re-measured against `jia`, after FOOP-86 merged, then re-read
-end to end in a second pass. The file is **7 737** lines, not 8 282; the workspace baseline is
-**467 / 0 / 0** tests, not 791 / 0 / 1 (the one ignored test was a `foolish-ubca` doctest, gone
-with that crate); `mod tests` holds **115** test functions in **3 400** lines, not 110 in 3 290.
-§1's structure table is replaced with brace-matched measurements plus a drift table. §2's central
-finding has **resolved itself**: it reported `core_fir_conversion` bundling two unrelated concerns
-and predicted FOOP-86 would delete one — the prediction held (`grep -c proto_to_core_fir` → 0),
-leaving a 94-line module that is no longer misfactored, only misnamed, so a split became a rename.
-§3's layout drops `core_fir_bridge.rs` and §3.1's either-way conditional is marked resolved.
+**Changes**: §2 now records the human's ruling (2026-09-25) that **`stepping.rs` is created
+regardless of its 94-line size**: the three `step_until*` functions are the project's Foolish
+debugger and the foundation of the `foolish-debugging` skill, their `expect(dead_code)` attributes
+mean *no production caller by design* rather than unused code, and a separate file is what keeps
+them visible and maintained. Prior entry: re-measured the whole FOOP against `jia` post-FOOP-86 —
+the file is **7 737** lines not 8 282, the baseline **467 / 0 / 0** not 791 / 0 / 1, `mod tests`
+**115** functions in **3 400** lines not 110 in 3 290; §1's table replaced with brace-matched
+measurements plus a drift table; §2's two-concerns finding resolved itself when FOOP-86 deleted
+the `proto_to_core_fir` bridge, turning a split into a rename; §3 drops `core_fir_bridge.rs` and
+§3.1's conditional is marked resolved.
