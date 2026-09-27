@@ -17,13 +17,13 @@ new file, and changes nothing else. The governing rule, from FOOP-96.md §0:
 
 | metric | required value |
 |---|---|
-| `cargo test --workspace` passed | **467** |
+| `cargo test --workspace` passed | **470** |
 | failed | **0** |
 | ignored | **0** (the old `foolish-ubca` doctest went with that crate, FOOP-86) |
 | `cargo fmt --all --check` | clean |
 | `cargo clippy -p foolish-ubca2 --all-targets` | no NEW warnings |
 
-**467 must not move in EITHER direction.** A test that vanishes is as bad as one that fails —
+**470 must not move in EITHER direction.** A test that vanishes is as bad as one that fails —
 a `#[cfg(test)]` block that stops being compiled reports no error, it just stops running.
 
 *Known, NOT this FOOP's to fix:* 4 pre-existing `foolish-core` clippy errors in `sequencer.rs`
@@ -36,7 +36,7 @@ inside `foolish-ubca2` IS this FOOP's.
 
 - A compile error naming a **private** item (`Slot`, `.payload`, `self.slots`, `validate`,
   or any private field) — the move has found a real coupling. **Do NOT widen visibility.**
-- The test count is **not 467 passed / 0 failed**, in either direction.
+- The test count is **not 470 passed / 0 failed**, in either direction.
 - A **new** clippy warning appears inside `foolish-ubca2`.
 - **Any einmo `checked/` baseline diverges.** That is a regression this FOOP introduced —
   fix the move. **NEVER `einmo promote`** (see "No Promotion Review Gate" below).
@@ -83,33 +83,46 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 - [x] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
       `FOOP-96.md` frontmatter.
       (2026-09-27 13:05)
-- [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
+- [x] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
       branch `foop-96-split-fvm-storage`:
       `git worktree add -b "foop-96-split-fvm-storage" "/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage"`
       **From here until merge, ALL work — including edits to `FOOP-96.md` and this plan — happens
       ONLY in the worktree.**
+      (2026-09-27 13:05)
 - [x] **Determine whether FOOP-86 has landed.** — **RESOLVED 2026-09-24, before execution.**
       FOOP-86 merged to `jia` on 2026-09-21. Verified:
       `grep -c "fn proto_to_core_fir" foolish-ubca2/src/fvm_storage.rs` → **0**.
       **Phase 5 is struck** and Phase 7's dependent `core_fir_bridge` rename with it. Re-run the
       grep to confirm for yourself, but do not re-litigate the branch — it is decided.
-- [ ] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
+- [x] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
       *Verify, don't re-derive* — FOOP-96.md §1 gives the values RE-MEASURED at `0df1865b`
       (2026-09-24, post-FOOP-86). The 2026-09-16 `8c9043d8` figures are stale in EVERY row:
       `grep -n "^mod search_engine\|^pub(crate) mod search_engine\|^mod search_fir_dispatch\|^mod core_fir_conversion\|^mod arena_compiler\|^mod tests\|^pub(crate) use" foolish-ubca2/src/fvm_storage.rs`
       Record the CURRENT line numbers in this plan before moving anything.
-- [ ] **Re-verify safety property (2): ZERO private-internal reaches.** From the first inner
+      Current `jia` at `512c4a13`: core 1–2236; `search_engine` 2237–2607;
+      `search_fir_dispatch` 2608–3471 (declaration 2612); `core_fir_conversion`
+      3473–3570 (declaration 3483, now `pub mod`); `arena_compiler` 3572–4322;
+      re-exports 4324–4328; tests 4330–7987 (declaration 4331).
+      (2026-09-27 13:06)
+- [x] **Re-verify safety property (2): ZERO private-internal reaches.** From the first inner
       module's line to EOF:
       `sed -n '<first_mod_line>,$p' foolish-ubca2/src/fvm_storage.rs | grep -c "self\.slots\|\.payload\|validate("`
       **Expected: `0`.** Any non-zero result means FOOP-96.md §4(2) no longer holds — **STOP and
       report** before moving any block.
-- [ ] **Record the test baseline** in this plan: run `cargo test --workspace` and write down
-      passed / failed / ignored. *Expected 467 / 0 / 0.* If it differs, the baseline has moved —
+      Measured zero from line 2237 through EOF.
+      (2026-09-27 13:06)
+- [x] **Record the test baseline** in this plan: run `cargo test --workspace` and write down
+      passed / failed / ignored. *Expected 470 / 0 / 0.* If it differs, the baseline has moved —
       record the NEW number and use it as the invariant for every phase below.
-- [ ] Establish relevant tests for this FOOP. Use
+      Baseline on `jia`: **470 passed / 0 failed / 0 ignored**; `foolish-ubca2` lib
+      **186 passed**, with 117 `#[test]` functions in `fvm_storage.rs`. The environment's
+      `sccache` wrapper fails with `Operation not permitted`, so test commands use
+      `RUSTC_WRAPPER=` without changing repository configuration.
+      (2026-09-27 13:06)
+- [x] Establish relevant tests for this FOOP. Use
       [these instructions](../../README.md#running-specific-tests). **Every phase of this FOOP
       uses the SAME set — the whole workspace — because a move can break anything:**
-      `cargo test --workspace -- --test-threads=1` (all 467), plus the einmo gates
+      `cargo test --workspace -- --test-threads=1` (all 470), plus the einmo gates
       `einmo_gates::einmo_tests::einmo_gate_checked` and `einmo_gate_verified` as the
       byte-identity oracle. There is no smaller meaningful subset for a file split, and the plan
       says so rather than inventing one.
@@ -126,13 +139,16 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
       spurious `status: output-error` "catastrophe crumb" failures that look exactly like a
       regression you caused. If you see one: `git checkout -- foolish-ubca2/einmo_suite/output/`
       and re-run serially before concluding anything.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:06)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      Baseline: 470 / 0 / 0; serial einmo gates passed.
+      (2026-09-27 13:06)
 
 ---
 
 ## Phase 1 — Move `mod search_engine` → `fvm_storage/search_engine.rs`
 
-*Execution phase — smaller model. Fixed target: 371 lines move, 467 still pass.*
+*Execution phase — smaller model. Fixed target: 371 lines move, 470 still pass.*
 
 **The block** (verify against Phase 0's re-measurement): `fvm_storage.rs:2237–2607`, ~371 lines,
 plus the doc comment immediately above the `mod` line, which moves WITH it.
@@ -164,7 +180,7 @@ use regex::Regex;
       *A compile error naming a private item → STOP and report (do not widen visibility).*
 - [ ] `cargo fmt --all` then `cargo fmt --all --check` — clean.
 - [ ] `cargo clippy -p foolish-ubca2 --all-targets` — no NEW warnings.
-- [ ] `cargo test --workspace` — **467 passed, 0 failed, 0 ignored.**
+- [ ] `cargo test --workspace` — **470 passed, 0 failed, 0 ignored.**
       *Any other number, in either direction → STOP and report.*
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_engine--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -202,7 +218,7 @@ trusting this listing; that is the standing *verify, don't re-derive* rule.
 - [ ] `cargo build -p foolish-ubca2` — compiles.
       *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+- [ ] `cargo test --workspace` — **470 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -238,7 +254,7 @@ use crate::identifier::{Characterizations, Identifier};
       `pub(crate) use arena_compiler::{…}` re-export line exactly as it is.**
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+- [ ] `cargo test --workspace` — **470 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -343,7 +359,7 @@ conditions name.
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+- [ ] `cargo test --workspace` — **470 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -394,7 +410,7 @@ the core is ~660 lines smaller.
       `pub(crate) use core_fir_conversion::proto_to_core_fir;`.
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+- [ ] `cargo test --workspace` — **470 / 0 / 0.**
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -405,7 +421,7 @@ the core is ~660 lines smaller.
 *Execution phase — smaller model, but this is the **largest and riskiest** block. Read
 FOOP-96.md §3.2 first.*
 
-**The block**: `fvm_storage.rs:4337–7736`, **3 400 lines, 115 `#[test]` functions** — 44% of the
+**The block**: `fvm_storage.rs:4337–7736`, **3 400 lines, 117 `#[test]` functions** — 44% of the
 file. Moved as ONE file; **not** split by subject (FOOP-96.md §Rejected Alternatives G).
 
 **Why this is the riskiest phase, stated concretely.** The block opens with `use super::*`, and
@@ -436,7 +452,7 @@ now `step_to_constanic` alone. Re-derive these yourself before moving anything:
       [these instructions](../../README.md#running-specific-tests). **This phase's specific
       risk is the test COUNT**, not just pass/fail — see the dedicated checkbox below.
 - [ ] **Record the pre-move `#[test]` count**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 115.*
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 117.*
 - [ ] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
       one indent level; drop the `#[cfg(test)] mod tests {` wrapper and its closing `}`.
       **Keep `use super::*;` as the first line** and keep every bare-path sibling import exactly
@@ -447,17 +463,17 @@ now `step_to_constanic` alone. Re-derive these yourself before moving anything:
       mod tests;
       ```
 - [ ] **Verify the test count moved intact**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 115**, and
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 117**, and
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **must be 0**.
       *Any other numbers → STOP and report.*
 - [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
       `build` does not compile `#[cfg(test)]` code, so it would not catch a broken test import).
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+- [ ] `cargo test --workspace` — **470 / 0 / 0.**
       **This is the phase where a silent test-count drop is most likely.** Read the number; do
       not glance at "ok".
 - [ ] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
-      --lib` → **184 passed** (its share of the 467, including all three einmo gates).
+      --lib` → **186 passed** (its share of the 470, including all three einmo gates).
 - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
@@ -477,14 +493,14 @@ the ability to say "this commit moved text and changed nothing."
       `git mv foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs foolish-ubca2/src/fvm_storage/search_dispatch.rs`
       Update `mod` declaration and every `use` / path reference — **including the bare-path
       import inside `tests.rs`** if it names this module.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
 - [ ] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
 - [-] ~~**Rename `core_fir_conversion` → `core_fir_bridge`**~~ — **SKIP: Phase 5 was struck
       (2026-09-24), so this file never exists.** The `core_fir_conversion` NAME is retired by
@@ -492,7 +508,7 @@ the ability to say "this commit moved text and changed nothing."
       `git mv foolish-ubca2/src/fvm_storage/core_fir_conversion.rs foolish-ubca2/src/fvm_storage/core_fir_bridge.rs`
       Update the `mod` declaration, the `pub(crate) use` re-export, and `tests.rs`'s bare-path
       import of it.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
 - [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
@@ -551,7 +567,7 @@ the ability to say "this commit moved text and changed nothing."
         file. If either landed on `jia` while this FOOP was in flight, the merge will conflict —
         resolve by **re-applying their changes into the new file layout**, never by discarding
         either side. *If the conflict is large, STOP and ask the human.*
-  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **467 / 0 / 0.**
+  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **470 / 0 / 0.**
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present the human with
@@ -570,5 +586,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Began execution after reading the specification and plan. The 2026-09-25 decisions
-to keep the debugger in its own file and use the `einmo_gates` name remain in force.
+**Changes**: Completed Phase 0 measurements and the serial workspace baseline. Current `jia`
+has 470 passing tests, 117 tests in `fvm_storage.rs`, and a public debugger module added
+after the plan was drafted; test commands disable the unusable `sccache` wrapper.

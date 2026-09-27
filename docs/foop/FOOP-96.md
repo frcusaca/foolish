@@ -23,10 +23,10 @@ big-endian sort key preceded by `D` (`foop: D69`, file `FOOP-96.md`, following F
 ## Abstract
 
 A **mechanical, behavior-preserving** decomposition of `foolish-ubca2/src/fvm_storage.rs`
-(7 737 lines — 70% of the crate) into one file per concern, along the module seams the file
+(7 987 lines at the 2026-09-27 execution baseline) into one file per concern, along the module seams the file
 **already has**. Nothing is rewritten: every moved block is moved *as text*, so `git blame`
 continues to attribute each line to the commit that wrote it. **No semantics change, no public
-API changes, no test outcome changes** — the workspace's 467 passing tests pass identically,
+API changes, no test outcome changes** — the workspace's 470 passing tests pass identically,
 in the same number, before and after every single commit of this FOOP.
 
 **This FOOP does not make Project Euler 1 or fibonacci run, and is not trying to.** That is
@@ -153,6 +153,12 @@ Drift against the 2026-09-16 table, for a reader holding the older figures:
 
 Measured with a brace-matching walk (`mod X {` through its closing `}`), which is what actually
 moves; the doc comment above each `mod` line moves with it.
+
+**Execution re-measurement (2026-09-27, `jia` at `512c4a13`):** the core is still
+1–2236; `search_engine` is 2237–2607; `search_fir_dispatch` is 2608–3471;
+`core_fir_conversion` is 3473–3570 and is now `pub mod`; `arena_compiler` is
+3572–4322; the re-exports are 4324–4328; and `mod tests` is 4330–7987 with
+117 `#[test]` functions. The table above records the earlier `0df1865b` state.
 
 ### §2 `core_fir_conversion` is misnamed — RESOLVED ITSELF, one concern now, still misnamed
 
@@ -399,7 +405,7 @@ commit, which it cannot do if any step count moved.
 
 **The existing tests ARE the test plan.** There are no new tests to write, and inventing some
 would be theatre: a test written for this FOOP could only assert that moved code still does
-what it did, which is precisely what the **791 existing tests already assert**, having been
+what it did, which is precisely what the **470 existing tests already assert**, having been
 written against the behavior by the FOOPs that built it. A new test here would add coverage of
 nothing and would itself be unreviewed code landing in a change whose entire claim is that no
 code changed.
@@ -408,17 +414,17 @@ code changed.
 
 > **Same tests, same count, same results — before and after every commit.**
 
-Measured on `jia` at `8c9043d8` on 2026-09-16 via `cargo test --workspace`:
+Measured on `jia` at `512c4a13` on 2026-09-27 via serial `cargo test --workspace`:
 
 | metric | baseline |
 |---|---|
-| **passed** | **791** |
+| **passed** | **470** |
 | failed | 0 |
 | ignored | 0 (the `foolish-ubca/src/evaluator.rs` doctest went with that crate, FOOP-86) |
-| `foolish-ubca2` lib tests | 184 passed, incl. all three einmo gates |
-| `#[test]` fns in `fvm_storage.rs` | 115 |
+| `foolish-ubca2` lib tests | 186 passed, incl. all three einmo gates |
+| `#[test]` fns in `fvm_storage.rs` | 117 |
 
-**791 must not move in either direction.** A test that *vanishes* is as bad as one that fails:
+**470 must not move in either direction.** A test that *vanishes* is as bad as one that fails:
 a `#[cfg(test)]` block that stops being compiled in reports no error, it simply stops running,
 and the suite goes green while covering less. Both the count and the result are checked.
 
@@ -426,7 +432,7 @@ and the suite goes green while covering less. Both the count and the result are 
 
 1. **One block per commit**, never bundled. Each commit moves exactly one block and does
    nothing else.
-2. **`cargo test --workspace` after every single move**, checking **791 passed / 0 failed**.
+2. **`cargo test --workspace` after every single move**, checking **470 passed / 0 failed**.
    The count is read, not glanced at.
 3. **`cargo fmt --all --check`** and **`cargo clippy -p foolish-ubca2 --all-targets`** clean at
    every step.
@@ -472,21 +478,21 @@ Per AGENTS.md §FOOP, phases are assigned **by complexity**, not sized as a bloc
 | phase | kind | agent | why |
 |---|---|---|---|
 | 0 — read spec, confirm FOOP-86 landed, re-measure, record baseline | judgment | **larger** (Opus/Sonnet) | decides whether the premise still holds; the bridge may be gone |
-| 1–6 — the moves (one block per phase) | execution | **smaller** (Sonnata / qwen3.8-27B) | fixed target: text moves, 791 passes, zero diff in behavior |
+| 1–6 — the moves (one block per phase) | execution | **smaller** (Sonnata / qwen3.8-27B) | fixed target: text moves, 470 passes, zero diff in behavior |
 | 7 — the renames + re-pointing `use` sites | execution | **smaller** | mechanical, compiler-verified: a missed site fails to build |
 | 8 — final review, merge prep | judgment | **larger** | reads the whole diff and asserts it is a move |
-| **any STOP** — a block needs visibility widening, or 791 moves | judgment | **larger + human** | a failed move indicates a real coupling; diagnosing it is design work |
+| **any STOP** — a block needs visibility widening, or 470 moves | judgment | **larger + human** | a failed move indicates a real coupling; diagnosing it is design work |
 
 **The three properties that make the small-model phases safe** (built in deliberately):
 
 1. **Facts inline, not referenced.** The plan carries the exact line ranges, the exact
-   `use super::{…}` import list for every block, the exact test baseline (791/0/1), and the
+   `use super::{…}` import list for every block, the exact test baseline (470/0/0), and the
    exact command forms. An executing agent verifies these rather than rediscovering them —
    marked *verify, don't re-derive* in the plan.
-2. **A fixed target per phase.** "Done" is `cargo test --workspace` reporting **791 passed, 0
+2. **A fixed target per phase.** "Done" is `cargo test --workspace` reporting **470 passed, 0
    failed** plus clean `fmt`/`clippy`. No judgment is required to check it.
 3. **Named stop conditions.** Each phase states what wrong looks like — a compile error naming
-   a private item, a test count that is not 791, a clippy warning inside `foolish-ubca2`, a
+   a private item, a test count that is not 470, a clippy warning inside `foolish-ubca2`, a
    divergent einmo baseline — and that the answer is **STOP and report**, never improvise.
 
 **Never delegated at any size** (AGENTS.md §"The agent is responsible for correctness"): any
@@ -609,6 +615,6 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Began implementation on `jia`; current measurements and test baseline will be
-recorded in the worktree plan. The 2026-09-25 decision to give the debugger its own
-`stepping.rs` file remains in force.
+**Changes**: Began implementation and recorded the current `jia` measurements. The 2026-09-27
+baseline has 470 passing tests, 117 tests in `fvm_storage.rs`, and a public
+`core_fir_conversion` module introduced after the 2026-09-24 measurement.
