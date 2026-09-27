@@ -351,7 +351,7 @@ foolish-ubca2/src/fvm_storage.rs` → **0**). Nothing stays behind: the module h
 **The current re-export line** is
 `pub(crate) use core_fir_conversion::step_to_constanic;`; point it to `stepping`.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The `step_until*` unit tests
       are a HARD GATE for this phase** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
       `step_to_constanic_settles_a_simple_fir`. They are the only coverage of the debugger entry
@@ -367,32 +367,43 @@ foolish-ubca2/src/fvm_storage.rs` → **0**). Nothing stays behind: the module h
       `core_fir_conversion` is now 94 lines holding nothing but the four `step_*` functions and
       `MAX_STEPS`. Nothing is left behind by this move; the module is emptied and its `mod` line
       removed.
-- [ ] Move `MAX_STEPS` + the four `step_*` functions **as text** into
+      (2026-09-27 13:18)
+- [x] Move `MAX_STEPS` + the four `step_*` functions **as text** into
       `foolish-ubca2/src/fvm_storage/stepping.rs`, with their current doc comments.
-- [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
+      (2026-09-27 13:18)
+- [x] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
       State that the `step_until*` functions are the project's public Foolish debugger and that
       the `foolish-debugging` skill is built on them. A future reader must not mistake these
       public functions for dead code.
       (`rust_instructions.md` §2d.3.)
-- [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
+      (2026-09-27 13:18)
+- [x] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
       ONLY these functions now, the whole list comes with them — there is no subset to narrow.
       Let the compiler flag anything unused; **do not widen anything to make it resolve.**
-- [ ] In `fvm_storage.rs`: replace `pub mod core_fir_conversion { … }` with `pub mod stepping;`
+      (2026-09-27 13:18)
+- [x] In `fvm_storage.rs`: replace `pub mod core_fir_conversion { … }` with `pub mod stepping;`
       and `pub use stepping as core_fir_conversion;`, preserving the public API, and
       change the re-export at line ~4334 from
       `pub(crate) use core_fir_conversion::step_to_constanic;` to
       `pub(crate) use stepping::step_to_constanic;`. **That re-export is already the module's
       only one** — the earlier draft said "alongside the bridge's own re-export", which no
       longer exists.
-- [ ] Confirm the inline `core_fir_conversion` module is gone and the old path resolves only
+      (2026-09-27 13:18)
+- [x] Confirm the inline `core_fir_conversion` module is gone and the old path resolves only
       through the compatibility re-export. *If any implementation remains in the old module →
       STOP and report: something was in that module that this plan did not account for.*
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 13:18)
+- [x] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
+      (2026-09-27 13:18)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:18)
+- [x] `cargo test --workspace` — **470 / 0 / 0.**
+      (2026-09-27 13:18)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
+      (2026-09-27 13:18)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:18)
 
 ---
 
@@ -617,6 +628,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Reconciled Phase 4 with `jia`'s later public debugger API. The implementation
-will move to `stepping.rs`, while a public re-export preserves
-`fvm_storage::core_fir_conversion` and its existing callers.
+**Changes**: Completed Phase 4: moved the debugger implementation verbatim to `stepping.rs`
+and preserved the public `core_fir_conversion` path as a re-export. All three debugger
+breakpoint tests and all 470 workspace tests pass; build, format, and clippy checks pass.
