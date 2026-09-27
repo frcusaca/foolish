@@ -740,38 +740,77 @@ All moves have landed. **Only now** do the modules get their final names (FOOP-9
 rename is its own commit — a rename touches every `use` site, and bundled with a move it destroys
 the ability to say "this commit moved text and changed nothing."
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Rename `search_fir_dispatch` → `search_dispatch`.**
+      (2026-09-27 13:28)
+- [x] **Rename `search_fir_dispatch` → `search_dispatch`.**
       `git mv foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs foolish-ubca2/src/fvm_storage/search_dispatch.rs`
       Update `mod` declaration and every `use` / path reference — **including the bare-path
       import inside `tests.rs`** if it names this module.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
-- [ ] **Rename `arena_compiler` → `compiler`.**
+      (2026-09-27 13:28) — done, own commit. All **17** references were name/path references and
+      none were test identifiers, so a plain substitution swept it clean: 13 bare-path call sites
+      in the core's `fir_op_step`, 1 in `tests.rs`, and 3 doc mentions. `grep search_fir_dispatch`
+      over `*.rs` → **0**. Also deleted the word "below" from `search_engine.rs`'s module doc,
+      which the MOVES (not this rename) falsified — the two are now sibling files, not stacked.
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+        (2026-09-27 13:28) — **470 / 0 / 0.**
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
+        (2026-09-27 13:28)
+- [x] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+      (2026-09-27 13:28) — done, own commit. Repointed the `mod` decl, the `pub(crate)` re-export,
+      **15** bare-path call sites inside `tests.rs`, `tests.rs`'s `use compiler::compile;`, and two
+      doc mentions (`fvm_storage.rs`'s re-export doc; `system_foo.rs`'s module doc, which now
+      names `fvm_storage/compiler.rs` — where the code actually lives since the split).
+
+      **DELIBERATELY NOT REPOINTED — reported, not settled.** 10 test **identifiers** in
+      `tests.rs` still carry the old name: `fn arena_compiler_*` x9 and the
+      `// ── arena_compiler tests ──` section comment grouping them. These are *definitions*, not
+      references to the module, and renaming them is judgment work that §0.3 forbids bundling
+      (*"No behavior change bundled in"*) and that Rejected Alternative G already refused to do
+      to this very test file. The Test Plan also names tests **by name** as gates
+      (`fvm_storage::tests::step_until_*`), evidence the identifiers are load-bearing here. One
+      `sed` (`arena_compiler_` → `compiler_`) finishes it if the human wants. **See the doubts
+      report in Phase 8.**
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+        (2026-09-27 13:28) — **470 / 0 / 0.**
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+        (2026-09-27 13:28)
 - [-] ~~**Rename `core_fir_conversion` → `core_fir_bridge`**~~ — **SKIP: Phase 5 was struck
       (2026-09-24), so this file never exists.** The `core_fir_conversion` NAME is retired by
       Phase 4 instead, which moves the stepping driver to `stepping.rs`.
       `git mv foolish-ubca2/src/fvm_storage/core_fir_conversion.rs foolish-ubca2/src/fvm_storage/core_fir_bridge.rs`
       Update the `mod` declaration, the `pub(crate) use` re-export, and `tests.rs`'s bare-path
       import of it.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
-- [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
+      **CONFIRMED VOID at execution (2026-09-27):** there is no `core_fir_conversion.rs` and no
+      `core_fir_bridge.rs`. Phase 4 retired the name in favour of `stepping`.
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **467 / 0 / 0.**
+        (2026-09-27 13:28) — vacuously satisfied: covered by Phase 4's two commits.
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
+        (2026-09-27 13:28) — **no such commit exists, correctly.** This box is checked only to
+        record that the SKIP was honoured rather than forgotten; see the `[-]` above.
+- [x] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
-- [ ] **Sweep the repository for stale references to the old names** — docs included:
+      (2026-09-27 13:28) — grep returned **nothing**; `lib.rs`'s `//!` names only `fvm_storage`,
+      `FVMStorage`, `FirPointer`, `FirSpec`, `NyesExt` — none of them renamed. Nothing to update.
+- [x] **Sweep the repository for stale references to the old names** — docs included:
       `grep -rn "core_fir_conversion\|arena_compiler\|search_fir_dispatch" --include=*.rs --include=*.md .`
       Update the ones that are now wrong. **Do NOT edit completed FOOP plan files** — they are a
       historical record (`foop.md`). Do NOT edit `docs/foop/FOOP-26.md` or FOOP-86's files;
       they belong to other, concurrent work.
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:28) — swept. Live code and docs are clean of all three old names **except
+      the 10 test identifiers named above**. Everything else was repointed in the two rename
+      commits. `docs/foop/**` left untouched as instructed (checked: the only hits there are in
+      FOOP-96's own two files, which are this FOOP's record and are updated here in the plan,
+      and in older completed FOOPs which are historical).
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 13:28) — fmt clean; clippy **5** total, the same 5 as the Phase 0 baseline
+      (1 pre-existing `collapsible_if` in `sequencer.rs` + foolish-core's 4). Nothing new.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:28) — **470 / 0 / 0** after each rename commit.
 
 ---
 
