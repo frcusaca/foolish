@@ -77,40 +77,76 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 
 *Judgment phase — larger model (Opus/Sonnet). It decides whether the FOOP's premise still holds.*
 
-- [ ] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
+- [x] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
       §3 (target layout), §3.2 (the tests import hazard), §4 (the safety argument), §5.
-- [ ] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
+      (2026-09-27 12:55)
+- [x] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
       `FOOP-96.md` frontmatter.
-- [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
+      (2026-09-27 12:55)
+- [x] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
       branch `foop-96-split-fvm-storage`:
       `git worktree add -b "foop-96-split-fvm-storage" "/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage"`
       **From here until merge, ALL work — including edits to `FOOP-96.md` and this plan — happens
       ONLY in the worktree.**
+      (2026-09-27 12:55)
 - [x] **Determine whether FOOP-86 has landed.** — **RESOLVED 2026-09-24, before execution.**
       FOOP-86 merged to `jia` on 2026-09-21. Verified:
       `grep -c "fn proto_to_core_fir" foolish-ubca2/src/fvm_storage.rs` → **0**.
       **Phase 5 is struck** and Phase 7's dependent `core_fir_bridge` rename with it. Re-run the
       grep to confirm for yourself, but do not re-litigate the branch — it is decided.
-- [ ] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
+- [x] **Re-measure the block boundaries** (they shift if FOOP-86 landed).
       *Verify, don't re-derive* — FOOP-96.md §1 gives the values RE-MEASURED at `0df1865b`
       (2026-09-24, post-FOOP-86). The 2026-09-16 `8c9043d8` figures are stale in EVERY row:
       `grep -n "^mod search_engine\|^pub(crate) mod search_engine\|^mod search_fir_dispatch\|^mod core_fir_conversion\|^mod arena_compiler\|^mod tests\|^pub(crate) use" foolish-ubca2/src/fvm_storage.rs`
       Record the CURRENT line numbers in this plan before moving anything.
-- [ ] **Re-verify safety property (2): ZERO private-internal reaches.** From the first inner
+      (2026-09-27 12:55)
+
+      **RE-MEASURED 2026-09-27 at `f8134ac5`** (brace-matching walk, 1-based, inclusive). The
+      file is now **7 987** lines, not 7 737: commit `f8134ac5` (2026-09-26, "Make the FVM
+      debugger a public API") landed AFTER this plan's 2026-09-25 prep pass and changed three
+      things that this FOOP must respect. Recorded below as **§"Phase 0 measurements"**.
+
+- [x] **Re-verify safety property (2): ZERO private-internal reaches.** From the first inner
       module's line to EOF:
       `sed -n '<first_mod_line>,$p' foolish-ubca2/src/fvm_storage.rs | grep -c "self\.slots\|\.payload\|validate("`
       **Expected: `0`.** Any non-zero result means FOOP-96.md §4(2) no longer holds — **STOP and
       report** before moving any block.
-- [ ] **Record the test baseline** in this plan: run `cargo test --workspace` and write down
+      (2026-09-27 12:55)
+
+      **Verified: `0`.** Run over `sed -n '2237,$p'` (first inner module's `mod` line through
+      EOF). FOOP-96.md §4(2) still holds; no field needs widening and no accessor needs inventing.
+
+- [x] **Record the test baseline** in this plan: run `cargo test --workspace` and write down
       passed / failed / ignored. *Expected 467 / 0 / 0.* If it differs, the baseline has moved —
       record the NEW number and use it as the invariant for every phase below.
-- [ ] Establish relevant tests for this FOOP. Use
+      (2026-09-27 12:55)
+
+      **BASELINE IS NOW 470 / 0 / 0** (not 467 / 0 / 0). Measured on `jia` at `95e7137d` via
+      `cargo test --workspace -- --test-threads=1`. The `+3` is `f8134ac5`: two new `foolish-ubca2`
+      unit tests and one new integration test. Per the instruction above, **470 is the invariant
+      for every phase below**, in BOTH directions. Breakdown, `test result: ok.` throughout:
+
+      | target | passed |
+      |---|---|
+      | `einmo` lib | 133 |
+      | `foolish-cli` bin | 4 |
+      | `foolish-core` lib | 84 |
+      | `foolish-parser` lib | 62 |
+      | **`foolish-ubca2` lib** | **186** (was 184; plan's "184" is stale) |
+      | `foolish-ubca2/tests/debugger_api.rs` | **1** (NEW — see below) |
+      | **workspace total** | **470 / 0 / 0** |
+
+- [x] Establish relevant tests for this FOOP. Use
       [these instructions](../../README.md#running-specific-tests). **Every phase of this FOOP
       uses the SAME set — the whole workspace — because a move can break anything:**
       `cargo test --workspace -- --test-threads=1` (all 467), plus the einmo gates
       `einmo_gates::einmo_tests::einmo_gate_checked` and `einmo_gate_verified` as the
       byte-identity oracle. There is no smaller meaningful subset for a file split, and the plan
       says so rather than inventing one.
+      (2026-09-27 12:55)
+
+      *(467 in the line above is stale text from the prep pass; the set is unchanged — the whole
+      workspace — and its size is now 470, recorded above.)*
 
       **CORRECTED 2026-09-24.** This previously named
       `ubca_snapshot_tester2::einmo_tests::einmo_suite2_gate_checked` — a module and test name
@@ -124,7 +160,89 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
       spurious `status: output-error` "catastrophe crumb" failures that look exactly like a
       regression you caused. If you see one: `git checkout -- foolish-ubca2/einmo_suite/output/`
       and re-run serially before concluding anything.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — **470 / 0 / 0**, fmt clean.
+
+---
+
+## Phase 0 measurements (recorded before moving anything)
+
+*Every figure below was measured in the worktree at `f8134ac5` on 2026-09-27 by a
+brace-matching walk (`mod X {` through its closing `}`), which is what actually moves. 1-based,
+inclusive. The doc comment immediately above each `mod` line moves with it.*
+
+| block | lines | size | `mod` form | note |
+|---|---|---|---|---|
+| top-level (the core) | 1–2236 | 2 236 | — | unchanged from FOOP-96.md §1 |
+| `mod search_engine` | **2237–2607** | 371 | `pub(crate) mod search_engine {` | doc comment at 2235–2236 |
+| *(gap)* | 2608–2611 | 4 | | |
+| `mod search_fir_dispatch` | **2612–3471** | 860 | `mod search_fir_dispatch {` | doc comment at 2608–2610 |
+| *(gap)* | 3472 | 1 | | |
+| `mod core_fir_conversion` | **3483–3570** | **88** | **`pub mod core_fir_conversion {`** | doc comment 3473–3482; **was 94, and was private** |
+| *(gap)* | 3571–3573 | 3 | | |
+| `mod arena_compiler` | **3574–4322** | 749 | `mod arena_compiler {` | doc comment at 3571–3573 |
+| *(gap)* | 4323–4329 | 7 | 4323–4325 re-export doc, 4326 blank | |
+| `pub(crate) use` re-exports | 4327–4328 | 2 | | stay in `fvm_storage.rs` |
+| *(blank)* | 4329–4330 | 2 | | |
+| `mod tests` | **4331–7987** | **3 657** | `#[cfg(test)] mod tests {` (4330–4331) | was 3 400; **117** `#[test]` fns, was 115 |
+
+`#[test]` count in `fvm_storage.rs`: **117** (`grep -c "^\s*#\[test\]"`) — the plan's "115" is
+stale; `f8134ac5` added `stepping_leaves_a_constanic_prefix_in_traversal_order` and one more.
+
+### What `f8134ac5` (2026-09-26) changed that this FOOP must respect
+
+That commit landed the day after this plan's last prep pass and is **not** reflected in the plan's
+prose. Three consequences, each handled below:
+
+1. **`mod core_fir_conversion` is now `pub mod`, and its four `step_*` functions are `pub`.** The
+   `expect(dead_code)` attributes are **gone**. Phase 4's instruction to "preserve the
+   `#[cfg_attr(not(test), expect(dead_code, …))]` attributes verbatim" is therefore **inert** —
+   there are none to preserve, and *adding them back would be a regression* the commit explicitly
+   removed. Phase 4's `//!` doc requirement is also partly falsified: it must NOT claim the
+   functions carry `expect(dead_code)`, because they no longer do. What the doc must still say —
+   and this part is unchanged — is that these are the project's Foolish debugger, that the
+   `foolish-debugging` skill is built on them, and that they must be kept in working order.
+   **Adjusted wording is given in Phase 4.**
+2. **`foolish-ubca2/tests/debugger_api.rs` is a new integration test** that imports
+   `foolish_ubca2::fvm_storage::core_fir_conversion::{step_to_constanic, step_until,
+   step_until_line_number, step_until_statement_name}`. It compiles as a SEPARATE crate and is
+   the visibility regression test. **The Phase 4 rename moves this public path** to
+   `...::fvm_storage::stepping::…`, so `tests/debugger_api.rs` MUST be repointed in the rename
+   commit or the crate stops compiling. Its `//!` doc also names `mod core_fir_conversion` and
+   must be updated. The commit message of `f8134ac5` anticipated exactly this: *"relocating them
+   to stepping.rs is FOOP-96 Phase 4, still forthcoming."* **This is a public-path change** —
+   recorded as a doubt for the human in Phase 8, since FOOP-96.md §Abstract predates the module
+   becoming public and asserts "no public API changes".
+3. **The tests call their siblings by bare path INLINE IN BODIES**, not only in `use` lines:
+   `core_fir_conversion::step_to_constanic(...)` (~30 call sites), `arena_compiler::compile` /
+   `compose_program_with_system` / `program_result` (~15), `search_fir_dispatch::ib_search_by_pattern`
+   (1). All resolve today only because `use super::*` pulls the sibling module names into scope.
+   They survive the **moves** unchanged (the names do not change) and must all be repointed at the
+   **renames** — Phase 4 and Phase 7. The compiler enforces every site, which is why the renames
+   are safe to do mechanically.
+
+### The four bare-path sibling imports inside `mod tests` (re-measured)
+
+| line | import |
+|---|---|
+| 5478 | `use search_engine::{BraneNavigator, CandidateNavigator, MatchOutcome, ScanCtx, ScanOutcome, SearchPredicate, contextful_search_scan, contextful_search_scan_no_body_check};` |
+| 6073 | `use core_fir_conversion::step_to_constanic;` |
+| 6084 | `use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};` |
+| 6166 | `use arena_compiler::compile;` |
+
+### Each module's current `use super::{…}` list (verbatim — copy these)
+
+| module | lines | its imports |
+|---|---|---|
+| `search_engine` | 2238–2241 | `use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};` / `use foolish_core::fir::Nyes;` / `use regex::Regex;` |
+| `search_fir_dispatch` | 2613–2620 | `use super::search_engine::{BraneNavigator, ScanOutcome, SearchPredicate, contextful_search_scan, contextful_search_scan_no_body_check};` / `use super::{FVMStorage, FirCursor, FirPointer, FirSpec};` / `use foolish_core::fir::Nyes;` |
+| `core_fir_conversion` | 3484 | `use super::{FVMStorage, FirCursor, FirPointer};` — **only these three**, narrower than FOOP-96.md §4(1)'s table |
+| `arena_compiler` | 3575–3583 | `use super::{ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec, StayMarker};` / `use foolish_core::fir::Nyes;` / `use foolish_parser::{AssignmentOperator, Astn, SearchOperator};` / `use crate::identifier::{Characterizations, Identifier};` |
+
+Each module also reaches the parent by `super::` in bodies (e.g. `search_fir_dispatch` line 2622
+shims `super::nyes_from_found(found)`). **These keep working after the move with no visibility
+change** — a child module may always see its ancestors' private items, and a path-based
+`fvm_storage/foo.rs` is still a child of `fvm_storage`. Nothing needs widening.
 
 ---
 
