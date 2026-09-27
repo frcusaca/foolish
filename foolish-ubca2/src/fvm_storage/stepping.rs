@@ -1,9 +1,23 @@
-//! The stepping loop and the FIR→core-FIR output-serialization family that
-//! `UbcaEvaluator::evaluate` drives.
+//! The stepping loop (`step_to_constanic`) and the `step_until*` breakpoints.
+//!
+//! # This module is the project's Foolish debugger
+//!
+//! `step_until`, `step_until_line_number` and `step_until_statement_name` are the FVM
+//! debugger — the entry points the `foolish-debugging` skill is built on, and the primary way
+//! FVM behaviour gets diagnosed in this project. They are a **deliberate public debugging
+//! API** whose caller is a human or an agent, not `UbcaEvaluator::evaluate`: they have no
+//! PRODUCTION caller *by design*, which is not the same as being unused. **Keep them in
+//! working order.** A future reader who mistakes these for dead code is the specific failure
+//! this paragraph exists to prevent. (`f8134ac5` retired the `expect(dead_code)` attributes
+//! that used to say this out of band — making the functions genuine `pub` API is what makes
+//! such an annotation unnecessary, and adding one back would be a regression.)
+//!
+//! `step_to_constanic` is the exception: it IS the production stepping loop, reached through
+//! the `fvm_storage::step_to_constanic` re-export that `UbcaEvaluator::evaluate` drives.
 //!
 //! # Free functions, not methods
 //!
-//! These conversion functions dispatch across EVERY `FirSpec` variant
+//! These stepping functions dispatch across EVERY `FirSpec` variant
 //! (`match kind { FirSpec::Search => ..., FirSpec::Operator => ..., ... }`),
 //! so there is no single type to attach them to as methods — the same
 //! reason `fir_op_step`, `combine`, and every `search_fir_dispatch`

@@ -8,11 +8,11 @@
 //! how the earlier `pub(crate)` + `expect(dead_code)` state went unnoticed.
 //!
 //! This file is therefore the regression test for the VISIBILITY, not for the stepping logic.
-//! If someone narrows `step_until*` or `mod core_fir_conversion`, this file stops COMPILING —
+//! If someone narrows `step_until*` or `mod stepping`, this file stops COMPILING —
 //! a louder failure than a test assertion, and the right one.
 
 use foolish_ubca2::UbcaEvaluator;
-use foolish_ubca2::fvm_storage::core_fir_conversion::{
+use foolish_ubca2::fvm_storage::stepping::{
     step_to_constanic, step_until, step_until_line_number, step_until_statement_name,
 };
 

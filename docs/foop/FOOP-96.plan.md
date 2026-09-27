@@ -470,7 +470,7 @@ conditions name.
 `pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_constanic};` must be updated:
 `step_to_constanic` now comes from `stepping`. Split it into two lines (one per source module).
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The `step_until*` unit tests
       are a HARD GATE for this phase** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
       `step_to_constanic_settles_a_simple_fir`. They are the only coverage of the debugger entry
@@ -480,16 +480,39 @@ conditions name.
       exactly 3** (`step_until_generic_matcher_by_nyes`, `step_until_line_number_finds_line`,
       `step_until_statement_name_finds_second_statement`), one per debugger entry point. Any drop
       → STOP.
+      (2026-09-27 12:55) — **HARD GATE PASSED: exactly 3**, same three names, all ok. Plus
+      `step_to_constanic_settles_a_simple_fir` ok, and `tests/debugger_api.rs` compiles and passes.
 - [-] ~~Confirm the boundary: `display_stmt_name`'s callers are all in the bridge family.~~
       **VOID 2026-09-24** — there is no boundary left to confirm. FOOP-86 deleted the bridge AND
       `display_stmt_name` (`grep -c display_stmt_name foolish-ubca2/src/fvm_storage.rs` → 0), so
       `core_fir_conversion` is now 94 lines holding nothing but the four `step_*` functions and
       `MAX_STEPS`. Nothing is left behind by this move; the module is emptied and its `mod` line
       removed.
-- [ ] Move `MAX_STEPS` + the four `step_*` functions **as text** into
+
+> **EXECUTION REFINEMENT 2026-09-27 — this phase runs as TWO commits, not one.** The plan named a
+> single commit (`Phase: stepping driver to its own file--complete`) covering both the move and the
+> rename to `stepping.rs`. That conflicts with FOOP-96.md §0.3 (*"Renames happen in their own
+> commits, **after** the moves land"*), with Test Plan discipline #1 (*"One block per commit …
+> each commit moves exactly one block and does nothing else"*) and #4 (*"Never bundle a behavior
+> change with a move"*). **§0 governs**, so the work is split: commit 1 is a PURE MOVE to
+> `fvm_storage/core_fir_conversion.rs` under the module's current name (text moved, nothing else),
+> and commit 2 is a PURE RENAME to `stepping.rs` (paths repointed, docs corrected). This keeps the
+> FOOP's central claim — *"every commit provably changed nothing"* — true of the move commit.
+> The rename is also now genuinely behavior-adjacent in a way the plan did not foresee: `f8134ac5`
+> made the module `pub`, so the rename moves a **public API path** and must repoint
+> `foolish-ubca2/tests/debugger_api.rs`. Two commits is the only way to keep "this commit moved
+> text and changed nothing" inspectable.
+
+- [x] Move `MAX_STEPS` + the four `step_*` functions **as text** into
       `foolish-ubca2/src/fvm_storage/stepping.rs`, with their doc comments and `#[cfg_attr]`
       attributes.
-- [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
+      (2026-09-27 12:55) — **commit 1.** Actual span 2239–2336 (86 body lines + 10 doc + 2 braces),
+      module size **88** not 94 (`f8134ac5` removed the three `expect(dead_code)` attributes).
+      Proven text-exact: 86 == 86 identical after whitespace strip; parent exact. **The
+      `#[cfg_attr]` clause of this instruction is INERT** — there are no such attributes left to
+      preserve, and re-adding one would undo `f8134ac5`. Correctly, none were added. Visibility
+      kept `pub`.
+- [x] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
       **It must state that the `step_until*` functions are the project's Foolish debugger, that
       the `foolish-debugging` skill is built on them, and that their
       `expect(dead_code)` attributes mean "no PRODUCTION caller by design" — NOT that the code is
@@ -497,24 +520,58 @@ conditions name.
       lot!!! It must be maintained separately and kept in working order."*). A future reader who
       mistakes these for dead code is the specific failure this doc prevents.
       (`rust_instructions.md` §2d.3.)
-- [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
+      (2026-09-27 12:55) — **commit 2.** Written, with one necessary adaptation: the `//!` doc
+      **cannot** say the functions "carry `expect(dead_code)`", because `f8134ac5` deleted those
+      attributes. It says instead what those attributes were *for* — no PRODUCTION caller *by
+      design*, which is not the same as unused — and records that `f8134ac5` retired the
+      annotation in favour of real `pub` API, so adding one back would be a regression. The
+      mandated content is all present. Also corrected the falsified opening sentence
+      ("the stepping loop **and** the FIR→core-FIR output-serialization family" — that family is
+      FOOP-86-deleted code) and "These **conversion** functions" → "These **stepping** functions",
+      per §Open Questions ("correct only the sentence that is falsified"). Separately clarified
+      that `step_to_constanic` unlike the `step_until*` trio **is** a production entry point
+      (`evaluator.rs` and `sequencer.rs` reach it through the `fvm_storage::step_to_constanic`
+      re-export), so the doc does not over-claim.
+- [x] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
       ONLY these functions now, the whole list comes with them — there is no subset to narrow.
       Let the compiler flag anything unused; **do not widen anything to make it resolve.**
-- [ ] In `fvm_storage.rs`: replace `mod core_fir_conversion { … }` with `mod stepping;`, and
+      (2026-09-27 12:55) — moved verbatim. Note the list is now just
+      `use super::{FVMStorage, FirCursor, FirPointer};` — narrower than FOOP-96.md §4(1) recorded.
+      Compiler flagged nothing unused; nothing was widened.
+- [x] In `fvm_storage.rs`: replace `mod core_fir_conversion { … }` with `mod stepping;`, and
       change the re-export at line ~4334 from
       `pub(crate) use core_fir_conversion::step_to_constanic;` to
       `pub(crate) use stepping::step_to_constanic;`. **That re-export is already the module's
       only one** — the earlier draft said "alongside the bridge's own re-export", which no
       longer exists.
-- [ ] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
+      (2026-09-27 12:55) — **commit 2.** Done. The re-export is load-bearing (`evaluator.rs:23`
+      and `sequencer.rs` reach `step_to_constanic` through it), so it stayed `pub(crate) use`.
+      Also corrected its doc comment, whose "*`arena_compiler`/`core_fir_conversion` themselves
+      stay private modules*" was falsified twice over: `core_fir_conversion` is `pub` since
+      `f8134ac5`, and after this rename it is not called that.
+- [x] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
       anything is left in it → STOP and report: something was in that module that this plan did
       not account for.*
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 12:55) — `grep -rn core_fir_conversion --include=*.rs .` → **0 hits**. The module
+      is gone; `MAX_STEPS` and all four `step_*` moved; nothing left behind. All **33** former
+      path references repointed (the `mod` decl, the re-export, 30 bare-path call sites inside
+      `mod tests`, 2 `use` lines, and `tests/debugger_api.rs`'s import + `//!` doc) — compiler-
+      verified, `cargo build --all-targets` clean.
+- [x] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
+      (2026-09-27 12:55) — clean with `--all-targets`. No private-item error; no visibility widened.
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — fmt clean; clippy shows only the 1 pre-existing `collapsible_if` +
+      foolish-core's 4. **No unused-import or dead-code warning appeared**, which is the check
+      that would have caught a botched `expect(dead_code)`/visibility handling.
+- [x] `cargo test --workspace` — **467 / 0 / 0.**
+      (2026-09-27 12:55) — **470 / 0 / 0.**
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
+      (2026-09-27 12:55) — as **two** commits per the refinement note above: that message for the
+      pure move (commit 1), and `… Phase: rename core_fir_conversion to stepping--complete` for
+      the rename (commit 2).
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — 470 / 0 / 0.
 
 ---
 
