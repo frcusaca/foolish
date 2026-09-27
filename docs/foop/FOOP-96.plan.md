@@ -265,18 +265,27 @@ use crate::identifier::{Characterizations, Identifier};
 ```
 **`use crate::…` lines move verbatim** — `crate` means the same thing in a child module.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/arena_compiler.rs`, doc
+      (2026-09-27 13:14)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/arena_compiler.rs`, doc
       comment included; strip one indent level; drop the `mod` wrapper.
-- [ ] Convert the `///` module doc to `//!`.
-- [ ] In `fvm_storage.rs`: `mod arena_compiler;` — and **leave the
+      (2026-09-27 13:14)
+- [x] Convert the `///` module doc to `//!`.
+      (2026-09-27 13:14)
+- [x] In `fvm_storage.rs`: `mod arena_compiler;` — and **leave the
       `pub(crate) use arena_compiler::{…}` re-export line exactly as it is.**
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:14)
+- [x] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
+      (2026-09-27 13:14)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 13:14)
+- [x] `cargo test --workspace` — **470 / 0 / 0.**
+      (2026-09-27 13:14)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
+      (2026-09-27 13:14)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:14)
 
 ---
 
@@ -606,6 +615,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 2: moved `search_fir_dispatch` to its own file. Rustfmt adjusted
-four line wraps after dedenting; no logic changed. Build, format, clippy, signed einmo gates,
+**Changes**: Completed Phase 3: moved `arena_compiler` to its own file. Rustfmt adjusted one
+import line wrap after dedenting; no logic changed. Build, format, clippy, signed einmo gates,
 and all 470 workspace tests pass.
