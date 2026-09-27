@@ -730,28 +730,75 @@ the ability to say "this commit moved text and changed nothing."
 
 *Judgment phase — larger model. The deliverable is an assertion about the whole diff.*
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Read the cumulative diff and assert it is a move.**
+      (2026-09-27 12:20)
+- [x] **Read the cumulative diff and assert it is a move.**
       `git diff jia...foop-96-split-fvm-storage --stat` then `-M --find-copies-harder` to let git
       detect the moves. **State, in the merge commit message, that no line of logic was retyped.**
       *If any hunk shows a logic change → it must be reverted or split into its own FOOP.*
-- [ ] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
+      **Read every added line in `fvm_storage.rs` and the four production sibling files (excluding
+      `tests.rs`, reviewed separately below by count).** Every added line in `fvm_storage.rs` is a
+      `mod`/`use` declaration, the corrected re-export doc comment, or a `search_dispatch::`
+      call-site prefix (renamed identifier, same arguments, same logic). The `pub(super)`/
+      `pub(crate)` items that appear as "new" in `compiler.rs`/`search_dispatch.rs`/
+      `search_engine.rs`/`stepping.rs` are diff artifacts of the file being new, not visibility
+      changes — cross-checked each one's `pub(super)`/`pub(crate)` qualifier against `jia`'s
+      original nested-module text and confirmed identical (e.g. `pub(super) fn clone_stmt_result`
+      existed verbatim inside the old `mod search_fir_dispatch { … }`; `pub(super)` still means
+      "visible to `fvm_storage`" now that it is a direct child module in a separate file).
+      **No line of logic was retyped.** The two hand-authored non-move edits in this branch — the
+      fresh `//!` doc on `stepping.rs` (correcting a doc comment that described deleted code) and
+      the `system_foo.rs`/`debugger_api.rs` doc-comment/import-path fixes — are both prose/path
+      corrections, not logic, and both are individually justified in their own commits above.
+      (2026-09-27 12:22)
+- [x] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
       this plan. *A large discrepancy means a block did not move as expected — investigate.*
-- [ ] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs`
-- [ ] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
-      `find foolish-ubca2/src -name mod.rs` → must be empty.
-- [ ] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
+      Actuals: core 2248 (predicted ~2240), `search_engine.rs` 371 (exact), `search_dispatch.rs`
+      851 (predicted 860 — small drift from `f8134ac5`-era import changes measured in Phase 2),
+      `stepping.rs` 98 (predicted 94 — larger because of the intentionally-rewritten, longer `//!`
+      doc), `compiler.rs` 749 (exact), `tests.rs` 3652 (predicted 3400 — `f8134ac5` added 257
+      lines of new tests before this FOOP started). Every discrepancy traces to a known,
+      already-documented cause; none indicates an unexpected move.
+      (2026-09-27 12:24)
+- [x] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs` — see actuals
+      above; total 7969 lines across 6 files (vs. 7987 in the single original file — the 18-line
+      net reduction is from stripped indentation plus consolidated `mod`/`use` declarations
+      replacing full inline module bodies).
+      (2026-09-27 12:24)
+- [x] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
+      `find foolish-ubca2/src -name mod.rs` → empty. Confirmed.
+      (2026-09-27 12:25)
+- [x] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
       previously-private item. *There should be NONE. Any one of them → report it to the human
-      explicitly, even if the tests pass.*
-- [ ] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
+      explicitly, even if the tests pass.* **None found.** The only visibility-relevant fact in
+      this FOOP's scope is that `stepping`/its four functions were ALREADY `pub` before this FOOP
+      began (landed by `f8134ac5` on `jia`, independently of this FOOP, before the worktree was
+      created) — Phase 4 preserved that pre-existing `pub`, never introduced it. Every other item
+      moved keeps its pre-existing `pub(crate)`/`pub(super)`/private qualifier unchanged.
+      (2026-09-27 12:26)
+- [x] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
       foolish-ubca2/einmo_suite*` → **must be empty.** A changed baseline is a regression
-      (FOOP-96.md §Test Plan).
-- [ ] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
+      (FOOP-96.md §Test Plan). Confirmed empty — zero einmo baseline changes across all 8 commits.
+      (2026-09-27 12:26)
+- [x] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
       section (REPLACE the entry, do not append — AGENTS.md §Markdown File Update Protocol).
-- [ ] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
-      (AGENTS.md §"Accumulate doubts; report them once, at the end").
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:30)
+- [x] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
+      (AGENTS.md §"Accumulate doubts; report them once, at the end"). **No doubts.** Every
+      checkbox in Phases 0–8 was independently verified (byte-identity diffs on every move, exact
+      test counts before/after every commit, einmo gates including `einmo_gate_verified` green
+      throughout, zero new clippy/fmt warnings, zero visibility widening). The two judgment calls
+      made along the way — writing a fresh `stepping.rs` doc rather than carrying forward a doc
+      comment that described deleted code, and leaving the nine `arena_compiler_*` test function
+      names unrenamed — are both explicitly justified in their respective commit messages and are
+      squarely within FOOP-96.md §0's and §Open Questions' own sanctioned scope, not open
+      questions needing the human's input before merge.
+      (2026-09-27 12:32)
+- [x] Run all tests — old and new — and make sure they all pass correctly. `cargo test
+      --workspace` → 470/0/0; all four einmo-related lib tests including `einmo_gate_verified`
+      confirmed green.
+      (2026-09-27 12:33)
 
 ---
 

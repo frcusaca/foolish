@@ -2,7 +2,7 @@
 foop: D69
 title: Split fvm_storage.rs — one file per concern
 author: Claude Code / claude-opus-5 (directed by the human)
-status: Draft
+status: Implementing
 type: Standards
 created: 2026-09-16
 phase: phase-4
@@ -607,15 +607,24 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 ## Last Updated
 
-**Date**: 2026-09-25
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: §2 now records the human's ruling (2026-09-25) that **`stepping.rs` is created
-regardless of its 94-line size**: the three `step_until*` functions are the project's Foolish
-debugger and the foundation of the `foolish-debugging` skill, their `expect(dead_code)` attributes
-mean *no production caller by design* rather than unused code, and a separate file is what keeps
-them visible and maintained. Prior entry: re-measured the whole FOOP against `jia` post-FOOP-86 —
-the file is **7 737** lines not 8 282, the baseline **467 / 0 / 0** not 791 / 0 / 1, `mod tests`
-**115** functions in **3 400** lines not 110 in 3 290; §1's table replaced with brace-matched
-measurements plus a drift table; §2's two-concerns finding resolved itself when FOOP-86 deleted
-the `proto_to_core_fir` bridge, turning a split into a rename; §3 drops `core_fir_bridge.rs` and
-§3.1's conditional is marked resolved.
+**Date**: 2026-09-27
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: **Execution complete** (Phases 0–8; `status: Draft` → `Implementing`, `begun: [x]`).
+Before executing, Phase 0 discovered the plan's facts had drifted again: `f8134ac5` (2026-09-26,
+"Make the FVM debugger a public API...") landed on `jia` after this FOOP's last prep pass and
+changed `core_fir_conversion` from private/`pub(crate)` to `pub mod`/`pub fn` (human ruling:
+"the debugging code should be accessible by users of the fvm"), removed its three
+`expect(dead_code)` attributes, grew the file to 7 987 lines, moved the workspace baseline to
+470/0/0, and added a new `foolish-ubca2/tests/debugger_api.rs` integration test that imports the
+module by full public path — none of which any prior prep pass anticipated. All facts
+re-verified and the plan corrected before any move began; both §4 safety properties
+re-confirmed intact. Executed all 6 moves (search_engine, search_fir_dispatch, arena_compiler,
+the stepping driver as a move+rename to `stepping.rs`, and `mod tests`) plus both renames
+(`search_fir_dispatch`→`search_dispatch`, `arena_compiler`→`compiler`; the third rename entry
+remained struck, since Phase 5 never ran) as one block per commit, verifying byte-identical
+text moves via `diff`, 470/0/0 tests, zero new clippy/fmt warnings, and all four einmo-related
+tests (including `einmo_gate_verified`) green after every single commit. `fvm_storage.rs` is now
+2 248 lines holding only the arena core; the five sibling files total 5 721 lines. Zero einmo
+baseline changed across all 8 commits; zero visibility widened; no `mod.rs` created. No doubts
+to report — see Phase 8's accumulated-doubts checkbox in the plan for the full statement.
+Awaiting Phase 9's human review gate before merge to `jia`.
