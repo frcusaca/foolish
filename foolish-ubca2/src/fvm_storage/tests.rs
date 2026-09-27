@@ -3381,7 +3381,7 @@ fn ib_search_at_index_zero_does_not_find_self() {
     );
     op.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
-    let result = search_fir_dispatch::ib_search_by_pattern(&storage, "a", Some(a_stmt));
+    let result = search_dispatch::ib_search_by_pattern(&storage, "a", Some(a_stmt));
     assert!(
         result.is_none(),
         "BUG: a statement at index 0 of its brane must not find itself \

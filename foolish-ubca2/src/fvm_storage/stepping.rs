@@ -20,7 +20,7 @@
 //! These stepping functions dispatch across EVERY `FirSpec` variant
 //! (`match kind { FirSpec::Search => ..., FirSpec::Operator => ..., ... }`),
 //! so there is no single type to attach them to as methods — the same
-//! reason `fir_op_step`, `combine`, and every `search_fir_dispatch`
+//! reason `fir_op_step`, `combine`, and every `search_dispatch`
 //! function are also free functions taking `FirPointer` explicitly.
 
 use super::{FVMStorage, FirCursor, FirPointer};
