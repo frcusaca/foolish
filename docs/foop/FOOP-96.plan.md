@@ -77,15 +77,18 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 
 *Judgment phase — larger model (Opus/Sonnet). It decides whether the FOOP's premise still holds.*
 
-- [ ] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
+- [x] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
       §3 (target layout), §3.2 (the tests import hazard), §4 (the safety argument), §5.
-- [ ] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
+      (2026-09-27 10:00)
+- [x] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
       `FOOP-96.md` frontmatter.
-- [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
+      (2026-09-27 10:00)
+- [x] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
       branch `foop-96-split-fvm-storage`:
       `git worktree add -b "foop-96-split-fvm-storage" "/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage"`
       **From here until merge, ALL work — including edits to `FOOP-96.md` and this plan — happens
       ONLY in the worktree.**
+      (2026-09-27 10:00)
 - [x] **Determine whether FOOP-86 has landed.** — **RESOLVED 2026-09-24, before execution.**
       FOOP-86 merged to `jia` on 2026-09-21. Verified:
       `grep -c "fn proto_to_core_fir" foolish-ubca2/src/fvm_storage.rs` → **0**.
