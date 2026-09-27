@@ -2236,11 +2236,11 @@ mod search_dispatch;
 pub mod stepping;
 pub use stepping as core_fir_conversion;
 
-mod arena_compiler;
+mod compiler;
 
 /// Minimal internal re-export surface for `UbcaEvaluator::evaluate`.
 /// The compiler stays private; the stepping module and its compatibility path are public debugger APIs.
-pub(crate) use arena_compiler::{compose_program_with_system, program_result};
+pub(crate) use compiler::{compose_program_with_system, program_result};
 pub(crate) use stepping::step_to_constanic;
 
 #[cfg(test)]

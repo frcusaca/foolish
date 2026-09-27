@@ -556,21 +556,24 @@ the ability to say "this commit moved text and changed nothing."
   - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
         (2026-09-27 13:24)
       (2026-09-27 13:24)
-- [ ] **Rename `arena_compiler` → `compiler`.**
+- [x] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
+        (2026-09-27 13:27)
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+        (2026-09-27 13:27)
+      (2026-09-27 13:27)
 - [-] ~~**Rename `core_fir_conversion` → `core_fir_bridge`**~~ — **SKIP: Phase 5 was struck
-      (2026-09-24), so this file never exists.** The `core_fir_conversion` NAME is retired by
-      Phase 4 instead, which moves the stepping driver to `stepping.rs`.
+      (2026-09-24), so this file never exists.** Phase 4 moved the implementation to
+      `stepping.rs`; the old name remains as a public compatibility path.
       `git mv foolish-ubca2/src/fvm_storage/core_fir_conversion.rs foolish-ubca2/src/fvm_storage/core_fir_bridge.rs`
       Update the `mod` declaration, the `pub(crate) use` re-export, and `tests.rs`'s bare-path
       import of it.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
+  - [-] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
+  - [-] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
 - [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
 - [ ] **Sweep the repository for stale references to the old names** — docs included:
@@ -647,5 +650,5 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Renamed the search dispatcher in its own commit and updated its Rust paths.
-Build, format, clippy, signed einmo gates, and all 470 workspace tests pass.
+**Changes**: Renamed `arena_compiler` to `compiler` in its own commit, preserving test
+function names. Build, format, clippy, signed einmo gates, and all 470 workspace tests pass.
