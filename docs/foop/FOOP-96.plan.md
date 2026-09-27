@@ -574,15 +574,24 @@ the ability to say "this commit moved text and changed nothing."
       import of it.
   - [-] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
   - [-] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
-- [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
+- [x] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
-- [ ] **Sweep the repository for stale references to the old names** — docs included:
+      No matches; no edit needed.
+      (2026-09-27 13:33)
+- [x] **Sweep the repository for stale references to the old names** — docs included:
       `grep -rn "core_fir_conversion\|arena_compiler\|search_fir_dispatch" --include=*.rs --include=*.md .`
       Update the ones that are now wrong. **Do NOT edit completed FOOP plan files** — they are a
       historical record (`foop.md`). Do NOT edit `docs/foop/FOOP-26.md` or FOOP-86's files;
       they belong to other, concurrent work.
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Updated this FOOP's current specification and `INDEX.md`. Preserved historical FOOP
+      records, test function names, and the public `core_fir_conversion` compatibility path.
+      (2026-09-27 13:33)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      Only the preexisting warnings remain.
+      (2026-09-27 13:33)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      470 passed / 0 failed / 0 ignored; signed einmo gates passed.
+      (2026-09-27 13:33)
 
 ---
 
@@ -650,5 +659,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Renamed `arena_compiler` to `compiler` in its own commit, preserving test
-function names. Build, format, clippy, signed einmo gates, and all 470 workspace tests pass.
+**Changes**: Finished Phase 7's Rust and documentation sweep. Historical FOOP records and
+test names remain intact; current docs name the new files and the compatibility re-export.
+All 470 workspace tests and signed einmo gates pass with no new clippy warnings.

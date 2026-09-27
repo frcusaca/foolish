@@ -1829,7 +1829,7 @@ fn step_until_generic_matcher_by_nyes() {
     assert!(storage.get_nyes(front).is_constanic());
 }
 
-// ── arena_compiler tests ─────────────────────────────────────────
+// ── compiler tests ───────────────────────────────────────────────
 
 use compiler::compile;
 

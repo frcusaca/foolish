@@ -81,7 +81,7 @@ ls | rev | sort -V | rev
 | [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
 | [FOOP-76](FOOP-76.md) | Revival of Equality — FIR equivalence with conditions | Draft | phase-4 | 2026-09-15 | Claude Code / claude-opus-5 |
 | [FOOP-86](FOOP-86.md) | Retire UBCa — foolish-ubca2 becomes the implementation | Complete | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
-| [FOOP-96](FOOP-96.md) | Split fvm_storage.rs — one file per concern | Draft | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
+| [FOOP-96](FOOP-96.md) | Split fvm_storage.rs — one file per concern | Implementing | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
 
 ---
 
@@ -183,23 +183,6 @@ ls | rev | sort -V | rev
   INDEX's property **P6**). **Seven open questions**, two of them human calls: accepting the
   loss of the 178-case independent cross-check (Q1) and whether `foolish-ubca` is tagged before
   deletion (Q3)
-- [FOOP-96](FOOP-96.md) — **Split `fvm_storage.rs` — one file per concern.** A **mechanical,
-  behavior-preserving** decomposition of `foolish-ubca2/src/fvm_storage.rs` (8 282 lines — 70% of
-  the crate) along the module seams it already has: `search_engine` (377), `search_dispatch`
-  (744), `stepping` (~105), `core_fir_bridge` (~660), `compiler` (801) and `tests` (3 290) become
-  files under `fvm_storage/`, leaving a ~2 240-line core (arena, `FirSpec`, `fir_op_step`,
-  cursors). **Fills Track 6 member 4** — the "refactoring FOOP — NOT YET WRITTEN" that member and
-  FOOP-86 §N1 both record. Same shape as **FOOP-05**'s split of `fir_kinds.rs`, verified the same
-  way: the einmo gate is a byte-identity oracle, and the **791 existing tests are the whole test
-  plan** — same tests, same count, same results after every commit. **FIR Impact and UBC Step
-  Impact are both None**; there is **no Promotion Review Gate and no `comprehensive.foo`**
-  (nothing is generated, and a changed baseline would be the signal of a regression). Two
-  findings make it safe, both re-verified: every inner module already declares its needs via
-  explicit `use super::{…}`, and there are **ZERO private-internal reaches** from any inner
-  module or the test block — so no field needs widening. Separates the misnamed
-  `core_fir_conversion`, which bundles the **stepping driver** (`step_until*`, the
-  `foolish-debugging` entry points) with the **lossy bridge** FOOP-86 deletes. **Does NOT make
-  Euler-1 or fibonacci run** — that stays 26/46's deliverable
 - [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
 - [FOOP-45](FOOP-45.md) — Deadbrane (useless-element detection: directly useless, transitively
@@ -265,7 +248,10 @@ Corrected order:
 
 ### Implementing
 
-(none — FOOP-9 and FOOP-21 deprecated 2026-07-03; see Deprecated section)
+- [FOOP-96](FOOP-96.md) — Mechanical split of `fvm_storage.rs` into a core plus
+  `search_engine`, `search_dispatch`, `stepping`, `compiler`, and `tests` files. FOOP-86
+  already removed the old bridge. The 470-test baseline and signed einmo outputs remain
+  unchanged; the public debugger path remains available through a compatibility re-export.
 
 ### Deprecated
 
@@ -445,8 +431,8 @@ members generally cannot run in parallel worktrees. The order is dependency-driv
 > **remaining** order is:
 >
 > 1. ~~**[FOOP-86](FOOP-86.md)** — retire UBCa~~ (**COMPLETE, merged to `jia` 2026-09-21**)
-> 2. **[FOOP-96](FOOP-96.md)** — split `foolish-ubca2/src/fvm_storage.rs` (**next**;
->    written 2026-09-16)
+> 2. **[FOOP-96](FOOP-96.md)** — split `foolish-ubca2/src/fvm_storage.rs`
+>    (**implementing**; written 2026-09-16)
 > 3. **[FOOP-07](FOOP-07.md)** — Direct Access Search vs Search: miss outcomes stop keying on
 >    anchoring (**scheduled here 2026-09-24, the human's call**)
 > 4. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
@@ -456,7 +442,7 @@ members generally cannot run in parallel worktrees. The order is dependency-driv
 >    have finished doing so.
 >
 > **Why FOOP-07 sits between 96 and 46.** *After* the refactor because it edits the search
-> engine's settle sites across `fvm_storage.rs`, which FOOP-96 is about to move wholesale —
+> engine's settle sites across `fvm_storage.rs`, which FOOP-96 moves wholesale —
 > doing it first would guarantee conflicts in exactly the file being split, and 96 is
 > deliberately behavior-preserving so it is cheapest against a still branch. *Before*
 > **FOOP-46 (BraneConcatOp)** because 46 rewrites concatenation, and concatenation consumes
@@ -503,15 +489,14 @@ The members, in order:
    46** because it is what lets them be written against one of everything (see the revised-order
    note above). Discards 357 human-signed `verified/` artifacts; 181 survive.
 4. **[FOOP-96](FOOP-96.md)** — **split `fvm_storage.rs`** (written 2026-09-16; this was the
-   "refactoring FOOP — NOT YET WRITTEN" placeholder). Splits `foolish-ubca2/src/fvm_storage.rs`
-   (8 282 lines) along its existing module seams — a mechanical, zero-behavior-change
-   decomposition of the same shape as FOOP-05's split of `fir_kinds.rs`, verified the same way
-   (the einmo gate is a byte-identity oracle; the 791 existing tests are the whole test plan, and
-   there is no promotion gate because nothing is generated). **Placed here** because FOOP-86
-   first removes ~650 lines of it (the `core_fir_conversion` bridge) and removes that module
-   entirely, so the split is both smaller and free of finding a home for code that is about to
-   die — though FOOP-96 §3.1 gives the bridge its own file so the split **works either way** if
-   the schedule moves. **Its own reason to exist** is that 26 ∥ 46 cannot run in parallel
+   "refactoring FOOP — NOT YET WRITTEN" placeholder). Splits the 7 987-line
+   `foolish-ubca2/src/fvm_storage.rs` along its existing module seams — a mechanical,
+   zero-behavior-change decomposition of the same shape as FOOP-05's split of `fir_kinds.rs`.
+   The signed einmo gates and 470 existing tests verify identical behavior after each commit;
+   there is no promotion gate because nothing is generated. FOOP-86 had already removed the
+   ~650-line bridge before execution, so this split needs no bridge file. The public
+   `core_fir_conversion` debugger path is preserved as a re-export of `stepping`.
+   **Its own reason to exist** is that 26 ∥ 46 cannot run in parallel
    worktrees over one 8 000-line file without merge conflicts that are line-proximity accidents
    rather than real disagreements. **Does NOT make Euler-1 or fibonacci run** (FOOP-96 §Abstract).
 5. **FOOP-26 ∥ FOOP-46** — **executed in parallel** (revised 2026-09-16; previously
@@ -672,14 +657,9 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-09-21
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: FOOP-86 (retire UBCa) is **Complete** — merged to `jia` as `35d18b69`. Status
-updated in the table and the remaining-order roadmap, where FOOP-86 is struck through and
-**FOOP-96** (split `fvm_storage.rs`) becomes **next**. FOOP-86 shipped its four original
-deliverables plus a §6 specification addendum added mid-execution at the human's direction: the
-**unsteppable statement**, Foolish's first named run-time error, which replaces FOOP-33 §4's
-NK-poisoning mechanism. FOOP-33 has been amended to point at it. One known, deliberate gap
-carried forward to the concatenation FOOP: §6.2 route 2 (concatenation merge) has neither a
-unit test nor an einmo case and does not halt — out of scope by the human's 2026-09-18
-direction.
+**Date**: 2026-09-27
+**Updated By**: Codex / GPT-6
+**Changes**: Moved FOOP-96 from Draft to Implementing and refreshed its Track 6 description
+against the execution baseline: 7 987 source lines, 470 passing tests, no bridge file,
+and a compatibility re-export for the public debugger path. Updated the search work order
+description to reflect the moved engine.

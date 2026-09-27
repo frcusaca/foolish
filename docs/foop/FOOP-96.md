@@ -38,7 +38,7 @@ code, in files a human can read.
 
 ### M1 — It is the file every subsequent FOOP must edit
 
-`fvm_storage.rs` is 7 737 of the crate's 11 049 lines. The remaining Track 6 members all edit
+`fvm_storage.rs` was 7 987 lines at execution. The remaining Track 6 members all edit
 it, and after FOOP-86 they edit *only* it plus `sequencer.rs`:
 
 | FOOP | What it does to `fvm_storage.rs` |
@@ -62,11 +62,11 @@ cannot be reviewed properly — not by a human scrolling it, and not by an agent
 it in a context window alongside the change it is making. `rust_instructions.md` §2e states
 the project's own rule and this file violates it plainly: **one responsibility per module**,
 and *"a name you can't pick usually means the module does too many things"* (§2c.5). The
-current file holds an arena, a step machine, cursors, a search engine, a search dispatcher, a
-stepping driver, a compatibility bridge, an AST compiler, and 115 tests. There is no name for
+pre-split file held an arena, a step machine, cursors, a search engine, a search dispatcher, a
+stepping driver, an AST compiler, and 117 tests. There is no name for
 that.
 
-This is not a hypothetical cost. The module currently named `core_fir_conversion` prompted
+This is not a hypothetical cost. The module then named `core_fir_conversion` prompted
 the human to ask *"what does conversion mean?"* — a filename is read hundreds of times more
 often than the doc comment above it, and that module's name is wrong in a way that survived
 review precisely because it was buried at line 3374 of a file nobody opens whole.
@@ -110,8 +110,8 @@ deliberately.
 Three properties define the change, and each one is a constraint on execution:
 
 1. **Move, never rewrite.** Each block's text is moved verbatim into a new file. Its `use
-   super::{…}` line becomes that file's import list with `super::` rewritten to the crate
-   path. **No line of logic is retyped.** This is what keeps `git blame` legible — a reviewer
+   super::{…}` line remains the new file's import list because the parent module is still
+   `fvm_storage`. **No line of logic is retyped.** This is what keeps `git blame` legible — a reviewer
    of FOOP-26 asking "why does this line exist?" must still land on the commit that wrote it,
    not on this FOOP.
 2. **No visibility widening.** If a block cannot move without making something `pub(crate)`
@@ -166,7 +166,7 @@ re-exports that public module under the existing `core_fir_conversion` path. The
 module body disappears; the old public path remains callable. The newer public functions
 have no `expect(dead_code)` attributes.
 
-### §2 `core_fir_conversion` is misnamed — RESOLVED ITSELF, one concern now, still misnamed
+### §2 The old `core_fir_conversion` name and the stepping module
 
 **UPDATED 2026-09-24. This section's central finding has largely dissolved, and saying so is
 cheaper than letting an executor rediscover it.**
@@ -180,10 +180,10 @@ As written 2026-09-16, this section reported the module bundling **two** unrelat
 
 It also predicted **"FOOP-86 deletes it entirely"** of (b). **That prediction held.**
 `grep -c proto_to_core_fir foolish-ubca2/src/fvm_storage.rs` returns **0**, and the module is
-now 94 lines holding only the four stepping functions.
+94 lines at the 2026-09-24 measurement, holding only the four stepping functions.
 
 So the two-responsibility problem is gone; no separation work remains. What survives is
-narrower: **the module is still misnamed.** `core_fir_conversion` described (b), which no
+narrower: **the module was misnamed.** `core_fir_conversion` described (b), which no
 longer exists — nothing in it converts to core FIR any more. The module-level doc comment that
 §2 cited as evidence of two responsibilities (*"The stepping loop **and** the FIR→core-FIR
 output-serialization family"*) is now simply **wrong**, describing deleted code.
@@ -192,15 +192,13 @@ output-serialization family"*) is now simply **wrong**, describing deleted code.
 asked whether 94 lines earns its own file: *"those needs their own file. The ability is very
 important for debugging and have been used a lot!!! It must be maintained separately and kept in
 working order."* The three `step_until*` functions are the project's Foolish debugger and the
-foundation of the `foolish-debugging` skill; their `expect(dead_code)` attributes mean *no
-production caller by design*, not unused code. Keeping them in their own file is what keeps them
-visible and maintained.
+foundation of the `foolish-debugging` skill. The later public API commit removed their
+`expect(dead_code)` attributes and made them callable by FVM users. Keeping them in their own
+file makes them visible and maintainable.
 
-**Consequence for the plan:** what was a split becomes a rename — `core_fir_conversion` →
-something naming what it does (`stepping`, say) — plus fixing its doc comment. Per §0.3 a
-rename is behavior-adjacent and belongs in its OWN commit, after the moves. At 94 lines it is
-also a candidate for **not getting its own file at all**; whether four debugging entry points
-justify a module is a judgement call for the executor to raise rather than settle silently.
+**Consequence for the plan:** the stepping implementation moves to `stepping.rs`, and the
+old public path remains a compatibility re-export. The target file is decided; there is no
+remaining module-size question.
 
 ### §3 The target layout
 
@@ -209,20 +207,18 @@ files"). `fvm_storage.rs` stays a file and gains a sibling directory `fvm_storag
 
 ```
 foolish-ubca2/src/
-├── fvm_storage.rs              ~2 240  the core: arena, FirSpec, fir_op_step, combine,
+├── fvm_storage.rs               2 247  the core: arena, FirSpec, fir_op_step, combine,
 │                                       cursors, revive_constanic, default_equal
 │                                       + `mod` declarations + the curated re-exports
 └── fvm_storage/
     ├── search_engine.rs           371  navigate + match (BraneNavigator, SearchPredicate,
     │                                   contextful_search_scan)
-    ├── search_dispatch.rs         860  Search FIR → a query the engine can run
-    ├── stepping.rs                 94  step_to_constanic, step_until, step_until_line_number,
-    │                                   step_until_statement_name  — see §2: at 94 lines,
-    │                                   whether this earns its own file is the executor's
-    │                                   call to RAISE, not to settle silently
+    ├── search_dispatch.rs         851  Search FIR → a query the engine can run
+    ├── stepping.rs                 88  step_to_constanic, step_until, step_until_line_number,
+    │                                   step_until_statement_name; the public debugger module
     ├── compiler.rs                749  AST → arena FIR (compose_program_with_system,
     │                                   program_result, build_fir, …)
-    └── tests.rs                 3 400  the 115 tests — see §3.2
+    └── tests.rs                 3 652  the 117 tests — see §3.2
 ```
 
 **`core_fir_bridge.rs` is NOT in this layout.** The 2026-09-16 draft listed it (~660 lines,
@@ -282,7 +278,7 @@ says so explicitly rather than leaving an executor to guess.
 mod tests;
 ```
 
-**Not split by subject.** The 115 tests are already organized by subject *within* the module
+**Not split by subject.** The 117 tests are already organized by subject *within* the module
 (contiguous runs with their own local `use` lines), and splitting them into subject files is a
 **judgment** change — deciding which test belongs to which subject — which §0 forbids bundling
 into a mechanical move. One file at 3 400 lines is not ideal, but it is a test file, it is no
@@ -292,7 +288,7 @@ and the one most likely to have a subtle import problem**, which is precisely wh
 not also carry a reorganization.
 
 **The import hazard, verified concretely.** `mod tests` opens with `use super::*`, and that
-glob currently resolves against the parent module's items. Measured usage inside the test
+glob resolves against the parent module's items. Measured usage inside the test
 block:
 
 | item pulled in via `use super::*` | occurrences |
@@ -318,33 +314,33 @@ block also reaches the *sibling* modules by **bare path**, not through `super::`
 ```rust
 use search_engine::{BraneNavigator, CandidateNavigator, MatchOutcome, ScanCtx,
                     ScanOutcome, SearchPredicate, contextful_search_scan,
-                    contextful_search_scan_no_body_check};   // tests.rs:1250 (abs. 6242)
-use core_fir_conversion::{proto_to_core_fir, step_to_constanic};        // abs. 6861
+                    contextful_search_scan_no_body_check};   // tests.rs:1146
+use core_fir_conversion::step_to_constanic;                  // tests.rs:1741
 use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};
-                                                                        // abs. 6981
-use arena_compiler::compile;                                            // abs. 7068
+                                                             // tests.rs:1752
+use compiler::compile;                                       // tests.rs:1834
 ```
 
 Those bare paths resolve **only** because `use super::*` imported the sibling module names
 into scope. They survive the move for the same reason — but they are exactly the kind of line
-that breaks if the glob is ever narrowed, and they must be re-pointed when §3's renames land
-(`core_fir_conversion` → `stepping` — the `core_fir_bridge` half is deleted, `arena_compiler` → `compiler`,
-`search_fir_dispatch` → `search_dispatch`). **The plan re-points them in the rename commits,
-not the move commit.**
+that breaks if the glob is ever narrowed. The `arena_compiler` references were re-pointed
+to `compiler` in the rename commit. The old `core_fir_conversion` path stays valid through
+the public compatibility re-export; `search_fir_dispatch` became `search_dispatch`.
 
 ### §4 The safety argument — why this is safe to do mechanically
 
-Two properties of the current file, **both independently re-verified while writing this FOOP**,
+Two properties of the pre-split file, **both independently re-verified while writing this FOOP**,
 are what make this a move rather than a refactor:
 
-**(1) Every inner module already declares exactly what it needs.** Each `mod` opens with an
-explicit `use super::{…}`. Those lines become the new file's imports essentially verbatim:
+**(1) Every pre-split inner module already declared exactly what it needed.** Each `mod`
+opened with explicit `use super::{…}` imports. Those lines became the new file's imports
+essentially verbatim:
 
 | module | its current `use super::{…}` |
 |---|---|
 | `search_engine` | `Equality, FVMStorage, FirCursor, FirPointer, default_equal` |
 | `search_fir_dispatch` | `super::search_engine::{…}` + `FVMStorage, FirCursor, FirPointer, FirSpec` |
-| `core_fir_conversion` | `ANON_STMT_NAME, ConcatProvenance, FVMStorage, FirCursor, FirPointer, FirSpec, MAX_DEPTH, NyesExt, search_fir_dispatch` |
+| `core_fir_conversion` | `FVMStorage, FirCursor, FirPointer` |
 | `arena_compiler` | `ANON_STMT_NAME, ConcatProvenance, ConcatRenderingAid, FVMStorage, FirCursor, FirCursorMut, FirPointer, FirSpec, StayMarker` |
 
 The dependency graph is therefore already written down, in the file, by whoever wrote each
@@ -510,7 +506,7 @@ marking any Verified-tier test `#[ignore]`.
 
 ### A. Do nothing
 
-The file stays 7 737 lines. FOOP-26 and FOOP-46 then run in parallel
+The file would stay 7 987 lines. FOOP-26 and FOOP-46 then run in parallel
 worktrees against one enormous file, and every merge conflict between them is a line-proximity
 accident rather than a real disagreement — the expensive kind, because a human must read both
 sides to discover there was no conflict. It also leaves the project in standing violation of
@@ -549,7 +545,7 @@ files.
 **Explicitly and firmly rejected.** The moment a block is retyped instead of moved, three
 things are lost at once: `git blame` stops attributing lines to the commits that reasoned about
 them; the reviewer can no longer confirm "this commit changed nothing" by inspection; and the
-791-test invariant stops being a *proof* of no-change and becomes merely evidence. Any
+470-test invariant stops being a *proof* of no-change and becomes merely evidence. Any
 improvement noticed while moving is written down and proposed separately — this is a move.
 
 ### F. Leave the `proto_to_core_fir` bridge embedded because FOOP-86 deletes it anyway
@@ -621,6 +617,6 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Reconciled the split with `jia`'s newer public debugger API: Phase 4 will retain
-the existing `core_fir_conversion` path as a re-export of `stepping`. The current baseline
-has 470 passing tests and 117 tests in `fvm_storage.rs`.
+**Changes**: Recorded the completed target layout and corrected stale pre-split descriptions.
+The implementation is split into five sibling files, 117 tests remain, and the 470-test
+baseline and public debugger compatibility path are preserved.

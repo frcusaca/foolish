@@ -2,7 +2,7 @@
 //!
 //! `system.foo` composition itself (`compose_program_with_system`/
 //! `compose_one`/`program_result`/`comparison_body`) and comparison
-//! evaluation live in `fvm_storage.rs`'s `compiler` module and
+//! evaluation live in `fvm_storage/compiler.rs` and
 //! `FirSpec::Comparison`'s `fir_op_step` dispatch arm. What remains here is
 //! exactly the data those read directly (`ComparisonOp`, `OPERAND_SRC`,
 //! `SYSTEM_FOO_SRC`), plus tests that exercise them via
