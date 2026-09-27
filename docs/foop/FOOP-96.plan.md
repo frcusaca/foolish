@@ -592,39 +592,55 @@ moving anything — do not trust any line number printed above without re-runnin
   The two `core_fir_conversion::` import lines above must already read `stepping::` by the time
   this phase executes — confirmed by the checkbox above, not assumed.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **This phase's specific
       risk is the test COUNT**, not just pass/fail — see the dedicated checkbox below.
-- [ ] **Record the pre-move `#[test]` count**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 117 (UPDATED
-      2026-09-27; was 115 before `f8134ac5` added two stepping-invariant tests).*
-- [ ] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
+      (2026-09-27 11:35)
+- [x] **Record the pre-move `#[test]` count**:
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **117**, confirmed.
+      (2026-09-27 11:35)
+- [x] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
       one indent level; drop the `#[cfg(test)] mod tests {` wrapper and its closing `}`.
       **Keep `use super::*;` as the first line** and keep every bare-path sibling import exactly
       as it is (they should already say `stepping::…`, not `core_fir_conversion::…` — see above).
-- [ ] In `fvm_storage.rs`, replace the removed block with:
+      Confirmed pre-move the two sibling imports at (post-Phase-4-renumbered) lines 3993/4004
+      already read `stepping::…` — Phase 4 repointed them correctly. Moved 3655 lines, verified
+      byte-identical via diff against the original dedented.
+      (2026-09-27 11:38)
+- [x] In `fvm_storage.rs`, replace the removed block with:
       ```rust
       #[cfg(test)]
       mod tests;
       ```
-- [ ] **Verify the test count moved intact**:
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 117**, and
-      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **must be 0**.
-      *Any other numbers → STOP and report.*
-- [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
+      (2026-09-27 11:38)
+- [x] **Verify the test count moved intact**:
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **117**, and
+      `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **0**. Exact match, no drop.
+      (2026-09-27 11:39)
+- [x] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
       `build` does not compile `#[cfg(test)]` code, so it would not catch a broken test import).
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
+      Compiled clean — confirms `use super::*` and every bare-path sibling import resolved
+      correctly from the new file location.
+      (2026-09-27 11:40)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean. Same
+      pre-existing warnings only.
+      (2026-09-27 11:40)
+- [x] `cargo test --workspace` — **470 / 0 / 0.**
       **This is the phase where a silent test-count drop is most likely.** Read the number; do
-      not glance at "ok".
-- [ ] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
+      not glance at "ok". Read: 133+4+84+62+186+1 = 470, 0 failed, 0 ignored.
+      (2026-09-27 11:42)
+- [x] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
       --lib` → **186 passed** (UPDATED 2026-09-27 — was 184 before `f8134ac5` added
       `stepping_leaves_a_constanic_prefix_in_traversal_order` and its supporting iterator test;
       its share of the 470 workspace total, including all four einmo-related lib tests). Note the
       `foolish-ubca2` INTEGRATION test (`debugger_api.rs`, 1 test) is separate from this `--lib`
-      count — it is exercised by the plain `cargo test --workspace` line above instead.
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      count — it is exercised by the plain `cargo test --workspace` line above instead. Confirmed
+      186 exactly.
+      (2026-09-27 11:42)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
+      (2026-09-27 11:44)
+- [x] Run all tests — old and new — and make sure they all pass correctly. Confirmed above.
+      (2026-09-27 11:44)
 
 ---
 
