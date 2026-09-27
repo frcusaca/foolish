@@ -410,7 +410,7 @@ updated-facts note above). There is nothing to preserve; do not re-add them.
 half of the earlier pair is long gone with the bridge, so there is no pair to split). Change it to
 `pub(crate) use stepping::step_to_constanic;`.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The `step_until*` unit tests
       are a HARD GATE for this phase** — `foolish_ubca2::fvm_storage::tests::step_until_*` and
       `step_to_constanic_settles_a_simple_fir`. They are the only coverage of the debugger entry
@@ -419,19 +419,24 @@ half of the earlier pair is long gone with the bridge, so there is no pair to sp
       step_until --test-threads=1` and confirm the same number runs — **measured 2026-09-25:
       exactly 3** (`step_until_generic_matcher_by_nyes`, `step_until_line_number_finds_line`,
       `step_until_statement_name_finds_second_statement`), one per debugger entry point. Any drop
-      → STOP.
+      → STOP. Reconfirmed after the move: still exactly 3, all passing.
+      (2026-09-27 11:20)
 - [-] ~~Confirm the boundary: `display_stmt_name`'s callers are all in the bridge family.~~
       **VOID 2026-09-24** — there is no boundary left to confirm. FOOP-86 deleted the bridge AND
       `display_stmt_name` (`grep -c display_stmt_name foolish-ubca2/src/fvm_storage.rs` → 0), so
       `core_fir_conversion` is now 94 lines holding nothing but the four `step_*` functions and
       `MAX_STEPS`. Nothing is left behind by this move; the module is emptied and its `mod` line
       removed.
-- [ ] Move `MAX_STEPS` + the four `pub fn step_*` functions **as text** into
+- [x] Move `MAX_STEPS` + the four `pub fn step_*` functions **as text** into
       `foolish-ubca2/src/fvm_storage/stepping.rs`, with their doc comments, **preserving `pub`
       visibility on the module and all four functions exactly as they are now** (do NOT narrow to
       `pub(crate)` — see the 2026-09-27 updated-facts note above). There are no `#[cfg_attr]`
       dead-code attributes left to move (removed by `f8134ac5`).
-- [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
+      Re-measured boundary: `pub mod core_fir_conversion {` at 2249, close at 2336, 88 lines.
+      Verified the 86-line function-body region byte-identical via diff; all four `pub fn`s and
+      `MAX_STEPS` preserved verbatim, `pub` visibility intact throughout.
+      (2026-09-27 11:15)
+- [x] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
       **It must state that the `step_until*` functions are the project's Foolish debugger, that
       the `foolish-debugging` skill is built on them, and that they are `pub` because downstream
       code driving the FVM needs them** (the human, 2026-09-25: *"very important for debugging and
@@ -439,38 +444,65 @@ half of the earlier pair is long gone with the bridge, so there is no pair to sp
       human, 2026-09-26: *"the debugging code should be accessible by users of the fvm"*). Do NOT
       describe them via `expect(dead_code)` framing — that framing was already corrected by
       `f8134ac5` and reintroducing it in the new doc would be a regression of that fix.
-      (`rust_instructions.md` §2d.3.)
-- [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
+      (`rust_instructions.md` §2d.3.) Wrote a fresh doc (the old one described the deleted
+      bridge and was factually wrong to carry forward — FOOP-96.md §2/§Open Questions sanctions
+      correcting exactly the falsified sentence).
+      (2026-09-27 11:16)
+- [x] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
       ONLY these functions now, the whole list comes with them — there is no subset to narrow.
       Let the compiler flag anything unused; **do not widen anything to make it resolve.**
-- [ ] In `fvm_storage.rs`: replace `pub mod core_fir_conversion { … }` with `pub mod stepping;`
+      (2026-09-27 11:16)
+- [x] In `fvm_storage.rs`: replace `pub mod core_fir_conversion { … }` with `pub mod stepping;`
       (**preserve `pub`** — do not narrow to `mod` or `pub(crate) mod`), and change the re-export
       from `pub(crate) use core_fir_conversion::step_to_constanic;` to
       `pub(crate) use stepping::step_to_constanic;`. **That re-export is already the module's
       only one** — the earlier draft said "alongside the bridge's own re-export", which no
       longer exists.
-- [ ] **Re-point `foolish-ubca2/tests/debugger_api.rs`'s import** from
+      Also renamed all 32 in-file references from `core_fir_conversion` to `stepping` (the
+      `mod tests` block reaches this module by many bare-path `core_fir_conversion::step_*(…)`
+      call sites, not only the two `use` lines the plan named — all repointed together since
+      Phase 4 IS the rename, not deferred to Phase 7). Also corrected the now-doubly-stale
+      "themselves stay private modules" sentence in the re-export's doc comment, since `stepping`
+      is no longer private.
+      (2026-09-27 11:18)
+- [x] **Re-point `foolish-ubca2/tests/debugger_api.rs`'s import** from
       `foolish_ubca2::fvm_storage::core_fir_conversion::{step_to_constanic, step_until,
       step_until_line_number, step_until_statement_name}` to
       `foolish_ubca2::fvm_storage::stepping::{step_to_constanic, step_until,
       step_until_line_number, step_until_statement_name}`. This is a required re-pointing
       of an existing bare-path-style reference, not a new behavior — the test's assertions are
       unchanged. (Discovered in this FOOP's Phase 0 re-measurement, 2026-09-27; the integration
-      test did not exist when this phase was originally drafted.)
-- [ ] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
+      test did not exist when this phase was originally drafted.) Also fixed the file's own doc
+      comment, which named `mod core_fir_conversion` by its old name.
+      (2026-09-27 11:19)
+- [x] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
       anything is left in it → STOP and report: something was in that module that this plan did
-      not account for.*
-- [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: this crate
+      not account for.* `grep -c core_fir_conversion` across `fvm_storage.rs`, `debugger_api.rs`,
+      and the new `stepping.rs` → **0, 0, 0**. Fully retired.
+      (2026-09-27 11:19)
+- [x] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: this crate
       now has an integration test in `tests/`, which a plain `build` does not compile).
-      *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-      *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
-- [ ] `cargo test --workspace` — **470 / 0 / 0.** Additionally confirm
+      *Private-item error → STOP and report.* Compiled clean, no errors.
+      (2026-09-27 11:20)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      *An unused-import or dead-code warning here is THIS phase's and must be fixed.* No new
+      warnings — same pre-existing set as prior phases. In particular NO dead-code warning
+      appeared, confirming `pub` visibility carried through correctly.
+      (2026-09-27 11:21)
+- [x] `cargo test --workspace` — **470 / 0 / 0.** Additionally confirm
       `debugger_entry_points_are_reachable_from_outside_the_crate`
       (`foolish-ubca2/tests/debugger_api.rs`) still passes — it is the strongest available check
-      that this move preserved external reachability of the renamed module.
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      that this move preserved external reachability of the renamed module. Both confirmed:
+      470/0/0 workspace-wide, and the integration test passes standalone
+      (`cargo test -p foolish-ubca2 --test debugger_api`). Also re-ran all 4 einmo-related lib
+      tests serially (`-- --test-threads=1 einmo_gate`): all green, including
+      `einmo_gate_verified` — byte-identical output confirmed for this production-code-touching
+      phase.
+      (2026-09-27 11:23)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: stepping driver to its own file--complete`
+      (2026-09-27 11:25)
+- [x] Run all tests — old and new — and make sure they all pass correctly. Confirmed above.
+      (2026-09-27 11:25)
 
 ---
 

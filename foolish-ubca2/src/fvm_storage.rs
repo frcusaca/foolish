@@ -2236,112 +2236,16 @@ pub(crate) mod search_engine;
 
 mod search_fir_dispatch;
 
-/// The stepping loop and the FIR→core-FIR output-serialization family that
-/// `UbcaEvaluator::evaluate` drives.
-///
-/// # Free functions, not methods
-///
-/// These conversion functions dispatch across EVERY `FirSpec` variant
-/// (`match kind { FirSpec::Search => ..., FirSpec::Operator => ..., ... }`),
-/// so there is no single type to attach them to as methods — the same
-/// reason `fir_op_step`, `combine`, and every `search_fir_dispatch`
-/// function are also free functions taking `FirPointer` explicitly.
-pub mod core_fir_conversion {
-    use super::{FVMStorage, FirCursor, FirPointer};
-
-    /// Steps `ptr` up to `MAX_STEPS` times, returning `Ok(())` once constanic, or an error naming the
-    /// iteration count if the step budget is exhausted first. Caps total top-level iterations — distinct
-    /// from `step_inner`'s `MAX_DEPTH`, which caps recursion depth within a single iteration.
-    const MAX_STEPS: usize = 10_000;
-
-    pub fn step_to_constanic(storage: &mut FVMStorage, ptr: FirPointer) -> Result<(), String> {
-        let mut last_step = 0;
-        for step in 0..MAX_STEPS {
-            ptr.step(storage);
-            last_step = step;
-            if storage.get_nyes(ptr).is_constanic() {
-                return Ok(());
-            }
-        }
-        if !storage.get_nyes(ptr).is_constanic() {
-            return Err(format!("Iteration exceeded {last_step}"));
-        }
-        Ok(())
-    }
-
-    /// The UBCA debugger-breakpoint equivalent — steps until `matcher`
-    /// accepts the front task (or `None` when there is no front task),
-    /// returning the step count, or an error if the FVM settles first or
-    /// the step budget is exhausted.
-    ///
-    /// The matcher takes `&FVMStorage` explicitly alongside
-    /// `Option<FirPointer>` (rather than a bare `Option<FirPointer>`)
-    /// because a `FirPointer` carries no data of its own — it must be
-    /// read through the arena to be inspected.
-    ///
-    /// **Public API for users of the FVM** (the human, 2026-09-26: *"the debugging code should be
-    /// accessible by users of the fvm"*). This is developer-facing debugger tooling rather than
-    /// part of `evaluate`'s own path, so it has no caller INSIDE this crate — but it is `pub`
-    /// because downstream code driving the FVM needs it, and a `pub` item in a `pub mod` is API,
-    /// never dead code. It therefore needs no `expect(dead_code)`; an earlier
-    /// `pub(crate)` + `expect(dead_code)` pair was papering over the too-narrow visibility.
-    pub fn step_until(
-        storage: &mut FVMStorage,
-        ptr: FirPointer,
-        mut matcher: impl FnMut(&FVMStorage, Option<FirPointer>) -> bool,
-    ) -> Result<usize, String> {
-        for step in 0..MAX_STEPS {
-            let front = FirCursor::new(ptr, storage).front_task();
-            if matcher(storage, front) {
-                return Ok(step);
-            }
-            if storage.get_nyes(ptr).is_constanic() {
-                return Err(format!(
-                    "FVM went constanic (nyes={:?}) before condition was met at step {step}",
-                    storage.get_nyes(ptr)
-                ));
-            }
-            ptr.step(storage);
-        }
-        Err(format!(
-            "Step limit ({MAX_STEPS}) reached before condition was met"
-        ))
-    }
-
-    /// Public debugger API — see `step_until`'s doc comment.
-    pub fn step_until_line_number(
-        storage: &mut FVMStorage,
-        ptr: FirPointer,
-        line: usize,
-    ) -> Result<usize, String> {
-        step_until(storage, ptr, |storage, front| {
-            front
-                .and_then(|f| FirCursor::new(f, storage).as_stmt_line_number())
-                .is_some_and(|l| l == line)
-        })
-    }
-
-    /// Public debugger API — see `step_until`'s doc comment.
-    pub fn step_until_statement_name(
-        storage: &mut FVMStorage,
-        ptr: FirPointer,
-        name: &str,
-    ) -> Result<usize, String> {
-        step_until(storage, ptr, |storage, front| {
-            front
-                .and_then(|f| FirCursor::new(f, storage).as_stmt_identifier())
-                .is_some_and(|id| id.searchable_name() == name)
-        })
-    }
-}
+pub mod stepping;
 
 mod arena_compiler;
 
-/// Minimal re-export surface for `UbcaEvaluator::evaluate` — `arena_compiler`/`core_fir_conversion`
-/// themselves stay private modules; only the exact functions `evaluate`'s body needs are re-exported, not
-/// the modules' full surface.
+/// Minimal re-export surface for `UbcaEvaluator::evaluate` — `arena_compiler` stays a private
+/// module; only the exact functions `evaluate`'s body needs are re-exported, not its full
+/// surface. `stepping` is `pub` in its own right (its debugger entry points are public API), so
+/// this re-export is a convenience alias for `evaluate`'s callers, not a visibility widening.
 pub(crate) use arena_compiler::{compose_program_with_system, program_result};
-pub(crate) use core_fir_conversion::step_to_constanic;
+pub(crate) use stepping::step_to_constanic;
 
 #[cfg(test)]
 mod tests {
@@ -3211,7 +3115,7 @@ mod tests {
         );
         storage.with_mut(brane2, |fir| fir.set_nyes(Nyes::Constant));
 
-        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
+        stepping::step_to_constanic(&mut storage, cat).unwrap();
 
         // Both elements are EMPTY branes -- zero lines to merge, so the real `populate_concat_helpers`
         // pushes no helper at all, and the "empty helper set -> Constant" convention applies (updated from
@@ -3464,7 +3368,7 @@ mod tests {
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
         cmp.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
+        stepping::step_to_constanic(&mut storage, root).unwrap();
 
         assert_eq!(
             storage.get_nyes(cmp),
@@ -4086,7 +3990,7 @@ mod tests {
 
     // ── Stepping loop tests ───────────────────
 
-    use core_fir_conversion::step_to_constanic;
+    use stepping::step_to_constanic;
 
     /// `step_to_constanic`'s happy path: an `IndepInt` settles within budget.
     #[test]
@@ -4097,7 +4001,7 @@ mod tests {
         assert_eq!(storage.get_nyes(ptr), Nyes::Independent);
     }
 
-    use core_fir_conversion::{step_until, step_until_line_number, step_until_statement_name};
+    use stepping::{step_until, step_until_line_number, step_until_statement_name};
 
     /// `step_until_statement_name` finds the SECOND statement in a two-line brane — mirrors
     /// `evaluator.rs::step_until_tests:: step_until_statement_name_finds_second_statement`'s intent.
@@ -4410,7 +4314,7 @@ mod tests {
     #[test]
     fn index_fir_finds_element_at_offset_in_anchor_brane() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(1, true);
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert!(
@@ -4427,7 +4331,7 @@ mod tests {
     #[test]
     fn index_fir_out_of_bounds_is_nk() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(5, true);
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         assert!(FirCursor::new(idx, &storage).ubc_children().is_empty());
     }
@@ -4436,7 +4340,7 @@ mod tests {
     #[test]
     fn index_fir_negative_offset_from_back() {
         let (mut storage, idx, _stmts) = index_with_anchor_brane(-1, true);
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
@@ -4481,7 +4385,7 @@ mod tests {
             },
         );
 
-        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
+        stepping::step_to_constanic(&mut storage, brane).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
@@ -4516,7 +4420,7 @@ mod tests {
             },
         );
 
-        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
+        stepping::step_to_constanic(&mut storage, brane).unwrap();
         assert_eq!(
             storage.get_nyes(idx),
             Nyes::Nk,
@@ -4537,7 +4441,7 @@ mod tests {
         });
         idx.create_child(&mut storage, FirSpec::IndepInt { value: 4 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         let reason = storage.alarm_reason(idx).map(str::to_owned);
         assert_eq!(
@@ -4575,7 +4479,7 @@ mod tests {
         );
         storage.with_mut(anchor, |fir| fir.set_nyes(Nyes::Nk));
 
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
         assert_eq!(
             storage.alarm_reason(idx),
@@ -4640,7 +4544,7 @@ mod tests {
             cursor.set_nyes(Nyes::Constant);
         }
 
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Constant);
         let result = FirCursor::new(idx, &storage).ubc_children().first().copied();
         assert_eq!(
@@ -4688,7 +4592,7 @@ mod tests {
             cursor.set_nyes(Nyes::Constant);
         }
 
-        core_fir_conversion::step_to_constanic(&mut storage, idx).unwrap();
+        stepping::step_to_constanic(&mut storage, idx).unwrap();
         assert_eq!(storage.get_nyes(idx), Nyes::Nk);
     }
 
@@ -4731,7 +4635,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
+        stepping::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
             is_unsteppable_cause(&storage, second),
             "redefining a null-characterized constant with a DIFFERENT value must make that \
@@ -4756,7 +4660,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compose_program_with_system(&mut storage, src).unwrap();
         let root = roots[0];
-        let _ = core_fir_conversion::step_to_constanic(&mut storage, root);
+        let _ = stepping::step_to_constanic(&mut storage, root);
         let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
         (storage, program)
     }
@@ -5100,7 +5004,7 @@ mod tests {
                 );
                 stmt.create_child(&mut storage, FirSpec::IndepInt { value });
             }
-            core_fir_conversion::step_until_line_number(&mut storage, root, line)
+            stepping::step_until_line_number(&mut storage, root, line)
                 .unwrap_or_else(|e| panic!("breakpoint at line {line} must fire: {e}"));
 
             // The breakpoint stopped with `line`'s statement as the front task, i.e. ABOUT to be
@@ -5133,7 +5037,7 @@ mod tests {
             );
             stmt.create_child(&mut storage, FirSpec::IndepInt { value });
         }
-        core_fir_conversion::step_to_constanic(&mut storage, root).expect("settles");
+        stepping::step_to_constanic(&mut storage, root).expect("settles");
 
         let trace = nyes_trace(&storage, root);
         for (position, node) in post_order(&storage, root).enumerate() {
@@ -5327,7 +5231,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 1 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, brane).unwrap();
+        stepping::step_to_constanic(&mut storage, brane).unwrap();
         assert!(
             !is_unsteppable_cause(&storage, second),
             "restating the SAME value must be permitted, not unsteppable"
@@ -5376,7 +5280,7 @@ mod tests {
         );
         b.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
+        stepping::step_to_constanic(&mut storage, cat).unwrap();
         assert_eq!(storage.get_nyes(cat), Nyes::Independent);
 
         let helpers = FirCursor::new(cat, &storage).ubc_children().to_vec();
@@ -5446,7 +5350,7 @@ mod tests {
         );
         second.create_child(&mut storage, FirSpec::IndepInt { value: 2 });
 
-        core_fir_conversion::step_to_constanic(&mut storage, cat).unwrap();
+        stepping::step_to_constanic(&mut storage, cat).unwrap();
 
         let helper = FirCursor::new(cat, &storage)
             .ubc_children()
@@ -5479,7 +5383,7 @@ mod tests {
         assert_eq!(roots.len(), 1);
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
+        stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root)
             .expect("program_result must find the user's program member");
@@ -5507,7 +5411,7 @@ mod tests {
             arena_compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}").unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
+        stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let r_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
@@ -5542,7 +5446,7 @@ mod tests {
         let outer = storage.foolish_children(stmt)[0];
         assert_eq!(storage.foolish_children(outer).len(), 2);
 
-        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
+        stepping::step_to_constanic(&mut storage, root).unwrap();
 
         assert_eq!(storage.get_nyes(outer), Nyes::Nk);
         assert_eq!(
@@ -5569,7 +5473,7 @@ mod tests {
         let roots = arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
+        stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let true_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
@@ -5594,7 +5498,7 @@ mod tests {
         .unwrap();
         let composed_root = roots[0];
 
-        core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
+        stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
         let program = arena_compiler::program_result(&storage, composed_root).unwrap();
         let second_true_stmt = FirCursor::new(program, &storage).stmt_at(3).unwrap();
@@ -5665,7 +5569,7 @@ mod tests {
         )
         .unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
+        stepping::step_to_constanic(&mut storage, root).unwrap();
 
         let stmts = storage.foolish_children(root).to_vec();
         let sf_body = storage.foolish_children(stmts[3])[0]; // sf's SF wrapper
@@ -5766,7 +5670,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compile(&mut storage, "{k=1; k=2;}").unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
+        stepping::step_to_constanic(&mut storage, root).unwrap();
         let stmts = storage.foolish_children(root).to_vec();
         assert!(
             !is_unsteppable_cause(&storage, stmts[0]),
@@ -5786,7 +5690,7 @@ mod tests {
         let mut storage = FVMStorage::new();
         let roots = arena_compiler::compile(&mut storage, "{A={}; B={'a=1;}; C = A B;}").unwrap();
         let root = roots[0];
-        core_fir_conversion::step_to_constanic(&mut storage, root).unwrap();
+        stepping::step_to_constanic(&mut storage, root).unwrap();
         let stmts = storage.foolish_children(root).to_vec();
         let c_body = storage.foolish_children(stmts[2])[0];
         let c_value = c_body.value(&storage);
@@ -5815,7 +5719,7 @@ mod tests {
             let source = format!("{{r = {{1, 2, {op}}}$;}}");
             let roots = arena_compiler::compose_program_with_system(&mut storage, &source).unwrap();
             let composed_root = roots[0];
-            core_fir_conversion::step_to_constanic(&mut storage, composed_root).unwrap();
+            stepping::step_to_constanic(&mut storage, composed_root).unwrap();
             let program = arena_compiler::program_result(&storage, composed_root).unwrap();
             let stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
             let body = storage.foolish_children(stmt)[0];
@@ -5871,7 +5775,7 @@ mod tests {
         let roots =
             arena_compiler::compose_program_with_system(&mut storage, src).expect("program compiles");
         let root = roots[0];
-        let _ = core_fir_conversion::step_to_constanic(&mut storage, root);
+        let _ = stepping::step_to_constanic(&mut storage, root);
         let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
         (storage, program)
     }
