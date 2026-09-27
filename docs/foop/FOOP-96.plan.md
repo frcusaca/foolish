@@ -696,15 +696,33 @@ the ability to say "this commit moved text and changed nothing."
       import of it.
   - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
   - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename core_fir_conversion to core_fir_bridge--complete`
-- [ ] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
+- [x] Update `foolish-ubca2/src/lib.rs`'s crate-level `//!` doc if it names any renamed module
       (`grep -n "core_fir_conversion\|arena_compiler\|search_fir_dispatch" foolish-ubca2/src/lib.rs`).
-- [ ] **Sweep the repository for stale references to the old names** — docs included:
+      Zero hits — `lib.rs` names no renamed module.
+      (2026-09-27 12:05)
+- [x] **Sweep the repository for stale references to the old names** — docs included:
       `grep -rn "core_fir_conversion\|arena_compiler\|search_fir_dispatch" --include=*.rs --include=*.md .`
       Update the ones that are now wrong. **Do NOT edit completed FOOP plan files** — they are a
       historical record (`foop.md`). Do NOT edit `docs/foop/FOOP-26.md` or FOOP-86's files;
       they belong to other, concurrent work.
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Found and fixed two live doc-comment references in `foolish-ubca2/src/system_foo.rs`
+      (naming `arena_compiler` — updated to `compiler`). All other hits are: (a) nine
+      `#[test] fn arena_compiler_*` names in `tests.rs`, deliberately left as test identifiers,
+      not module-path references (see Phase 7's `arena_compiler` rename checkbox above); (b) this
+      FOOP's own `FOOP-96.md`/`FOOP-96.plan.md`, which correctly narrate the rename's history and
+      are updated live throughout this execution, not stale; (c) `docs/foop/INDEX.md`'s two
+      mentions, which are planning narrative describing FOOP-96's original pre-execution framing
+      (itself already superseded by FOOP-96.md's own 2026-09-24/25 updates) rather than a
+      compile-checked code reference — left alone as out of this sweep's scope (source-code
+      correctness, not roadmap-prose currency); (d) `FOOP-86.md/.plan.md`, `FOOP-56.plan.md`,
+      `FOOP-26.md`, `FOOP-16.plan.md` — other FOOPs' own files, explicitly excluded above.
+      (2026-09-27 12:08)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean. No new
+      warnings.
+      (2026-09-27 12:09)
+- [x] Run all tests — old and new — and make sure they all pass correctly. `cargo test
+      --workspace` → 470/0/0.
+      (2026-09-27 12:10)
 
 ---
 
