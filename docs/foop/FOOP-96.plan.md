@@ -220,18 +220,27 @@ use foolish_core::fir::Nyes;
 written produces an unresolved-`Nyes` compile error. Still verify against the file rather than
 trusting this listing; that is the standing *verify, don't re-derive* rule.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
+      (2026-09-27 13:12)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
       doc comment included; strip one indent level; drop the `mod` wrapper.
-- [ ] Convert the `///` module doc to `//!` at the top of the new file.
-- [ ] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility).
-- [ ] `cargo build -p foolish-ubca2` — compiles.
+      (2026-09-27 13:12)
+- [x] Convert the `///` module doc to `//!` at the top of the new file.
+      (2026-09-27 13:12)
+- [x] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility).
+      (2026-09-27 13:12)
+- [x] `cargo build -p foolish-ubca2` — compiles.
       *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:12)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 13:12)
+- [x] `cargo test --workspace` — **470 / 0 / 0.**
+      (2026-09-27 13:12)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
+      (2026-09-27 13:12)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:12)
 
 ---
 
@@ -597,6 +606,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 1: moved `search_engine` verbatim to its own file. Build, format,
-clippy, byte-for-byte einmo gates, and all 470 workspace tests pass. Phase 0 recorded the
-current baseline and the public debugger module added after the original plan.
+**Changes**: Completed Phase 2: moved `search_fir_dispatch` to its own file. Rustfmt adjusted
+four line wraps after dedenting; no logic changed. Build, format, clippy, signed einmo gates,
+and all 470 workspace tests pass.
