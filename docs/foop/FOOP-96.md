@@ -7,7 +7,7 @@ type: Standards
 created: 2026-09-16
 phase: phase-4
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-96: Split `fvm_storage.rs` — one file per concern
