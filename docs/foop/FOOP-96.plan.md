@@ -258,18 +258,30 @@ use foolish_core::fir::Nyes;
 written produces an unresolved-`Nyes` compile error. Still verify against the file rather than
 trusting this listing; that is the standing *verify, don't re-derive* rule.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
+      (2026-09-27 10:50)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
       doc comment included; strip one indent level; drop the `mod` wrapper.
-- [ ] Convert the `///` module doc to `//!` at the top of the new file.
-- [ ] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility).
-- [ ] `cargo build -p foolish-ubca2` — compiles.
-      *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Re-measured boundary (post-Phase-1): doc 2237–2239, `mod` 2240, close 3099, 860 lines —
+      matches this section's stated size exactly. Verified byte-identical via diff.
+      (2026-09-27 10:52)
+- [x] Convert the `///` module doc to `//!` at the top of the new file.
+      (2026-09-27 10:52)
+- [x] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility — it was
+      already private `mod`, not `pub`/`pub(crate)`; unchanged).
+      (2026-09-27 10:52)
+- [x] `cargo build -p foolish-ubca2` — compiles. No errors, no private-item complaints.
+      (2026-09-27 10:53)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean. Same
+      single pre-existing `sequencer.rs:525` warning as Phase 1, no new ones.
+      (2026-09-27 10:54)
+- [x] `cargo test --workspace` — **470 / 0 / 0.** Matches baseline exactly.
+      (2026-09-27 10:55)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
+      (2026-09-27 10:56)
+- [x] Run all tests — old and new — and make sure they all pass correctly. Confirmed above.
+      (2026-09-27 10:56)
 
 ---
 
