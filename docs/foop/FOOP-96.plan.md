@@ -463,8 +463,10 @@ the core is ~660 lines smaller.
 *Execution phase — smaller model, but this is the **largest and riskiest** block. Read
 FOOP-96.md §3.2 first.*
 
-**The block**: `fvm_storage.rs:4337–7736`, **3 400 lines, 117 `#[test]` functions** — 44% of the
-file. Moved as ONE file; **not** split by subject (FOOP-96.md §Rejected Alternatives G).
+**The execution block**: `fvm_storage.rs:4330–7987` at `512c4a13`, **3 658 lines,
+117 `#[test]` functions** — 46% of the source file. Moved as ONE file; **not** split by
+subject (FOOP-96.md §Rejected Alternatives G). The resulting `tests.rs` is 3 652 lines
+after rustfmt adjusted three line wraps.
 
 **Why this is the riskiest phase, stated concretely.** The block opens with `use super::*`, and
 then reaches its **sibling** modules by **bare path** — those paths resolve ONLY because the glob
@@ -482,6 +484,8 @@ were wrong**, and the 6861 entry named `proto_to_core_fir`, which FOOP-86 delete
 now `step_to_constanic` alone. Re-derive these yourself before moving anything:
 `awk 'NR>=4337 && /use / && /(search_engine|core_fir_conversion|arena_compiler)/ {print NR": "$0}' foolish-ubca2/src/fvm_storage.rs`
 
+At execution, the moved `tests.rs` imports are at lines 1146, 1741, 1752, and 1834.
+
 **Two consequences, both already handled:**
 - **`use super::*` keeps working.** A `#[cfg(test)] mod tests;` in a sibling file has the same
   `super` — `fvm_storage` — so all 229 `FirSpec` / 115 `FVMStorage` / 99 `FirCursor` / 14
@@ -490,34 +494,45 @@ now `step_to_constanic` alone. Re-derive these yourself before moving anything:
 - **Phase 4 already moved `step_until*` and `step_to_constanic`.** Line 6861's and 6981's
   imports were repointed in that phase. Confirm they still name the right modules here.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **This phase's specific
       risk is the test COUNT**, not just pass/fail — see the dedicated checkbox below.
-- [ ] **Record the pre-move `#[test]` count**:
+      (2026-09-27 13:22)
+- [x] **Record the pre-move `#[test]` count**:
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 117.*
-- [ ] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
+      (2026-09-27 13:22)
+- [x] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
       one indent level; drop the `#[cfg(test)] mod tests {` wrapper and its closing `}`.
       **Keep `use super::*;` as the first line** and keep every bare-path sibling import exactly
       as it is.
-- [ ] In `fvm_storage.rs`, replace the removed block with:
+      (2026-09-27 13:22)
+- [x] In `fvm_storage.rs`, replace the removed block with:
       ```rust
       #[cfg(test)]
       mod tests;
       ```
-- [ ] **Verify the test count moved intact**:
+      (2026-09-27 13:22)
+- [x] **Verify the test count moved intact**:
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 117**, and
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **must be 0**.
       *Any other numbers → STOP and report.*
-- [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
+      (2026-09-27 13:22)
+- [x] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
       `build` does not compile `#[cfg(test)]` code, so it would not catch a broken test import).
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
+      (2026-09-27 13:22)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 13:22)
+- [x] `cargo test --workspace` — **470 / 0 / 0.**
       **This is the phase where a silent test-count drop is most likely.** Read the number; do
       not glance at "ok".
-- [ ] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
+      (2026-09-27 13:22)
+- [x] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
       --lib` → **186 passed** (its share of the 470, including all three einmo gates).
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:22)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
+      (2026-09-27 13:22)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:22)
 
 ---
 
@@ -628,6 +643,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Marked every Phase 5 task canceled because FOOP-86 already removed the
-`proto_to_core_fir` bridge. Phase 4 moved the debugger to `stepping.rs` while preserving
-its public compatibility path; all 470 workspace tests passed.
+**Changes**: Completed Phase 6: moved all 117 `fvm_storage` tests to one sibling file.
+All 470 workspace tests and all 186 `foolish-ubca2` library tests pass; build, format,
+and clippy checks pass with no new warnings.
