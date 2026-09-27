@@ -336,18 +336,34 @@ use foolish_core::fir::Nyes;
 written produces an unresolved-`Nyes` compile error. Still verify against the file rather than
 trusting this listing; that is the standing *verify, don't re-derive* rule.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
+      (2026-09-27 12:55)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs`,
       doc comment included; strip one indent level; drop the `mod` wrapper.
-- [ ] Convert the `///` module doc to `//!` at the top of the new file.
-- [ ] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility).
-- [ ] `cargo build -p foolish-ubca2` — compiles.
+      (2026-09-27 12:55) — actual span **2237–3099** post-Phase-1 (858 body lines + 3 doc +
+      2 braces). Proven text-exact: 858 == 858 body lines identical after whitespace strip;
+      parent is exactly block-removed + `mod search_fir_dispatch;`.
+- [x] Convert the `///` module doc to `//!` at the top of the new file.
+      (2026-09-27 12:55)
+- [x] In `fvm_storage.rs`: `mod search_fir_dispatch;` (preserve the original visibility).
+      (2026-09-27 12:55) — private, as before. The core's ~15 bare-path call sites
+      (`search_fir_dispatch::check_null_const_conflict(...)` etc.) still resolve unchanged, as
+      predicted — a file-module child is a child, and its `pub(crate)` items are equally
+      reachable.
+- [x] `cargo build -p foolish-ubca2` — compiles.
       *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — clean, no visibility change needed.
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 12:55) — fmt clean; clippy unchanged (1 pre-existing `collapsible_if` +
+      foolish-core's 4). Nothing new.
+- [x] `cargo test --workspace` — **467 / 0 / 0.**
+      (2026-09-27 12:55) — **470 / 0 / 0.** ubca2 lib 186, debugger_api 1, einmo 133, core 84,
+      parser 62, cli 4.
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_fir_dispatch--complete`
+      (2026-09-27 12:55)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — 470 / 0 / 0.
 
 ---
 
