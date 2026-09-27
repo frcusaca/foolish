@@ -1831,7 +1831,7 @@ fn step_until_generic_matcher_by_nyes() {
 
 // ── arena_compiler tests ─────────────────────────────────────────
 
-use arena_compiler::compile;
+use compiler::compile;
 
 /// Compiles `{a = 1; b = 2;}` through the arena compiler and confirms the resulting tree shape: a
 /// self-rooted `Brane` with two `Statement` children, each with an `IndepInt` body — mirrors
@@ -1896,7 +1896,7 @@ fn arena_compiler_rejects_non_brane_root() {
     // straight to `compile_standalone`), call `compile_standalone` directly with a hand-built non-Brane
     // Astn rather than through `compile`'s parse-then-compile pipeline.
     let mut storage = FVMStorage::new();
-    let err = arena_compiler::compile_standalone(&mut storage, foolish_parser::Astn::IntLit(1))
+    let err = compiler::compile_standalone(&mut storage, foolish_parser::Astn::IntLit(1))
         .expect_err("non-Brane root must be rejected");
     assert_eq!(err.to_string(), "only a Brane can be a top-level (root) node");
 }
@@ -2406,10 +2406,10 @@ fn statement_null_const_conflict_is_refused() {
 /// Evaluates `src` as a real program and returns `(storage, program)`.
 fn evaluated(src: &str) -> (FVMStorage, FirPointer) {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(&mut storage, src).unwrap();
+    let roots = compiler::compose_program_with_system(&mut storage, src).unwrap();
     let root = roots[0];
     let _ = stepping::step_to_constanic(&mut storage, root);
-    let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
+    let program = compiler::program_result(&storage, root).unwrap_or(root);
     (storage, program)
 }
 
@@ -3127,13 +3127,13 @@ fn concatenation_merge_applies_null_const_rule_to_conflicting_names() {
 #[test]
 fn compose_program_with_system_settles_a_trivial_program() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(&mut storage, "{x = 1;}").unwrap();
+    let roots = compiler::compose_program_with_system(&mut storage, "{x = 1;}").unwrap();
     assert_eq!(roots.len(), 1);
     let composed_root = roots[0];
 
     stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
-    let program = arena_compiler::program_result(&storage, composed_root)
+    let program = compiler::program_result(&storage, composed_root)
         .expect("program_result must find the user's program member");
     assert!(
         FirCursor::new(program, &storage).is_brane_like(),
@@ -3155,12 +3155,12 @@ fn compose_program_with_system_settles_a_trivial_program() {
 #[test]
 fn compose_program_with_system_resolves_a_comparison() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}").unwrap();
+    let roots = compiler::compose_program_with_system(&mut storage, "{r = {1, 2, 'lt}$;}").unwrap();
     let composed_root = roots[0];
 
     stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
-    let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+    let program = compiler::program_result(&storage, composed_root).unwrap();
     let r_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
     let r_body = storage.foolish_children(r_stmt).first().copied().unwrap();
     let r_value = r_body.value(&storage);
@@ -3187,7 +3187,7 @@ fn compose_program_with_system_resolves_a_comparison() {
 #[test]
 fn combine_nk_result_does_not_pollute_foolish_children() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compile(&mut storage, "{a = 10 / 0 * 5;}").unwrap();
+    let roots = compiler::compile(&mut storage, "{a = 10 / 0 * 5;}").unwrap();
     let root = roots[0];
     let stmt = storage.foolish_children(root)[0];
     let outer = storage.foolish_children(stmt)[0];
@@ -3217,12 +3217,12 @@ fn combine_nk_result_does_not_pollute_foolish_children() {
 #[test]
 fn compose_program_with_system_refuses_conflicting_true_redefinition() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
+    let roots = compiler::compose_program_with_system(&mut storage, "{'True = 3;}").unwrap();
     let composed_root = roots[0];
 
     stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
-    let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+    let program = compiler::program_result(&storage, composed_root).unwrap();
     let true_stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
     assert!(
         is_unsteppable_cause(&storage, true_stmt),
@@ -3238,7 +3238,7 @@ fn compose_program_with_system_refuses_conflicting_true_redefinition() {
 #[test]
 fn compose_program_with_system_refuses_conflicting_true_redefinition_full_sequence() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(
+    let roots = compiler::compose_program_with_system(
         &mut storage,
         "{restate = 'True; 'True = 'True; conflict = 'True; 'True = 3;}",
     )
@@ -3247,7 +3247,7 @@ fn compose_program_with_system_refuses_conflicting_true_redefinition_full_sequen
 
     stepping::step_to_constanic(&mut storage, composed_root).unwrap();
 
-    let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+    let program = compiler::program_result(&storage, composed_root).unwrap();
     let second_true_stmt = FirCursor::new(program, &storage).stmt_at(3).unwrap();
     assert_eq!(
         FirCursor::new(second_true_stmt, &storage)
@@ -3310,7 +3310,7 @@ fn evaluate_refuses_and_renders_conflicting_true_redefinition() {
 #[test]
 fn search_found_inside_sf_threads_ancestral_sfm_to_its_clone() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compile(
+    let roots = compiler::compile(
         &mut storage,
         "{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}",
     )
@@ -3415,7 +3415,7 @@ fn evaluate_settles_self_referential_statement_at_index_zero_without_hanging() {
 #[test]
 fn null_const_rule_does_not_fire_on_plain_names() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compile(&mut storage, "{k=1; k=2;}").unwrap();
+    let roots = compiler::compile(&mut storage, "{k=1; k=2;}").unwrap();
     let root = roots[0];
     stepping::step_to_constanic(&mut storage, root).unwrap();
     let stmts = storage.foolish_children(root).to_vec();
@@ -3435,7 +3435,7 @@ fn null_const_rule_does_not_fire_on_plain_names() {
 #[test]
 fn null_const_concatenation_empty_and_single_operand_merge_without_spurious_nf() {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compile(&mut storage, "{A={}; B={'a=1;}; C = A B;}").unwrap();
+    let roots = compiler::compile(&mut storage, "{A={}; B={'a=1;}; C = A B;}").unwrap();
     let root = roots[0];
     stepping::step_to_constanic(&mut storage, root).unwrap();
     let stmts = storage.foolish_children(root).to_vec();
@@ -3464,10 +3464,10 @@ fn each_comparison_operator_produces_the_right_boolean() {
     ] {
         let mut storage = FVMStorage::new();
         let source = format!("{{r = {{1, 2, {op}}}$;}}");
-        let roots = arena_compiler::compose_program_with_system(&mut storage, &source).unwrap();
+        let roots = compiler::compose_program_with_system(&mut storage, &source).unwrap();
         let composed_root = roots[0];
         stepping::step_to_constanic(&mut storage, composed_root).unwrap();
-        let program = arena_compiler::program_result(&storage, composed_root).unwrap();
+        let program = compiler::program_result(&storage, composed_root).unwrap();
         let stmt = FirCursor::new(program, &storage).stmt_at(0).unwrap();
         let body = storage.foolish_children(stmt)[0];
         let got = body.value(&storage);
@@ -3519,10 +3519,10 @@ fn creation_reached_through_search_renders_with_its_own_defining_name() {
 /// Evaluates `src` and returns the storage plus the program brane.
 fn eval_program(src: &str) -> (FVMStorage, FirPointer) {
     let mut storage = FVMStorage::new();
-    let roots = arena_compiler::compose_program_with_system(&mut storage, src).expect("program compiles");
+    let roots = compiler::compose_program_with_system(&mut storage, src).expect("program compiles");
     let root = roots[0];
     let _ = stepping::step_to_constanic(&mut storage, root);
-    let program = arena_compiler::program_result(&storage, root).unwrap_or(root);
+    let program = compiler::program_result(&storage, root).unwrap_or(root);
     (storage, program)
 }
 
