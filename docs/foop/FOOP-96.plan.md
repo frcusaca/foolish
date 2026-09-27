@@ -647,16 +647,19 @@ the ability to say "this commit moved text and changed nothing."
 
 ## Phase 9 — Merge and cleanup
 
-- [ ] Verify all work is complete in
+- [x] Verify all work is complete in
       `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` and committed to
       `foop-96-split-fvm-storage`.
+      Worktree branch clean after Phase 8 review commit `3ceba866`.
+      (2026-09-27 13:38)
 - [ ] Merge `foop-96-split-fvm-storage` to `jia`
   - [ ] Run all tests — old and new — and make sure they all pass correctly.
-  - [ ] **No comprehensive snapshot test is required for this FOOP.** It adds no feature, so
+  - [x] **No comprehensive snapshot test is required for this FOOP.** It adds no feature, so
         there is nothing for `input/foop/96/comprehensive.foo` to demonstrate, and adding a new
         baseline would contradict this FOOP's contract that no baseline changes
         (FOOP-96.md §Test Plan). *This deviates from the usual merge checklist deliberately and
         is recorded here so the omission is visible rather than looking like an oversight.*
+        (2026-09-27 13:38)
   - [ ] **Check for merge conflicts against concurrent work.** FOOP-26 and FOOP-46 edit this same
         file. If either landed on `jia` while this FOOP was in flight, the merge will conflict —
         resolve by **re-applying their changes into the new file layout**, never by discarding
@@ -680,6 +683,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 8's cumulative review. The six-file layout totals 7 958
-lines; all 117 moved tests remain, no visibility was widened, no einmo baseline changed,
-and all 470 workspace tests pass. No unresolved correctness doubts remain.
+**Changes**: Completed and committed the pre-merge review; the worktree branch is clean.
+The plan's no-comprehensive-test exception applies because FOOP-96 changes no behavior.
+Merge verification and the required human review checkpoint remain.
