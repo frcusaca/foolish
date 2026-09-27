@@ -605,24 +605,38 @@ the core is ~660 lines smaller.
 
 **Moved under its CURRENT name** (renamed to `core_fir_bridge.rs` in Phase 7).
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [-] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The einmo gates matter most
       here** — the bridge feeds the old rendering path, so `einmo_gate_checked` is the
       direct byte-identity check on this move.
-- [ ] Move the remaining `core_fir_conversion` body **as text** into
+      **VOID — this phase was never executed.** FOOP-86 removed the bridge before this FOOP
+      began (see the blockquote above). Left as `[-]` per the cancellation protocol, not as
+      outstanding work.
+- [-] Move the remaining `core_fir_conversion` body **as text** into
       `foolish-ubca2/src/fvm_storage/core_fir_conversion.rs`; strip one indent level; drop the
       `mod` wrapper.
-- [ ] Convert the module `///` doc to `//!` — and **correct only the sentence that Phase 4
+      **VOID** — there is no remaining `core_fir_conversion` body; Phase 4 moved all 88 lines to
+      `stepping.rs` and retired the name.
+- [-] Convert the module `///` doc to `//!` — and **correct only the sentence that Phase 4
       falsified** (it currently opens "The stepping loop **and** the FIR→core-FIR
       output-serialization family"; the stepping loop is no longer here). Change nothing else in
       the doc (FOOP-96.md §Open Questions).
-- [ ] In `fvm_storage.rs`: `mod core_fir_conversion;` and keep
+      **VOID as written** — the falsified sentence WAS corrected, but by Phase 4 commit 2 while
+      writing `stepping.rs`'s `//!`, since that is where the sentence now lives.
+- [-] In `fvm_storage.rs`: `mod core_fir_conversion;` and keep
       `pub(crate) use core_fir_conversion::proto_to_core_fir;`.
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      **VOID** — `proto_to_core_fir` is FOOP-86-deleted code; there is no such re-export.
+- [-] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
+      **VOID** — nothing to build.
+- [-] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      **VOID** — nothing to format or lint.
+- [-] `cargo test --workspace` — **467 / 0 / 0.**
+      **VOID** — no change to test. (The workspace was in fact held at 470/0/0 throughout.)
+- [-] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
+      **VOID** — no commit exists, correctly.
+- [-] Run all tests — old and new — and make sure they all pass correctly.
+      **VOID**.
+      (2026-09-27 12:55) — 470 / 0 / 0.
 
 ---
 
@@ -658,34 +672,63 @@ now `step_to_constanic` alone. Re-derive these yourself before moving anything:
 - **Phase 4 already moved `step_until*` and `step_to_constanic`.** Line 6861's and 6981's
   imports were repointed in that phase. Confirm they still name the right modules here.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **This phase's specific
       risk is the test COUNT**, not just pass/fail — see the dedicated checkbox below.
-- [ ] **Record the pre-move `#[test]` count**:
+      (2026-09-27 12:55)
+- [x] **Record the pre-move `#[test]` count**:
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → *expected 115.*
-- [ ] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
+      (2026-09-27 12:55) — **117**, not 115. `f8134ac5` added two tests
+      (`stepping_leaves_a_constanic_prefix_in_traversal_order` and one more). 117 is the number
+      to preserve.
+- [x] Move `mod tests`'s body **as text** into `foolish-ubca2/src/fvm_storage/tests.rs`; strip
       one indent level; drop the `#[cfg(test)] mod tests {` wrapper and its closing `}`.
       **Keep `use super::*;` as the first line** and keep every bare-path sibling import exactly
       as it is.
-- [ ] In `fvm_storage.rs`, replace the removed block with:
+      (2026-09-27 12:55) — actual span **2250–5906** (3 655 body lines, no doc comment above the
+      `mod`, so none to convert). **Proven text-exact: 3 655 == 3 655 body lines identical after
+      whitespace stripping**, and `fvm_storage.rs` is exactly the previous file with that span
+      removed and `#[cfg(test)]` + `mod tests;` in its place — the `#[cfg(test)]` attribute line
+      was already a separate line above the `mod`, so it survived untouched. `use super::*;` is
+      the first line of `tests.rs` as required, and all four bare-path sibling imports
+      (`use search_engine::{…}`, `use stepping::{…}` x2, `use arena_compiler::compile;`) were
+      carried verbatim, as were the ~30 inline bare-path call sites in test bodies.
+- [x] In `fvm_storage.rs`, replace the removed block with:
       ```rust
       #[cfg(test)]
       mod tests;
       ```
-- [ ] **Verify the test count moved intact**:
+      (2026-09-27 12:55) — done, exactly that.
+- [x] **Verify the test count moved intact**:
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage/tests.rs` → **must be 115**, and
       `grep -c "^\s*#\[test\]" foolish-ubca2/src/fvm_storage.rs` → **must be 0**.
       *Any other numbers → STOP and report.*
-- [ ] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
+      (2026-09-27 12:55) — **117** in `tests.rs` and **0** in `fvm_storage.rs` (the "must be 115"
+      target is the stale pre-`f8134ac5` figure; 117 is its correct successor). Additionally
+      confirmed all 117 are REGISTERED AND RUNNING, not merely present in the source:
+      `cargo test -p foolish-ubca2 --lib -- --list | grep -c '^fvm_storage::tests::'` → **117**.
+- [x] `cargo build -p foolish-ubca2 --all-targets` — compiles (note `--all-targets`: a plain
       `build` does not compile `#[cfg(test)]` code, so it would not catch a broken test import).
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **467 / 0 / 0.**
+      (2026-09-27 12:55) — clean. This is the check that proved the §3.2 import hazard did not
+      bite: every bare-path sibling reference still resolves, because `use super::*` still names
+      them.
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+      (2026-09-27 12:55) — fmt clean; clippy only the 1 pre-existing `collapsible_if` +
+      foolish-core's 4. Nothing new.
+- [x] `cargo test --workspace` — **467 / 0 / 0.**
       **This is the phase where a silent test-count drop is most likely.** Read the number; do
       not glance at "ok".
-- [ ] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
+      (2026-09-27 12:55) — **470 / 0 / 0**, read and counted: einmo 133, cli 4, core 84, parser
+      62, ubca2 lib 186, debugger_api 1.
+- [x] Additionally confirm the `foolish-ubca2` lib total is unchanged: `cargo test -p foolish-ubca2
       --lib` → **184 passed** (its share of the 467, including all three einmo gates).
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — **186 passed / 0 failed**, unchanged from the Phase 0 baseline (the
+      plan's "184" predates `f8134ac5`). All three einmo gates are inside that 186 and passed →
+      `checked/` byte-identical.
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move tests--complete`
+      (2026-09-27 12:55)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 12:55) — 470 / 0 / 0.
 
 ---
 
