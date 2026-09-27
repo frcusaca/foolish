@@ -599,28 +599,49 @@ the ability to say "this commit moved text and changed nothing."
 
 *Judgment phase — larger model. The deliverable is an assertion about the whole diff.*
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Read the cumulative diff and assert it is a move.**
+      (2026-09-27 13:37)
+- [x] **Read the cumulative diff and assert it is a move.**
       `git diff jia...foop-96-split-fvm-storage --stat` then `-M --find-copies-harder` to let git
       detect the moves. **State, in the merge commit message, that no line of logic was retyped.**
       *If any hunk shows a logic change → it must be reverted or split into its own FOOP.*
-- [ ] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
+      Reviewed each moved body against `jia`: all code is the same after dedenting and the
+      two planned path renames. Rustfmt changed line wraps, a trailing comma, and the braces
+      around one single-expression closure; it did not change the expression evaluated.
+      (2026-09-27 13:37)
+- [x] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
       this plan. *A large discrepancy means a block did not move as expected — investigate.*
-- [ ] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs`
-- [ ] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
+      Core 2 247; engine 371; dispatcher 851; stepping 88; compiler 749; tests 3 652 lines.
+      (2026-09-27 13:37)
+- [x] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs`
+      7 958 total lines across the six files.
+      (2026-09-27 13:37)
+- [x] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
       `find foolish-ubca2/src -name mod.rs` → must be empty.
-- [ ] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
+      (2026-09-27 13:37)
+- [x] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
       previously-private item. *There should be NONE. Any one of them → report it to the human
       explicitly, even if the tests pass.*
-- [ ] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
+      Existing item visibility is unchanged. The former public debugger module is now
+      `pub mod stepping` with `pub use stepping as core_fir_conversion` preserving its path.
+      (2026-09-27 13:37)
+- [x] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
       foolish-ubca2/einmo_suite*` → **must be empty.** A changed baseline is a regression
       (FOOP-96.md §Test Plan).
-- [ ] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
+      Empty diff; neither `checked/` nor `verified/` changed.
+      (2026-09-27 13:37)
+- [x] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
       section (REPLACE the entry, do not append — AGENTS.md §Markdown File Update Protocol).
-- [ ] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
+      (2026-09-27 13:37)
+- [x] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
       (AGENTS.md §"Accumulate doubts; report them once, at the end").
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      No unresolved correctness doubts. Rustfmt's single-expression closure simplification
+      was checked against the original and is semantically identical.
+      (2026-09-27 13:37)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      470 passed / 0 failed / 0 ignored, including the signed einmo gates.
+      (2026-09-27 13:37)
 
 ---
 
@@ -659,6 +680,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Finished Phase 7's Rust and documentation sweep. Historical FOOP records and
-test names remain intact; current docs name the new files and the compatibility re-export.
-All 470 workspace tests and signed einmo gates pass with no new clippy warnings.
+**Changes**: Completed Phase 8's cumulative review. The six-file layout totals 7 958
+lines; all 117 moved tests remain, no visibility was widened, no einmo baseline changed,
+and all 470 workspace tests pass. No unresolved correctness doubts remain.

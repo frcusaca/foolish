@@ -617,6 +617,6 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Recorded the completed target layout and corrected stale pre-split descriptions.
-The implementation is split into five sibling files, 117 tests remain, and the 470-test
-baseline and public debugger compatibility path are preserved.
+**Changes**: Completed the pre-merge review of the five-file split. The 117 moved tests and
+all 470 workspace tests pass with signed einmo baselines unchanged. `status: Implementing`
+remains appropriate until the plan's human review and cleanup checkpoint is completed.
