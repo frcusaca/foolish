@@ -818,28 +818,164 @@ the ability to say "this commit moved text and changed nothing."
 
 *Judgment phase — larger model. The deliverable is an assertion about the whole diff.*
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Read the cumulative diff and assert it is a move.**
+      (2026-09-27 13:28)
+- [x] **Read the cumulative diff and assert it is a move.**
       `git diff jia...foop-96-split-fvm-storage --stat` then `-M --find-copies-harder` to let git
       detect the moves. **State, in the merge commit message, that no line of logic was retyped.**
       *If any hunk shows a logic change → it must be reverted or split into its own FOOP.*
-- [ ] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
+      (2026-09-27 13:28)
+
+      **ASSERTION: the cumulative diff is a move. No line of logic was retyped.**
+
+      git's own rename detection could NOT confirm this — `-M --find-copies-harder` reports the
+      five new files as pure additions, because a one-level dedent touches every line and drops
+      the similarity index below threshold. So the assertion is proved a better way: comparing the
+      **whitespace-stripped token streams** of the old `fvm_storage.rs` against the union of the
+      six new files, with the three planned renames applied. Token-stream comparison is
+      indifferent to line wrapping and indent, which is exactly the noise rustfmt introduced.
+
+      Result: **155 686 vs 155 677 characters — identical except for two categories, both
+      cosmetic**:
+      1. the five `mod X {` … `}` wrappers becoming `mod X;` declarations (modelled and removed
+         on both sides before comparing);
+      2. one rustfmt closure-brace elision at `fvm_storage.rs:1217`, where the
+         `search_fir_dispatch`→`search_dispatch` rename shortened the line enough for rustfmt to
+         write `.and_then(|(found, _)| expr)` instead of `.and_then(|(found, _)| { expr })`. Same
+         tokens, same semantics — redundant braces dropped by the formatter.
+
+      Beyond those, **not one token differs.** Combined with the per-phase proof (each move
+      verified as: removed block's body ≡ new file's body after whitespace stripping, and the
+      parent ≡ the old file with that span removed and one declaration inserted), the claim
+      *"every commit moved text and changed nothing"* holds for every commit in this branch.
+
+      *A reviewer diffing line-by-line will see reflowed hunks inside the moved blocks: rustfmt
+      re-wraps at the new indent column. That is the formatter, not retyping — the token stream
+      is the evidence, and it is identical.*
+- [x] Confirm the final file sizes are roughly as FOOP-96.md §3 predicts; record the actuals in
       this plan. *A large discrepancy means a block did not move as expected — investigate.*
-- [ ] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs`
-- [ ] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
+      (2026-09-27 13:28)
+
+      | file | §3 predicted | ACTUAL | why the difference |
+      |---|---|---|---|
+      | `fvm_storage.rs` | ~2 240 | **2 247** | in range |
+      | `search_engine.rs` | 371 | **372** | the `//!` conversion added a blank separator |
+      | `search_dispatch.rs` | 860 | **852** | rustfmt re-wrapped 8 lines at the shallower indent |
+      | `stepping.rs` | 94 | **111** | **§2/Phase 4 MANDATE**: the `//!` must name the debugging role; also `f8134ac5` had already grown the block |
+      | `compiler.rs` | 749 | **750** | the `//!` blank separator |
+      | `tests.rs` | 3 400 | **3 652** | `f8134ac5` added tests (3 657 block, 3 655 body) |
+
+      Every discrepancy is accounted for and none indicates a block that failed to move. §3's
+      "3 400" and "94" were the two figures most damaged by `f8134ac5`.
+- [x] `wc -l foolish-ubca2/src/fvm_storage.rs foolish-ubca2/src/fvm_storage/*.rs`
+      (2026-09-27 13:28) — 2 247 / 750 / 852 / 372 / 111 / 3 652 = 7 984 total.
+- [x] Confirm **no `mod.rs` was created** (`rust_instructions.md` §5):
       `find foolish-ubca2/src -name mod.rs` → must be empty.
-- [ ] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
+      (2026-09-27 13:28) — **empty.** Path-based modules throughout, as required.
+- [x] Confirm **no visibility was widened**: review the diff for any `pub`/`pub(crate)` added to a
       previously-private item. *There should be NONE. Any one of them → report it to the human
       explicitly, even if the tests pass.*
-- [ ] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
+      (2026-09-27 13:28) — **NONE.** Enumerated every `pub`/`pub(crate)`/`pub(super)` line on both
+      sides of the diff: each appears in the removed set AND the added set with a **byte-identical
+      qualifier**, differing only in indentation. Including `pub(super) fn
+      check_rename_of_named_creation` and its siblings — `pub(super)` inside `fvm_storage/`
+      means exactly what it meant inline (visible to `fvm_storage`), so no semantic change.
+      The four `step_*` functions remain `pub` in a `pub mod`, unchanged from `f8134ac5`.
+- [x] Confirm **no einmo baseline changed**: `git diff jia...foop-96-split-fvm-storage --stat --
       foolish-ubca2/einmo_suite*` → **must be empty.** A changed baseline is a regression
       (FOOP-96.md §Test Plan).
-- [ ] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
+      (2026-09-27 13:28) — **empty.** Not one byte of `input/`, `output/`, `checked/` or
+      `verified/` differs. Consistent with the einmo gates passing inside foolish-ubca2's 186 at
+      every single commit. **No `einmo promote` was run, correctly** — this FOOP generates no
+      output, and a promotion would have been the signal that something broke.
+- [x] Update `FOOP-96.md` frontmatter `status:` as appropriate and refresh its `## Last Updated`
       section (REPLACE the entry, do not append — AGENTS.md §Markdown File Update Protocol).
-- [ ] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
+      (2026-09-27 13:28) — `status: Draft` → `Implementing`; `## Last Updated` replaced with a
+      2026-09-27 entry recording the execution, the actuals, and the three stale figures.
+- [x] **Accumulate and report ALL doubts in ONE statement** to the human — or record "no doubts"
       (AGENTS.md §"Accumulate doubts; report them once, at the end").
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:28) — **seven doubts, all non-blocking, all recorded below and reported
+      together.** See §"Accumulated doubts" beneath this checklist. Per the rule, they were
+      accumulated during the work and are presented once, here.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:28) — **470 / 0 / 0.**
+
+---
+
+## Accumulated doubts — reported once, per AGENTS.md §"Accumulate doubts; report them once, at the end"
+
+*All seven are NON-BLOCKING. The work proceeded under "Doubts, none blocking"; none of them is a
+defect the FOOP introduced, and each is either stale documentation the FOOP inherited or a
+decision left open for the human. They are listed most-important first.*
+
+**D1 — [ ] The public API path moved, and FOOP-96.md §Abstract says it does not.**
+§Abstract asserts *"no public API changes"*. That was true when written, and stopped being true
+when `f8134ac5` (2026-09-26) made `mod core_fir_conversion` a `pub mod` with `pub` `step_*`
+functions. Phase 4's rename therefore moves the public path
+`foolish_ubca2::fvm_storage::core_fir_conversion::{step_to_constanic, step_until, step_until_line_number, step_until_statement_name}`
+to `…::fvm_storage::stepping::{…}`. **Nothing else changed** — same four functions, same
+signatures, same behaviour — and `tests/debugger_api.rs` (the visibility regression test) was
+repointed and still compiles and passes. `f8134ac5`'s own commit message anticipated this exact
+step: *"relocating them to stepping.rs is FOOP-96 Phase 4, still forthcoming."*
+**The decision for the human:** accept the path break (recommended — the crate is pre-1.0, the
+name `core_fir_conversion` was wrong and the human ruled on `stepping.rs`), or ask for a
+`pub use stepping::{…} as core_fir_conversion`-style shim. No shim was added on my own judgment;
+that would be a design decision riding on a mechanical FOOP.
+
+**D2 — [ ] Ten test identifiers in `tests.rs` still carry the `arena_compiler` name.**
+`fn arena_compiler_compiles_a_simple_brane` and 8 siblings, plus the `// ── arena_compiler tests ──`
+section comment grouping them. I left them deliberately: they are *definitions*, not references to
+the module, and renaming them is judgment work that §0.3 forbids bundling (*"No behavior change
+bundled in"*) and that Rejected Alternative G already refused to do to this same test file. The
+Test Plan also names tests **by name** as gates (`fvm_storage::tests::step_until_*`), which is
+evidence the identifiers are load-bearing here. **If you want them renamed, it is one
+`sed`** (`arena_compiler_` → `compiler_`, 10 sites) and I will do it as its own commit.
+
+**D3 — [ ] Phase 4 ran as TWO commits where the plan named one.**
+The plan's Phase 4 prescribed a single commit covering both the move and the rename to
+`stepping.rs`. I split it into a pure move then a pure rename, because §0.3 (*"Renames happen in
+their own commits, after the moves land"*) and the Test Plan's *"one block per commit"* / *"never
+bundle a behavior change with a move"* govern over the plan's phrasing — and because the rename is
+now a public-path change (D1), making it genuinely behavior-adjacent. This is what preserved the
+FOOP's central property, that the move commit is inspectable as *"moved text and changed nothing"*.
+Recorded in the plan at Phase 4. **Reversal cost: zero** — the two commits could be squashed
+without changing a byte.
+
+**D4 — [ ] rustfmt reflowed some moved lines, so "moved verbatim as text" is true of TOKENS, not of lines.**
+Dedenting every line changes the wrap column at `max_width = 108`, so `cargo fmt` re-wrapped
+several long lines inside the moved blocks, and one rename shortened a line enough for rustfmt to
+elide redundant closure braces (`search_dispatch.rs` / `fvm_storage.rs:1217`). The plan mandates
+`cargo fmt --all` after every move, so this is expected and unavoidable. The proof that nothing
+was retyped is the token-stream comparison (above), which is indifferent to wrapping. **Flagged
+only so a reviewer who diffs line-by-line is not alarmed** by hunks that look rewritten.
+
+**D5 — The plan's baseline figures were stale at execution; 470 / 0 / 0 was used throughout.**
+`f8134ac5` landed the day after the plan's final prep pass. It moved: 467 → **470** workspace
+tests (and `foolish-ubca2` lib 184 → **186**), 115 → **117** `#[test]` fns in `fvm_storage.rs`,
+and `mod core_fir_conversion` from 94 lines private to **88 lines `pub`**. All three were
+re-measured in Phase 0 and recorded in the plan; the instruction there — *"record the NEW number
+and use it as the invariant"* — was followed. Every phase held 470 / 0 / 0 in both directions.
+
+**D6 — [ ] `foolish-ubca2` is not clippy-clean, contrary to the folklore in this FOOP's own prose.**
+`sequencer.rs:525` carries a `clippy::collapsible_if`. Verified PRE-EXISTING by running clippy on
+**unmodified `jia`** — same single warning, same location, outside `fvm_storage.rs` and untouched
+by this FOOP. FOOP-96.md §Test Plan and `f8134ac5`'s commit message both say `foolish-ubca2` is
+clippy-clean; it is not. Not fixed here (out of scope — this FOOP changes no behaviour), but it
+means the "no NEW warnings" gate has to be read as a *delta* check, which is how I applied it.
+`foolish-core`'s 4 `iter_mut.next()` warnings are the other known pre-existing set.
+
+**D7 — `stepping.rs`'s `//!` doc had to deviate from the plan's mandated wording.**
+Phase 4 requires the `//!` to say the `step_until*` functions' *"`expect(dead_code)` attributes mean
+'no PRODUCTION caller by design'"*. Those attributes no longer exist — `f8134ac5` deleted them,
+correctly, because real `pub` API needs no dead-code exemption. The `//!` therefore states the
+*substance* those attributes encoded (no PRODUCTION caller **by design**, not unused; keep in
+working order) and records that re-adding the annotation would be a regression. The mandated
+content is otherwise complete. Also corrected two sentences the split falsified (the
+"FIR→core-FIR output-serialization family" claim and "These **conversion** functions"), per
+§Open Questions' *"correct only the sentence that is falsified"*, and clarified that
+`step_to_constanic` unlike the `step_until*` trio **is** a production entry point so the doc does
+not over-claim.
 
 ---
 
