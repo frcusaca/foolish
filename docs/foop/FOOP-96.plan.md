@@ -306,18 +306,31 @@ use crate::identifier::{Characterizations, Identifier};
 ```
 **`use crate::…` lines move verbatim** — `crate` means the same thing in a child module.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/arena_compiler.rs`, doc
+      (2026-09-27 11:00)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/arena_compiler.rs`, doc
       comment included; strip one indent level; drop the `mod` wrapper.
-- [ ] Convert the `///` module doc to `//!`.
-- [ ] In `fvm_storage.rs`: `mod arena_compiler;` — and **leave the
-      `pub(crate) use arena_compiler::{…}` re-export line exactly as it is.**
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Re-measured boundary (post-Phase-2): doc 2338–2339, `mod` 2340, close 3088, 749 lines —
+      matches this section's stated size exactly. Verified byte-identical via diff.
+      (2026-09-27 11:03)
+- [x] Convert the `///` module doc to `//!`.
+      (2026-09-27 11:03)
+- [x] In `fvm_storage.rs`: `mod arena_compiler;` — and **left the
+      `pub(crate) use arena_compiler::{…}` re-export line exactly as it is.** Confirmed it still
+      resolves post-move (compiles clean).
+      (2026-09-27 11:03)
+- [x] `cargo build -p foolish-ubca2` — compiles. No errors, no private-item complaints.
+      (2026-09-27 11:04)
+- [x] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean. Same
+      pre-existing warnings only (4 foolish-core, 1 foolish-ubca2 sequencer.rs), no new ones.
+      (2026-09-27 11:04)
+- [x] `cargo test --workspace` — **470 / 0 / 0.** Matches baseline exactly.
+      (2026-09-27 11:05)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move arena_compiler--complete`
+      (2026-09-27 11:06)
+- [x] Run all tests — old and new — and make sure they all pass correctly. Confirmed above.
+      (2026-09-27 11:06)
 
 ---
 
