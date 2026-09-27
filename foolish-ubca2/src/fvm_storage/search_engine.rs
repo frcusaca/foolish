@@ -1,5 +1,5 @@
 //! The search engine: the candidate-navigation and predicate-matching machinery `SearchFir`'s dispatch
-//! (`mod search_fir_dispatch` below) drives during a search step.
+//! (`mod search_dispatch` below) drives during a search step.
 use super::{Equality, FVMStorage, FirCursor, FirPointer, default_equal};
 
 use foolish_core::fir::Nyes;

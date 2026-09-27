@@ -652,14 +652,26 @@ All moves have landed. **Only now** do the modules get their final names (FOOP-9
 rename is its own commit — a rename touches every `use` site, and bundled with a move it destroys
 the ability to say "this commit moved text and changed nothing."
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Rename `search_fir_dispatch` → `search_dispatch`.**
+      (2026-09-27 11:50)
+- [x] **Rename `search_fir_dispatch` → `search_dispatch`.**
       `git mv foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs foolish-ubca2/src/fvm_storage/search_dispatch.rs`
       Update `mod` declaration and every `use` / path reference — **including the bare-path
       import inside `tests.rs`** if it names this module.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
+      Beyond the `mod` line and `tests.rs`'s one bare-path import, `fvm_storage.rs` itself calls
+      into this module extensively by bare path (13 call sites) — all renamed together via a
+      single `sed` substitution across `fvm_storage.rs`, `tests.rs`, and a doc-comment mention in
+      `search_engine.rs` (`` `mod search_fir_dispatch` below ``, now `` `mod search_dispatch`
+      below ``). Confirmed zero remaining `.rs` references repo-wide outside `fvm_storage/`.
+      (2026-09-27 11:52)
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
+        `cargo fmt --all` reformatted two call sites whose line length changed with the shorter
+        identifier (mechanical rustfmt re-flow, not a hand edit) — re-verified build/clippy/tests
+        clean after formatting.
+        (2026-09-27 11:55)
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
+        (2026-09-27 11:56)
 - [ ] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
