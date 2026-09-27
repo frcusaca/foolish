@@ -672,13 +672,22 @@ the ability to say "this commit moved text and changed nothing."
         (2026-09-27 11:55)
   - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
         (2026-09-27 11:56)
-- [ ] **Rename `arena_compiler` → `compiler`.**
+- [x] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+      Renamed only module-PATH references (`arena_compiler::…` → `compiler::…`, the `mod` line,
+      the re-export, and one doc-comment mention). **Deliberately did NOT rename the nine
+      `#[test] fn arena_compiler_*` test function names in `tests.rs`** — those are test
+      identifiers, not module-path references, and renaming them is a judgment change outside
+      this FOOP's mechanical scope (§0 forbids bundling judgment into a move/rename this narrow).
+      (2026-09-27 12:00)
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
+        `cargo fmt --all --check` was already clean, no reformatting needed this time.
+        (2026-09-27 12:02)
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename arena_compiler to compiler--complete`
+        (2026-09-27 12:03)
 - [-] ~~**Rename `core_fir_conversion` → `core_fir_bridge`**~~ — **SKIP: Phase 5 was struck
       (2026-09-24), so this file never exists.** The `core_fir_conversion` NAME is retired by
       Phase 4 instead, which moves the stepping driver to `stepping.rs`.

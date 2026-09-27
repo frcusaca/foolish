@@ -2235,13 +2235,13 @@ mod search_dispatch;
 
 pub mod stepping;
 
-mod arena_compiler;
+mod compiler;
 
-/// Minimal re-export surface for `UbcaEvaluator::evaluate` — `arena_compiler` stays a private
+/// Minimal re-export surface for `UbcaEvaluator::evaluate` — `compiler` stays a private
 /// module; only the exact functions `evaluate`'s body needs are re-exported, not its full
 /// surface. `stepping` is `pub` in its own right (its debugger entry points are public API), so
 /// this re-export is a convenience alias for `evaluate`'s callers, not a visibility widening.
-pub(crate) use arena_compiler::{compose_program_with_system, program_result};
+pub(crate) use compiler::{compose_program_with_system, program_result};
 pub(crate) use stepping::step_to_constanic;
 
 #[cfg(test)]
