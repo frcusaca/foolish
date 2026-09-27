@@ -437,24 +437,24 @@ the core is ~660 lines smaller.
 
 **Moved under its CURRENT name** (renamed to `core_fir_bridge.rs` in Phase 7).
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [-] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The einmo gates matter most
       here** — the bridge feeds the old rendering path, so `einmo_gate_checked` is the
       direct byte-identity check on this move.
-- [ ] Move the remaining `core_fir_conversion` body **as text** into
+- [-] Move the remaining `core_fir_conversion` body **as text** into
       `foolish-ubca2/src/fvm_storage/core_fir_conversion.rs`; strip one indent level; drop the
       `mod` wrapper.
-- [ ] Convert the module `///` doc to `//!` — and **correct only the sentence that Phase 4
+- [-] Convert the module `///` doc to `//!` — and **correct only the sentence that Phase 4
       falsified** (it currently opens "The stepping loop **and** the FIR→core-FIR
       output-serialization family"; the stepping loop is no longer here). Change nothing else in
       the doc (FOOP-96.md §Open Questions).
-- [ ] In `fvm_storage.rs`: `mod core_fir_conversion;` and keep
+- [-] In `fvm_storage.rs`: `mod core_fir_conversion;` and keep
       `pub(crate) use core_fir_conversion::proto_to_core_fir;`.
-- [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
-- [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
-- [ ] `cargo test --workspace` — **470 / 0 / 0.**
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [-] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
+- [-] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
+- [-] `cargo test --workspace` — **470 / 0 / 0.**
+- [-] Commit, alone: `Major: Split fvm_storage.rs, Phase: move core_fir bridge--complete`
+- [-] Run all tests — old and new — and make sure they all pass correctly.
 
 ---
 
@@ -628,6 +628,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 4: moved the debugger implementation verbatim to `stepping.rs`
-and preserved the public `core_fir_conversion` path as a re-export. All three debugger
-breakpoint tests and all 470 workspace tests pass; build, format, and clippy checks pass.
+**Changes**: Marked every Phase 5 task canceled because FOOP-86 already removed the
+`proto_to_core_fir` bridge. Phase 4 moved the debugger to `stepping.rs` while preserving
+its public compatibility path; all 470 workspace tests passed.
