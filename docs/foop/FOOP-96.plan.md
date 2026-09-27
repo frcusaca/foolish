@@ -162,28 +162,39 @@ use regex::Regex;
 `use super::{…}` becomes `use super::{…}` unchanged — a child module's `super` is still
 `fvm_storage`.
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (see Phase 0's
+- [x] Establish relevant tests for this sub-section: the whole workspace (see Phase 0's
       checkbox — a move can break anything). Run
       [these instructions](../../README.md#running-specific-tests) for `cargo test --workspace`
       and the einmo gates `einmo_gate_checked`, `einmo_gate_verified` (run with
       `-- --test-threads=1`; see Phase 0).
-- [ ] Create `foolish-ubca2/src/fvm_storage/` (the sibling directory; **no `mod.rs`** —
+      (2026-09-27 13:10)
+- [x] Create `foolish-ubca2/src/fvm_storage/` (the sibling directory; **no `mod.rs`** —
       `rust_instructions.md` §5).
-- [ ] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_engine.rs`: cut lines
+      (2026-09-27 13:10)
+- [x] Move the block **as text** into `foolish-ubca2/src/fvm_storage/search_engine.rs`: cut lines
       `2237–2607` plus the preceding doc comment, strip ONE level of indentation, drop the
       `mod search_engine {` wrapper and its closing `}`. **Retype nothing.**
-- [ ] Convert the module's `///` doc comment into a `//!` module-level doc at the top of the new
+      (2026-09-27 13:10)
+- [x] Convert the module's `///` doc comment into a `//!` module-level doc at the top of the new
       file (`rust_instructions.md` §2d.3).
-- [ ] In `fvm_storage.rs`, replace the removed block with the declaration, preserving visibility:
+      (2026-09-27 13:10)
+- [x] In `fvm_storage.rs`, replace the removed block with the declaration, preserving visibility:
       `pub(crate) mod search_engine;`
-- [ ] `cargo build -p foolish-ubca2` — **must compile with no new errors.**
+      (2026-09-27 13:10)
+- [x] `cargo build -p foolish-ubca2` — **must compile with no new errors.**
       *A compile error naming a private item → STOP and report (do not widen visibility).*
-- [ ] `cargo fmt --all` then `cargo fmt --all --check` — clean.
-- [ ] `cargo clippy -p foolish-ubca2 --all-targets` — no NEW warnings.
-- [ ] `cargo test --workspace` — **470 passed, 0 failed, 0 ignored.**
+      (2026-09-27 13:10)
+- [x] `cargo fmt --all` then `cargo fmt --all --check` — clean.
+      (2026-09-27 13:10)
+- [x] `cargo clippy -p foolish-ubca2 --all-targets` — no NEW warnings.
+      (2026-09-27 13:10)
+- [x] `cargo test --workspace` — **470 passed, 0 failed, 0 ignored.**
       *Any other number, in either direction → STOP and report.*
-- [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_engine--complete`
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:10)
+- [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: move search_engine--complete`
+      (2026-09-27 13:10)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-09-27 13:10)
 
 ---
 
@@ -586,6 +597,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 0 measurements and the serial workspace baseline. Current `jia`
-has 470 passing tests, 117 tests in `fvm_storage.rs`, and a public debugger module added
-after the plan was drafted; test commands disable the unusable `sccache` wrapper.
+**Changes**: Completed Phase 1: moved `search_engine` verbatim to its own file. Build, format,
+clippy, byte-for-byte einmo gates, and all 470 workspace tests pass. Phase 0 recorded the
+current baseline and the public debugger module added after the original plan.
