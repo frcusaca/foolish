@@ -2,12 +2,12 @@
 foop: D69
 title: Split fvm_storage.rs — one file per concern
 author: Claude Code / claude-opus-5 (directed by the human)
-status: Draft
+status: Implementing
 type: Standards
 created: 2026-09-16
 phase: phase-4
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-96: Split `fvm_storage.rs` — one file per concern
@@ -607,15 +607,8 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 ## Last Updated
 
-**Date**: 2026-09-25
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: §2 now records the human's ruling (2026-09-25) that **`stepping.rs` is created
-regardless of its 94-line size**: the three `step_until*` functions are the project's Foolish
-debugger and the foundation of the `foolish-debugging` skill, their `expect(dead_code)` attributes
-mean *no production caller by design* rather than unused code, and a separate file is what keeps
-them visible and maintained. Prior entry: re-measured the whole FOOP against `jia` post-FOOP-86 —
-the file is **7 737** lines not 8 282, the baseline **467 / 0 / 0** not 791 / 0 / 1, `mod tests`
-**115** functions in **3 400** lines not 110 in 3 290; §1's table replaced with brace-matched
-measurements plus a drift table; §2's two-concerns finding resolved itself when FOOP-86 deleted
-the `proto_to_core_fir` bridge, turning a split into a rename; §3 drops `core_fir_bridge.rs` and
-§3.1's conditional is marked resolved.
+**Date**: 2026-09-27
+**Updated By**: Codex / GPT-6
+**Changes**: Began implementation on `jia`; current measurements and test baseline will be
+recorded in the worktree plan. The 2026-09-25 decision to give the debugger its own
+`stepping.rs` file remains in force.

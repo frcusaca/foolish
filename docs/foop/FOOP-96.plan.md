@@ -77,10 +77,12 @@ WORKTREE_FULL_FS_PATH  = /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-st
 
 *Judgment phase — larger model (Opus/Sonnet). It decides whether the FOOP's premise still holds.*
 
-- [ ] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
+- [x] Read [`FOOP-96.md`](FOOP-96.md) in full — especially §0, §1 (the measured structure),
       §3 (target layout), §3.2 (the tests import hazard), §4 (the safety argument), §5.
-- [ ] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
+      (2026-09-27 13:05)
+- [x] Begin work: commit `FOOP-96.md` and `FOOP-96.plan.md` to `jia`, check `begun: [x]` in the
       `FOOP-96.md` frontmatter.
+      (2026-09-27 13:05)
 - [ ] Create worktree at `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` with
       branch `foop-96-split-fvm-storage`:
       `git worktree add -b "foop-96-split-fvm-storage" "/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage"`
@@ -566,24 +568,7 @@ the ability to say "this commit moved text and changed nothing."
 
 ## Last Updated
 
-**Date**: 2026-09-25
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: THIRD PREP PASS — two human rulings recorded, plus a rename.
-**(1) `stepping.rs` is DECIDED, not open.** The previous pass left "does a 94-line module earn its
-own file?" for the executor to raise. The human settled it emphatically — *"those needs their own
-file. The ability is very important for debugging and have been used a lot!!! It must be
-maintained separately and kept in working order."* Phase 4 now says so, warns against
-"simplifying" by leaving them in the core, and explains that the `expect(dead_code)` attributes
-mean *no PRODUCTION caller by design* rather than unused code — the specific misreading that could
-get the Foolish debugger deleted. The `//!` doc requirement now mandates stating that role, and
-the three `step_until*` tests are named as a HARD GATE with their measured count (exactly 3, one
-per entry point): they are the only coverage of functions with no production caller, so if one
-stops being COMPILED nothing else notices.
-**(2) `ubca_snapshot_tester` renamed to `einmo_gates`.** The human flagged the name as suspect —
-the project uses einmo, not generic snapshots. The file's own first line already read "Einmo gates
-for FOOP-36's hand-authored Foolish rendering contract", so the filename contradicted its own doc;
-it is `#[cfg(test)]`-only and contains three einmo gates and nothing else. Note the `2` suffix was
-already gone (FOOP-86 renamed the file); what this pass fixed was the NAME, and separately the
-plan's stale references to the retired `ubca_snapshot_tester2` module. Live references updated in
-`lib.rs`, `foolish-cli/src/main.rs`, and this plan; completed FOOP plans left as written, per the
-historical-record rule.
+**Date**: 2026-09-27
+**Updated By**: Codex / GPT-6
+**Changes**: Began execution after reading the specification and plan. The 2026-09-25 decisions
+to keep the debugger in its own file and use the `einmo_gates` name remain in force.
