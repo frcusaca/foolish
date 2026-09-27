@@ -293,6 +293,14 @@ use crate::identifier::{Characterizations, Identifier};
 
 *Execution phase — smaller model. 94 lines, moved whole.*
 
+> **EXECUTION UPDATE 2026-09-27:** `jia` commit `f8134ac5` made
+> `fvm_storage::core_fir_conversion` and its debugger functions public API. Preserve that
+> existing path with `pub use stepping as core_fir_conversion;` while declaring
+> `pub mod stepping;`. The original inline module disappears, but the old public path remains
+> valid. The functions no longer have `expect(dead_code)` attributes; the module doc must
+> explain their current public debugger role. This update preserves FOOP-96 §0's explicit
+> no-public-API-change constraint and the later human ruling that FVM users can call them.
+
 > **REFRAMED 2026-09-24 (prep for execution).** This phase was written as "the one phase that
 > divides an existing module", because `core_fir_conversion` then bundled the stepping driver
 > with the `proto_to_core_fir` bridge (FOOP-96.md §2). **FOOP-86 deleted the bridge**, so there
@@ -337,14 +345,11 @@ deleted `display_stmt_name` along with the bridge it served (`grep -c display_st
 foolish-ubca2/src/fvm_storage.rs` → **0**). Nothing stays behind: the module holds only
 `MAX_STEPS` and the four `step_*` functions, so this phase empties it.
 
-**Preserve the `#[cfg_attr(not(test), expect(dead_code, …))]` attributes** on `step_until_*`
-verbatim — they have no production caller by design (they are the `foolish-debugging` skill's
-entry points), and dropping them produces exactly the new clippy/rustc warning the stop
-conditions name.
+**Current code has no `#[cfg_attr(not(test), expect(dead_code, …))]` attributes** on
+`step_until_*`: the public API commit removed them. Move the current text verbatim.
 
-**The re-export line**
-`pub(crate) use core_fir_conversion::{proto_to_core_fir, step_to_constanic};` must be updated:
-`step_to_constanic` now comes from `stepping`. Split it into two lines (one per source module).
+**The current re-export line** is
+`pub(crate) use core_fir_conversion::step_to_constanic;`; point it to `stepping`.
 
 - [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests). **The `step_until*` unit tests
@@ -363,28 +368,25 @@ conditions name.
       `MAX_STEPS`. Nothing is left behind by this move; the module is emptied and its `mod` line
       removed.
 - [ ] Move `MAX_STEPS` + the four `step_*` functions **as text** into
-      `foolish-ubca2/src/fvm_storage/stepping.rs`, with their doc comments and `#[cfg_attr]`
-      attributes.
+      `foolish-ubca2/src/fvm_storage/stepping.rs`, with their current doc comments.
 - [ ] Give the new file a `//!` module doc: the stepping loop and the `step_until*` breakpoints.
-      **It must state that the `step_until*` functions are the project's Foolish debugger, that
-      the `foolish-debugging` skill is built on them, and that their
-      `expect(dead_code)` attributes mean "no PRODUCTION caller by design" — NOT that the code is
-      unused** (the human, 2026-09-25: *"very important for debugging and have been used a
-      lot!!! It must be maintained separately and kept in working order."*). A future reader who
-      mistakes these for dead code is the specific failure this doc prevents.
+      State that the `step_until*` functions are the project's public Foolish debugger and that
+      the `foolish-debugging` skill is built on them. A future reader must not mistake these
+      public functions for dead code.
       (`rust_instructions.md` §2d.3.)
 - [ ] Move `core_fir_conversion`'s `use super::{…}` list across as well. Since the module holds
       ONLY these functions now, the whole list comes with them — there is no subset to narrow.
       Let the compiler flag anything unused; **do not widen anything to make it resolve.**
-- [ ] In `fvm_storage.rs`: replace `mod core_fir_conversion { … }` with `mod stepping;`, and
+- [ ] In `fvm_storage.rs`: replace `pub mod core_fir_conversion { … }` with `pub mod stepping;`
+      and `pub use stepping as core_fir_conversion;`, preserving the public API, and
       change the re-export at line ~4334 from
       `pub(crate) use core_fir_conversion::step_to_constanic;` to
       `pub(crate) use stepping::step_to_constanic;`. **That re-export is already the module's
       only one** — the earlier draft said "alongside the bridge's own re-export", which no
       longer exists.
-- [ ] Confirm `core_fir_conversion` is now EMPTY and its `mod` block is gone entirely. *If
-      anything is left in it → STOP and report: something was in that module that this plan did
-      not account for.*
+- [ ] Confirm the inline `core_fir_conversion` module is gone and the old path resolves only
+      through the compatibility re-export. *If any implementation remains in the old module →
+      STOP and report: something was in that module that this plan did not account for.*
 - [ ] `cargo build -p foolish-ubca2` — compiles. *Private-item error → STOP and report.*
 - [ ] `cargo fmt --all` + `--check`; `cargo clippy -p foolish-ubca2 --all-targets` — clean.
       *An unused-import or dead-code warning here is THIS phase's and must be fixed.*
@@ -615,6 +617,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 3: moved `arena_compiler` to its own file. Rustfmt adjusted one
-import line wrap after dedenting; no logic changed. Build, format, clippy, signed einmo gates,
-and all 470 workspace tests pass.
+**Changes**: Reconciled Phase 4 with `jia`'s later public debugger API. The implementation
+will move to `stepping.rs`, while a public re-export preserves
+`fvm_storage::core_fir_conversion` and its existing callers.

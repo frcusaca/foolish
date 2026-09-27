@@ -160,6 +160,12 @@ moves; the doc comment above each `mod` line moves with it.
 3572–4322; the re-exports are 4324–4328; and `mod tests` is 4330–7987 with
 117 `#[test]` functions. The table above records the earlier `0df1865b` state.
 
+The public debugger API landed in `jia` after this FOOP was drafted (`f8134ac5`). To retain
+§0's no-public-API-change guarantee, Phase 4 moves its implementation to `stepping.rs` and
+re-exports that public module under the existing `core_fir_conversion` path. The old inline
+module body disappears; the old public path remains callable. The newer public functions
+have no `expect(dead_code)` attributes.
+
 ### §2 `core_fir_conversion` is misnamed — RESOLVED ITSELF, one concern now, still misnamed
 
 **UPDATED 2026-09-24. This section's central finding has largely dissolved, and saying so is
@@ -615,6 +621,6 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Began implementation and recorded the current `jia` measurements. The 2026-09-27
-baseline has 470 passing tests, 117 tests in `fvm_storage.rs`, and a public
-`core_fir_conversion` module introduced after the 2026-09-24 measurement.
+**Changes**: Reconciled the split with `jia`'s newer public debugger API: Phase 4 will retain
+the existing `core_fir_conversion` path as a re-export of `stepping`. The current baseline
+has 470 passing tests and 117 tests in `fvm_storage.rs`.
