@@ -652,7 +652,7 @@ impl FirPointer {
 
     /// The constanic result this pointer resolves to, if any. Applies the constanic gate itself —
     /// pre-constanic always answers `None`. `pub(crate)`: also called directly by
-    /// `search_fir_dispatch::statement_value_for_comparison`, a nested module.
+    /// `search_dispatch::statement_value_for_comparison`, a nested module.
     pub(crate) fn settled_constanic_result(self, storage: &FVMStorage) -> Option<FirPointer> {
         if !storage.get_nyes(self).is_constanic() {
             return None;
@@ -933,21 +933,21 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                             // immediately — so `ptr`'s home brane, not `ptr`, goes to the
                             // `ab_search_by_pattern` call.
                             let home_brane = ptr.home_brane(storage);
-                            search_fir_dispatch::check_null_const_conflict(
+                            search_dispatch::check_null_const_conflict(
                                 storage,
                                 ptr,
                                 body,
                                 Some(ptr),
                                 home_brane,
                             );
-                            search_fir_dispatch::check_rename_of_named_creation(storage, ptr, body);
+                            search_dispatch::check_rename_of_named_creation(storage, ptr, body);
                         }
                         // Route 3 (FOOP-86 §6.2) — recoordination. A statement whose settled VALUE is a
                         // brane brings that brane's members into this context. If one of them is a
                         // null-characterized name already defined here, the brane cannot be coordinated in:
                         // THIS STATEMENT is the unsteppable one, so the check runs on the statement holding
                         // the value, not on the members it would have introduced.
-                        search_fir_dispatch::check_recoordinated_null_const_conflict(storage, ptr, body);
+                        search_dispatch::check_recoordinated_null_const_conflict(storage, ptr, body);
                         // Do NOT clobber a terminal state the route checks above already reached.
                         // `check_recoordinated_null_const_conflict` settles THIS statement NK (FOOP-86 §6.2
                         // route 3) and the route 1/4 checks may have halted the brane; writing `body_nyes`
@@ -1133,7 +1133,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 let already_populated = storage.get_mut(ptr).helpers_populated();
                 if !already_populated {
                     storage.get_mut(ptr).set_helpers_populated();
-                    search_fir_dispatch::populate_concat_helpers(storage, ptr);
+                    search_dispatch::populate_concat_helpers(storage, ptr);
                     let helpers: Vec<FirPointer> = FirCursor::new(ptr, storage).ubc_children().to_vec();
                     for helper in helpers {
                         storage.with_mut(ptr, |fir| fir.push_task(helper));
@@ -1213,10 +1213,8 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 // (FOOP-33 §5: referentially identical to a user's own `'True` reference).
                 let name = if verdict { "'True" } else { "'False" };
                 let home_brane = ptr.home_brane(storage);
-                let boolean = search_fir_dispatch::ab_search_by_pattern(storage, name, home_brane)
-                    .and_then(|(found, _)| {
-                        search_fir_dispatch::statement_value_for_comparison(storage, found)
-                    })
+                let boolean = search_dispatch::ab_search_by_pattern(storage, name, home_brane)
+                    .and_then(|(found, _)| search_dispatch::statement_value_for_comparison(storage, found))
                     .map(|body| body.value(storage));
                 let Some(boolean) = boolean else {
                     // system.foo always defines 'True/'False; failing to find one means the prelude itself
@@ -1238,9 +1236,9 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
         },
         FirSpec::Search { is_value_search, .. } => {
             if is_value_search {
-                search_fir_dispatch::value_search_step(storage, ptr, scope.has_ancestral_sfm);
+                search_dispatch::value_search_step(storage, ptr, scope.has_ancestral_sfm);
             } else {
-                search_fir_dispatch::name_search_step(
+                search_dispatch::name_search_step(
                     storage,
                     ptr,
                     scope.current_statement,
@@ -1292,13 +1290,12 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                                                         storage.foolish_children(stmt).first().copied();
                                                     match body {
                                                         Some(_) => {
-                                                            let clone =
-                                                                search_fir_dispatch::clone_stmt_result(
-                                                                    storage,
-                                                                    stmt,
-                                                                    ptr,
-                                                                    scope.has_ancestral_sfm,
-                                                                );
+                                                            let clone = search_dispatch::clone_stmt_result(
+                                                                storage,
+                                                                stmt,
+                                                                ptr,
+                                                                scope.has_ancestral_sfm,
+                                                            );
                                                             let mut cursor =
                                                                 FirCursorMut::new(ptr, storage);
                                                             cursor.push_search_result_pair(clone, stmt);
@@ -1321,7 +1318,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                 }
                 Nyes::Braning => {
                     if !FirCursor::new(ptr, storage).ubc_children().is_empty() {
-                        search_fir_dispatch::settle_from_ubc_result(storage, ptr);
+                        search_dispatch::settle_from_ubc_result(storage, ptr);
                     } else if contexted && anchored {
                         let anchor = storage.foolish_children(ptr)[0];
                         let fool_ref_fir = FirCursor::new(anchor, storage).ubc_children().get(1).copied();
@@ -1345,7 +1342,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                         });
                         match contexted_result {
                             Some(stmt) => {
-                                let clone = search_fir_dispatch::clone_stmt_result(
+                                let clone = search_dispatch::clone_stmt_result(
                                     storage,
                                     stmt,
                                     ptr,
@@ -1405,7 +1402,7 @@ fn fir_op_step(ptr: FirPointer, storage: &mut FVMStorage, scope: ArenaScope) {
                                 let body = storage.foolish_children(stmt).first().copied();
                                 match body {
                                     Some(_) => {
-                                        let clone = search_fir_dispatch::clone_stmt_result(
+                                        let clone = search_dispatch::clone_stmt_result(
                                             storage,
                                             stmt,
                                             ptr,
@@ -2234,7 +2231,7 @@ pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) 
 
 pub(crate) mod search_engine;
 
-mod search_fir_dispatch;
+mod search_dispatch;
 
 pub mod stepping;
 pub use stepping as core_fir_conversion;

@@ -544,14 +544,18 @@ All moves have landed. **Only now** do the modules get their final names (FOOP-9
 rename is its own commit — a rename touches every `use` site, and bundled with a move it destroys
 the ability to say "this commit moved text and changed nothing."
 
-- [ ] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
+- [x] Establish relevant tests for this sub-section: the whole workspace (Phase 0's set). Use
       [these instructions](../../README.md#running-specific-tests).
-- [ ] **Rename `search_fir_dispatch` → `search_dispatch`.**
+      (2026-09-27 13:24)
+- [x] **Rename `search_fir_dispatch` → `search_dispatch`.**
       `git mv foolish-ubca2/src/fvm_storage/search_fir_dispatch.rs foolish-ubca2/src/fvm_storage/search_dispatch.rs`
       Update `mod` declaration and every `use` / path reference — **including the bare-path
       import inside `tests.rs`** if it names this module.
-  - [ ] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
-  - [ ] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
+  - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
+        (2026-09-27 13:24)
+  - [x] Commit, alone: `Major: Split fvm_storage.rs, Phase: rename search_fir_dispatch to search_dispatch--complete`
+        (2026-09-27 13:24)
+      (2026-09-27 13:24)
 - [ ] **Rename `arena_compiler` → `compiler`.**
       `git mv foolish-ubca2/src/fvm_storage/arena_compiler.rs foolish-ubca2/src/fvm_storage/compiler.rs`
       Update the `mod` declaration, the
@@ -643,6 +647,5 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed Phase 6: moved all 117 `fvm_storage` tests to one sibling file.
-All 470 workspace tests and all 186 `foolish-ubca2` library tests pass; build, format,
-and clippy checks pass with no new warnings.
+**Changes**: Renamed the search dispatcher in its own commit and updated its Rust paths.
+Build, format, clippy, signed einmo gates, and all 470 workspace tests pass.
