@@ -678,11 +678,20 @@ the ability to say "this commit moved text and changed nothing."
       `pub(crate) use arena_compiler::{compose_program_with_system, program_result};` re-export,
       and `tests.rs:use arena_compiler::compile;`.
       Renamed only module-PATH references (`arena_compiler::…` → `compiler::…`, the `mod` line,
-      the re-export, and one doc-comment mention). **Deliberately did NOT rename the nine
-      `#[test] fn arena_compiler_*` test function names in `tests.rs`** — those are test
-      identifiers, not module-path references, and renaming them is a judgment change outside
-      this FOOP's mechanical scope (§0 forbids bundling judgment into a move/rename this narrow).
-      (2026-09-27 12:00)
+      the re-export, and one doc-comment mention). **Originally deliberately did NOT rename the
+      nine `#[test] fn arena_compiler_*` test function names in `tests.rs`** — reasoned at the
+      time that those are test identifiers, not module-path references, and renaming them was a
+      judgment change outside this FOOP's mechanical scope. **UPDATED 2026-09-27, at the human's
+      explicit request**: renamed all nine `fn arena_compiler_*` → `fn compiler_*` (pure
+      identifier rename inside the test module, never referenced by path from outside it, so it
+      cannot break anything by construction). `sed -i 's/fn arena_compiler_/fn compiler_/g'` on
+      `tests.rs`. Left `docs/foop/FOOP-16.plan.md`'s two mentions of the old test names alone —
+      it is a completed FOOP's own historical plan file, describing what was true when FOOP-16
+      executed (same "completed plan files are left as written" rule as elsewhere in this repo).
+      Re-verified: `cargo build -p foolish-ubca2 --all-targets` clean, `cargo fmt`/`clippy` clean
+      (no new warnings), `cargo test --workspace` 470/0/0, all 9 renamed `compiler_*` tests pass,
+      and all four einmo-related tests including `einmo_gate_verified` green.
+      (2026-09-27 12:00, updated 2026-09-27 13:35)
   - [x] `cargo build -p foolish-ubca2 --all-targets`; `cargo test --workspace` — **470 / 0 / 0.**
         `cargo fmt --all --check` was already clean, no reformatting needed this time.
         (2026-09-27 12:02)
