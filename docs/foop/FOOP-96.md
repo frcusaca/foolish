@@ -628,8 +628,24 @@ independently and in parallel**, each by a different small model in its own sand
 | `foop-96-split-fvm-storage-codex` | Codex | **chatgpt-6-sol** (commits self-label "Codex GPT-6") |
 | `foop-96-split-fvm-storage-mimo` | opencode + OMO | **MiMo 2.6**, a mix of *pro* and *flash* as OMO chose per step (commits self-label `xiaomi/mimo-v2.6-pro`) |
 
-All three were later asked by the human to rename the nine `arena_compiler_*` test functions, which
-each had left in place; that commit is the last on each branch.
+**There was no plan for the experiment itself**, and this appendix is its only record. Each
+executor received the same single instruction, verbatim:
+
+> Execute FOOP-96 until it is complete according to the specification.
+
+Nothing else was said: no model-specific hints, and no warning that `jia` had moved since the
+plan's last prep pass. Everything in A.2–A.4 is therefore what each model made of FOOP-96's own
+spec and plan. Two consequences are worth reading with that prompt in mind:
+
+- "until it is complete" did **not** carry any of them past the plan's Phase 9 human `STOP!` —
+  none merged to `jia`.
+- The prompt names the **specification**, not the plan, as the standard of completion. codex's
+  choice to keep the old public path (A.3) follows that wording literally: the spec says "no
+  public API changes". The other two followed the plan's rename.
+
+All three were later asked by the human, in a follow-up message, to rename the nine
+`arena_compiler_*` test functions each had left in place. That commit is the last on each
+branch.
 
 **Evaluation method.** Claude Opus 5.5 (Claude Code) evaluated the three branches:
 
@@ -758,7 +774,9 @@ The other two branches are not merged; they remain as the experiment's record.
 
 **Date**: 2026-09-27
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: Added **Appendix A**, the record of the small-model execution experiment. This FOOP
+**Changes**: Added **Appendix A**, the record of the small-model execution experiment. The
+experiment had no plan of its own, and A.1 quotes the single instruction all three executors
+received. This FOOP
 was executed in parallel by Claude Sonnet 5, chatgpt-6-sol (Codex) and MiMo 2.6 (opencode + OMO,
 pro/flash). The appendix gives the objective results (all three correct: 470 / 0 / 0, einmo
 byte-identical), per-branch scores, and seven findings about the plan's clarity for small models.
