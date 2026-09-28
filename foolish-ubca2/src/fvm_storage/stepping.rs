@@ -15,13 +15,7 @@
 //! `step_to_constanic` is the exception: it IS the production stepping loop, reached through
 //! the `fvm_storage::step_to_constanic` re-export that `UbcaEvaluator::evaluate` drives.
 //!
-//! # Free functions, not methods
-//!
-//! These stepping functions dispatch across EVERY `FirSpec` variant
-//! (`match kind { FirSpec::Search => ..., FirSpec::Operator => ..., ... }`),
-//! so there is no single type to attach them to as methods — the same
-//! reason `fir_op_step`, `combine`, and every `search_dispatch`
-//! function are also free functions taking `FirPointer` explicitly.
+//! Why this is its own file despite its size: FOOP-96 §2 (the human's ruling, 2026-09-25).
 
 use super::{FVMStorage, FirCursor, FirPointer};
 
