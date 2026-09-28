@@ -647,6 +647,11 @@ the ability to say "this commit moved text and changed nothing."
 
 ## Phase 9 — Merge and cleanup
 
+- [x] Rename the nine `arena_compiler_` unit tests to `compiler_` after the
+      module rename, at the human's request. The same nine cases pass under
+      their new names; the full workspace and signed einmo gates pass; formatting
+      is clean. Clippy reports only pre-existing warnings in `sequencer.rs`.
+      (2026-09-27 18:57)
 - [x] Verify all work is complete in
       `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` and committed to
       `foop-96-split-fvm-storage`.
@@ -683,6 +688,6 @@ the ability to say "this commit moved text and changed nothing."
 
 **Date**: 2026-09-27
 **Updated By**: Codex / GPT-6
-**Changes**: Completed and committed the pre-merge review; the worktree branch is clean.
-The plan's no-comprehensive-test exception applies because FOOP-96 changes no behavior.
-Merge verification and the required human review checkpoint remain.
+**Changes**: Recorded the requested rename of nine compiler unit tests. The
+worktree contains this follow-up change; the required human review checkpoint
+and cleanup remain.

@@ -1839,7 +1839,7 @@ use compiler::compile;
 /// full source string, so this test's end-to-end shape is new coverage, not a direct mirror of one
 /// test).
 #[test]
-fn arena_compiler_compiles_a_simple_brane() {
+fn compiler_compiles_a_simple_brane() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{a = 1; b = 2;}").unwrap();
     assert_eq!(roots.len(), 1);
@@ -1874,7 +1874,7 @@ fn arena_compiler_compiles_a_simple_brane() {
 /// mirrors `compiler.rs::tests::build_as_statement_keeps_assignment_name_and_anonymous_fallback`'s
 /// anonymous-fallback half.
 #[test]
-fn arena_compiler_anonymous_statement_gets_the_anon_name() {
+fn compiler_anonymous_statement_gets_the_anon_name() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{1;}").unwrap();
     let root = roots[0];
@@ -1890,7 +1890,7 @@ fn arena_compiler_anonymous_statement_gets_the_anon_name() {
 /// `compile_standalone` (via `compile`) rejects a non-`Brane` top-level
 /// root — mirrors `compile_standalone_rejects_non_brane_root` exactly.
 #[test]
-fn arena_compiler_rejects_non_brane_root() {
+fn compiler_rejects_non_brane_root() {
     // The parser itself only ever produces a top-level Brane per source string, so to exercise the
     // non-Brane-root rejection path directly (matching the real test's use of `Astn::IntLit(1)` fed
     // straight to `compile_standalone`), call `compile_standalone` directly with a hand-built non-Brane
@@ -1904,7 +1904,7 @@ fn arena_compiler_rejects_non_brane_root() {
 /// `1 + 2` compiles to an `Operator` node with two `IndepInt` operands —
 /// exercises `build_fir`'s `BinaryOp` arm directly.
 #[test]
-fn arena_compiler_binary_op_has_two_operands() {
+fn compiler_binary_op_has_two_operands() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{x = 1 + 2;}").unwrap();
     let root = roots[0];
@@ -1920,7 +1920,7 @@ fn arena_compiler_binary_op_has_two_operands() {
 /// A name reference (`?x`-shaped bare identifier) compiles to an anchored-false `Search` — exercises
 /// `build_fir`'s `Identifier` arm and its characterization-folding (Gotcha #3).
 #[test]
-fn arena_compiler_identifier_compiles_to_an_unanchored_search() {
+fn compiler_identifier_compiles_to_an_unanchored_search() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{x = 1; y = x;}").unwrap();
     let root = roots[0];
@@ -1940,7 +1940,7 @@ fn arena_compiler_identifier_compiles_to_an_unanchored_search() {
 /// A dot-search (`a.x`) compiles to an anchored `Search` whose first
 /// child is the anchor — exercises `build_fir`'s `DotSearch` arm.
 #[test]
-fn arena_compiler_dot_search_is_anchored_with_an_anchor_child() {
+fn compiler_dot_search_is_anchored_with_an_anchor_child() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{a = {x=1;}; y = a.x;}").unwrap();
     let root = roots[0];
@@ -1966,7 +1966,7 @@ fn arena_compiler_dot_search_is_anchored_with_an_anchor_child() {
 /// `StayFullyFoolish` arm and the `under_sff` rule together, proving this crate's own compiler produces
 /// bodies satisfying the SFF invariant.
 #[test]
-fn arena_compiler_sff_marks_descendant_searches_econstanic() {
+fn compiler_sff_marks_descendant_searches_econstanic() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{a = <<x>>;}").unwrap();
     let root = roots[0];
@@ -1985,7 +1985,7 @@ fn arena_compiler_sff_marks_descendant_searches_econstanic() {
 /// `'a = ⬤` compiles a `Creation` as a named creation's whole RHS —
 /// exercises `build_fir`'s `Creation` arm.
 #[test]
-fn arena_compiler_creation_literal() {
+fn compiler_creation_literal() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{'a = \u{2b24};}").unwrap();
     let root = roots[0];
@@ -1999,7 +1999,7 @@ fn arena_compiler_creation_literal() {
 /// has its `contexted` flag set true post construction, exercising `build_fir`'s `ContextedSearch` arm
 /// and `ProtoBrane::set_contexted` together.
 #[test]
-fn arena_compiler_contexted_search_sets_the_contexted_flag() {
+fn compiler_contexted_search_sets_the_contexted_flag() {
     let mut storage = FVMStorage::new();
     let roots = compile(&mut storage, "{a = {x=1;}; y = a~x &?x;}").unwrap();
     let root = roots[0];
