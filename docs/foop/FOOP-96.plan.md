@@ -1011,20 +1011,35 @@ human chose this branch for merge. These checkboxes record the fixes made on it 
 
 ## Phase 9 — Merge and cleanup
 
-- [ ] Verify all work is complete in
+- [x] Verify all work is complete in
       `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` and committed to
       `foop-96-split-fvm-storage`.
+      *As executed, the branch is `foop-96-split-fvm-storage-mimo`, checked out in the main
+      checkout `/storage1/human/hcbusy/foolish` (no separate worktree; the three-way experiment
+      gave each executor its own branch — FOOP-96.md Appendix A).* `git status` clean at
+      `e957bb17`; at `be07dbb0` (the last non-`.md` change is `c43bd665`)
+      `cargo test --workspace -- --test-threads=1` → **470 / 0 / 0**, `einmo_gate_checked` and
+      `einmo_gate_verified` ok, `cargo fmt --all --check` clean.
+      (2026-09-28 09:49)
 - [ ] Merge `foop-96-split-fvm-storage` to `jia`
   - [ ] Run all tests — old and new — and make sure they all pass correctly.
-  - [ ] **No comprehensive snapshot test is required for this FOOP.** It adds no feature, so
+  - [x] **No comprehensive snapshot test is required for this FOOP.** It adds no feature, so
         there is nothing for `input/foop/96/comprehensive.foo` to demonstrate, and adding a new
         baseline would contradict this FOOP's contract that no baseline changes
         (FOOP-96.md §Test Plan). *This deviates from the usual merge checklist deliberately and
         is recorded here so the omission is visible rather than looking like an oversight.*
-  - [ ] **Check for merge conflicts against concurrent work.** FOOP-26 and FOOP-46 edit this same
+        Confirmed: no `input/foop/96/` exists and no einmo baseline changed
+        (`git diff f8134ac5 -- foolish-ubca2/einmo_suite` is empty).
+        (2026-09-28 09:49)
+  - [x] **Check for merge conflicts against concurrent work.** FOOP-26 and FOOP-46 edit this same
         file. If either landed on `jia` while this FOOP was in flight, the merge will conflict —
         resolve by **re-applying their changes into the new file layout**, never by discarding
         either side. *If the conflict is large, STOP and ask the human.*
+        **None:** `jia` is still `f8134ac5` (FOOP-26 and FOOP-46 have not landed), so `jia` is an
+        ancestor of this branch and `git merge-tree --write-tree jia HEAD` is clean. The merge is
+        a fast-forward unless `--no-ff` is used. Recommended: `--no-ff`, so that the merge commit
+        can carry Phase 8's required statement that no line of logic was retyped.
+        (2026-09-28 09:49)
   - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **470 / 0 / 0** (was
         467 before `f8134ac5`; see D5).
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
@@ -1043,13 +1058,19 @@ human chose this branch for merge. These checkboxes record the fixes made on it 
 
 ## Last Updated
 
-**Date**: 2026-09-27
+**Date**: 2026-09-28
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: Added §"Post-review fixes". The branch was chosen for merge after the three-way
-small-model comparison (FOOP-96.md Appendix A). The section records: the `stepping.rs` false
-paragraph removed; the `INDEX.md` status correction; D1 closed by the human's ruling (**no old
-names**, no alias); D2 closed by `da9ff4c1`; and Phase 9's stale 467 baseline corrected to 470.
-This section had not been refreshed during execution. The executor (MiMo 2.6, opencode) checked
-Phases 0–8, recorded the three figures `f8134ac5` made stale, and reported D1–D7. The prep passes
-before execution (Claude Code / claude-opus-5, 2026-09-25) recorded the human's rulings that
-`stepping.rs` is its own file, and renamed `ubca_snapshot_tester` to `einmo_gates`.
+**Changes**: Phase 9 has been brought up to the human `STOP!`. These pre-merge boxes are checked
+with evidence:
+- all work committed; tests at the tip are **470 / 0 / 0** and the einmo gates are green;
+- no comprehensive test is needed, and no baseline changed;
+- there are no conflicts: `jia` is unmoved at `f8134ac5`, so the merge fast-forwards (a `--no-ff`
+  merge is recommended).
+
+The merge itself, the post-merge test run in `jia`, the `STOP!` and cleanup remain unchecked, for
+the human.
+
+The prior entry (2026-09-27) added §"Post-review fixes" after the three-way small-model
+comparison (FOOP-96.md Appendix A). That covered the `stepping.rs` false paragraph, the
+`INDEX.md` status, D1 closed ("no old names"), D2 closed (`da9ff4c1`), and Phase 9's 467 → 470.
+Executor: MiMo 2.6 (opencode).
