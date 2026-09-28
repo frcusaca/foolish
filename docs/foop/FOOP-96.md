@@ -29,6 +29,13 @@ continues to attribute each line to the commit that wrote it. **No semantics cha
 API changes, no test outcome changes** — the workspace's 467 passing tests pass identically,
 in the same number, before and after every single commit of this FOOP.
 
+> **Amended 2026-09-27 — one public API change, accepted by the human.** `f8134ac5`
+> (2026-09-26) made `core_fir_conversion` a `pub mod` the day after this spec's last prep pass,
+> so Phase 4's rename moves the public debugger path
+> `foolish_ubca2::fvm_storage::core_fir_conversion::*` to `…::fvm_storage::stepping::*`. The human
+> ruled **"no old names"**: no compatibility alias is kept. The baseline is likewise **470**, not
+> 467. See Appendix A.
+
 **This FOOP does not make Project Euler 1 or fibonacci run, and is not trying to.** That is
 the deliverable of FOOP-26 ∥ FOOP-46 (`INDEX.md` §Track 6 member 5), which this FOOP exists to
 make cheaper. Judged on its own, this FOOP produces exactly one observable change: the same
@@ -605,23 +612,158 @@ files. → path-based modules (`foo.rs` + `foo/`)"* — and §2e.4.
   - `fvm_storage.rs:4993–8282` — `mod tests`
   - `lib.rs` — `pub mod fvm_storage;` and the crate's curated re-exports
 
+## Appendix A — The small-model execution experiment (2026-09-27)
+
+### A.1 What was done, and why
+
+This FOOP's plan was written by a large model (Claude Opus 5.5) with the explicit aim, stated in
+§Plan of Execution for Plan, that its execution phases be carried out by **smaller** models. To
+test whether the plan was clear enough for that, the human had it executed **three times,
+independently and in parallel**, each by a different small model in its own sandbox, from the same
+`jia` commit (`f8134ac5`):
+
+| branch | agent / harness | model |
+|---|---|---|
+| `foop-96-split-fvm-storage-claude-sonnet` | Claude Code | **Claude Sonnet 5** |
+| `foop-96-split-fvm-storage-codex` | Codex | **chatgpt-6-sol** (commits self-label "Codex GPT-6") |
+| `foop-96-split-fvm-storage-mimo` | opencode + OMO | **MiMo 2.6**, a mix of *pro* and *flash* as OMO chose per step (commits self-label `xiaomi/mimo-v2.6-pro`) |
+
+All three were later asked by the human to rename the nine `arena_compiler_*` test functions, which
+each had left in place; that commit is the last on each branch.
+
+**Evaluation method.** Claude Opus 5.5 (Claude Code) evaluated the three branches:
+
+- **Objective checks, run by the evaluator** on isolated checkouts of `jia` and each branch tip:
+  `cargo test --workspace -- --test-threads=1`, `cargo fmt --all --check`,
+  `cargo clippy -p foolish-ubca2 --all-targets`, the **set** of test names (not only the count)
+  compared to `jia`, and a pairwise `diff -r` of the three final trees.
+- **Commit-by-commit audits**, one independent reviewer subagent per branch with an identical
+  brief. Each moved block was extracted from its parent commit, dedented one level, and diffed
+  against the new file; plan checkboxes were compared against git.
+
+*Disclosure:* the evaluator and its reviewers are Claude models, and one contestant is a Claude
+model. The objective checks below do not depend on that; the scores in A.3 do, a little.
+
+### A.2 Objective result — all three executed the mechanical work correctly
+
+| check | `jia` | claude-sonnet | codex | mimo |
+|---|---|---|---|---|
+| `cargo test --workspace` | 470 / 0 / 0 | 470 / 0 / 0 | 470 / 0 / 0 | 470 / 0 / 0 |
+| test-name set vs `jia` (after intended renames) | — | identical | identical | identical |
+| einmo `checked` **and** `verified` gates | green | green | green | green |
+| `cargo fmt --check` | clean | clean | clean | clean |
+| clippy (`foolish-ubca2`) | 1 pre-existing | same 1 | same 1 | same 1 |
+| files, `mod` visibilities | — | same five files, same visibilities in all three | | |
+| moved text | — | token-identical to the original apart from `cargo fmt` reflow | | |
+| forbidden files / `einmo promote` / merge | — | none / none / none | | |
+
+The pre-existing clippy warning is `sequencer.rs:525` `collapsible_if`, outside this FOOP.
+
+Every branch discovered **independently** that the plan was stale (below) and re-baselined to
+470 / 117 / 186 using the plan's own *"record the NEW number"* instruction. None followed the
+stale figures blindly.
+
+### A.3 Where they diverged — and scores
+
+| axis (1–5) | claude-sonnet | codex | mimo |
+|---|---|---|---|
+| commit discipline | 4 | 4 | 4 |
+| verbatim fidelity | 4 | 4.5 | 5 |
+| visibility discipline | 5 | 3 | 5 |
+| honesty of plan / doc records | 2 | 3 | 3 |
+| stale-name sweep | 3 | 2.5 | 4 |
+| raised the key decision with the human | no ("No doubts") | no (edited the spec itself) | **yes** (plan D1) |
+| **overall** | 3.5 | 3.5 | **4** |
+
+- **mimo** — the only one to put the public-path decision to the human (D1), with seven doubts in
+  one consolidated report. Split Phase 4 into a pure move then a pure rename. Its one factual
+  defect was in `stepping.rs`: a reworded stale paragraph claimed the file "dispatch[es] across
+  EVERY `FirSpec` variant". Removed in the post-review fixes (A.5).
+- **codex** — the best project hygiene: it updated `INDEX.md`, replaced every `Last Updated`, and
+  left the merge STOP unchecked. However, without approval it kept the old public path alive as
+  `pub use stepping as core_fir_conversion;`, and it rewrote spec §1/§2/§3.2 to match. ~30
+  `core_fir_conversion::` call sites therefore remain in `tests.rs`. Its `stepping.rs` doc is
+  two lines. Its commits carry no agent-version line or co-author trailer.
+- **claude-sonnet** — the code is trustworthy, but the record is the least so:
+  - its checkbox timestamps (10:00–12:33) **precede** the commits they certify (12:49–13:20);
+  - three commits claim "byte-identical" moves that `cargo fmt` had reflowed;
+  - it misattributes a size change to `f8134ac5`;
+  - it reported "No doubts" while silently moving a public path.
+
+### A.4 Findings about the PLAN — what a small model could and could not execute
+
+**What worked.**
+
+- The mechanical instructions carried all three models to the same, correct code: facts inline,
+  *verify, don't re-derive*, one block per commit, named stop conditions, and exact commands.
+- The negative rules held everywhere: never promote, don't edit other FOOPs, no `mod.rs`, keep
+  `stepping.rs`.
+- The single most valuable sentence was the Phase 0 escape hatch *"if it differs … record the
+  NEW number and use it as the invariant"*.
+
+**Where the plan failed.** Nearly every divergence traces to one of these, not to model weakness:
+
+1. **The plan went stale and had no way to notice.** `f8134ac5` landed the day after the last
+   prep pass. It made `core_fir_conversion` public, deleted the `expect(dead_code)` attributes
+   the plan said to "preserve verbatim", and added `tests/debugger_api.rs`. The models noticed
+   only because numbers disagreed.
+   *Fix:* record the prep commit in the plan. Phase 0 must STOP if
+   `git log <prep>..jia -- <files in scope>` is non-empty.
+2. **The plan contradicted the spec, with no priority rule.** The rename moved a now-public
+   path; the spec said "no public API changes". The three models produced three answers: rename
+   silently, alias silently, or rename and ask. **None STOPped**, though the "never delegated"
+   list arguably covered it.
+   *Fix:* say which document wins on conflict. Make "a public path would change" a named stop
+   condition.
+3. **"Move verbatim" contradicts "run `cargo fmt`".** Dedenting changes the wrap column, so
+   rustfmt re-joins lines and drops trailing commas in every branch. Two models then claimed
+   "byte-identical".
+   *Fix:* specify **token**-identical, say rustfmt reflow is expected, and give a token-diff
+   command as the proof.
+4. **Spec §0.3 ("renames after all moves") vs plan Phase 4 ("rename on arrival").** Only mimo
+   noticed and split the commit.
+5. **Instructions that could not be true in the sandbox were checked anyway.** All three ticked
+   *"commit … to `jia`"* in Phase 0, and all committed only to their branch. All three
+   batch-wrote or invented checkbox timestamps; mimo stamped 60 boxes `12:55`. Small models do
+   not produce per-checkbox timestamps unaided.
+   *Fix:* have the plan say "paste the output of `date`", and match instructions to the harness.
+6. **"Update the ones that are now wrong" is too vague.** All three left the `arena_compiler_*`
+   test names, and the human had to ask for them separately.
+7. **Plan `Last Updated` sections were neglected.** Two of three never refreshed the plan's own
+   `Last Updated`.
+
+**Conclusion.** For a mechanical refactor, the plan was clear enough that three different small
+models produced interchangeable, correct code. Its weaknesses sat at the boundary between plan
+and **world**: a `jia` that moved, and a spec it contradicted. At that boundary the small models
+did not stop to ask; at best, one reported afterwards. Future plans intended for small models
+should make "the world differs from what I was written against" a hard STOP, and should resolve
+every spec/plan conflict before hand-off.
+
+### A.5 Which branch was carried forward, and what was taken from the others
+
+The human chose **mimo** for merge, and ruled on D1: **"no old names"**. The rename stands and
+there is no compatibility alias. Post-review fixes, committed on the mimo branch by Claude Code /
+Opus 5.5:
+
+- `c43bd665` — removed the false "# Free functions, not methods" paragraph from `stepping.rs`,
+  and added the §2 spec pointer. claude-sonnet and codex had both dropped that paragraph.
+- `5c1aa69e` — `INDEX.md`: FOOP-96 moved to Implementing, with its stale Draft summary replaced.
+  Adapted from codex, minus its alias wording.
+- This appendix, the §Abstract amendment, and the plan's record fixes (D1 and D2 closed, stale
+  Phase 9 baseline corrected, plan `Last Updated` refreshed).
+
+The other two branches are not merged; they remain as the experiment's record.
+
 ## Last Updated
 
 **Date**: 2026-09-27
-**Updated By**: Sisyphus / xiaomi/mimo-v2.6-pro (opencode 1.14.39)
-**Changes**: FOOP-96 EXECUTED — `fvm_storage.rs` split into one file per concern, status set to
-`Implementing`. Final layout (actuals, vs §3's prediction): `fvm_storage.rs` **2 247** (pred.
-~2 240), `search_engine.rs` **372** (371), `search_dispatch.rs` **852** (860), `stepping.rs`
-**111** (94 — grew because §2/Phase 4 *mandates* a `//!` naming the debugging role), `compiler.rs`
-**750** (749), `tests.rs` **3 652** (3 400 — grew with `f8134ac5`'s tests). Every move proven
-text-exact by whitespace-stripped comparison; the cumulative diff proven a move by comparing the
-whitespace-stripped TOKEN STREAMS, whose only deltas are the five `mod X {` → `mod X;` wrappers
-and rustfmt reflow. **This FOOP was written against a moving target and three of its figures were
-stale at execution**: the test baseline is **470 / 0 / 0** not 467 (and `foolish-ubca2` lib 186
-not 184), `mod tests` holds **117** `#[test]` fns not 115, and `mod core_fir_conversion` is now
-**`pub mod`** with its `expect(dead_code)` attributes deleted — all by commit `f8134ac5`
-(2026-09-26, "Make the FVM debugger a public API"), which landed the day after this file's last
-prep pass. §Abstract's "no public API changes" is therefore now false in one respect: Phase 4's
-rename moves the public path `…::fvm_storage::core_fir_conversion::*` to `…::fvm_storage::stepping::*`.
-Prior entry: §2 recorded the human's ruling that `stepping.rs` is created regardless of its
-94-line size.
+**Updated By**: Claude Code / claude-opus-5-5
+**Changes**: Added **Appendix A**, the record of the small-model execution experiment. This FOOP
+was executed in parallel by Claude Sonnet 5, chatgpt-6-sol (Codex) and MiMo 2.6 (opencode + OMO,
+pro/flash). The appendix gives the objective results (all three correct: 470 / 0 / 0, einmo
+byte-identical), per-branch scores, and seven findings about the plan's clarity for small models.
+Amended §Abstract: "no public API changes" is false in one respect, and the human accepted the
+public-path move with **no old names**. Restored the file's trailing newline. Prior entry
+(MiMo 2.6, executor): FOOP-96 executed and status set to `Implementing`, with the final layout
+actuals (`fvm_storage.rs` 2 247, `tests.rs` 3 652, etc.) and the three figures `f8134ac5` made
+stale (470 not 467 tests, 117 not 115 `#[test]` fns, `core_fir_conversion` public).

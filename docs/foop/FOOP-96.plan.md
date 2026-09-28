@@ -909,7 +909,9 @@ the ability to say "this commit moved text and changed nothing."
 defect the FOOP introduced, and each is either stale documentation the FOOP inherited or a
 decision left open for the human. They are listed most-important first.*
 
-**D1 — [ ] The public API path moved, and FOOP-96.md §Abstract says it does not.**
+**D1 — [x] The public API path moved, and FOOP-96.md §Abstract says it does not.**
+*RESOLVED by the human, 2026-09-27: **"no old names"** — the path break is accepted and no
+compatibility alias is added. §Abstract amended to say so (FOOP-96.md, Appendix A.5).*
 §Abstract asserts *"no public API changes"*. That was true when written, and stopped being true
 when `f8134ac5` (2026-09-26) made `mod core_fir_conversion` a `pub mod` with `pub` `step_*`
 functions. Phase 4's rename therefore moves the public path
@@ -923,7 +925,10 @@ name `core_fir_conversion` was wrong and the human ruled on `stepping.rs`), or a
 `pub use stepping::{…} as core_fir_conversion`-style shim. No shim was added on my own judgment;
 that would be a design decision riding on a mechanical FOOP.
 
-**D2 — [ ] Ten test identifiers in `tests.rs` still carry the `arena_compiler` name.**
+**D2 — [x] Ten test identifiers in `tests.rs` still carry the `arena_compiler` name.**
+*RESOLVED 2026-09-27: renamed at the human's request in `da9ff4c1` (9 `fn` names + the section
+banner). That commit's message says it "mirrors f637276f on jia"; no object `f637276f` exists
+in this repository — the reference is wrong, the rename itself is correct.*
 `fn arena_compiler_compiles_a_simple_brane` and 8 siblings, plus the `// ── arena_compiler tests ──`
 section comment grouping them. I left them deliberately: they are *definitions*, not references to
 the module, and renaming them is judgment work that §0.3 forbids bundling (*"No behavior change
@@ -979,6 +984,31 @@ not over-claim.
 
 ---
 
+## Post-review fixes (2026-09-27, Claude Code / claude-opus-5-5)
+
+*Three independent small-model executions of this plan were compared (FOOP-96.md Appendix A); the
+human chose this branch for merge. These checkboxes record the fixes made on it afterwards.*
+
+- [x] Remove the false "# Free functions, not methods" paragraph from `stepping.rs` (it claimed a
+      `match` over every `FirSpec` variant; the file has none) and add the §2 spec pointer —
+      `c43bd665`. Debugger hard gate re-run: 4 `step_*` unit tests + `debugger_api` pass.
+      (2026-09-27 19:40)
+- [x] `INDEX.md`: FOOP-96 Draft → Implementing, stale Draft summary replaced, roadmap "next" →
+      "implementing", Track 6 narrative given a dated outcome note — `5c1aa69e`.
+      (2026-09-27 19:40)
+- [x] Run all tests — old and new — and make sure they all pass correctly. At `5c1aa69e` (both
+      code-touching fixes in): `cargo test --workspace -- --test-threads=1` → **470 / 0 / 0**,
+      `einmo_gate_checked` and `einmo_gate_verified` ok; `cargo clippy -p foolish-ubca2
+      --all-targets` → only the pre-existing `sequencer.rs:525` warning (D6). The commit below
+      touches only `.md` files.
+      (2026-09-27 19:42)
+- [x] D1 decided by the human — **no old names**, no alias; §Abstract amended. D2 recorded as done
+      (`da9ff4c1`). Phase 9's stale 467 corrected to 470. FOOP-96.md Appendix A written — the
+      experiment record.
+      (2026-09-27 19:42)
+
+---
+
 ## Phase 9 — Merge and cleanup
 
 - [ ] Verify all work is complete in
@@ -995,7 +1025,8 @@ not over-claim.
         file. If either landed on `jia` while this FOOP was in flight, the merge will conflict —
         resolve by **re-applying their changes into the new file layout**, never by discarding
         either side. *If the conflict is large, STOP and ask the human.*
-  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **467 / 0 / 0.**
+  - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **470 / 0 / 0** (was
+        467 before `f8134ac5`; see D5).
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present the human with
@@ -1012,24 +1043,13 @@ not over-claim.
 
 ## Last Updated
 
-**Date**: 2026-09-25
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: THIRD PREP PASS — two human rulings recorded, plus a rename.
-**(1) `stepping.rs` is DECIDED, not open.** The previous pass left "does a 94-line module earn its
-own file?" for the executor to raise. The human settled it emphatically — *"those needs their own
-file. The ability is very important for debugging and have been used a lot!!! It must be
-maintained separately and kept in working order."* Phase 4 now says so, warns against
-"simplifying" by leaving them in the core, and explains that the `expect(dead_code)` attributes
-mean *no PRODUCTION caller by design* rather than unused code — the specific misreading that could
-get the Foolish debugger deleted. The `//!` doc requirement now mandates stating that role, and
-the three `step_until*` tests are named as a HARD GATE with their measured count (exactly 3, one
-per entry point): they are the only coverage of functions with no production caller, so if one
-stops being COMPILED nothing else notices.
-**(2) `ubca_snapshot_tester` renamed to `einmo_gates`.** The human flagged the name as suspect —
-the project uses einmo, not generic snapshots. The file's own first line already read "Einmo gates
-for FOOP-36's hand-authored Foolish rendering contract", so the filename contradicted its own doc;
-it is `#[cfg(test)]`-only and contains three einmo gates and nothing else. Note the `2` suffix was
-already gone (FOOP-86 renamed the file); what this pass fixed was the NAME, and separately the
-plan's stale references to the retired `ubca_snapshot_tester2` module. Live references updated in
-`lib.rs`, `foolish-cli/src/main.rs`, and this plan; completed FOOP plans left as written, per the
-historical-record rule.
+**Date**: 2026-09-27
+**Updated By**: Claude Code / claude-opus-5-5
+**Changes**: Added §"Post-review fixes". The branch was chosen for merge after the three-way
+small-model comparison (FOOP-96.md Appendix A). The section records: the `stepping.rs` false
+paragraph removed; the `INDEX.md` status correction; D1 closed by the human's ruling (**no old
+names**, no alias); D2 closed by `da9ff4c1`; and Phase 9's stale 467 baseline corrected to 470.
+This section had not been refreshed during execution. The executor (MiMo 2.6, opencode) checked
+Phases 0–8, recorded the three figures `f8134ac5` made stale, and reported D1–D7. The prep passes
+before execution (Claude Code / claude-opus-5, 2026-09-25) recorded the human's rulings that
+`stepping.rs` is its own file, and renamed `ubca_snapshot_tester` to `einmo_gates`.
