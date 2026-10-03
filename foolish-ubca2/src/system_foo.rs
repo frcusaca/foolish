@@ -2,7 +2,7 @@
 //!
 //! `system.foo` composition itself (`compose_program_with_system`/
 //! `compose_one`/`program_result`/`comparison_body`) and comparison
-//! evaluation live in `fvm_storage.rs`'s `arena_compiler` module and
+//! evaluation live in `fvm_storage/compiler.rs` and
 //! `FirSpec::Comparison`'s `fir_op_step` dispatch arm. What remains here is
 //! exactly the data those read directly (`ComparisonOp`, `OPERAND_SRC`,
 //! `SYSTEM_FOO_SRC`), plus tests that exercise them via
@@ -88,7 +88,7 @@ impl ComparisonOp {
 /// neighbors — applies exactly as it does to any other Foolish. Hand-built
 /// operands would have to re-implement that rule and could drift from it.
 /// The brane-and-statement wrapper is only there because an SFF marker is not
-/// valid at top level; `arena_compiler::compile_stmt_body_under` discards it
+/// valid at top level; `compiler::compile_stmt_body_under` discards it
 /// and keeps the `<<…>>` body. `pub(crate)`: read directly by
 /// `fvm_storage`'s arena-side `build_comparison`, a sibling module.
 pub(crate) const OPERAND_SRC: [&str; 2] = ["{o = <<#-2>>;}", "{o = <<#-1>>;}"];
