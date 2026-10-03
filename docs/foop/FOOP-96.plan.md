@@ -1022,7 +1022,12 @@ human chose this branch for merge. These checkboxes record the fixes made on it 
       `einmo_gate_verified` ok, `cargo fmt --all --check` clean.
       (2026-09-28 09:49)
 - [ ] Merge `foop-96-split-fvm-storage` to `jia`
-  - [ ] Run all tests — old and new — and make sure they all pass correctly.
+  - [x] Run all tests — old and new — and make sure they all pass correctly.
+        Merged as `dee80c72` (`git merge --no-ff`, the message carrying Phase 8's "no line of
+        logic was retyped" statement). On `jia` at `dee80c72`: `cargo test --workspace --
+        --test-threads=1` → **470 / 0 / 0**, `einmo_gate_checked` and `einmo_gate_verified` ok,
+        `cargo fmt --all --check` clean.
+        (2026-10-03 13:54)
   - [x] **No comprehensive snapshot test is required for this FOOP.** It adds no feature, so
         there is nothing for `input/foop/96/comprehensive.foo` to demonstrate, and adding a new
         baseline would contradict this FOOP's contract that no baseline changes
@@ -1042,13 +1047,18 @@ human chose this branch for merge. These checkboxes record the fixes made on it 
         (2026-09-28 09:49)
   - [ ] Repair ALL tests in `jia` at `/yolo/foolish` after the merge — **470 / 0 / 0** (was
         467 before `f8134ac5`; see D5).
-  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
+        Nothing to repair — the merge was conflict-free and `jia` is 470 / 0 / 0 (above).
+        (2026-10-03 13:54)
+  - [x] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
         CIRCUMSTANCES will Agent continue past this point automatically!!
-    - [ ] Present the human with
+    - [x] Present the human with
           `cd /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage` and ask them to
           review the diff BEFORE checking the parent checkbox. Remind them: *"Above message comes
           from FOOP-96, splitting `fvm_storage.rs` into one file per concern; the worktree is at
           /yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage. PTAL"*
+    The human reviewed the branch and directed the merge in words, 2026-10-03: *"Please merge
+    it for me."* Both boxes above are checked on that instruction.
+    (2026-10-03 13:54)
   - [ ] Cleanup `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage`
     - [ ] Check that this `.plan.md` has all but Cleanup checkboxes completed
     - [ ] Remove `/yolo/foolish/../foolish_worktrees/foop-96-split-fvm-storage`
@@ -1058,19 +1068,16 @@ human chose this branch for merge. These checkboxes record the fixes made on it 
 
 ## Last Updated
 
-**Date**: 2026-09-28
+**Date**: 2026-10-03
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: Phase 9 has been brought up to the human `STOP!`. These pre-merge boxes are checked
-with evidence:
-- all work committed; tests at the tip are **470 / 0 / 0** and the einmo gates are green;
-- no comprehensive test is needed, and no baseline changed;
-- there are no conflicts: `jia` is unmoved at `f8134ac5`, so the merge fast-forwards (a `--no-ff`
-  merge is recommended).
+**Changes**: **Merged to `jia`** as `dee80c72` (`--no-ff`), on the human's instruction: *"Please
+merge it for me."* Post-merge, `jia` is **470 / 0 / 0**, the einmo `checked` and `verified` gates
+are green, and `fmt` is clean. The merge, test, repair and `STOP!` boxes are checked.
 
-The merge itself, the post-merge test run in `jia`, the `STOP!` and cleanup remain unchecked, for
-the human.
+Left unchecked:
+- The Cleanup block. There is no separate worktree to remove: the branch lived in the main
+  checkout. Its "all but Cleanup completed" check is also still open, because D3, D4 and D6 in the
+  doubts section await the human's acknowledgement.
+- The parent "Merge" box, which is checked last.
 
-The prior entry (2026-09-27) added §"Post-review fixes" after the three-way small-model
-comparison (FOOP-96.md Appendix A). That covered the `stepping.rs` false paragraph, the
-`INDEX.md` status, D1 closed ("no old names"), D2 closed (`da9ff4c1`), and Phase 9's 467 → 470.
-Executor: MiMo 2.6 (opencode).
+Prior entry (2026-09-28): Phase 9 was brought up to the human `STOP!`.
