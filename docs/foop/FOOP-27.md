@@ -37,7 +37,9 @@ E1 (text):  sequence(ubca(sequence(ubca(P))))  ==  sequence(ubca(P))
 E2 (FVM):            ubca(sequence(ubca(P)))   ≅   ubca(P)
 ```
 
-E1 compares two renderings byte for byte. E2 compares two FVM results under a **Foolish FIR
+**Both E1 and E2 are required deliverables of this FOOP, and both are implemented here** (the human,
+2026-10-16). Neither is optional, and neither waits on the other. E1 compares two renderings byte for
+byte. E2 compares two FVM results under a **Foolish FIR
 equivalence**, which must be defined — Part C (FOOP-76's design) is its basis — and which carries
 **parameters**: whether NK equals NK, whether names are compared, how far to run, and how constanic
 subtrees compare (§A.2). Every rendering difficulty observed so far is **listed as a design input**
@@ -114,7 +116,19 @@ what will be implemented at first. Each entry records what it compares, what it 
 parameters, and its status: **proposed-first** (E1, E2), **catalogued** (wanted, specified here at
 least in outline, not scheduled), or **sketch** (named, not yet understood well enough to specify).
 
-### §A.1 E1 — the text round trip (sequence fixed point) — proposed-first
+**E1 and E2 are both REQUIRED, and both are implemented by this FOOP** (the human, 2026-10-16). They
+are independent: E1 is a byte comparison of text and needs nothing from Part C; E2 needs Part C's FIR
+equivalence. Phase 4 delivers both, and the FOOP is not complete until both gates run green over
+the corpus. E3–E13 are catalogued for documentation and need not be implemented here.
+
+| | E1 — text round trip | E2 — FVM round trip |
+|---|---|---|
+| Specified in | §A.1 | §A.2 |
+| Design inputs | Part B | Part C, plus Part B where rendering affects meaning |
+| Gate | corpus-wide byte equality of `R1` and `R2` | corpus-wide FIR equivalence, strict corner (§A.4) |
+| Status | **required** | **required** |
+
+### §A.1 E1 — the text round trip (sequence fixed point) — required
 
 `sequence(ubca(sequence(ubca(P)))) == sequence(ubca(P))`, byte for byte. This is FOOP-36's Property 2.
 
@@ -136,7 +150,7 @@ least in outline, not scheduled), or **sketch** (named, not yet understood well 
 - **Parameters** (§A.4): `annotations` (are `!!` comments part of the equality? Recommended **yes**,
   Q-A1) and `depth`.
 
-### §A.2 E2 — the FVM round trip (FIR equivalence) — proposed-first
+### §A.2 E2 — the FVM round trip (FIR equivalence) — required
 
 `ubca(sequence(ubca(P))) ≅ ubca(P)`, where `≅` is the **Foolish FIR equivalence**. Its basis is
 Part C: a lockstep shape walk (§C.1), integers by value and creations by a bijective correspondence
@@ -196,7 +210,11 @@ E2; their analogues for text, if any, are for the design phase to state. **Defau
 The strict corner — `nk_strict`, `names_compared`, unbounded `depth`, `constanic_identical`, empty
 residual required — is what the round-trip gates use.
 
-## Part B — Known rendering difficulties (design inputs)
+## Part B — Known rendering difficulties (design inputs) — working towards E1 (and E2)
+
+> **This part is working towards E1** (§A.1). Every item here is a way the text round trip fails or
+> could fail. Items that change what `R1` *means* (B1, B2, B3, B6) also break E2, since
+> `ubca(R1)` is then a different tree.
 
 The human's instruction: list every difficulty observed so far and design against it, **so we do not
 have to come back to fix them**. Each item names its evidence and its current owner, if it has one.
@@ -708,7 +726,7 @@ Recorded from FOOP-36 §N6's handover note, for whoever executes this FOOP:
 | **1 — Semantic design** | Settle what each equivalence MEANS: complete Part A; give E1 and E2 their parameters and defaults; work through Part B item by item; reconcile with Part C. | This spec, with Open Questions emptied for E1/E2 |
 | **2 — Illustrative tests** | Write, **into this FOOP**, the tests that best illustrate each equivalence and each parameter: Foolish programs (pairs, plus the expected answer under each parameter setting) or Rust unit-test bodies. These are the specification's worked examples **and** the tests. | A new §Illustrations section |
 | **3 — Coding plan** | Plan the code, and **develop all the test cases**: every einmo input and unit test, written out, with expected results hand-written from the spec. Phase 2's illustrations are promoted into real tests here. | `FOOP-27.plan.md` (implementation part); the test files themselves |
-| **4 — Code** | Implement until the Phase 3 tests pass. | Code |
+| **4 — Code** | Implement until the Phase 3 tests pass. **Both the E1 and the E2 gates must be green**; neither is optional. | Code |
 
 **Why tests come so early here.** The human's observation: this is one case where test writing is
 **easiest**, and it can be done ahead of implementation. An equivalence is *defined* by which pairs it
@@ -1150,8 +1168,8 @@ FOOP-76's original text of these questions:
 
 **Date**: 2026-10-16
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: Part C is now headlined "working towards E2", at the human's request to label which
-equivalence it implements. It is E2, not E1: E1 is a byte comparison of text, and Part C is the FIR
-relation E2 compares with. Earlier the same day: created; absorbed FOOP-76 as Part C; Part A
-catalogue E1–E13 with E2's four parameters; Part B difficulties B1–B13; Part D's four phases and the
-§D.4 concurrent-efforts rule.
+**Changes**: States plainly that **E1 and E2 are both required and both implemented by this FOOP**,
+in the Abstract, in a table at the head of Part A, in §A.1/§A.2's headings ("required"), and in §D.1's
+Phase 4 row. Part B is headlined "working towards E1 (and E2)"; Part C is headlined "working towards
+E2". Earlier the same day: created; absorbed FOOP-76 as Part C; Part A catalogue E1–E13 with E2's four
+parameters; Part B difficulties B1–B13; Part D's four phases and the §D.4 concurrent-efforts rule.
