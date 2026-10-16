@@ -21,11 +21,17 @@ Prepared against `jia` at `eec1dfc4` (2026-10-16).
       FOOP-07 §2 and §4 (on branch `worktree-agent-a5e87dc31591ca72a`).
 - [ ] Re-run the E1 measurement (FOOP-27 §Motivation method) on the current `jia`; update the table
       if anything moved.
-- [ ] Present Q-A1–Q-A4 and Q-C1, Q-C2 to the human in ONE statement, each with a recommendation.
+- [ ] Present Q-A1–Q-A5, Q-E3a–Q-E3d and Q-C1, Q-C2 (including Appendix 1 §X1.3's brane-vs-brane
+      question) to the human in ONE statement, each with a recommendation.
       STOP until answered.
-- [ ] Record the answers in the spec (§A.2, §A.4) and empty those Open Questions.
-- [ ] Complete Part A's catalogue: for each of E3–E12, state what it compares, what it ignores, and
-      its status (catalogued / sketch). Add any equivalence the reading turns up.
+- [ ] Record the answers in the spec (§A.2, §A.3, §A.5, Appendix 1) and empty those Open Questions.
+- [ ] Complete Part A's catalogue: for each of E4–E13, state what it compares, what it ignores, and
+      its status (catalogued / sketch), and whether it is Foolish-accessible (today: E0 only). Add
+      any equivalence the reading turns up.
+- [ ] Specify E3 (Peerage) from §A.3's answers, including the shape of its later name-and-type
+      (type-checking) extension.
+- [ ] Settle E0's relation to E2/E3 (Appendix 1 §X1.3): the brane-vs-brane outcome, and the mapping
+      between E0's three outcomes and E2's.
 - [ ] Work Part B item by item. For each of B1–B13, record the representation or rendering rule that
       makes it impossible, or the owning FOOP plus the gate that would catch a regression, or an
       explicit exemption with its reason.
@@ -48,6 +54,9 @@ Prepared against `jia` at `eec1dfc4` (2026-10-16).
       For example, `{a=1;b=2}` vs `{b=1;a=2}` is `NO` under `names_compared` and `YES` under
       `names_ignored`; `{x=1/0}` vs `{x=1/0}` is `YES` under `nk_equal` and `NO` under `nk_strict`.
       Cover every interaction in §A.2's "must settle" list.
+- [ ] E3: peer and non-peer pairs, at least the four in §A.3's example, plus one per Q-E3a–Q-E3c answer.
+- [ ] E0: one value-search and one null-const-rule example per Appendix 1 §X1.1 rule, plus any
+      change §X1.3 decides.
 - [ ] E2, carried: write out T-BIJ, T-SEED, T-SIG, T-SHAPE, T-SHARE and T-PRE as concrete inputs with
       expected answers, restated against §A.2's parameters.
 - [ ] Each illustration names the concurrent-FOOP assumption it depends on, if any (§D.4 rule 2).

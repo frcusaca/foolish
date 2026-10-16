@@ -174,6 +174,11 @@ between `#` and the first digit (or `-`). After parsing the first integer:
 The entire FI is stored in a **single `#` indexing FIR** — not multiple
 chained FIRs. `a#1,2,-1` produces one `IndexFir` whose index is `[1, 2, -1]`.
 
+> **NOT IMPLEMENTED — deprecated as an equivalence (the human, 2026-10-16; see FOOP-27 §A.4).**
+> Neither the comma form nor the desugaring below exists. Measured on `jia` 2026-10-16:
+> `y = a#1,1,0;` parses as `y = a#1` followed by two separate statements `1;` and `0`, because `,` is
+> a statement separator. FOOP-27 does not implement it. Anyone reviving this FOOP must re-decide it.
+
 **Equivalence: `#1#2#3` ≡ `#1,2,3`.** Chained `#` operations are syntactic
 sugar for comma-separated FI. `a#1#2#3` and `a#1,2,3` produce the same
 single `IndexFir` with FI `[1, 2, 3]`. The parser desugars chained `#` into
@@ -637,9 +642,7 @@ to carry on the thread-local stack and is not stable across cloning. A plain
 
 ## Last Updated
 
-**Date**: 2026-07-14
-**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
-**Changes**: Initial draft. Deadbrane (useless-element detection: directly
-useless, transitively useless, fixed-point algorithm, structured report) and
-FirID cloning semantics refinement (pins Constant/Independent → Rc::clone
-identity-sharing, non-constanic → new FIRID, Brane → always new FIRID).
+**Date**: 2026-10-16
+**Updated By**: Claude Code / claude-opus-5-5
+**Changes**: Marked the `#1#2#3` ≡ `#1,2,3` equivalence NOT IMPLEMENTED and deprecated (the human's call;
+FOOP-27 §A.4). Today `a#1,2,3` misparses as `a#1` followed by separate statements. Prior history: `git log`.

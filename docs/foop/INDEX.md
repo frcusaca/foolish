@@ -153,7 +153,8 @@ ls | rev | sort -V | rev
   addresses — counts as a first-class result. **Independent of every track**; best read before
   FOOP-76 (see below) is executed — FOOP-76 §Open Questions Q2 records that as the human's call
 - [FOOP-27](FOOP-27.md) — **Equivalences of Foolish** (absorbed FOOP-76, 2026-10-16). **Design
-  first.** It catalogues every equivalence worth documenting, E1–E13. The first two are the two
+  first.** It catalogues every equivalence worth documenting, E0–E14: E0 is the existing Foolish-accessible
+  `default_equal` (FOOP-33), and E3 is **Peerage equality** (same names and hierarchy). The first two are the two
   round trips: **E1** (text), `sequence(ubca(sequence(ubca(P)))) == sequence(ubca(P))`, which is
   FOOP-36's Property 2 and measured 2026-10-16 at 4 drifts in 183 inputs; and **E2** (FVM),
   `ubca(sequence(ubca(P))) ≅ ubca(P)`, under a FIR equivalence built on FOOP-76's design (Part C). E2

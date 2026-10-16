@@ -113,19 +113,32 @@ The specification has four parts:
 
 The design phase's first deliverable is this catalogue, completed. It is deliberately larger than
 what will be implemented at first. Each entry records what it compares, what it ignores, its
-parameters, and its status: **proposed-first** (E1, E2), **catalogued** (wanted, specified here at
-least in outline, not scheduled), or **sketch** (named, not yet understood well enough to specify).
+parameters, and its status: **required** (E1, E2), **promoted** (E3), **catalogued** (wanted,
+specified here at least in outline, not scheduled), or **sketch** (named, not yet understood well
+enough to specify).
+
+**Attribute: Foolish-accessible.** An equivalence is *Foolish-accessible* when a Foolish program can
+observe it: its outcome changes what a program evaluates to. Today exactly one is: **E0, default
+equality** (`default_equal`, FOOP-33 §2), documented in **Appendix 1**. Every other entry is a
+Rust-side relation (for tests, tools, documentation) unless and until it is given this attribute. It
+is an attribute we **expect to assign to more equivalences later** (the human, 2026-10-16); Appendix 1
+§X1.4 states those aspirations, and Q-C1 is where each is decided.
+
+**E0 — default equality (`default_equal`) — implemented, Foolish-accessible.** The equality the
+assignment `=` implies, three-valued (`Equal` / `NotEqual` / `Unknowable`), reached from Foolish
+through value search and through the null-characterized-name conflict rule. It is the baseline every
+new equivalence must state its relation to. See Appendix 1.
 
 **E1 and E2 are both REQUIRED, and both are implemented by this FOOP** (the human, 2026-10-16). They
 are independent: E1 is a byte comparison of text and needs nothing from Part C; E2 needs Part C's FIR
 equivalence. Phase 4 delivers both, and the FOOP is not complete until both gates run green over
-the corpus. E3–E13 are catalogued for documentation and need not be implemented here.
+the corpus. E4–E14 are catalogued for documentation and need not be implemented here.
 
 | | E1 — text round trip | E2 — FVM round trip |
 |---|---|---|
 | Specified in | §A.1 | §A.2 |
 | Design inputs | Part B | Part C, plus Part B where rendering affects meaning |
-| Gate | corpus-wide byte equality of `R1` and `R2` | corpus-wide FIR equivalence, strict corner (§A.4) |
+| Gate | corpus-wide byte equality of `R1` and `R2` | corpus-wide FIR equivalence, strict corner (§A.5) |
 | Status | **required** | **required** |
 
 ### §A.1 E1 — the text round trip (sequence fixed point) — required
@@ -147,7 +160,7 @@ the corpus. E3–E13 are catalogued for documentation and need not be implemente
   2. **NK reasons come from the final FIR's state**, not from the route that produced it (B4).
   3. **Where the FIR does not record what is needed to render faithfully, record it** — see §D.2 and
      B1/B7. Do not guess a spelling.
-- **Parameters** (§A.4): `annotations` (are `!!` comments part of the equality? Recommended **yes**,
+- **Parameters** (§A.5): `annotations` (are `!!` comments part of the equality? Recommended **yes**,
   Q-A1) and `depth`.
 
 ### §A.2 E2 — the FVM round trip (FIR equivalence) — required
@@ -182,28 +195,74 @@ setting of each; the design must turn each into a stated parameter with a stated
 - `names_ignored` is not any operator in the vintage taxonomy. `=V=` is "same values *against the
   same names*", its opposite. The new `EQUIVALENCE.md` must say so.
 
-### §A.3 Further equivalences — catalogued or sketch
+### §A.3 E3 — Peerage equality (equal peers) — promoted
+
+**Two FIRs are peers when their names and their hierarchy are the same** (the human, 2026-10-16).
+Peerage looks only at the *skeleton of names*: which statements are named what, and how branes nest.
+It **does not care about any non-name, non-hierarchy aspect** of the compared FIRs: values, operators,
+search kinds, NYES, NK-ness, and creation identity are all ignored.
+
+```foolish
+{
+	p = {a = 1; b = {c = 2;};};
+	q = {a = 7; b = {c = 1/0;};};      !! peers of p: same names, same nesting
+	r = {a = 1; b = 2;};               !! not a peer: b is not a brane here
+	s = {a = 1; b = {d = 2;};};        !! not a peer: c vs d
+}
+```
+
+**Where it sits.** Peerage is the hierarchical, recursive form of the vintage `=n=` / `=N=`
+(E7), which compare names only at the top level. It is close to E2 with every value-bearing check
+switched off, but it is NOT E2 with parameters: E2's shape half compares operators and search fields,
+which peerage ignores. That is why it is its own entry.
+
+**Later extension: type checking.** Peerage may later be extended to demand that both **name and type
+(characterization)** be *compatible*, not merely the name. That is the step from "same shape of names"
+to a structural type check, and it is the natural home for E8 (`=c=` / `=C=`, characterized names).
+"Compatible" rather than "equal" is deliberate and is for the design to define.
+
+**Questions for Phase 1** (Q-E3a–Q-E3d):
+- **Q-E3a, order:** does hierarchy include statement order, as `=N=` does, or not, as `=n=` does?
+- **Q-E3b, unnamed statements:** match by position, or are they invisible to peerage?
+- **Q-E3c, non-brane leaves:** is a non-brane named value a leaf that matches any other non-brane
+  leaf (`a = 1` peer of `a = ⬤`)? And is a brane-valued name ever a peer of a non-brane one?
+- **Q-E3d, scope:** is E3 implemented in this FOOP alongside E1/E2, or designed here and implemented
+  later? It is promoted, not required.
+
+### §A.4 Further equivalences — catalogued or sketch
 
 Carried from `EQUIVALENCE.md` and FOOP-76 §5, plus what this conversation surfaced. The design phase
 completes this list. It does not implement it.
 
-| Id | Relation | Source | Status |
-|---|---|---|---|
-| E3 | `=s=` — syntactic: bitwise-identical source | EQUIVALENCE.md | catalogued |
-| E4 | `==` — equal once neither side is nye | EQUIVALENCE.md | catalogued; E2 is a `==`-like relation (§C.5 point 1) |
-| E5 | `===` — semantic: equal under ALL possible coordinations | EQUIVALENCE.md | sketch; may have no decision procedure. E2's `YES, provided […]` is its constructive form (§C.4) |
-| E6 | `=n=` / `=N=` — same names / in the same order | EQUIVALENCE.md | catalogued |
-| E7 | `=c=` / `=C=` — same characterized names / in the same order | EQUIVALENCE.md | catalogued |
-| E8 | `=v=` / `=V=` — same values appear / same values against the same names | EQUIVALENCE.md | catalogued |
-| E9 | positional value equality (E2 with `names_ignored`) as an operator in its own right | human, 2026-10-16 | catalogued |
-| E10 | conditional equality — the residual as a first-class answer, composition, caller-supplied assumptions | FOOP-76 §4.1 | catalogued |
-| E11 | value-search equality (`~=` / `?=`) beyond integers | FOOP-23 §Open Questions | catalogued; today integer-only |
-| E12 | `pp` vs `pr` — the UN-stepped trees of a round trip, to separate parse/render faults from evaluation faults | FOOP-36 §2.2, FOOP-76 Q4 | catalogued |
-| E13 | the FOOP-95 pair: `normalize(resequence(parse(src))) == normalize(src)` and resequencer idempotence | FOOP-95 | **owned by FOOP-95**; listed so the catalogue is complete |
+| Id | Relation | Source | Status | Foolish-accessible |
+|---|---|---|---|---|
+| E0 | default equality `default_equal`: integers by value, creations by identity, NK → `Unknowable`, brane-vs-brane → `Unknowable` | FOOP-33 §2 | **implemented** | **yes** (Appendix 1) |
+| E3 | **Peerage equality**: same names and same hierarchy (§A.3) | human, 2026-10-16 | **promoted** | aspired |
+| E4 | `=s=` — syntactic: bitwise-identical source | EQUIVALENCE.md | catalogued | aspired |
+| E5 | `==` — equal once neither side is nye | EQUIVALENCE.md | catalogued; E2 is a `==`-like relation (§C.5 point 1) | aspired |
+| E6 | `===` — semantic: equal under ALL possible coordinations | EQUIVALENCE.md | sketch; may have no decision procedure. E2's `YES, provided […]` is its constructive form (§C.4) | aspired |
+| E7 | `=n=` / `=N=` — same names / in the same order | EQUIVALENCE.md | catalogued | aspired |
+| E8 | `=c=` / `=C=` — same characterized names / in the same order | EQUIVALENCE.md | catalogued | aspired |
+| E9 | `=v=` / `=V=` — same values appear / same values against the same names | EQUIVALENCE.md | catalogued | aspired |
+| E10 | positional value equality (E2 with `names_ignored`) as an operator in its own right | human, 2026-10-16 | catalogued | aspired |
+| E11 | conditional equality — the residual as a first-class answer, composition, caller-supplied assumptions | FOOP-76 §4.1 | catalogued | aspired |
+| E12 | value-search equality (`~=` / `?=`) beyond integers | FOOP-23 §Open Questions | catalogued; today integer-only | aspired |
+| E13 | `pp` vs `pr` — the UN-stepped trees of a round trip, to separate parse/render faults from evaluation faults | FOOP-36 §2.2, FOOP-76 Q4 | catalogued | aspired |
+| E14 | the FOOP-95 pair: `normalize(resequence(parse(src))) == normalize(src)` and resequencer idempotence | FOOP-95 | **owned by FOOP-95**; listed so the catalogue is complete | no (FOOP-95 internal) |
 
-Whether any of E3–E12 become Foolish **surface syntax** is FOOP-76's Q1, carried as Q-C1.
+Whether any of E4–E13 become Foolish **surface syntax** is FOOP-76's Q1, carried as Q-C1.
 
-### §A.4 Parameters common to E1 and E2
+**Spelling equivalences, and one NOT implemented.** Some "equivalences" in the documents are spelling
+equivalences: two source forms that compile to the same FIR. They matter to E1 only through B7
+(spellings the FIR does not record). Two have been claimed:
+- **`.` ≡ `?`** (`docs/howto/02_howto_foolish_more.foo`): true today, since both lower to the same FIR.
+  FOOP-07 makes it false, and FOOP-07 owns that (B1).
+- **`a#1#2#3` ≡ `a#1,2,3`** (FOOP-45, Draft): **NOT implemented, and this FOOP does not implement it**
+  (the human, 2026-10-16). It is deprecated as a claimed equivalence. Measured 2026-10-16: `y = a#1,1,0;`
+  parses as `y = a#1` followed by two separate statements `1;` and `0`, because `,` is a statement
+  separator. So today the comma form silently means something else. It is not catalogued above.
+
+### §A.5 Parameters common to E1 and E2
 
 `depth` applies to both. `annotations` applies to E1 only. `nk`, `names` and `constanics` apply to
 E2; their analogues for text, if any, are for the design phase to state. **Defaults** are open (Q-A2).
@@ -736,7 +795,7 @@ gate needs no hand-written expectations at all. Its expected answer is "unchange
 
 The design phase's two named deliverables are a **new `EQUIVALENCE.md`**, moved out of
 `vintage_legacy/` per §C.5, and the **implementation plan** (Phase 3). If the plan proves too large
-for one FOOP, the design may split the catalogued items (E3–E12) into follow-on FOOPs. E1 and E2 stay
+for one FOOP, the design may split the catalogued items (E4–E13) into follow-on FOOPs. E1 and E2 stay
 here.
 
 ### §D.2 The design may change the FVM and FIR — without reducing language capability
@@ -831,7 +890,7 @@ Phases 2 and 3 produce the full test inventory (§D.1). Required now:
   `{a=1;b=2}` vs `{b=1;a=2}` is `NO` under `names_compared` and `YES` under `names_ignored`; `{x=1/0}`
   vs `{x=1/0}` is `YES` under `nk_equal` and `NO` under `nk_strict`.
 - **E2 as T2c**: the round trip `ubca(sequence(ubca(P))) ≅ ubca(P)` over the einmo corpus, strict
-  corner (§A.4).
+  corner (§A.5).
 - **Part C's tests, carried below**, re-stated against §A.2's parameters where they touch one.
 
 ### Carried from FOOP-76 §Test Plan
@@ -973,7 +1032,7 @@ Rejected by measurement: all four drifts parse, and three of them evaluate to so
 ### R3. Fold E1 into FOOP-95
 
 FOOP-95 round-trips the UN-stepped tree through a new, separate resequencer. E1 concerns the settled
-rendering einmo already uses. FOOP-95's equalities are catalogued here as E13 and stay FOOP-95's.
+rendering einmo already uses. FOOP-95's equalities are catalogued here as E14 and stay FOOP-95's.
 
 ### R4. Always parenthesize every compound operand
 
@@ -1043,13 +1102,15 @@ decide so v1 does not foreclose it.
 - **Q-A1 — Are `!!` annotations part of E1?** Recommended: yes. If re-evaluating the text changes
   the stated reason, the reader of `R1` was told something `R1` does not mean. Today this affects only
   B4.
-- **Q-A2 — Default for each parameter.** The strict corner for the gates (§A.4) is not in question.
+- **Q-A2 — Default for each parameter.** The strict corner for the gates (§A.5) is not in question.
   The defaults a Foolisher sees, for any surface operator under Q-C1, are open.
 - **Q-A3 — What does `depth` mean?** (i) Step each FVM only until depth X, then compare. (ii) Compare
   the trees only down to brane depth X. These are different tools: (i) bounds evaluation, (ii) bounds
   the claim. Both may be wanted.
 - **Q-A4 — `nk_strict` versus `constanic_any`.** Proposed: `nk` is consulted first, so `nk_strict`
   wins.
+- **Q-A5 — A third `nk` setting?** E0 already treats NK as `Unknowable`, which is neither `nk_equal` nor
+  `nk_strict`'s plain `NO`. Should E2 gain `nk_unknowable`, so it can agree with E0 (Appendix 1)?
 - **Q-B1 — FOOP-07 §4.3's planned `ba~=(bb.v)` → `ba~=bb.v`.** Probably B2. Raise it with the FOOP-07
   planner before FOOP-07 is Final, so 28 baselines are not re-signed around a rendering that does not
   round-trip.
@@ -1071,7 +1132,7 @@ decide so v1 does not foreclose it.
   human's call.
 - **Q-C2** = FOOP-76 **Q2**: wait on FOOP-66's Q5 (tree calculus equality), or proceed in parallel?
 - **Q-C3** = FOOP-76 **Q3**: where the relation lives.
-- **Q-C4** = FOOP-76 **Q4**: `pp` vs `pr`. Now catalogued as **E12**.
+- **Q-C4** = FOOP-76 **Q4**: `pp` vs `pr`. Now catalogued as **E13**.
 - **Q-C5** = FOOP-76 **Q5**: is the `docs/howto/` equivalence chapter in scope?
 
 FOOP-76's original text of these questions:
@@ -1125,6 +1186,78 @@ FOOP-76's original text of these questions:
   lists **equivalence** among its unwritten chapters, and a refreshed `EQUIVALENCE.md` makes that
   tutorial writable. §5 flags it as "in scope or a follow-on" without deciding.
 
+## Appendix 1 — The Foolish-accessible equivalence: default equality (E0)
+
+### §X1.1 What it is
+
+`default_equal` (FOOP-33 §2) names the equality that Foolish's assignment `=` already implies, as one
+reusable primitive. It is **three-valued**, because comparing anything but two integers or two
+creations is *not knowable*, not merely "not equal". In `foolish-ubca2` it lives in
+`foolish-ubca2/src/fvm_storage.rs` (`enum Equality`, `fn default_equal`). *Verify, don't re-derive.*
+
+```rust
+pub(crate) enum Equality { Equal, NotEqual, Unknowable }
+pub(crate) fn default_equal(storage: &FVMStorage, a: FirPointer, b: FirPointer) -> Equality;
+```
+
+Rules, in branch order (as implemented):
+
+1. **Either side NK → `Unknowable`**, even if both are the same object. This is FOOP-23's "NKs are
+   never equal to each other". Compare E2's `nk` parameter (Q-A5).
+2. **Both integers → `Equal` iff the values are equal**, else `NotEqual`.
+3. **Resolve both through `.value()`.** Then two creations are **`Equal` iff the same FIR**: identity,
+   sound because a creation is only ever shared, never duplicated (FOOP-33 §1). This is Part C §C.2.3's
+   "same arena, same pointer".
+4. **Two branes → `Unknowable`.** Brane-vs-brane equivalence is unspecified "pending an equivalence
+   FOOP". This FOOP is that equivalence FOOP.
+5. **Any other pair of different constanic kinds → `NotEqual`.** A brane is provably never an integer.
+
+### §X1.2 How Foolish reaches it — the interfaces
+
+- **Value search** (`?=` / `~=` and their contexted and combined forms, FOOP-23): the matcher maps
+  `Equal` → approve, `NotEqual` → reject and continue, `Unknowable` → stop with NK
+  (`foolish-ubca2/src/fvm_storage/search_engine.rs`). This is where a Foolisher meets E0 most directly.
+  FOOP-23 recorded value-search equality as "integer equality only, pending an equivalence FOOP". E0
+  has since added creations, and branes remain the open case.
+- **The null-characterized-name conflict rule** (FOOP-33, FOOP-86 §6): re-stating a null-characterized
+  name is permitted only when the new value is `Equal` to the prior one. It is checked directly, after
+  a concatenation merge, and after recoordination (`check_null_const_conflict`,
+  `apply_null_const_rule_to_merged_stmt`, `check_recoordinated_null_const_conflict` in
+  `foolish-ubca2/src/fvm_storage/search_dispatch.rs`). Anything else makes the statement unsteppable.
+- **Detachment** (FOOP-24, Draft, not yet implemented): stay-foolish markers with name∧value
+  conditions compare candidate values the same way. An undecidable comparison (a NK candidate) forces
+  the search result to NK. When FOOP-24 is implemented, detachment becomes E0's third caller, and
+  whatever this FOOP decides about NK and branes reaches it.
+- **In passing — the Equivalence Law** (FOOP-13, Brewing): "a settled ConcatBrane is observationally
+  identical to a single big brane containing every statement of its element branes, in the same
+  order, for every brane operation". For E0, a concatenation must present itself to value search and
+  to the null-const rule exactly as the merged brane would. The Law is a contract on the operands E0
+  receives, not a new equivalence.
+
+### §X1.3 What this FOOP must decide about E0
+
+- **Brane vs brane.** Should E0's `Unknowable` for two branes be replaced by E2, by E3 (peerage), or
+  stay `Unknowable`? This is the single change that would make a new equivalence Foolish-accessible,
+  and it changes what value search and the null-const rule do. It is a language change, so it is the
+  human's call (Q-C1).
+- **Outcome alignment.** E0 answers `Equal` / `NotEqual` / `Unknowable`; E2 answers `YES` / `NO` /
+  `YES, provided`. The design must state how they map onto each other, so that any E2 promoted into
+  Foolish has a defined three-valued face.
+
+### §X1.4 Aspirations — more Foolish-accessible equivalences
+
+The human's direction (2026-10-16) is that being Foolish-accessible is an attribute we expect to
+assign to more equivalences over time. Candidates, in rough order of readiness:
+- **E2** as brane-vs-brane default equality (§X1.3), under one fixed parameter setting.
+- **E3 Peerage**, and its type-checking extension, as an operator a Foolisher can ask: "are these
+  peers?" This would be the first structural type check expressible in Foolish.
+- **The vintage operators** `=s=`, `==`, `=n=`/`=N=`, `=c=`/`=C=`, `=v=`/`=V=` (E4–E9) as surface
+  syntax, each needing its own semantics, lexer, FIR and einmo work. Plausibly several FOOPs.
+- **`===`** (E6) stays aspirational. "Equal under all coordinations" may have no decision procedure.
+  E2's `YES, provided […]` (E11) is its constructive stand-in.
+
+Each candidate, when taken up, must say which of E0's interfaces (§X1.2) it changes.
+
 ## References
 
 - **FOOP-76** (deprecated 2026-10-16, absorbed here as Part C). Its own references, carried:
@@ -1160,7 +1293,7 @@ FOOP-76's original text of these questions:
   `2b0aec55`). Part B's B1, B12, and the contexted-search ruling.
 - **FOOP-23** §"Two degeneracies": wrong on bare-brane contexted search per the human's 2026-10-16
   ruling (Part B).
-- **FOOP-65**, **FOOP-75**, **FOOP-95**: Part B's B8, B9, and catalogue item E13.
+- **FOOP-65**, **FOOP-75**, **FOOP-95**: Part B's B8, B9, and catalogue item E14.
 - Code: `foolish-ubca2/src/sequencer.rs` (`foolish_rendering_round_trips_constanic_programs`),
   `foolish-ubca2/src/einmo_gates.rs` (`einmo_corpus_wide_foolish_rendering_parses`).
 
@@ -1168,8 +1301,13 @@ FOOP-76's original text of these questions:
 
 **Date**: 2026-10-16
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: States plainly that **E1 and E2 are both required and both implemented by this FOOP**,
-in the Abstract, in a table at the head of Part A, in §A.1/§A.2's headings ("required"), and in §D.1's
-Phase 4 row. Part B is headlined "working towards E1 (and E2)"; Part C is headlined "working towards
-E2". Earlier the same day: created; absorbed FOOP-76 as Part C; Part A catalogue E1–E13 with E2's four
-parameters; Part B difficulties B1–B13; Part D's four phases and the §D.4 concurrent-efforts rule.
+**Changes**: Recorded that FOOP-45's `a#1#2#3` ≡ `a#1,2,3` is NOT implemented and is not implemented here
+(deprecated as a claimed equivalence; today the comma form misparses as separate statements). Added **E0, default equality** (`default_equal`, FOOP-33), the one existing
+**Foolish-accessible** equivalence. Introduced *Foolish-accessible* as an attribute of catalogue
+entries, with a new catalogue column, and **Appendix 1** documents E0: its rules, its interfaces (value
+search, the null-const conflict rule, FOOP-24 detachment, and FOOP-13's Equivalence Law in passing),
+what this FOOP must decide about it, and aspirations for more Foolish-accessible equivalences. Promoted
+**E3, Peerage equality** (same names and hierarchy, everything else ignored; later extensible to
+name-and-type compatibility, i.e. type checking) in a new §A.3; the former E3–E13 are now E4–E14, and
+the former §A.3/§A.4 are §A.4/§A.5. Added Q-A5 (`nk_unknowable`) and Q-E3a–Q-E3d. Earlier the same day:
+E1 and E2 marked required; Part B headlined towards E1, Part C towards E2; created; absorbed FOOP-76.
