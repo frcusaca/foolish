@@ -2,7 +2,7 @@
 foop: D67
 title: Revival of Equality — FIR equivalence with conditions
 author: Claude Code / claude-opus-5 (directed by the human)
-status: Draft
+status: Deprecated
 type: Standards
 created: 2026-09-15
 phase: phase-4
@@ -11,6 +11,11 @@ begun: [ ]
 ---
 
 # FOOP-76: Revival of Equality
+
+> **DEPRECATED 2026-10-16 — absorbed into [FOOP-27](FOOP-27.md)** at the human's request ("Let's
+> deprecate FOOP-76 and move it's content to FOOP-27"). §1–§6 below are carried there verbatim as
+> Part C, §C.1–§C.6. Its tests, rejected alternatives, open questions (now Q-C1–Q-C5) and references
+> are carried as well. FOOP-27 is the in-force document; this file is kept as the historical record.
 
 FOOP numbering is little-endian; the full rules live in `foop.md` at the repository root —
 **read it before creating or editing a FOOP.** The `foop:` front-matter field here is the
@@ -863,21 +868,9 @@ decide so v1 does not foreclose it.
 
 ## Last Updated
 
-**Date**: 2026-09-15
-
-**Updated By**: Claude Code / claude-opus-5
-
-**Changes**: Created. **Broken out of FOOP-36 §N6** at the human's request ("Can you please break it
-out of FOOP-36 call it Revival_of_Equality"), carrying §N6.1–§N6.5 forward as §1–§5 with every
-substantive claim, justification, worked example and dated human attribution preserved. FOOP-36 §N6
-is now a pointer to this document; FOOP-36 keeps §2.2/§2.2.1 (which pair to compare), and every
-reference that pointed into N6's subsections was repointed here. Added the sections the spec template
-requires and §N6 did not carry as such: **§FIR Impact** (the relation adds nothing to `FirSpec`,
-which already derives `PartialEq`), **§UBC Step Impact** (None — read-only over constanic FIR, takes
-`&FVMStorage`, constructs nothing), **§Test Plan** (T-BIJ, T-SEED, T-SIG, T-SHAPE, T-SHARE, T-PRE,
-and FOOP-36's deferred T2c), **§Plan of Execution for Plan** (per-phase model assignment), and
-**§Rejected Alternatives** A–F. **§Open Questions Q1** records the undecided scope call between the
-relation alone and the full operator taxonomy — the human's, not this document's — and **Q2** the
-sequencing question against **FOOP-66 §3 Q5**. §3.2 carries N6.3.2's **worked counterexample**
-verbatim, including its Foolish code block, since the human asked specifically that it be written
-down; it is also T-BIJ in §Test Plan.
+**Date**: 2026-10-16
+**Updated By**: Claude Code / claude-opus-5-5
+**Changes**: **Deprecated.** Absorbed into FOOP-27 (*Equivalences of Foolish*), which carries §1–§6 as
+its Part C and makes this design the basis of its E2 (FVM round trip). New parameters, a catalogue of
+equivalences, and a design-first phasing were added there, not here. Prior entry: created 2026-09-15,
+broken out of FOOP-36 §N6.

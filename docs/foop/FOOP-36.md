@@ -1908,6 +1908,9 @@ it is its own FOOP rather than a rider on this one.
 
 ### N6. FIR equality — **now FOOP-76, "Revival of Equality"**
 
+> **2026-10-16: FOOP-76 is deprecated and absorbed into [FOOP-27](FOOP-27.md)** (Part C). Read every
+> FOOP-76 reference in this document as FOOP-27; T2c is FOOP-27's E2.
+
 **This section's design was BROKEN OUT into its own FOOP on 2026-09-15, at the human's request**
 ("Can you please break it out of FOOP-36 call it Revival_of_Equality"). It is about **equality**:
 how to decide whether two FIR subtrees are the same, which turned out to be a feature in its own
@@ -1955,32 +1958,9 @@ FOOP's round trip. FOOP-76 defines HOW to compare. **§Test Plan T2c** is still 
 
 ## Last Updated
 
-**Date**: 2026-09-15
-
-**Updated By**: Claude Code / claude-opus-5
-
-**Changes**: **§N6 was BROKEN OUT into its own FOOP — [FOOP-76](FOOP-76.md), "Revival of
-Equality"** — at the human's request ("Can you please break it out of FOOP-36 call it
-Revival_of_Equality"). §N6's body is replaced by a short pointer note; the `### N6.` heading is
-kept so existing cross-references still land somewhere sensible. The full design moved across
-intact and renumbered: N6.1 → FOOP-76 §1 (shape), N6.2 → §2 (value), N6.3/N6.3.1/N6.3.2/N6.3.3 →
-§3 (two-FVM framing, system seeding, the Creation-Postulate bijection, the constanic
-precondition), N6.4 → §4 (equality with conditions), N6.5 → §5 (the `EQUIVALENCE.md` refresh).
-
-**Every reference that pointed INTO N6's subsections was repointed to FOOP-76** — the §Abstract
-line, §2 Property 3, §2.2.1's closing paragraph, §Test Plan's **T2c** note (which also carries the
-bijectivity counterexample and the seeding rule across), §7's summary line, §Rejected Alternatives
-**F**, §Open Questions **Q9**, and the `EQUIVALENCE.md` entry in §References. No reference to a
-subsection that no longer exists in this file remains.
-
-**What stays in FOOP-36**, deliberately: **§2.2** and **§2.2.1**, which establish WHICH pair to
-compare (`spp` vs `spr`, two computations of the same limiting fixed point) — a property of this
-FOOP's round trip, where FOOP-76 defines HOW to compare; **T2c**, still deferred to FOOP-76;
-**Rejected Alternatives F**, still recording that Property 3 is enforced by reading until the
-relation lands; and **Q9**, still DISSOLVED. This FOOP's `status` is unchanged.
-
-Prior entry: added §N6.3.2 (bijectivity, from the Creation Postulate) and §N6.3.3 (NYES: constanic
-inputs first), completing the design §N6 recommended to its own FOOP — both now carried by FOOP-76
-§3.2 and §3.3 respectively. The entry before that recorded the two-FVM framing, the dissolution of
-Q9, system equality, the `NO` / `YES` / `YES, provided […]` signature, and the observation that
-`YES-provided` is the constructive form of the vintage `===`.
+**Date**: 2026-10-16
+**Updated By**: Claude Code / claude-opus-5-5
+**Changes**: §N6 gained a note: FOOP-76 is deprecated and absorbed into FOOP-27 (Part C). Every FOOP-76
+reference in this document should be read as FOOP-27, and T2c is FOOP-27's E2. FOOP-27's E1 is this
+FOOP's Property 2, measured corpus-wide (4 drifts in 183 inputs). Prior entry: §N6 was broken out into
+FOOP-76 (2026-09-15); see `git log` for its full text.

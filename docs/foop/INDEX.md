@@ -63,6 +63,7 @@ ls | rev | sort -V | rev
 | [FOOP-94](FOOP-94.md) | Brane NK only for an unsteppable statement — remove NK contamination | Complete | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-07](FOOP-07.md) | Direct Access Search vs Search — miss outcomes stop keying on anchoring | Draft | phase-2 | 2026-09-24 | Claude Code / claude-opus-5 |
 | [FOOP-17](FOOP-17.md) | FOOP attachments — structured side documents with frontmatter | Draft | meta | 2026-09-24 | Claude Code / claude-opus-5 |
+| [FOOP-27](FOOP-27.md) | Equivalences of Foolish — round trips, FIR equivalence, and a new EQUIVALENCE.md | Draft | phase-4 | 2026-10-16 | Claude Code / claude-opus-5-5 |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
@@ -79,7 +80,7 @@ ls | rev | sort -V | rev
 | [FOOP-46](FOOP-46.md) | BraneConcatOp — a rewritten concatenation operator with phased search resolution | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-56](FOOP-56.md) | NYES groups — one predicate per group, and "settled" qualified everywhere | Draft | phase-4 | 2026-09-02 | Claude Code / claude-opus-5 |
 | [FOOP-66](FOOP-66.md) | Learn Tree Calculus — a study of Barry Jay's tree-based calculus and its synergies with Foolish | Draft | phase-5 | 2026-09-15 | Claude Code / claude-opus-5 |
-| [FOOP-76](FOOP-76.md) | Revival of Equality — FIR equivalence with conditions | Draft | phase-4 | 2026-09-15 | Claude Code / claude-opus-5 |
+| [FOOP-76](FOOP-76.md) | Revival of Equality — FIR equivalence with conditions (absorbed into FOOP-27) | Deprecated | phase-4 | 2026-09-15 | Claude Code / claude-opus-5 |
 | [FOOP-86](FOOP-86.md) | Retire UBCa — foolish-ubca2 becomes the implementation | Complete | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
 | [FOOP-96](FOOP-96.md) | Split fvm_storage.rs — one file per concern | Implementing | phase-4 | 2026-09-16 | Claude Code / claude-opus-5 |
 
@@ -151,22 +152,18 @@ ls | rev | sort -V | rev
   identity and the absence of a normal form may put Foolish's problem outside what Jay's equality
   addresses — counts as a first-class result. **Independent of every track**; best read before
   FOOP-76 (see below) is executed — FOOP-76 §Open Questions Q2 records that as the human's call
-- [FOOP-76](FOOP-76.md) — **Revival of Equality** — FIR equivalence with conditions. **Broken out
-  of FOOP-36 §N6 on 2026-09-15** at the human's request. A relation over two FIR subtrees
-  answering `NO` / `YES` / `YES, provided [(fvm1_creation1, fvm2_creation10), …]` — the residual
-  names the creation identifications that would have to hold, and the boolean is recovered as "is
-  it empty?". A **shape** half (kind, arity, children over `foolish_children`, shape-bearing
-  `FirSpec` fields) and a **value** half (integers by value; creations by a correspondence
-  discovered during a lockstep walk). Its defining case is **two FVMs**, where pointer identity is
-  meaningless by construction; the pair list starts **seeded** with system creations, since every
-  FVM composes the same `SYSTEM_FOO_SRC`; and the residual must be a **bijection**, derived from
-  the **Creation Postulate** (FOOP-33). v1 requires **constanic** subtrees as a stated
-  precondition. **FIR Impact adds nothing to `FirSpec`** (it already derives `PartialEq`) and
-  **UBC Step Impact is None** (read-only, `&FVMStorage`, constructs nothing). Delivers FOOP-36's
-  deferred **T2c** and closes `FOOP-23.plan.md` §D.4. Carries a **documentation deliverable**:
-  refresh `docs/vintage_legacy/EQUIVALENCE.md` against real definitions and bring it OUT of
-  `vintage_legacy/`. **Two open scope calls are the human's** — how far the vintage operator
-  taxonomy goes (Q1), and whether it waits on FOOP-66 §3 Q5 (Q2)
+- [FOOP-27](FOOP-27.md) — **Equivalences of Foolish** (absorbed FOOP-76, 2026-10-16). **Design
+  first.** It catalogues every equivalence worth documenting, E1–E13. The first two are the two
+  round trips: **E1** (text), `sequence(ubca(sequence(ubca(P)))) == sequence(ubca(P))`, which is
+  FOOP-36's Property 2 and measured 2026-10-16 at 4 drifts in 183 inputs; and **E2** (FVM),
+  `ubca(sequence(ubca(P))) ≅ ubca(P)`, under a FIR equivalence built on FOOP-76's design (Part C). E2
+  is parameterized: `nk_equal`/`nk_strict`, `names_compared`/`names_ignored`, `depth`, and
+  `constanic_identical`/`constanic_any`. It lists the known rendering difficulties B1–B13 (`.` as
+  `?`, dropped parentheses, dropped `&`, route-dependent NK reasons, …) as design inputs, and permits
+  FIR/FVM changes that reduce no capability. Phases: semantic design → illustrative tests written
+  into the FOOP → coding plan with all tests → code. Phases 1–3 run now, aware of concurrent FOOPs
+  (§D.4). Phase 4 runs **immediately after FOOP-26**. Deliverables: a new `EQUIVALENCE.md` out of
+  `vintage_legacy/`, and the implementation plan.
 - [FOOP-86](FOOP-86.md) — **Retire UBCa — `foolish-ubca2` becomes the implementation.** Four
   bundled deliverables: `foolish-cli` evaluates through `foolish-ubca2`; `foolish-ubca` (14 171
   lines, 178-case suite) is removed; the `proto_to_core_fir` bridge (~650 lines) and
@@ -261,6 +258,8 @@ Corrected order:
 
 ### Deprecated
 
+- [FOOP-76](FOOP-76.md) — Revival of Equality — **absorbed into [FOOP-27](FOOP-27.md)** as its Part C
+  (2026-10-16, the human's call)
 - [FOOP-41](FOOP-41.md) — UBCb parity plan (target removed by FOOP-03; deprecated 2026-07-14)
 Canceled as they stand; each may be respecified and reimplemented later. See
 `## Deprecation Notice` in each file for rationale.
@@ -317,7 +316,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md), [FOOP-76](FOOP-76.md), [FOOP-86](FOOP-86.md), [FOOP-96](FOOP-96.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md), [FOOP-26](FOOP-26.md), [FOOP-27](FOOP-27.md), [FOOP-36](FOOP-36.md), [FOOP-46](FOOP-46.md), [FOOP-56](FOOP-56.md), [FOOP-86](FOOP-86.md), [FOOP-96](FOOP-96.md)
 
 ### phase-5
 
@@ -441,8 +440,13 @@ members generally cannot run in parallel worktrees. The order is dependency-driv
 >    written 2026-09-16)
 > 3. **[FOOP-07](FOOP-07.md)** — Direct Access Search vs Search: miss outcomes stop keying on
 >    anchoring (**scheduled here 2026-09-24, the human's call**)
-> 4. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel**
-> 5. **[FOOP-17](FOOP-17.md)** — FOOP attachments: structured side documents (**scheduled here
+> 4. **[FOOP-26](FOOP-26.md) ∥ [FOOP-46](FOOP-46.md)** — executed **in parallel** (the human is
+>    leaning to 46 → 26 sequentially, 2026-10-03; pending FOOP-46's H1)
+> 5. **[FOOP-27](FOOP-27.md)** — Equivalences of Foolish (absorbs FOOP-76): E1 text and E2 FVM round
+>    trips first. Its **code phase is scheduled IMMEDIATELY after FOOP-26** (the human's call,
+>    2026-10-16), because 07/46/26 each change rendering. Its design, illustration and planning
+>    phases run now, in parallel, under FOOP-27 §D.4's concurrent-efforts rule.
+> 6. **[FOOP-17](FOOP-17.md)** — FOOP attachments: structured side documents (**scheduled here
 >    2026-09-24, the human's call**). Independent of the evaluator work, so it blocks nothing;
 >    placed after 26 so the migration happens once the FOOPs most likely to GENERATE attachments
 >    have finished doing so.
@@ -538,7 +542,8 @@ concatenation is an operator, and **`rendering_aid: ConcatRenderingAid`** (the s
 field recording which elements wrote their SF/SFF marker in source) must survive the rewrite —
 FOOP-46 §4.1 carries that one.
 
-6. **FOOP-76** — **Revival of Equality**: FIR equivalence returning `NO` / `YES` /
+6. ~~**FOOP-76**~~ — **DEPRECATED 2026-10-16, absorbed into [FOOP-27](FOOP-27.md)**, which is
+   Track 6 member 5 above (immediately after FOOP-26). Original text, kept as a record: **Revival of Equality**: FIR equivalence returning `NO` / `YES` /
    `YES, provided [(creation, creation), …]`, plus the refresh and relocation of
    `docs/vintage_legacy/EQUIVALENCE.md`. **Broken out of FOOP-36 §N6 on 2026-09-15** at the
    human's request; FOOP-36 keeps §2.2/§2.2.1 (WHICH pair to compare — `spp` vs `spr`), and
@@ -666,11 +671,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-09-27
+**Date**: 2026-10-16
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: FOOP-96 (split `fvm_storage.rs`) moved from **Draft** to **Implementing** in the table,
-the status lists, and the Track 6 roadmap. Its Draft summary described the pre-FOOP-86 plan (8 282
-lines, a `core_fir_bridge` file, 791 tests) and was replaced by an Implementing entry with the
-executed figures; the Track 6 member-4 narrative keeps its original text plus a dated outcome note
-rather than being rewritten. Prior entry: FOOP-86 (retire UBCa) marked **Complete**, merged to
-`jia` as `35d18b69`, making FOOP-96 next.
+**Changes**: Added **FOOP-27** (*Equivalences of Foolish*, Draft, phase-4) and **deprecated FOOP-76**,
+which FOOP-27 absorbs as its Part C. Updated the table, the Draft and Deprecated lists, and phase-4.
+In Track 6, FOOP-27 is member 5, immediately after FOOP-26 for its code phase; FOOP-17 is member 6;
+the old FOOP-76 member is struck through and kept as a record. Track 6 member 4 notes the human's
+46 → 26 leaning, pending FOOP-46's H1. FOOP-96 is merged (`dee80c72`), but its entry here still reads
+Implementing until its close-out is done.
