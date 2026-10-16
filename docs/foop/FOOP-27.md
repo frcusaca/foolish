@@ -233,7 +233,12 @@ literal anchor, but its rendering must still keep the `&`. Separately, and **not
 problem**: `&^` / `&$` resolve to the anchor's own statement and the one before it, rather than to
 the head and tail of the home brane. That is unowned (Q-B2).
 
-## Part C — FIR equivalence design (carried from FOOP-76 §1–§6)
+## Part C — FIR equivalence design (carried from FOOP-76 §1–§6) — working towards E2
+
+> **This part is working towards E2** (§A.2), the FVM round trip `ubca(sequence(ubca(P))) ≅ ubca(P)`.
+> E2's `≅` is the relation designed here. It may not yet be complete for E2: §A.2's parameters are new
+> and Part C does not yet carry them (see the note below). E1 (§A.1) is textual and does not depend on
+> this part.
 
 > **Read with §A.2.** Part C hard-codes one setting of each E2 parameter. Where it says names are
 > shape (§C.1 item 4), that is `names_compared`. Where it compares NK by kind and ignores
@@ -1145,16 +1150,8 @@ FOOP-76's original text of these questions:
 
 **Date**: 2026-10-16
 **Updated By**: Claude Code / claude-opus-5-5
-**Changes**: Rewritten the same day it was created. At the human's direction FOOP-27 absorbs
-**FOOP-76** (now Deprecated) and becomes a **design-first equivalence FOOP**:
-- **Part A** catalogues the equivalences. E1 (text round trip) and E2 (FVM round trip under a FIR
-  equivalence) come first. E2's parameters are `nk_equal`/`nk_strict`, `names_compared`/
-  `names_ignored`, `depth`, and `constanic_identical`/`constanic_any`. E3–E13 are catalogued.
-- **Part B** lists the known rendering difficulties, B1–B13, as design inputs, together with the
-  human's ruling that a contexted search with no search context is NK.
-- **Part C** is FOOP-76 §1–§6, verbatim apart from heading numbers.
-- **Part D** gives the human's four phases (semantic design → illustrative tests → coding plan with
-  all tests → code) and permits FIR and FVM changes that reduce no capability.
-
-The first version of this file (corpus gate only) is folded into §A.1 and the Motivation's
-measurement.
+**Changes**: Part C is now headlined "working towards E2", at the human's request to label which
+equivalence it implements. It is E2, not E1: E1 is a byte comparison of text, and Part C is the FIR
+relation E2 compares with. Earlier the same day: created; absorbed FOOP-76 as Part C; Part A
+catalogue E1–E13 with E2's four parameters; Part B difficulties B1–B13; Part D's four phases and the
+§D.4 concurrent-efforts rule.
